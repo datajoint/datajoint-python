@@ -10,7 +10,6 @@ import minio
 import networkx as nx
 import pytest
 import urllib3
-from packaging import version
 
 import datajoint as dj
 from datajoint import errors
@@ -85,51 +84,28 @@ def connection_root(connection_root_bare, prefix):
     dj.config["safemode"] = False
     conn_root = connection_root_bare
     # Create MySQL users
-    if version.parse(
-        conn_root.query("select @@version;").fetchone()[0]
-    ) >= version.parse("8.0.0"):
-        # create user if necessary on mysql8
-        conn_root.query(
-            """
-                CREATE USER IF NOT EXISTS 'datajoint'@'%%'
-                IDENTIFIED BY 'datajoint';
-                """
-        )
-        conn_root.query(
-            """
-                CREATE USER IF NOT EXISTS 'djview'@'%%'
-                IDENTIFIED BY 'djview';
-                """
-        )
-        conn_root.query(
-            """
-                CREATE USER IF NOT EXISTS 'djssl'@'%%'
-                IDENTIFIED BY 'djssl'
-                REQUIRE SSL;
-                """
-        )
-        conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
-        conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
-        conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
-    else:
-        # grant permissions. For MySQL 5.7 this also automatically creates user
-        # if not exists
-        conn_root.query(
-            """
-            GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
+    conn_root.query(
+        """
+            CREATE USER IF NOT EXISTS 'datajoint'@'%%'
             IDENTIFIED BY 'datajoint';
             """
-        )
-        conn_root.query(
-            "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
-        )
-        conn_root.query(
+    )
+    conn_root.query(
+        """
+            CREATE USER IF NOT EXISTS 'djview'@'%%'
+            IDENTIFIED BY 'djview';
             """
-            GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
+    )
+    conn_root.query(
+        """
+            CREATE USER IF NOT EXISTS 'djssl'@'%%'
             IDENTIFIED BY 'djssl'
             REQUIRE SSL;
             """
-        )
+    )
+    conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
+    conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
+    conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
 
     yield conn_root
 
@@ -155,33 +131,19 @@ def connection_test(connection_root, prefix, db_creds_test):
     database = f"{prefix}%%"
     permission = "ALL PRIVILEGES"
 
-    # Create MySQL users
-    if version.parse(
-        connection_root.query("select @@version;").fetchone()[0]
-    ) >= version.parse("8.0.0"):
-        # create user if necessary on mysql8
-        connection_root.query(
-            f"""
-            CREATE USER IF NOT EXISTS '{db_creds_test["user"]}'@'%%'
-            IDENTIFIED BY '{db_creds_test["password"]}';
-            """
-        )
-        connection_root.query(
-            f"""
-            GRANT {permission} ON `{database}`.*
-            TO '{db_creds_test["user"]}'@'%%';
-            """
-        )
-    else:
-        # grant permissions. For MySQL 5.7 this also automatically creates user
-        # if not exists
-        connection_root.query(
-            f"""
-            GRANT {permission} ON `{database}`.*
-            TO '{db_creds_test["user"]}'@'%%'
-            IDENTIFIED BY '{db_creds_test["password"]}';
-            """
-        )
+    # Create MySQL user
+    connection_root.query(
+        f"""
+        CREATE USER IF NOT EXISTS '{db_creds_test["user"]}'@'%%'
+        IDENTIFIED BY '{db_creds_test["password"]}';
+        """
+    )
+    connection_root.query(
+        f"""
+        GRANT {permission} ON `{database}`.*
+        TO '{db_creds_test["user"]}'@'%%';
+        """
+    )
 
     connection = dj.Connection(**db_creds_test)
     yield connection

@@ -416,7 +416,7 @@ data = query.fetch(order_by='`select` desc')
 ```
 
 The `order_by` value is eventually passed to the `ORDER BY`
-[clause](https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html).
+[clause](https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html).
 
 ### Limiting results
 

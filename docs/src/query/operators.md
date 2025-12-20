@@ -138,7 +138,7 @@ could contain all personnel. A project table references one person for the lead 
 another the coordinator, both referencing the common personnel pool.
 
 3. Projection can also perform calculations (as available in
-[MySQL](https://dev.mysql.com/doc/refman/5.7/en/functions.html)) on a single attribute.
+[MySQL](https://dev.mysql.com/doc/refman/8.0/en/functions.html)) on a single attribute.
 
 ## Aggr
 
