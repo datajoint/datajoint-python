@@ -69,11 +69,12 @@ Object storage is configured in `datajoint.json` using the existing settings sys
     "database.host": "localhost",
     "database.user": "datajoint",
 
+    "object_storage.project_name": "my_project",
     "object_storage.protocol": "s3",
     "object_storage.endpoint": "s3.amazonaws.com",
     "object_storage.bucket": "my-bucket",
     "object_storage.location": "my_project",
-    "object_storage.partition_pattern": "subject{subject_id}/session{session_id}"
+    "object_storage.partition_pattern": "{subject_id}/{session_id}"
 }
 ```
 
@@ -81,9 +82,10 @@ For local filesystem storage:
 
 ```json
 {
+    "object_storage.project_name": "my_project",
     "object_storage.protocol": "file",
     "object_storage.location": "/data/my_project",
-    "object_storage.partition_pattern": "subject{subject_id}/session{session_id}"
+    "object_storage.partition_pattern": "{subject_id}/{session_id}"
 }
 ```
 
@@ -91,12 +93,13 @@ For local filesystem storage:
 
 | Setting | Type | Required | Description |
 |---------|------|----------|-------------|
+| `object_storage.project_name` | string | Yes | Unique project identifier (must match store metadata) |
 | `object_storage.protocol` | string | Yes | Storage backend: `file`, `s3`, `gcs`, `azure` |
 | `object_storage.location` | string | Yes | Base path or bucket prefix |
 | `object_storage.bucket` | string | For cloud | Bucket name (S3, GCS, Azure) |
 | `object_storage.endpoint` | string | For S3 | S3 endpoint URL |
 | `object_storage.partition_pattern` | string | No | Path pattern with `{attribute}` placeholders |
-| `object_storage.hash_length` | int | No | Random suffix length for filenames (default: 8, range: 4-16) |
+| `object_storage.token_length` | int | No | Random suffix length for filenames (default: 8, range: 4-16) |
 | `object_storage.access_key` | string | For cloud | Access key (can use secrets file) |
 | `object_storage.secret_key` | string | For cloud | Secret key (can use secrets file) |
 
@@ -138,6 +141,90 @@ s3://my-bucket/my_project/subject123/session45/schema_name/objects/Recording-raw
 ```
 
 If no partition pattern is specified, files are organized directly under `{location}/{schema}/objects/`.
+
+## Store Metadata (`dj-store-meta.json`)
+
+Each object store contains a metadata file at its root that identifies the store and enables verification by DataJoint clients.
+
+### Location
+
+```
+{location}/dj-store-meta.json
+```
+
+For cloud storage:
+```
+s3://bucket/my_project/dj-store-meta.json
+```
+
+### Content
+
+```json
+{
+    "project_name": "my_project",
+    "created": "2025-01-15T10:30:00Z",
+    "format_version": "1.0",
+    "datajoint_version": "0.15.0",
+    "schemas": ["schema1", "schema2"]
+}
+```
+
+### Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `project_name` | string | Yes | Unique project identifier |
+| `created` | string | Yes | ISO 8601 timestamp of store creation |
+| `format_version` | string | Yes | Store format version for compatibility |
+| `datajoint_version` | string | Yes | DataJoint version that created the store |
+| `schemas` | array | No | List of schemas using this store (updated on schema creation) |
+
+### Store Initialization
+
+The store metadata file is created when the first `file` attribute is used:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 1. Client attempts first file operation                 │
+├─────────────────────────────────────────────────────────┤
+│ 2. Check if dj-store-meta.json exists                   │
+│    ├─ If exists: verify project_name matches            │
+│    └─ If not: create with current project_name          │
+├─────────────────────────────────────────────────────────┤
+│ 3. On mismatch: raise DataJointError                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Client Verification
+
+All DataJoint clients must use **identical `project_name`** settings to ensure store-database cohesion:
+
+1. **On connect**: Client reads `dj-store-meta.json` from store
+2. **Verify**: `project_name` in client settings matches store metadata
+3. **On mismatch**: Raise `DataJointError` with descriptive message
+
+```python
+# Example error
+DataJointError: Object store project name mismatch.
+  Client configured: "project_a"
+  Store metadata: "project_b"
+  Ensure all clients use the same object_storage.project_name setting.
+```
+
+### Schema Registration
+
+When a schema first uses the `file` type, it is added to the `schemas` list in the metadata:
+
+```python
+# After creating Recording table with file attribute in my_schema
+# dj-store-meta.json is updated:
+{
+    "project_name": "my_project",
+    "schemas": ["my_schema"]  # my_schema added
+}
+```
+
+This provides a record of which schemas have data in the store.
 
 ## Syntax
 
@@ -211,7 +298,7 @@ Storage paths are **deterministically constructed** from record metadata, enabli
 5. **Table name** - the table class name
 6. **Primary key encoding** - remaining PK attributes and values
 7. **Field name** - the attribute name
-8. **Suffixed filename** - original name with random hash suffix
+8. **Suffixed filename** - original name with random token suffix
 
 ### Path Template
 
@@ -310,7 +397,7 @@ description=a1b2c3d4_abc123     # long string truncated + hash
 
 ### Filename Collision Avoidance
 
-To prevent filename collisions, each stored file receives a **random hash suffix** appended to its basename:
+To prevent filename collisions, each stored file receives a **random token suffix** appended to its basename:
 
 ```
 original: recording.dat
@@ -320,10 +407,10 @@ original: image.analysis.tiff
 stored:   image.analysis_pL9nR4wE.tiff
 ```
 
-#### Hash Suffix Specification
+#### Token Suffix Specification
 
 - **Alphabet**: URL-safe and filename-safe Base64 characters: `A-Z`, `a-z`, `0-9`, `-`, `_`
-- **Length**: Configurable via `object_storage.hash_length` (default: 8, range: 4-16)
+- **Length**: Configurable via `object_storage.token_length` (default: 8, range: 4-16)
 - **Generation**: Cryptographically random using `secrets.token_urlsafe()`
 
 At 8 characters with 64 possible values per character: 64^8 = 281 trillion combinations.
@@ -511,12 +598,13 @@ class ObjectStorageSettings(BaseSettings):
         validate_assignment=True,
     )
 
+    project_name: str | None = None  # Must match store metadata
     protocol: Literal["file", "s3", "gcs", "azure"] | None = None
     location: str | None = None
     bucket: str | None = None
     endpoint: str | None = None
     partition_pattern: str | None = None
-    hash_length: int = Field(default=8, ge=4, le=16)
+    token_length: int = Field(default=8, ge=4, le=16)
     access_key: str | None = None
     secret_key: SecretStr | None = None
 ```
