@@ -40,9 +40,7 @@ def translate_query_error(client_error, query):
 
     # Loss of connection errors
     if err in (0, "(0, '')"):
-        return errors.LostConnectionError(
-            "Server connection lost due to an interface error.", *args
-        )
+        return errors.LostConnectionError("Server connection lost due to an interface error.", *args)
     if err == 2006:
         return errors.LostConnectionError("Connection timed out", *args)
     if err == 2013:
@@ -73,9 +71,7 @@ def translate_query_error(client_error, query):
     return client_error
 
 
-def conn(
-    host=None, user=None, password=None, *, init_fun=None, reset=False, use_tls=None
-):
+def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use_tls=None):
     """
     Returns a persistent connection object to be shared by multiple modules.
     If the connection is not yet established or reset=True, a new connection is set up.
@@ -100,9 +96,7 @@ def conn(
             user = input("Please enter DataJoint username: ")
         if password is None:
             password = getpass(prompt="Please enter DataJoint password: ")
-        init_fun = (
-            init_fun if init_fun is not None else config["connection.init_function"]
-        )
+        init_fun = init_fun if init_fun is not None else config["connection.init_function"]
         use_tls = use_tls if use_tls is not None else config["database.use_tls"]
         conn.connection = Connection(host, user, password, None, init_fun, use_tls)
     return conn.connection
@@ -156,25 +150,17 @@ class Connection:
             port = config["database.port"]
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
         if use_tls is not False:
-            self.conn_info["ssl"] = (
-                use_tls if isinstance(use_tls, dict) else {"ssl": {}}
-            )
+            self.conn_info["ssl"] = use_tls if isinstance(use_tls, dict) else {"ssl": {}}
         self.conn_info["ssl_input"] = use_tls
         self.init_fun = init_fun
         self._conn = None
         self._query_cache = None
         self.connect()
         if self.is_connected:
-            logger.info(
-                "DataJoint {version} connected to {user}@{host}:{port}".format(
-                    version=__version__, **self.conn_info
-                )
-            )
+            logger.info("DataJoint {version} connected to {user}@{host}:{port}".format(version=__version__, **self.conn_info))
             self.connection_id = self.query("SELECT connection_id()").fetchone()[0]
         else:
-            raise errors.LostConnectionError(
-                "Connection failed {user}@{host}:{port}".format(**self.conn_info)
-            )
+            raise errors.LostConnectionError("Connection failed {user}@{host}:{port}".format(**self.conn_info))
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
@@ -184,9 +170,7 @@ class Connection:
 
     def __repr__(self):
         connected = "connected" if self.is_connected else "disconnected"
-        return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
-            connected=connected, **self.conn_info
-        )
+        return "DataJoint connection ({connected}) {user}@{host}:{port}".format(connected=connected, **self.conn_info)
 
     def connect(self):
         """Connect to the database server."""
@@ -198,11 +182,7 @@ class Connection:
                     sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
                     "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
                     charset=config["connection.charset"],
-                    **{
-                        k: v
-                        for k, v in self.conn_info.items()
-                        if k not in ["ssl_input"]
-                    },
+                    **{k: v for k, v in self.conn_info.items() if k not in ["ssl_input"]},
                 )
             except client.err.InternalError:
                 self._conn = client.connect(
@@ -213,11 +193,7 @@ class Connection:
                     **{
                         k: v
                         for k, v in self.conn_info.items()
-                        if not (
-                            k == "ssl_input"
-                            or k == "ssl"
-                            and self.conn_info["ssl_input"] is None
-                        )
+                        if not (k == "ssl_input" or k == "ssl" and self.conn_info["ssl_input"] is None)
                     },
                 )
         self._conn.autocommit(True)
@@ -235,10 +211,7 @@ class Connection:
 
     def purge_query_cache(self):
         """Purges all query cache."""
-        if (
-            isinstance(config.get(cache_key), str)
-            and pathlib.Path(config[cache_key]).is_dir()
-        ):
+        if isinstance(config.get(cache_key), str) and pathlib.Path(config[cache_key]).is_dir():
             for path in pathlib.Path(config[cache_key]).iterdir():
                 if not path.is_dir():
                     path.unlink()
@@ -274,9 +247,7 @@ class Connection:
         except client.err.Error as err:
             raise translate_query_error(err, query)
 
-    def query(
-        self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None
-    ):
+    def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
         """
         Execute the specified query and return the tuple generator (cursor).
 
@@ -290,18 +261,11 @@ class Connection:
         # check cache first:
         use_query_cache = bool(self._query_cache)
         if use_query_cache and not re.match(r"\s*(SELECT|SHOW)", query):
-            raise errors.DataJointError(
-                "Only SELECT queries are allowed when query caching is on."
-            )
+            raise errors.DataJointError("Only SELECT queries are allowed when query caching is on.")
         if use_query_cache:
             if not config[cache_key]:
-                raise errors.DataJointError(
-                    f"Provide filepath dj.config['{cache_key}'] when using query caching."
-                )
-            hash_ = uuid_from_buffer(
-                (str(self._query_cache) + re.sub(r"`\$\w+`", "", query)).encode()
-                + pack(args)
-            )
+                raise errors.DataJointError(f"Provide filepath dj.config['{cache_key}'] when using query caching.")
+            hash_ = uuid_from_buffer((str(self._query_cache) + re.sub(r"`\$\w+`", "", query)).encode() + pack(args))
             cache_path = pathlib.Path(config[cache_key]) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()
@@ -324,9 +288,7 @@ class Connection:
             self.connect()
             if self._in_transaction:
                 self.cancel_transaction()
-                raise errors.LostConnectionError(
-                    "Connection was lost during a transaction."
-                )
+                raise errors.LostConnectionError("Connection was lost during a transaction.")
             logger.debug("Re-executing")
             cursor = self._conn.cursor(cursor=cursor_class)
             self._execute_query(cursor, query, args, suppress_warnings)

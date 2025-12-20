@@ -70,8 +70,8 @@ def test_issue484(schema_aggr_reg):
     Issue 484
     """
     q = dj.U().aggr(S, n="max(s)")
-    n = q.fetch("n")
-    n = q.fetch1("n")
+    q.fetch("n")
+    q.fetch1("n")
     q = dj.U().aggr(S, n="avg(s)")
     result = dj.U().aggr(q, m="max(n)")
     result.fetch()
@@ -123,8 +123,6 @@ def test_left_join_len(schema_uuid):
     Item.populate()
     Topic().add("jeff2")
     Topic().add("jeff3")
-    q = Topic.join(
-        Item - dict(topic_id=uuid.uuid5(top_level_namespace_id, "jeff")), left=True
-    )
+    q = Topic.join(Item - dict(topic_id=uuid.uuid5(top_level_namespace_id, "jeff")), left=True)
     qf = q.fetch()
     assert len(q) == len(qf)

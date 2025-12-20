@@ -25,9 +25,7 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
     :return: the user's choice
     """
     assert default is None or default in choices
-    choice_list = ", ".join(
-        (choice.title() if choice == default else choice for choice in choices)
-    )
+    choice_list = ", ".join((choice.title() if choice == default else choice for choice in choices))
     response = None
     while response not in choices:
         response = input(prompt + " [" + choice_list + "]: ")
@@ -97,9 +95,7 @@ def from_camel_case(s):
         return ("_" if match.groups()[0] else "") + match.group(0).lower()
 
     if not is_camel_case(s):
-        raise DataJointError(
-            "ClassName must be alphanumeric in CamelCase, begin with a capital letter"
-        )
+        raise DataJointError("ClassName must be alphanumeric in CamelCase, begin with a capital letter")
     return re.sub(r"(\B[A-Z])|(\b[A-Z])", convert, s)
 
 

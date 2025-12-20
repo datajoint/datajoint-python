@@ -16,31 +16,18 @@ def preview(query_expression, limit, width):
     columns = heading.names
     widths = {
         f: min(
-            max(
-                [len(f)] + [len(str(e)) for e in tuples[f]]
-                if f in tuples.dtype.names
-                else [len("=BLOB=")]
-            )
-            + 4,
+            max([len(f)] + [len(str(e)) for e in tuples[f]] if f in tuples.dtype.names else [len("=BLOB=")]) + 4,
             width,
         )
         for f in columns
     }
     templates = {f: "%%-%d.%ds" % (widths[f], widths[f]) for f in columns}
     return (
-        " ".join(
-            [templates[f] % ("*" + f if f in rel.primary_key else f) for f in columns]
-        )
+        " ".join([templates[f] % ("*" + f if f in rel.primary_key else f) for f in columns])
         + "\n"
         + " ".join(["+" + "-" * (widths[column] - 2) + "+" for column in columns])
         + "\n"
-        + "\n".join(
-            " ".join(
-                templates[f] % (tup[f] if f in tup.dtype.names else "=BLOB=")
-                for f in columns
-            )
-            for tup in tuples
-        )
+        + "\n".join(" ".join(templates[f] % (tup[f] if f in tup.dtype.names else "=BLOB=") for f in columns) for tup in tuples)
         + ("\n   ...\n" if has_more else "\n")
         + (" (Total: %d)\n" % len(rel) if config["display.show_tuple_count"] else "")
     )
@@ -126,28 +113,16 @@ def repr_html(query_expression):
             head_template.format(
                 column=c,
                 comment=heading.attributes[c].comment,
-                primary=(
-                    "primary" if c in query_expression.primary_key else "nonprimary"
-                ),
+                primary=("primary" if c in query_expression.primary_key else "nonprimary"),
             )
             for c in heading.names
         ),
         ellipsis="<p>...</p>" if has_more else "",
         body="</tr><tr>".join(
             [
-                "\n".join(
-                    [
-                        "<td>%s</td>"
-                        % (tup[name] if name in tup.dtype.names else "=BLOB=")
-                        for name in heading.names
-                    ]
-                )
+                "\n".join(["<td>%s</td>" % (tup[name] if name in tup.dtype.names else "=BLOB=") for name in heading.names])
                 for tup in tuples
             ]
         ),
-        count=(
-            ("<p>Total: %d</p>" % len(rel))
-            if config["display.show_tuple_count"]
-            else ""
-        ),
+        count=(("<p>Total: %d</p>" % len(rel)) if config["display.show_tuple_count"] else ""),
     )

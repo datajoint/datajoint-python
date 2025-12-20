@@ -109,11 +109,7 @@ class Schema:
         if self.database is not None and self.exists:
             if self.database == schema_name:  # already activated
                 return
-            raise DataJointError(
-                "The schema is already activated for schema {db}.".format(
-                    db=self.database
-                )
-            )
+            raise DataJointError("The schema is already activated for schema {db}.".format(db=self.database))
         if connection is not None:
             self.connection = connection
         if self.connection is None:
@@ -128,21 +124,17 @@ class Schema:
         if not self.exists:
             if not self.create_schema or not self.database:
                 raise DataJointError(
-                    "Database `{name}` has not yet been declared. "
-                    "Set argument create_schema=True to create it.".format(
+                    "Database `{name}` has not yet been declared. Set argument create_schema=True to create it.".format(
                         name=schema_name
                     )
                 )
             # create database
             logger.debug("Creating schema `{name}`.".format(name=schema_name))
             try:
-                self.connection.query(
-                    "CREATE DATABASE `{name}`".format(name=schema_name)
-                )
+                self.connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
             except AccessError:
                 raise DataJointError(
-                    "Schema `{name}` does not exist and could not be created. "
-                    "Check permissions.".format(name=schema_name)
+                    "Schema `{name}` does not exist and could not be created. Check permissions.".format(name=schema_name)
                 )
             else:
                 self.log("created")
@@ -156,10 +148,7 @@ class Schema:
 
     def _assert_exists(self, message=None):
         if not self.exists:
-            raise DataJointError(
-                message
-                or "Schema `{db}` has not been created.".format(db=self.database)
-            )
+            raise DataJointError(message or "Schema `{db}` has not been created.".format(db=self.database))
 
     def __call__(self, cls, *, context=None):
         """
@@ -170,9 +159,7 @@ class Schema:
         """
         context = context or self.context or inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
-            raise DataJointError(
-                "The schema decorator should not be applied to Part tables."
-            )
+            raise DataJointError("The schema decorator should not be applied to Part tables.")
         if self.is_activated():
             self._decorate_master(cls, context)
         else:
@@ -185,9 +172,7 @@ class Schema:
         :param cls: the master class to process
         :param context: the class' declaration context
         """
-        self._decorate_table(
-            cls, context=dict(context, self=cls, **{cls.__name__: cls})
-        )
+        self._decorate_table(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
         # Process part tables
         for part in ordered_dir(cls):
             if part[0].isupper():
@@ -197,9 +182,7 @@ class Schema:
                     # allow addressing master by name or keyword 'master'
                     self._decorate_table(
                         part,
-                        context=dict(
-                            context, master=cls, self=part, **{cls.__name__: cls}
-                        ),
+                        context=dict(context, master=cls, self=part, **{cls.__name__: cls}),
                     )
 
     def _decorate_table(self, table_class, context, assert_declared=False):
@@ -229,26 +212,17 @@ class Schema:
 
         # add table definition to the doc string
         if isinstance(table_class.definition, str):
-            table_class.__doc__ = (
-                (table_class.__doc__ or "")
-                + "\nTable definition:\n\n"
-                + table_class.definition
-            )
+            table_class.__doc__ = (table_class.__doc__ or "") + "\nTable definition:\n\n" + table_class.definition
 
         # fill values in Lookup tables from their contents property
-        if (
-            isinstance(instance, Lookup)
-            and hasattr(instance, "contents")
-            and is_declared
-        ):
+        if isinstance(instance, Lookup) and hasattr(instance, "contents") and is_declared:
             contents = list(instance.contents)
             if len(contents) > len(instance):
                 if instance.heading.has_autoincrement:
                     warnings.warn(
-                        (
-                            "Contents has changed but cannot be inserted because "
-                            "{table} has autoincrement."
-                        ).format(table=instance.__class__.__name__)
+                        ("Contents has changed but cannot be inserted because {table} has autoincrement.").format(
+                            table=instance.__class__.__name__
+                        )
                     )
                 else:
                     instance.insert(contents, skip_duplicates=True)
@@ -274,9 +248,7 @@ class Schema:
                 """
             SELECT SUM(data_length + index_length)
             FROM information_schema.tables WHERE table_schema='{db}'
-            """.format(
-                    db=self.database
-                )
+            """.format(db=self.database)
             ).fetchone()[0]
         )
 
@@ -299,10 +271,7 @@ class Schema:
         tables = [
             row[0]
             for row in self.connection.query("SHOW TABLES in `%s`" % self.database)
-            if lookup_class_name(
-                "`{db}`.`{tab}`".format(db=self.database, tab=row[0]), context, 0
-            )
-            is None
+            if lookup_class_name("`{db}`.`{tab}`".format(db=self.database, tab=row[0]), context, 0) is None
         ]
         master_classes = (Lookup, Manual, Imported, Computed)
         part_tables = []
@@ -310,19 +279,13 @@ class Schema:
             class_name = to_camel_case(table_name)
             if class_name not in context:
                 try:
-                    cls = next(
-                        cls
-                        for cls in master_classes
-                        if re.fullmatch(cls.tier_regexp, table_name)
-                    )
+                    cls = next(cls for cls in master_classes if re.fullmatch(cls.tier_regexp, table_name))
                 except StopIteration:
                     if re.fullmatch(Part.tier_regexp, table_name):
                         part_tables.append(table_name)
                 else:
                     # declare and decorate master table classes
-                    context[class_name] = self(
-                        type(class_name, (cls,), dict()), context=context
-                    )
+                    context[class_name] = self(type(class_name, (cls,), dict()), context=context)
 
         # attach parts to masters
         for table_name in part_tables:
@@ -331,10 +294,7 @@ class Schema:
             try:
                 master_class = context[to_camel_case(groups["master"])]
             except KeyError:
-                raise DataJointError(
-                    "The table %s does not follow DataJoint naming conventions"
-                    % table_name
-                )
+                raise DataJointError("The table %s does not follow DataJoint naming conventions" % table_name)
             part_class = type(class_name, (Part,), dict(definition=...))
             part_class._master = master_class
             self._decorate_table(part_class, context=context, assert_declared=True)
@@ -345,33 +305,19 @@ class Schema:
         Drop the associated schema if it exists
         """
         if not self.exists:
-            logger.info(
-                "Schema named `{database}` does not exist. Doing nothing.".format(
-                    database=self.database
-                )
-            )
+            logger.info("Schema named `{database}` does not exist. Doing nothing.".format(database=self.database))
         elif (
             not config["safemode"]
             or force
-            or user_choice(
-                "Proceed to delete entire schema `%s`?" % self.database, default="no"
-            )
-            == "yes"
+            or user_choice("Proceed to delete entire schema `%s`?" % self.database, default="no") == "yes"
         ):
             logger.debug("Dropping `{database}`.".format(database=self.database))
             try:
-                self.connection.query(
-                    "DROP DATABASE `{database}`".format(database=self.database)
-                )
-                logger.debug(
-                    "Schema `{database}` was dropped successfully.".format(
-                        database=self.database
-                    )
-                )
+                self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
+                logger.debug("Schema `{database}` was dropped successfully.".format(database=self.database))
             except AccessError:
                 raise AccessError(
-                    "An attempt to drop schema `{database}` "
-                    "has failed. Check permissions.".format(database=self.database)
+                    "An attempt to drop schema `{database}` has failed. Check permissions.".format(database=self.database)
                 )
 
     @property
@@ -383,9 +329,9 @@ class Schema:
             raise DataJointError("Schema must be activated first.")
         return bool(
             self.connection.query(
-                "SELECT schema_name "
-                "FROM information_schema.schemata "
-                "WHERE schema_name = '{database}'".format(database=self.database)
+                "SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{database}'".format(
+                    database=self.database
+                )
             ).rowcount
         )
 
@@ -417,9 +363,7 @@ class Schema:
         self._assert_exists()
         module_count = itertools.count()
         # add virtual modules for referenced modules with names vmod0, vmod1, ...
-        module_lookup = collections.defaultdict(
-            lambda: "vmod" + str(next(module_count))
-        )
+        module_lookup = collections.defaultdict(lambda: "vmod" + str(next(module_count)))
         db = self.database
 
         def make_class_definition(table):
@@ -438,9 +382,7 @@ class Schema:
                 )
 
             return ("" if tier == "Part" else "\n@schema\n") + (
-                "{indent}class {class_name}(dj.{tier}):\n"
-                '{indent}    definition = """\n'
-                '{indent}    {defi}"""'
+                '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}"""'
             ).format(
                 class_name=class_name,
                 indent=indent,
@@ -459,9 +401,7 @@ class Schema:
                 '"""This module was auto-generated by datajoint from an existing schema"""',
                 "import datajoint as dj\n\nschema = dj.Schema('{db}')".format(db=db),
                 "\n".join(
-                    "{module} = dj.VirtualModule('{module}', '{schema_name}')".format(
-                        module=v, schema_name=k
-                    )
+                    "{module} = dj.VirtualModule('{module}', '{schema_name}')".format(module=v, schema_name=k)
                     for k, v in module_lookup.items()
                 ),
                 body,
@@ -482,10 +422,7 @@ class Schema:
         self.connection.dependencies.load()
         return [
             t
-            for d, t in (
-                table_name.replace("`", "").split(".")
-                for table_name in self.connection.dependencies.topo_sort()
-            )
+            for d, t in (table_name.replace("`", "").split(".") for table_name in self.connection.dependencies.topo_sort())
             if d == self.database
         ]
 
@@ -539,8 +476,6 @@ def list_schemas(connection=None):
     return [
         r[0]
         for r in (connection or conn()).query(
-            "SELECT schema_name "
-            "FROM information_schema.schemata "
-            'WHERE schema_name <> "information_schema"'
+            'SELECT schema_name FROM information_schema.schemata WHERE schema_name <> "information_schema"'
         )
     ]

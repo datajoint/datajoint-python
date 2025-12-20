@@ -23,7 +23,7 @@ jobs:
         extra_args: codespell --all-files
     - uses: pre-commit/action@v3.0.1
       with:
-        extra_args: black --all-files
+        extra_args: ruff --all-files
     - uses: pre-commit/action@v3.0.1
       with:
-        extra_args: flake8 --all-files
+        extra_args: ruff-format --all-files

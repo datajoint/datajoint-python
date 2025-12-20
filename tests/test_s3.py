@@ -36,9 +36,7 @@ def test_remove_object_exception(schema_ext, s3_creds):
     )
 
     # This method returns a list of errors
-    error_list = schema_ext.external["share"].delete(
-        delete_external_files=True, errors_as_string=False
-    )
+    error_list = schema_ext.external["share"].delete(delete_external_files=True, errors_as_string=False)
 
     # Teardown
     schema_ext.external["share"].s3.client = old_client

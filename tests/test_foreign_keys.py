@@ -1,6 +1,12 @@
 from datajoint.declare import declare
 
-from .schema_advanced import *
+from .schema_advanced import (
+    Cell,  # noqa: F401 - needed in globals for foreign key resolution
+    GlobalSynapse,
+    LocalSynapse,
+    Parent,
+    Person,
+)
 
 
 def test_aliased_fk(schema_adv):
@@ -25,9 +31,7 @@ def test_describe(schema_adv):
     """real_definition should match original definition"""
     for rel in (LocalSynapse, GlobalSynapse):
         describe = rel.describe()
-        s1 = declare(rel.full_table_name, rel.definition, schema_adv.context)[0].split(
-            "\n"
-        )
+        s1 = declare(rel.full_table_name, rel.definition, schema_adv.context)[0].split("\n")
         s2 = declare(rel.full_table_name, describe, globals())[0].split("\n")
         for c1, c2 in zip(s1, s2):
             assert c1 == c2
