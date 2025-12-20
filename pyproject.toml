@@ -22,7 +22,7 @@ dependencies = [
   "urllib3",
   "setuptools",
 ]
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.10,<4.0"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
