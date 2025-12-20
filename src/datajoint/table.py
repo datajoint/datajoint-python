@@ -8,7 +8,6 @@ import platform
 import re
 import uuid
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 import pandas
@@ -430,7 +429,7 @@ class Table(QueryExpression):
     def delete(
         self,
         transaction: bool = True,
-        safemode: Union[bool, None] = None,
+        safemode: bool | None = None,
         force_parts: bool = False,
         force_masters: bool = False,
     ) -> int:

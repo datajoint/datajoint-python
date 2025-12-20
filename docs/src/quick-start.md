@@ -12,7 +12,7 @@ Advanced users can install DataJoint locally. Please see the installation instru
 ## Installation
 
 First, please [install Python](https://www.python.org/downloads/) version
-3.8 or later.
+3.10 or later.
 
 Next, please install DataJoint via one of the following:
 
@@ -92,35 +92,32 @@ Next, please install DataJoint via one of the following:
     ```python linenums="1"
     import datajoint as dj
 
-    dj.config["database.host"] = "{host_address}"
-    dj.config["database.user"] = "{user}"
-    dj.config["database.password"] = "{password}"
+    dj.config.database.host = "{host_address}"
+    dj.config.database.user = "{user}"
+    dj.config.database.password = "{password}"
     ```
 
-    These configuration settings can be saved either locally or system-wide using one
-    of the following commands:
-    ```python
-    dj.config.save_local()
-    dj.config.save_global()
-    ```
+    Note: Credentials set this way are not persisted. For persistent configuration,
+    use environment variables or a config file.
 
 === "file"
 
-    Before using `datajoint`, create a file named `dj_local_conf.json` in the current
-    directory like so:
+    Create a file named `datajoint.json` in your project root:
 
     ```json linenums="1"
     {
-        "database.host": "{host_address}",
-        "database.user": "{user}",
-        "database.password": "{password}"
+        "database": {
+            "host": "{host_address}"
+        }
     }
     ```
 
-    These settings will be loaded whenever a Python instance is launched from this
-    directory. To configure settings globally, save a similar file as
-    `.datajoint_config.json` in your home directory. A local config, if present, will
-    take precedent over global settings.
+    **Important:** Never store credentials in config files. Use environment variables
+    (`DJ_USER`, `DJ_PASS`) or a `.secrets/` directory instead.
+
+    DataJoint searches for `datajoint.json` starting from the current directory and
+    moving up through parent directories until it finds the file or reaches a `.git`
+    directory.
 
 ## Data Pipeline Definition
 
@@ -416,7 +413,7 @@ data = query.fetch(order_by='`select` desc')
 ```
 
 The `order_by` value is eventually passed to the `ORDER BY`
-[clause](https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html).
+[clause](https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html).
 
 ### Limiting results
 

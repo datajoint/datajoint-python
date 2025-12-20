@@ -42,7 +42,6 @@ __all__ = [
     "Diagram",
     "Di",
     "ERD",
-    "set_password",
     "kill",
     "MatCell",
     "MatStruct",
@@ -56,7 +55,7 @@ __all__ = [
 ]
 
 from . import errors
-from .admin import kill, set_password
+from .admin import kill
 from .attribute_adapter import AttributeAdapter
 from .blob import MatCell, MatStruct
 from .cli import cli

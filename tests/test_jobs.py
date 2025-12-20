@@ -83,7 +83,7 @@ def test_sigterm(clean_jobs, schema_any):
 
 def test_suppress_dj_errors(clean_jobs, schema_any):
     """test_suppress_dj_errors: dj errors suppressible w/o native py blobs"""
-    with dj.config(enable_python_native_blobs=False):
+    with dj.config.override(enable_python_native_blobs=False):
         schema.ErrorClass.populate(reserve_jobs=True, suppress_errors=True)
     assert len(schema.DjExceptionName()) == len(schema_any.jobs) > 0
 
