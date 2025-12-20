@@ -164,8 +164,7 @@ s3://bucket/my_project/dj-store-meta.json
     "project_name": "my_project",
     "created": "2025-01-15T10:30:00Z",
     "format_version": "1.0",
-    "datajoint_version": "0.15.0",
-    "schemas": ["schema1", "schema2"]
+    "datajoint_version": "0.15.0"
 }
 ```
 
@@ -177,7 +176,6 @@ s3://bucket/my_project/dj-store-meta.json
 | `created` | string | Yes | ISO 8601 timestamp of store creation |
 | `format_version` | string | Yes | Store format version for compatibility |
 | `datajoint_version` | string | Yes | DataJoint version that created the store |
-| `schemas` | array | No | List of schemas using this store (updated on schema creation) |
 
 ### Store Initialization
 
@@ -197,7 +195,7 @@ The store metadata file is created when the first `file` attribute is used:
 
 ### Client Verification
 
-All DataJoint clients must use **identical `project_name`** settings to ensure store-database cohesion:
+DataJoint performs a basic verification on connect to ensure store-database cohesion:
 
 1. **On connect**: Client reads `dj-store-meta.json` from store
 2. **Verify**: `project_name` in client settings matches store metadata
@@ -211,20 +209,13 @@ DataJointError: Object store project name mismatch.
   Ensure all clients use the same object_storage.project_name setting.
 ```
 
-### Schema Registration
+### Administrative Responsibility
 
-When a schema first uses the `file` type, it is added to the `schemas` list in the metadata:
+A 1:1 correspondence is assumed between:
+- Database location + `project_name` in client settings
+- Object store + `project_name` in store metadata
 
-```python
-# After creating Recording table with file attribute in my_schema
-# dj-store-meta.json is updated:
-{
-    "project_name": "my_project",
-    "schemas": ["my_schema"]  # my_schema added
-}
-```
-
-This provides a record of which schemas have data in the store.
+DataJoint performs basic verification but does **not** enforce this mapping. Administrators are responsible for ensuring correct configuration across all clients.
 
 ## Syntax
 
