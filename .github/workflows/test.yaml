@@ -21,11 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py_ver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        py_ver: ["3.10", "3.11", "3.12", "3.13"]
         mysql_ver: ["8.0"]
-        include:
-          - py_ver: "3.9"
-            mysql_ver: "5.7"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
