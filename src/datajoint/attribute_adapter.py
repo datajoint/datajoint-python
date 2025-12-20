@@ -45,20 +45,14 @@ def get_adapter(context, adapter_name):
     try:
         adapter = context[adapter_name]
     except KeyError:
-        raise DataJointError(
-            "Attribute adapter '{adapter_name}' is not defined.".format(
-                adapter_name=adapter_name
-            )
-        )
+        raise DataJointError("Attribute adapter '{adapter_name}' is not defined.".format(adapter_name=adapter_name))
     if not isinstance(adapter, AttributeAdapter):
         raise DataJointError(
             "Attribute adapter '{adapter_name}' must be an instance of datajoint.AttributeAdapter".format(
                 adapter_name=adapter_name
             )
         )
-    if not isinstance(adapter.attribute_type, str) or not re.match(
-        r"^\w", adapter.attribute_type
-    ):
+    if not isinstance(adapter.attribute_type, str) or not re.match(r"^\w", adapter.attribute_type):
         raise DataJointError(
             "Invalid attribute type {type} in attribute adapter '{adapter_name}'".format(
                 type=adapter.attribute_type, adapter_name=adapter_name

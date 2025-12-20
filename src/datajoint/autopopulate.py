@@ -68,26 +68,15 @@ class AutoPopulate:
 
         def _rename_attributes(table, props):
             return (
-                table.proj(
-                    **{
-                        attr: ref
-                        for attr, ref in props["attr_map"].items()
-                        if attr != ref
-                    }
-                )
+                table.proj(**{attr: ref for attr, ref in props["attr_map"].items() if attr != ref})
                 if props["aliased"]
                 else table.proj()
             )
 
         if self._key_source is None:
-            parents = self.target.parents(
-                primary=True, as_objects=True, foreign_key_info=True
-            )
+            parents = self.target.parents(primary=True, as_objects=True, foreign_key_info=True)
             if not parents:
-                raise DataJointError(
-                    "A table must have dependencies "
-                    "from its primary key for auto-populate to work"
-                )
+                raise DataJointError("A table must have dependencies from its primary key for auto-populate to work")
             self._key_source = _rename_attributes(*parents[0])
             for q in parents[1:]:
                 self._key_source *= _rename_attributes(*q)
@@ -139,11 +128,7 @@ class AutoPopulate:
         :raises NotImplementedError: If the derived class does not implement the required methods.
         """
 
-        if not (
-            hasattr(self, "make_fetch")
-            and hasattr(self, "make_insert")
-            and hasattr(self, "make_compute")
-        ):
+        if not (hasattr(self, "make_fetch") and hasattr(self, "make_insert") and hasattr(self, "make_compute")):
             # user must implement `make`
             raise NotImplementedError(
                 "Subclasses of AutoPopulate must implement the method `make` "
@@ -189,8 +174,7 @@ class AutoPopulate:
         """
         if self.restriction:
             raise DataJointError(
-                "Cannot call populate on a restricted table. "
-                "Instead, pass conditions to populate() as arguments."
+                "Cannot call populate on a restricted table. Instead, pass conditions to populate() as arguments."
             )
         todo = self.key_source
 
@@ -206,11 +190,7 @@ class AutoPopulate:
             raise DataJointError(
                 "The populate target lacks attribute %s "
                 "from the primary key of key_source"
-                % next(
-                    name
-                    for name in todo.heading.primary_key
-                    if name not in self.target.heading
-                )
+                % next(name for name in todo.heading.primary_key if name not in self.target.heading)
             )
         except StopIteration:
             pass
@@ -259,12 +239,8 @@ class AutoPopulate:
 
         valid_order = ["original", "reverse", "random"]
         if order not in valid_order:
-            raise DataJointError(
-                "The order argument must be one of %s" % str(valid_order)
-            )
-        jobs = (
-            self.connection.schemas[self.target.database].jobs if reserve_jobs else None
-        )
+            raise DataJointError("The order argument must be one of %s" % str(valid_order))
+        jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
 
         if reserve_jobs:
             # Define a signal handler for SIGTERM
@@ -275,16 +251,12 @@ class AutoPopulate:
             old_handler = signal.signal(signal.SIGTERM, handler)
 
         if keys is None:
-            keys = (self._jobs_to_do(restrictions) - self.target).fetch(
-                "KEY", limit=limit
-            )
+            keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
 
         # exclude "error", "ignore" or "reserved" jobs
         if reserve_jobs:
             exclude_key_hashes = (
-                jobs
-                & {"table_name": self.target.table_name}
-                & 'status in ("error", "ignore", "reserved")'
+                jobs & {"table_name": self.target.table_name} & 'status in ("error", "ignore", "reserved")'
             ).fetch("key_hash")
             keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
 
@@ -311,11 +283,7 @@ class AutoPopulate:
             )
 
             if processes == 1:
-                for key in (
-                    tqdm(keys, desc=self.__class__.__name__)
-                    if display_progress
-                    else keys
-                ):
+                for key in tqdm(keys, desc=self.__class__.__name__) if display_progress else keys:
                     status = self._populate1(key, jobs, **populate_kwargs)
                     if status is True:
                         success_list.append(1)
@@ -328,14 +296,8 @@ class AutoPopulate:
                 self.connection.close()  # disconnect parent process from MySQL server
                 del self.connection._conn.ctx  # SSLContext is not pickleable
                 with (
-                    mp.Pool(
-                        processes, _initialize_populate, (self, jobs, populate_kwargs)
-                    ) as pool,
-                    (
-                        tqdm(desc="Processes: ", total=nkeys)
-                        if display_progress
-                        else contextlib.nullcontext()
-                    ) as progress_bar,
+                    mp.Pool(processes, _initialize_populate, (self, jobs, populate_kwargs)) as pool,
+                    tqdm(desc="Processes: ", total=nkeys) if display_progress else contextlib.nullcontext() as progress_bar,
                 ):
                     for status in pool.imap(_call_populate1, keys, chunksize=1):
                         if status is True:
@@ -357,9 +319,7 @@ class AutoPopulate:
             "error_list": error_list,
         }
 
-    def _populate1(
-        self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
-    ):
+    def _populate1(self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None):
         """
         populates table for one source key, calling self.make inside a transaction.
         :param jobs: the jobs table or None if not reserve_jobs
@@ -372,9 +332,7 @@ class AutoPopulate:
         # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
-        if jobs is not None and not jobs.reserve(
-            self.target.table_name, self._job_key(key)
-        ):
+        if jobs is not None and not jobs.reserve(self.target.table_name, self._job_key(key)):
             return False
 
         # if make is a generator, it transaction can be delayed until the final stage
@@ -399,23 +357,16 @@ class AutoPopulate:
                 # tripartite make - transaction is delayed until the final stage
                 gen = make(dict(key), **(make_kwargs or {}))
                 fetched_data = next(gen)
-                fetch_hash = deepdiff.DeepHash(
-                    fetched_data, ignore_iterable_order=False
-                )[fetched_data]
+                fetch_hash = deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[fetched_data]
                 computed_result = next(gen)  # perform the computation
                 # fetch and insert inside a transaction
                 self.connection.start_transaction()
                 gen = make(dict(key), **(make_kwargs or {}))  # restart make
                 fetched_data = next(gen)
                 if (
-                    fetch_hash
-                    != deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[
-                        fetched_data
-                    ]
+                    fetch_hash != deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[fetched_data]
                 ):  # raise error if fetched data has changed
-                    raise DataJointError(
-                        "Referential integrity failed! The `make_fetch` data has changed"
-                    )
+                    raise DataJointError("Referential integrity failed! The `make_fetch` data has changed")
                 gen.send(computed_result)  # insert
 
         except (KeyboardInterrupt, SystemExit, Exception) as error:
@@ -427,9 +378,7 @@ class AutoPopulate:
                 exception=error.__class__.__name__,
                 msg=": " + str(error) if str(error) else "",
             )
-            logger.debug(
-                f"Error making {key} -> {self.target.full_table_name} - {error_message}"
-            )
+            logger.debug(f"Error making {key} -> {self.target.full_table_name} - {error_message}")
             if jobs is not None:
                 # show error name and error message (if any)
                 jobs.error(
@@ -468,9 +417,7 @@ class AutoPopulate:
                     total - remaining,
                     total,
                     100 - 100 * remaining / (total + 1e-12),
-                    datetime.datetime.strftime(
-                        datetime.datetime.now(), "%Y-%m-%d %H:%M:%S"
-                    ),
+                    datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d %H:%M:%S"),
                 ),
             )
         return remaining, total

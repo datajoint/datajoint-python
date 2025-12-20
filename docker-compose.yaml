@@ -1,4 +1,5 @@
-# HOST_UID=$(id -u) PY_VER=3.11 DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test up --build --exit-code-from djtest djtest
+# Development environment with MySQL and MinIO services
+# To run tests: pytest --cov-report term-missing --cov=datajoint tests
 services:
   db:
     image: datajoint/mysql:${MYSQL_VER:-8.0}

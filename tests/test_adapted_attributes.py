@@ -1,5 +1,3 @@
-import os
-import tempfile
 from itertools import zip_longest
 
 import networkx as nx
@@ -31,11 +29,7 @@ def schema_ad(
     tmpdir,
     schema_name,
 ):
-    dj.config["stores"] = {
-        "repo-s3": dict(
-            s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir)
-        )
-    }
+    dj.config["stores"] = {"repo-s3": dict(s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir))}
     context = {
         **schema_adapted.LOCALS_ADAPTED,
         "graph": adapted_graph_instance,
@@ -60,9 +54,7 @@ def local_schema(schema_ad, schema_name):
 @pytest.fixture
 def schema_virtual_module(schema_ad, adapted_graph_instance, schema_name):
     """Fixture for testing virtual modules"""
-    schema_virtual_module = dj.VirtualModule(
-        "virtual_module", schema_name, add_objects={"graph": adapted_graph_instance}
-    )
+    schema_virtual_module = dj.VirtualModule("virtual_module", schema_name, add_objects={"graph": adapted_graph_instance})
     return schema_virtual_module
 
 

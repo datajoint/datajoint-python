@@ -17,31 +17,29 @@ from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_t
 
 logger = logging.getLogger(__name__.split(".")[0])
 
-default_attribute_properties = (
-    dict(  # these default values are set in computed attributes
-        name=None,
-        type="expression",
-        in_key=False,
-        nullable=False,
-        default=None,
-        comment="calculated attribute",
-        autoincrement=False,
-        numeric=None,
-        string=None,
-        uuid=False,
-        json=None,
-        is_blob=False,
-        is_attachment=False,
-        is_filepath=False,
-        is_external=False,
-        is_hidden=False,
-        adapter=None,
-        store=None,
-        unsupported=False,
-        attribute_expression=None,
-        database=None,
-        dtype=object,
-    )
+default_attribute_properties = dict(  # these default values are set in computed attributes
+    name=None,
+    type="expression",
+    in_key=False,
+    nullable=False,
+    default=None,
+    comment="calculated attribute",
+    autoincrement=False,
+    numeric=None,
+    string=None,
+    uuid=False,
+    json=None,
+    is_blob=False,
+    is_attachment=False,
+    is_filepath=False,
+    is_external=False,
+    is_hidden=False,
+    adapter=None,
+    store=None,
+    unsupported=False,
+    attribute_expression=None,
+    database=None,
+    dtype=object,
 )
 
 
@@ -101,11 +99,7 @@ class Heading:
         self.indexes = None
         self.table_info = table_info
         self._table_status = None
-        self._attributes = (
-            None
-            if attribute_specs is None
-            else dict((q["name"], Attribute(**q)) for q in attribute_specs)
-        )
+        self._attributes = None if attribute_specs is None else dict((q["name"], Attribute(**q)) for q in attribute_specs)
 
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
@@ -142,17 +136,11 @@ class Heading:
 
     @property
     def non_blobs(self):
-        return [
-            k
-            for k, v in self.attributes.items()
-            if not (v.is_blob or v.is_attachment or v.is_filepath or v.json)
-        ]
+        return [k for k, v in self.attributes.items() if not (v.is_blob or v.is_attachment or v.is_filepath or v.json)]
 
     @property
     def new_attributes(self):
-        return [
-            k for k, v in self.attributes.items() if v.attribute_expression is not None
-        ]
+        return [k for k, v in self.attributes.items() if v.attribute_expression is not None]
 
     def __getitem__(self, name):
         """shortcut to the attribute"""
@@ -186,9 +174,7 @@ class Heading:
         """
         represent the heading as a numpy dtype
         """
-        return np.dtype(
-            dict(names=self.names, formats=[v.dtype for v in self.attributes.values()])
-        )
+        return np.dtype(dict(names=self.names, formats=[v.dtype for v in self.attributes.values()]))
 
     def as_sql(self, fields, include_aliases=True):
         """
@@ -198,8 +184,7 @@ class Heading:
             (
                 "`%s`" % name
                 if self.attributes[name].attribute_expression is None
-                else self.attributes[name].attribute_expression
-                + (" as `%s`" % name if include_aliases else "")
+                else self.attributes[name].attribute_expression + (" as `%s`" % name if include_aliases else "")
             )
             for name in fields
         )
@@ -209,13 +194,9 @@ class Heading:
 
     def _init_from_database(self):
         """initialize heading from an existing database table."""
-        conn, database, table_name, context = (
-            self.table_info[k] for k in ("conn", "database", "table_name", "context")
-        )
+        conn, database, table_name, context = (self.table_info[k] for k in ("conn", "database", "table_name", "context"))
         info = conn.query(
-            'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
-                table_name=table_name, database=database
-            ),
+            'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(table_name=table_name, database=database),
             as_dict=True,
         ).fetchone()
         if info is None:
@@ -223,15 +204,11 @@ class Heading:
                 logger.warning("Could not create the ~log table")
                 return
             raise DataJointError(
-                "The table `{database}`.`{table_name}` is not defined.".format(
-                    table_name=table_name, database=database
-                )
+                "The table `{database}`.`{table_name}` is not defined.".format(table_name=table_name, database=database)
             )
         self._table_status = {k.lower(): v for k, v in info.items()}
         cur = conn.query(
-            "SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`".format(
-                table_name=table_name, database=database
-            ),
+            "SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`".format(table_name=table_name, database=database),
             as_dict=True,
         )
 
@@ -250,12 +227,7 @@ class Heading:
 
         # rename and drop attributes
         attributes = [
-            {
-                rename_map[k] if k in rename_map else k: v
-                for k, v in x.items()
-                if k not in fields_to_drop
-            }
-            for x in attributes
+            {rename_map[k] if k in rename_map else k: v for k, v in x.items() if k not in fields_to_drop} for x in attributes
         ]
         numeric_types = {
             ("float", False): np.float64,
@@ -282,17 +254,9 @@ class Heading:
                 in_key=(attr["in_key"] == "PRI"),
                 database=database,
                 nullable=attr["nullable"] == "YES",
-                autoincrement=bool(
-                    re.search(r"auto_increment", attr["Extra"], flags=re.I)
-                ),
-                numeric=any(
-                    TYPE_PATTERN[t].match(attr["type"])
-                    for t in ("DECIMAL", "INTEGER", "FLOAT")
-                ),
-                string=any(
-                    TYPE_PATTERN[t].match(attr["type"])
-                    for t in ("ENUM", "TEMPORAL", "STRING")
-                ),
+                autoincrement=bool(re.search(r"auto_increment", attr["Extra"], flags=re.I)),
+                numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "INTEGER", "FLOAT")),
+                string=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("ENUM", "TEMPORAL", "STRING")),
                 is_blob=bool(TYPE_PATTERN["INTERNAL_BLOB"].match(attr["type"])),
                 uuid=False,
                 json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
@@ -306,12 +270,8 @@ class Heading:
             )
 
             if any(TYPE_PATTERN[t].match(attr["type"]) for t in ("INTEGER", "FLOAT")):
-                attr["type"] = re.sub(
-                    r"\(\d+\)", "", attr["type"], count=1
-                )  # strip size off integers and floats
-            attr["unsupported"] = not any(
-                (attr["is_blob"], attr["numeric"], attr["numeric"])
-            )
+                attr["type"] = re.sub(r"\(\d+\)", "", attr["type"], count=1)  # strip size off integers and floats
+            attr["unsupported"] = not any((attr["is_blob"], attr["numeric"], attr["numeric"]))
             attr.pop("Extra")
 
             # process custom DataJoint types
@@ -336,15 +296,11 @@ class Heading:
                                 adapter_name=adapter_name, **attr
                             )
                         )
-                    special = not any(
-                        TYPE_PATTERN[c].match(attr["type"]) for c in NATIVE_TYPES
-                    )
+                    special = not any(TYPE_PATTERN[c].match(attr["type"]) for c in NATIVE_TYPES)
 
             if special:
                 try:
-                    category = next(
-                        c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(attr["type"])
-                    )
+                    category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(attr["type"]))
                 except StopIteration:
                     if attr["type"].startswith("external"):
                         url = (
@@ -352,21 +308,18 @@ class Heading:
                             "#migration-between-datajoint-v0-11-and-v0-12"
                         )
                         raise DataJointError(
-                            "Legacy datatype `{type}`. Migrate your external stores to "
-                            "datajoint 0.12: {url}".format(url=url, **attr)
+                            "Legacy datatype `{type}`. Migrate your external stores to datajoint 0.12: {url}".format(
+                                url=url, **attr
+                            )
                         )
-                    raise DataJointError(
-                        "Unknown attribute type `{type}`".format(**attr)
-                    )
+                    raise DataJointError("Unknown attribute type `{type}`".format(**attr))
                 if category == "FILEPATH" and not _support_filepath_types():
                     raise DataJointError(
                         """
                         The filepath data type is disabled until complete validation.
                         To turn it on as experimental feature, set the environment variable
                         {env} = TRUE or upgrade datajoint.
-                        """.format(
-                            env=FILEPATH_FEATURE_SWITCH
-                        )
+                        """.format(env=FILEPATH_FEATURE_SWITCH)
                     )
                 attr.update(
                     unsupported=False,
@@ -376,11 +329,7 @@ class Heading:
                     is_blob=category in ("INTERNAL_BLOB", "EXTERNAL_BLOB"),
                     uuid=category == "UUID",
                     is_external=category in EXTERNAL_TYPES,
-                    store=(
-                        attr["type"].split("@")[1]
-                        if category in EXTERNAL_TYPES
-                        else None
-                    ),
+                    store=(attr["type"].split("@")[1] if category in EXTERNAL_TYPES else None),
                 )
 
             if attr["in_key"] and any(
@@ -391,15 +340,9 @@ class Heading:
                     attr["json"],
                 )
             ):
-                raise DataJointError(
-                    "Json, Blob, attachment, or filepath attributes are not allowed in the primary key"
-                )
+                raise DataJointError("Json, Blob, attachment, or filepath attributes are not allowed in the primary key")
 
-            if (
-                attr["string"]
-                and attr["default"] is not None
-                and attr["default"] not in sql_literals
-            ):
+            if attr["string"] and attr["default"] is not None and attr["default"] not in sql_literals:
                 attr["default"] = '"%s"' % attr["default"]
 
             if attr["nullable"]:  # nullable fields always default to null
@@ -414,9 +357,7 @@ class Heading:
                     is_unsigned = bool(re.match("sunsigned", attr["type"], flags=re.I))
                     t = re.sub(r"\(.*\)", "", attr["type"])  # remove parentheses
                     t = re.sub(r" unsigned$", "", t)  # remove unsigned
-                    assert (t, is_unsigned) in numeric_types, (
-                        "dtype not found for type %s" % t
-                    )
+                    assert (t, is_unsigned) in numeric_types, "dtype not found for type %s" % t
                     attr["dtype"] = numeric_types[(t, is_unsigned)]
 
             if attr["adapter"]:
@@ -433,8 +374,7 @@ class Heading:
         ):
             if item["Key_name"] != "PRIMARY":
                 keys[item["Key_name"]][item["Seq_in_index"]] = dict(
-                    column=item["Column_name"]
-                    or f"({item['Expression']})".replace(r"\'", "'"),
+                    column=item["Column_name"] or f"({item['Expression']})".replace(r"\'", "'"),
                     unique=(item["Non_unique"] == 0),
                     nullable=item["Null"].lower() == "yes",
                 )
@@ -486,21 +426,9 @@ class Heading:
         """
         return Heading(
             [self.attributes[name].todict() for name in self.primary_key]
-            + [
-                other.attributes[name].todict()
-                for name in other.primary_key
-                if name not in self.primary_key
-            ]
-            + [
-                self.attributes[name].todict()
-                for name in self.secondary_attributes
-                if name not in other.primary_key
-            ]
-            + [
-                other.attributes[name].todict()
-                for name in other.secondary_attributes
-                if name not in self.primary_key
-            ]
+            + [other.attributes[name].todict() for name in other.primary_key if name not in self.primary_key]
+            + [self.attributes[name].todict() for name in self.secondary_attributes if name not in other.primary_key]
+            + [other.attributes[name].todict() for name in other.secondary_attributes if name not in self.primary_key]
         )
 
     def set_primary_key(self, primary_key):
@@ -510,15 +438,8 @@ class Heading:
         """
         return Heading(
             chain(
-                (
-                    dict(self.attributes[name].todict(), in_key=True)
-                    for name in primary_key
-                ),
-                (
-                    dict(self.attributes[name].todict(), in_key=False)
-                    for name in self.names
-                    if name not in primary_key
-                ),
+                (dict(self.attributes[name].todict(), in_key=True) for name in primary_key),
+                (dict(self.attributes[name].todict(), in_key=False) for name in self.names if name not in primary_key),
             )
         )
 
@@ -527,7 +448,4 @@ class Heading:
         Create a new heading with removed attribute sql_expressions.
         Used by subqueries, which resolve the sql_expressions.
         """
-        return Heading(
-            dict(v.todict(), attribute_expression=None)
-            for v in self.attributes.values()
-        )
+        return Heading(dict(v.todict(), attribute_expression=None) for v in self.attributes.values())

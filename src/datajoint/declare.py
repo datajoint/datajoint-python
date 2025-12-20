@@ -70,15 +70,9 @@ assert set().union(SPECIAL_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_
 
 def match_type(attribute_type):
     try:
-        return next(
-            category
-            for category, pattern in TYPE_PATTERN.items()
-            if pattern.match(attribute_type)
-        )
+        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
     except StopIteration:
-        raise DataJointError(
-            "Unsupported attribute type {type}".format(type=attribute_type)
-        )
+        raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type))
 
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -90,20 +84,14 @@ def build_foreign_key_parser_old():
     left = pp.Literal("(").suppress()
     right = pp.Literal(")").suppress()
     attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]"))
-    new_attrs = pp.Optional(
-        left + pp.delimitedList(attribute_name) + right
-    ).setResultsName("new_attrs")
+    new_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName("new_attrs")
     arrow = pp.Literal("->").suppress()
     lbracket = pp.Literal("[").suppress()
     rbracket = pp.Literal("]").suppress()
     option = pp.Word(pp.srange("[a-zA-Z]"))
-    options = pp.Optional(
-        lbracket + pp.delimitedList(option) + rbracket
-    ).setResultsName("options")
+    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket).setResultsName("options")
     ref_table = pp.Word(pp.alphas, pp.alphanums + "._").setResultsName("ref_table")
-    ref_attrs = pp.Optional(
-        left + pp.delimitedList(attribute_name) + right
-    ).setResultsName("ref_attrs")
+    ref_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName("ref_attrs")
     return new_attrs + arrow + options + ref_table + ref_attrs
 
 
@@ -112,9 +100,7 @@ def build_foreign_key_parser():
     lbracket = pp.Literal("[").suppress()
     rbracket = pp.Literal("]").suppress()
     option = pp.Word(pp.srange("[a-zA-Z]"))
-    options = pp.Optional(
-        lbracket + pp.delimitedList(option) + rbracket
-    ).setResultsName("options")
+    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket).setResultsName("options")
     ref_table = pp.restOfLine.setResultsName("ref_table")
     return arrow + options + ref_table
 
@@ -122,16 +108,12 @@ def build_foreign_key_parser():
 def build_attribute_parser():
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).setResultsName(
-        "name"
-    )
+    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).setResultsName("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
         ^ pp.QuotedString("<", endQuoteChar=">", unquoteResults=False)
     ).setResultsName("type")
-    default = pp.Literal("=").suppress() + pp.SkipTo(
-        colon, ignore=quoted
-    ).setResultsName("default")
+    default = pp.Literal("=").suppress() + pp.SkipTo(colon, ignore=quoted).setResultsName("default")
     comment = pp.Literal("#").suppress() + pp.restOfLine.setResultsName("comment")
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
@@ -151,9 +133,7 @@ def is_foreign_key(line):
     return arrow_position >= 0 and not any(c in line[:arrow_position] for c in "\"#'")
 
 
-def compile_foreign_key(
-    line, context, attributes, primary_key, attr_sql, foreign_key_sql, index_sql
-):
+def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql, index_sql):
     """
     :param line: a line from a table definition
     :param context: namespace containing referenced objects
@@ -176,9 +156,7 @@ def compile_foreign_key(
     try:
         ref = eval(result.ref_table, context)
     except Exception:
-        raise DataJointError(
-            "Foreign key reference %s could not be resolved" % result.ref_table
-        )
+        raise DataJointError("Foreign key reference %s could not be resolved" % result.ref_table)
 
     options = [opt.upper() for opt in result.options]
     for opt in options:  # check for invalid options
@@ -187,9 +165,7 @@ def compile_foreign_key(
     is_nullable = "NULLABLE" in options
     is_unique = "UNIQUE" in options
     if is_nullable and primary_key is not None:
-        raise DataJointError(
-            'Primary dependencies cannot be nullable in line "{line}"'.format(line=line)
-        )
+        raise DataJointError('Primary dependencies cannot be nullable in line "{line}"'.format(line=line))
 
     if isinstance(ref, type) and issubclass(ref, Table):
         ref = ref()
@@ -201,10 +177,7 @@ def compile_foreign_key(
         or len(ref.support) != 1
         or not isinstance(ref.support[0], str)
     ):
-        raise DataJointError(
-            'Dependency "%s" is not supported (yet). Use a base table or its projection.'
-            % result.ref_table
-        )
+        raise DataJointError('Dependency "%s" is not supported (yet). Use a base table or its projection.' % result.ref_table)
 
     # declare new foreign key attributes
     for attr in ref.primary_key:
@@ -212,9 +185,7 @@ def compile_foreign_key(
             attributes.append(attr)
             if primary_key is not None:
                 primary_key.append(attr)
-            attr_sql.append(
-                ref.heading[attr].sql.replace("NOT NULL ", "", int(is_nullable))
-            )
+            attr_sql.append(ref.heading[attr].sql.replace("NOT NULL ", "", int(is_nullable)))
 
     # declare the foreign key
     foreign_key_sql.append(
@@ -227,20 +198,14 @@ def compile_foreign_key(
 
     # declare unique index
     if is_unique:
-        index_sql.append(
-            "UNIQUE INDEX ({attrs})".format(
-                attrs=",".join("`%s`" % attr for attr in ref.primary_key)
-            )
-        )
+        index_sql.append("UNIQUE INDEX ({attrs})".format(attrs=",".join("`%s`" % attr for attr in ref.primary_key)))
 
 
 def prepare_declare(definition, context):
     # split definition into lines
     definition = re.split(r"\s*\n\s*", definition.strip())
     # check for optional table comment
-    table_comment = (
-        definition.pop(0)[1:].strip() if definition[0].startswith("#") else ""
-    )
+    table_comment = definition.pop(0)[1:].strip() if definition[0].startswith("#") else ""
     if table_comment.startswith(":"):
         raise DataJointError('Table comment must not start with a colon ":"')
     in_key = True  # parse primary keys
@@ -315,15 +280,9 @@ def declare(full_table_name, definition, context):
     ) = prepare_declare(definition, context)
 
     if config.get("add_hidden_timestamp", False):
-        metadata_attr_sql = [
-            "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
-        ]
+        metadata_attr_sql = ["`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"]
         attribute_sql.extend(
-            attr.format(
-                full_table_name=sha1(
-                    full_table_name.replace("`", "").encode("utf-8")
-                ).hexdigest()
-            )
+            attr.format(full_table_name=sha1(full_table_name.replace("`", "").encode("utf-8")).hexdigest())
             for attr in metadata_attr_sql
         )
 
@@ -332,12 +291,7 @@ def declare(full_table_name, definition, context):
 
     return (
         "CREATE TABLE IF NOT EXISTS %s (\n" % full_table_name
-        + ",\n".join(
-            attribute_sql
-            + ["PRIMARY KEY (`" + "`,`".join(primary_key) + "`)"]
-            + foreign_key_sql
-            + index_sql
-        )
+        + ",\n".join(attribute_sql + ["PRIMARY KEY (`" + "`,`".join(primary_key) + "`)"] + foreign_key_sql + index_sql)
         + '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment
     ), external_stores
 
@@ -361,9 +315,7 @@ def _make_attribute_alter(new, old, primary_key):
     for v in new_names.values():
         if v:
             if v in renamed:
-                raise DataJointError(
-                    "Alter attempted to rename attribute {%s} twice." % v
-                )
+                raise DataJointError("Alter attempted to rename attribute {%s} twice." % v)
             renamed.add(v)
 
     # verify that all renamed attributes existed in the old definition
@@ -400,7 +352,9 @@ def _make_attribute_alter(new, old, primary_key):
                         command=(
                             "ADD"
                             if (old_name or new_name) not in old_names
-                            else "MODIFY" if not old_name else "CHANGE `%s`" % old_name
+                            else "MODIFY"
+                            if not old_name
+                            else "CHANGE `%s`" % old_name
                         ),
                         new_def=new_def,
                         after="" if after is None else "AFTER `%s`" % after,
@@ -491,17 +445,13 @@ def substitute_special_type(match, category, foreign_key_sql, context):
             The filepath data type is disabled until complete validation.
             To turn it on as experimental feature, set the environment variable
             {env} = TRUE or upgrade datajoint.
-            """.format(
-                    env=FILEPATH_FEATURE_SWITCH
-                )
+            """.format(env=FILEPATH_FEATURE_SWITCH)
             )
         match["store"] = match["type"].split("@", 1)[1]
         match["type"] = UUID_DATA_TYPE
         foreign_key_sql.append(
             "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
-            "ON UPDATE RESTRICT ON DELETE RESTRICT".format(
-                external_table_root=EXTERNAL_TABLE_ROOT, **match
-            )
+            "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match)
         )
     elif category == "ADAPTED":
         adapter = get_adapter(context, match["type"])
@@ -540,38 +490,23 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
 
     if match["nullable"]:
         if in_key:
-            raise DataJointError(
-                'Primary key attributes cannot be nullable in line "%s"' % line
-            )
+            raise DataJointError('Primary key attributes cannot be nullable in line "%s"' % line)
         match["default"] = "DEFAULT NULL"  # nullable attributes default to null
     else:
         if match["default"]:
-            quote = (
-                match["default"].split("(")[0].upper() not in CONSTANT_LITERALS
-                and match["default"][0] not in "\"'"
-            )
-            match["default"] = (
-                "NOT NULL DEFAULT " + ('"%s"' if quote else "%s") % match["default"]
-            )
+            quote = match["default"].split("(")[0].upper() not in CONSTANT_LITERALS and match["default"][0] not in "\"'"
+            match["default"] = "NOT NULL DEFAULT " + ('"%s"' if quote else "%s") % match["default"]
         else:
             match["default"] = "NOT NULL"
 
-    match["comment"] = match["comment"].replace(
-        '"', '\\"'
-    )  # escape double quotes in comment
+    match["comment"] = match["comment"].replace('"', '\\"')  # escape double quotes in comment
 
     if match["comment"].startswith(":"):
-        raise DataJointError(
-            'An attribute comment must not start with a colon in comment "{comment}"'.format(
-                **match
-            )
-        )
+        raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
 
     category = match_type(match["type"])
     if category in SPECIAL_TYPES:
-        match["comment"] = ":{type}:{comment}".format(
-            **match
-        )  # insert custom type into comment
+        match["comment"] = ":{type}:{comment}".format(**match)  # insert custom type into comment
         substitute_special_type(match, category, foreign_key_sql, context)
 
     if category in SERIALIZED_TYPES and match["default"] not in {
@@ -579,13 +514,8 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         "NOT NULL",
     }:
         raise DataJointError(
-            "The default value for a blob or attachment attributes can only be NULL in:\n{line}".format(
-                line=line
-            )
+            "The default value for a blob or attachment attributes can only be NULL in:\n{line}".format(line=line)
         )
 
-    sql = (
-        "`{name}` {type} {default}"
-        + (' COMMENT "{comment}"' if match["comment"] else "")
-    ).format(**match)
+    sql = ("`{name}` {type} {default}" + (' COMMENT "{comment}"' if match["comment"] else "")).format(**match)
     return match["name"], sql, match.get("store")

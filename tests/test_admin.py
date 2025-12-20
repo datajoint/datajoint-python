@@ -24,10 +24,7 @@ def user_alice(db_creds_root) -> dict:
         password="oldpass",
     )
     root_conn.query(f"DROP USER IF EXISTS '{new_credentials['user']}'@'%%';")
-    root_conn.query(
-        f"CREATE USER '{new_credentials['user']}'@'%%' "
-        f"IDENTIFIED BY '{new_credentials['password']}';"
-    )
+    root_conn.query(f"CREATE USER '{new_credentials['user']}'@'%%' IDENTIFIED BY '{new_credentials['password']}';")
 
     # test the connection
     dj.Connection(**new_credentials)

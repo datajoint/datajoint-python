@@ -6,7 +6,7 @@ on:
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
     paths:
-      - "datajoint"
+      - "src/datajoint"
       - "tests"
   pull_request:
     branches:
@@ -14,7 +14,7 @@ on:
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
     paths:
-      - "datajoint"
+      - "src/datajoint"
       - "tests"
 jobs:
   test:
@@ -34,9 +34,7 @@ jobs:
           python-version: ${{matrix.py_ver}}
       - name: Integration test
         env:
-          PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}
-          # taking default variables set in docker-compose.yaml to sync with local test
         run: |
-          export HOST_UID=$(id -u)
-          docker compose --profile test up --quiet-pull --build --exit-code-from djtest djtest
+          pip install -e ".[test]"
+          pytest --cov-report term-missing --cov=datajoint tests

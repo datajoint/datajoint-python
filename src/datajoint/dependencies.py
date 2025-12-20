@@ -105,9 +105,7 @@ class Dependencies(nx.DiGraph):
                     concat('`', table_schema, '`.`', table_name, '`') as tab, column_name
                 FROM information_schema.key_column_usage
                 WHERE table_name not LIKE "~%%" AND table_schema in ('{schemas}') AND constraint_name="PRIMARY"
-                """.format(
-                schemas="','".join(self._conn.schemas)
-            )
+                """.format(schemas="','".join(self._conn.schemas))
         )
         pks = defaultdict(set)
         for key in keys:
@@ -129,9 +127,7 @@ class Dependencies(nx.DiGraph):
         FROM information_schema.key_column_usage
         WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema in ('{schemas}') OR
             referenced_table_schema is not NULL AND table_schema in ('{schemas}'))
-        """.format(
-                    schemas="','".join(self._conn.schemas)
-                ),
+        """.format(schemas="','".join(self._conn.schemas)),
                 as_dict=True,
             )
         )
@@ -182,11 +178,7 @@ class Dependencies(nx.DiGraph):
         :return: dict of tables referenced by the foreign keys of table
         """
         self.load(force=False)
-        return {
-            p[0]: p[2]
-            for p in self.in_edges(table_name, data=True)
-            if primary is None or p[2]["primary"] == primary
-        }
+        return {p[0]: p[2] for p in self.in_edges(table_name, data=True) if primary is None or p[2]["primary"] == primary}
 
     def children(self, table_name, primary=None):
         """
@@ -197,11 +189,7 @@ class Dependencies(nx.DiGraph):
         :return: dict of tables referencing the table through foreign keys
         """
         self.load(force=False)
-        return {
-            p[1]: p[2]
-            for p in self.out_edges(table_name, data=True)
-            if primary is None or p[2]["primary"] == primary
-        }
+        return {p[1]: p[2] for p in self.out_edges(table_name, data=True) if primary is None or p[2]["primary"] == primary}
 
     def descendants(self, full_table_name):
         """

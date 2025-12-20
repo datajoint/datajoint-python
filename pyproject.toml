@@ -21,8 +21,9 @@ dependencies = [
   "faker",
   "urllib3",
   "setuptools",
+  "pydantic-settings>=2.0.0",
 ]
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.9,<3.14"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
@@ -78,27 +79,105 @@ Repository = "https://github.com/datajoint/datajoint-python"
 dj = "datajoint.cli:cli"
 datajoint = "datajoint.cli:cli"
 
-[project.optional-dependencies]
+[dependency-groups]
 test = [
   "pytest",
   "pytest-cov",
+  "pytest-env",
+  "docker",
+  "requests",
+  "graphviz"
 ]
+
+[project.optional-dependencies]
 dev = [
   "pre-commit",
-  "black==24.2.0",
-  "flake8",
-  "isort",
+  "ruff",
   "codespell",
   # including test
   "pytest",
   "pytest-cov",
 ]
 
-[tool.isort]
-profile = "black"
+[tool.ruff]
+# Equivalent to flake8 configuration
+line-length = 127
+target-version = "py39"
+
+[tool.ruff.lint]
+# Enable specific rule sets equivalent to flake8 configuration
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "C90", # mccabe complexity
+]
+
+# Ignore specific rules (equivalent to flake8 --ignore)
+ignore = [
+    "E203",  # whitespace before ':'
+    "E722",  # bare except
+]
+
+# Per-file ignores (equivalent to flake8 --per-file-ignores)
+[tool.ruff.lint.per-file-ignores]
+"datajoint/diagram.py" = ["C901"]  # function too complex
+"tests/test_blob_matlab.py" = ["E501"]  # SQL hex strings cannot be broken across lines
+
+[tool.ruff.lint.mccabe]
+# Maximum complexity (equivalent to flake8 --max-complexity)
+max-complexity = 62
+
+[tool.ruff.format]
+# Use black-compatible formatting
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
 
 [tool.setuptools]
 packages = ["datajoint"]
+package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 version = { attr = "datajoint.version.__version__"}
+
+[tool.codespell]
+skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
+# Rever -- nobody knows
+# numer -- numerator variable
+# astroid -- Python library name (not "asteroid")
+ignore-words-list = "rever,numer,astroid"
+
+[tool.pytest_env]
+# Default values - pytest fixtures will override with actual container details
+DJ_USER="root"
+DJ_PASS="password"
+DJ_TEST_USER="datajoint"
+DJ_TEST_PASSWORD="datajoint"
+S3_ACCESS_KEY="datajoint"
+S3_SECRET_KEY="datajoint"
+S3_BUCKET="datajoint.test"
+PYTHON_USER="dja"
+JUPYTER_PASSWORD="datajoint"
+
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "linux-aarch64"]
+
+[tool.pixi.pypi-dependencies]
+datajoint = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+test = { features = ["test"], solve-group = "default" }
+
+[tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+python = ">=3.9,<3.14"
+graphviz = ">=13.1.2,<14"
+
+[tool.pixi.activation]
+scripts=["activate.sh"]

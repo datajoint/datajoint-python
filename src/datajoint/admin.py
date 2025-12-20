@@ -20,18 +20,14 @@ def set_password(new_password=None, connection=None, update_config=None):
             logger.warning("Failed to confirm the password! Aborting password change.")
             return
 
-    if version.parse(
-        connection.query("select @@version;").fetchone()[0]
-    ) >= version.parse("5.7"):
+    if version.parse(connection.query("select @@version;").fetchone()[0]) >= version.parse("5.7"):
         # SET PASSWORD is deprecated as of MySQL 5.7 and removed in 8+
         connection.query("ALTER USER user() IDENTIFIED BY '%s';" % new_password)
     else:
         connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
     logger.info("Password updated.")
 
-    if update_config or (
-        update_config is None and user_choice("Update local setting?") == "yes"
-    ):
+    if update_config or (update_config is None and user_choice("Update local setting?") == "yes"):
         config["database.password"] = new_password
         config.save_local(verbose=True)
 
@@ -67,17 +63,10 @@ def kill(restriction=None, connection=None, order_by=None):
     while True:
         print("  ID USER         HOST          STATE         TIME    INFO")
         print("+--+ +----------+ +-----------+ +-----------+ +-----+")
-        cur = (
-            {k.lower(): v for k, v in elem.items()}
-            for elem in connection.query(query, as_dict=True)
-        )
+        cur = ({k.lower(): v for k, v in elem.items()} for elem in connection.query(query, as_dict=True))
         for process in cur:
             try:
-                print(
-                    "{id:>4d} {user:<12s} {host:<12s} {state:<12s} {time:>7d}  {info}".format(
-                        **process
-                    )
-                )
+                print("{id:>4d} {user:<12s} {host:<12s} {state:<12s} {time:>7d}  {info}".format(**process))
             except TypeError:
                 print(process)
         response = input('process to kill or "q" to quit > ')
@@ -111,15 +100,11 @@ def kill_quick(restriction=None, connection=None):
     if connection is None:
         connection = conn()
 
-    query = (
-        "SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()"
-        + ("" if restriction is None else " AND (%s)" % restriction)
+    query = "SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()" + (
+        "" if restriction is None else " AND (%s)" % restriction
     )
 
-    cur = (
-        {k.lower(): v for k, v in elem.items()}
-        for elem in connection.query(query, as_dict=True)
-    )
+    cur = ({k.lower(): v for k, v in elem.items()} for elem in connection.query(query, as_dict=True))
     nkill = 0
     for process in cur:
         connection.query("kill %d" % process["id"])

@@ -185,3 +185,5 @@ cython_debug/
 dj_local_conf.json
 *.env
 !.vscode/launch.json
+# pixi environments
+.pixi

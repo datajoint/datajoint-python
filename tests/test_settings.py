@@ -70,9 +70,7 @@ def test_repr():
 
 def test_save():
     """Testing save of config"""
-    tmpfile = "".join(
-        random.choice(string.ascii_uppercase + string.digits) for _ in range(20)
-    )
+    tmpfile = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(20))
     moved = False
     if os.path.isfile(settings.LOCALCONFIG):
         os.rename(settings.LOCALCONFIG, tmpfile)
@@ -83,15 +81,10 @@ def test_save():
         os.rename(tmpfile, settings.LOCALCONFIG)
 
 
-def test_load_save():
+def test_load_save_2():
     """Testing load and save of config"""
     filename_old = dj.settings.LOCALCONFIG
-    filename = (
-        "".join(
-            random.choice(string.ascii_uppercase + string.digits) for _ in range(50)
-        )
-        + ".json"
-    )
+    filename = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(50)) + ".json"
     dj.settings.LOCALCONFIG = filename
     dj.config.save_local()
     dj.config.load(filename=filename)
