@@ -23,7 +23,7 @@ dependencies = [
   "setuptools",
   "pydantic-settings>=2.0.0",
 ]
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.10,<3.14"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
@@ -102,7 +102,7 @@ dev = [
 [tool.ruff]
 # Equivalent to flake8 configuration
 line-length = 127
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 # Enable specific rule sets equivalent to flake8 configuration
@@ -176,7 +176,7 @@ test = { features = ["test"], solve-group = "default" }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-python = ">=3.9,<3.14"
+python = ">=3.10,<3.14"
 graphviz = ">=13.1.2,<14"
 
 [tool.pixi.activation]
