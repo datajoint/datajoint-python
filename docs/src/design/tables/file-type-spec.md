@@ -4,6 +4,17 @@
 
 The `file` type introduces a new paradigm for managed file storage in DataJoint. Unlike existing `attach@store` and `filepath@store` types that reference named stores, the `file` type uses a **unified storage backend** that is tightly coupled with the schema and configured at the pipeline level.
 
+The `file` type supports both **files and folders**. Content is copied to storage at insert time, referenced via handle on fetch, and deleted when the record is deleted.
+
+### Immutability Contract
+
+Files stored via the `file` type are **immutable**. Users agree to:
+- **Insert**: Copy content to storage (only way to create)
+- **Fetch**: Read content via handle (no modification)
+- **Delete**: Remove content when record is deleted (only way to remove)
+
+Users must not directly modify files in the object store.
+
 ## Storage Architecture
 
 ### Single Storage Backend Per Pipeline
@@ -148,14 +159,29 @@ Note: No `@store` suffix needed - storage is determined by pipeline configuratio
 
 The `file` type is stored as a `JSON` column in MySQL containing:
 
+**File example:**
 ```json
 {
-    "path": "subject123/session45/schema_name/objects/Recording-raw_data/recording_Ax7bQ2kM.dat",
+    "path": "my_schema/objects/Recording/raw_data/subject_id=123/session_id=45/recording_Ax7bQ2kM.dat",
     "size": 12345,
     "hash": "sha256:abcdef1234...",
     "original_name": "recording.dat",
+    "is_folder": false,
     "timestamp": "2025-01-15T10:30:00Z",
     "mime_type": "application/octet-stream"
+}
+```
+
+**Folder example:**
+```json
+{
+    "path": "my_schema/objects/Recording/raw_data/subject_id=123/session_id=45/data_folder_pL9nR4wE",
+    "size": 567890,
+    "hash": "sha256:fedcba9876...",
+    "original_name": "data_folder",
+    "is_folder": true,
+    "timestamp": "2025-01-15T10:30:00Z",
+    "file_count": 42
 }
 ```
 
@@ -163,29 +189,67 @@ The `file` type is stored as a `JSON` column in MySQL containing:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `path` | string | Yes | Full path/key within storage backend |
-| `size` | integer | Yes | File size in bytes |
+| `path` | string | Yes | Full path/key within storage backend (includes token) |
+| `size` | integer | Yes | Total size in bytes (sum for folders) |
 | `hash` | string | Yes | Content hash with algorithm prefix |
-| `original_name` | string | Yes | Original filename at insert time |
+| `original_name` | string | Yes | Original file/folder name at insert time |
+| `is_folder` | boolean | Yes | True if stored content is a directory |
 | `timestamp` | string | Yes | ISO 8601 upload timestamp |
-| `mime_type` | string | No | MIME type (auto-detected or provided) |
+| `mime_type` | string | No | MIME type (files only, auto-detected or provided) |
+| `file_count` | integer | No | Number of files (folders only) |
 
 ## Path Generation
 
-DataJoint generates storage paths using:
+Storage paths are **deterministically constructed** from record metadata, enabling bidirectional lookup between database records and stored files.
+
+### Path Components
 
 1. **Location** - from configuration (`object_storage.location`)
-2. **Partition values** - from primary key (if `partition_pattern` configured)
-3. **Schema name** - from the table's schema
-4. **Object directory** - `objects/`
-5. **Table-field identifier** - `{TableName}-{field_name}/`
-6. **Suffixed filename** - original name with random hash suffix
+2. **Schema name** - from the table's schema
+3. **Object directory** - `objects/`
+4. **Table name** - the table class name
+5. **Field name** - the attribute name
+6. **Primary key encoding** - all PK attributes and values
+7. **Suffixed filename** - original name with random hash suffix
 
-Example path construction:
+### Path Template
 
 ```
-{location}/{partition}/{schema}/objects/{Table}-{field}/{basename}_{hash}.{ext}
+{location}/{schema}/objects/{Table}/{field}/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../{basename}_{token}.{ext}
 ```
+
+### Example
+
+For a table:
+```python
+@schema
+class Recording(dj.Manual):
+    definition = """
+    subject_id : int
+    session_id : int
+    ---
+    raw_data : file
+    """
+```
+
+Inserting `{"subject_id": 123, "session_id": 45, "raw_data": "/path/to/recording.dat"}` produces:
+
+```
+my_project/my_schema/objects/Recording/raw_data/subject_id=123/session_id=45/recording_Ax7bQ2kM.dat
+```
+
+### Deterministic Bidirectional Mapping
+
+The path structure (excluding the random token) is fully deterministic:
+- **Record → File**: Given a record's primary key, construct the path prefix to locate its file
+- **File → Record**: Parse the path to extract schema, table, field, and primary key values
+
+This enables:
+- Finding all files for a specific record
+- Identifying which record a file belongs to
+- Auditing storage against database contents
+
+The **random token** is stored in the JSON metadata to complete the full path.
 
 ### Filename Collision Avoidance
 
@@ -226,8 +290,9 @@ Each insert stores a separate copy of the file, even if identical content was pr
 At insert time, the `file` attribute accepts:
 
 1. **File path** (string or `Path`): Path to an existing file
-2. **Stream object**: File-like object with `read()` method
-3. **Tuple of (name, stream)**: Stream with explicit filename
+2. **Folder path** (string or `Path`): Path to an existing directory
+3. **Stream object**: File-like object with `read()` method
+4. **Tuple of (name, stream)**: Stream with explicit filename
 
 ```python
 # From file path
@@ -235,6 +300,13 @@ Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
     "raw_data": "/local/path/to/recording.dat"
+})
+
+# From folder path
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "raw_data": "/local/path/to/data_folder/"
 })
 
 # From stream with explicit name
@@ -248,89 +320,112 @@ with open("/local/path/data.bin", "rb") as f:
 
 ### Insert Processing Steps
 
-1. Resolve storage backend from pipeline configuration
-2. Read file content (from path or stream)
-3. Compute content hash (SHA-256)
-4. Generate storage path with random suffix
-5. Upload file to storage backend via `fsspec`
+1. Validate input (file/folder exists, stream is readable)
+2. Generate deterministic storage path with random token
+3. **Copy content to storage backend** via `fsspec`
+4. **If copy fails: abort insert** (no database operation attempted)
+5. Compute content hash (SHA-256)
 6. Build JSON metadata structure
-7. Store JSON in database column
+7. Execute database INSERT
+
+### Copy-First Semantics
+
+The file/folder is copied to storage **before** the database insert is attempted:
+- If the copy fails, the insert does not proceed
+- If the copy succeeds but the database insert fails, an orphaned file may remain
+- Orphaned files are acceptable due to the random token (no collision with future inserts)
 
 ## Transaction Handling
 
-File uploads and database inserts must be coordinated to maintain consistency. Since storage backends don't support distributed transactions with MySQL, DataJoint uses a **upload-first** strategy with cleanup on failure.
+Since storage backends don't support distributed transactions with MySQL, DataJoint uses a **copy-first** strategy.
 
 ### Insert Transaction Flow
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ 1. Validate input and generate storage path             │
+│ 1. Validate input and generate storage path with token  │
 ├─────────────────────────────────────────────────────────┤
-│ 2. Upload file to storage backend                       │
-│    └─ On failure: raise error (nothing to clean up)     │
+│ 2. Copy file/folder to storage backend                  │
+│    └─ On failure: raise error, INSERT not attempted     │
 ├─────────────────────────────────────────────────────────┤
-│ 3. Build JSON metadata with storage path                │
+│ 3. Compute hash and build JSON metadata                 │
 ├─────────────────────────────────────────────────────────┤
 │ 4. Execute database INSERT                              │
-│    └─ On failure: delete uploaded file, raise error     │
+│    └─ On failure: orphaned file remains (acceptable)    │
 ├─────────────────────────────────────────────────────────┤
 │ 5. Commit database transaction                          │
-│    └─ On failure: delete uploaded file, raise error     │
+│    └─ On failure: orphaned file remains (acceptable)    │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### Failure Scenarios
 
-| Scenario | State Before | Recovery Action | Result |
-|----------|--------------|-----------------|--------|
-| Upload fails | No file, no record | None needed | Clean failure |
-| DB insert fails | File exists, no record | Delete file | Clean failure |
-| DB commit fails | File exists, no record | Delete file | Clean failure |
-| Cleanup fails | File exists, no record | Log warning | Orphaned file |
+| Scenario | Result | Orphaned File? |
+|----------|--------|----------------|
+| Copy fails | Clean failure, no INSERT | No |
+| DB insert fails | Error raised | Yes (acceptable) |
+| DB commit fails | Error raised | Yes (acceptable) |
 
-### Orphaned File Handling
+### Orphaned Files
 
-In rare cases (e.g., process crash, network failure during cleanup), orphaned files may remain in storage. These can be identified and cleaned:
+Orphaned files (files in storage without corresponding database records) may accumulate due to:
+- Failed database inserts after successful copy
+- Process crashes
+- Network failures
+
+**This is acceptable** because:
+- Random tokens prevent collisions with future inserts
+- Orphaned files can be identified by comparing storage contents with database records
+- Cleanup utilities can remove orphaned files periodically
 
 ```python
-# Future utility method
-schema.external_storage.find_orphaned()  # List files not referenced in DB
-schema.external_storage.cleanup_orphaned()  # Delete orphaned files
+# Future utility methods
+schema.file_storage.find_orphaned()     # List files not referenced in DB
+schema.file_storage.cleanup_orphaned()  # Delete orphaned files
 ```
-
-### Batch Insert Handling
-
-For batch inserts with multiple `file` attributes:
-
-1. Upload all files first (collect paths)
-2. Execute batch INSERT with all metadata
-3. On any failure: delete all uploaded files from this batch
-
-This ensures atomicity at the batch level - either all records are inserted with their files, or none are.
 
 ## Fetch Behavior
 
-On fetch, the `file` type returns a `FileRef` object:
+On fetch, the `file` type returns a **handle** (`FileRef` object) to the stored content. **The file is not copied** - all operations access the storage backend directly.
 
 ```python
 record = Recording.fetch1()
 file_ref = record["raw_data"]
 
-# Access metadata
+# Access metadata (no I/O)
 print(file_ref.path)           # Full storage path
 print(file_ref.size)           # File size in bytes
 print(file_ref.hash)           # Content hash
 print(file_ref.original_name)  # Original filename
+print(file_ref.is_folder)      # True if stored content is a folder
 
-# Read content directly (streams from backend)
-content = file_ref.read()      # Returns bytes
+# Read content directly from storage backend
+content = file_ref.read()      # Returns bytes (files only)
 
-# Download to local path
-local_path = file_ref.download("/local/destination/")
-
-# Open as fsspec file object
+# Open as fsspec file object (files only)
 with file_ref.open() as f:
     data = f.read()
+
+# List contents (folders only)
+contents = file_ref.listdir()  # Returns list of relative paths
+
+# Access specific file within folder
+with file_ref.open("subdir/file.dat") as f:
+    data = f.read()
+```
+
+### No Automatic Download
+
+Unlike `attach@store`, the `file` type does **not** automatically download content to a local path. Users access content directly through the `FileRef` handle, which streams from the storage backend.
+
+For local copies, users explicitly download:
+
+```python
+# Download file to local destination
+local_path = file_ref.download("/local/destination/")
+
+# Download specific file from folder
+local_path = file_ref.download("/local/destination/", "subdir/file.dat")
 ```
 
 ## Implementation Components
@@ -399,20 +494,29 @@ object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSetti
 ```python
 @dataclass
 class FileRef:
-    """Reference to a file stored in the pipeline's storage backend."""
+    """Handle to a file or folder stored in the pipeline's storage backend."""
 
     path: str
     size: int
     hash: str
     original_name: str
+    is_folder: bool
     timestamp: datetime
-    mime_type: str | None
-    _backend: StorageBackend  # internal reference
+    mime_type: str | None      # files only
+    file_count: int | None     # folders only
+    _backend: StorageBackend   # internal reference
 
+    # File operations
     def read(self) -> bytes: ...
-    def open(self, mode: str = "rb") -> IO: ...
-    def download(self, destination: Path | str) -> Path: ...
-    def exists(self) -> bool: ...
+    def open(self, subpath: str | None = None, mode: str = "rb") -> IO: ...
+
+    # Folder operations
+    def listdir(self, subpath: str = "") -> list[str]: ...
+    def walk(self) -> Iterator[tuple[str, list[str], list[str]]]: ...
+
+    # Common operations
+    def download(self, destination: Path | str, subpath: str | None = None) -> Path: ...
+    def exists(self, subpath: str | None = None) -> bool: ...
 ```
 
 ## Dependencies
@@ -444,8 +548,35 @@ azure = ["adlfs"]
 ## Delete Behavior
 
 When a record with a `file` attribute is deleted:
-- The corresponding file in storage is also deleted
-- No reference counting (each record owns its file)
+
+1. **Database delete executes first** (within transaction)
+2. **File delete is attempted** after successful DB commit
+3. **File delete is best-effort** - the delete transaction succeeds even if file deletion fails
+
+### Delete Transaction Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 1. Execute database DELETE                              │
+├─────────────────────────────────────────────────────────┤
+│ 2. Commit database transaction                          │
+│    └─ On failure: rollback, files unchanged             │
+├─────────────────────────────────────────────────────────┤
+│ 3. Issue delete command to storage backend              │
+│    └─ On failure: log warning, transaction still OK     │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Stale Files
+
+If file deletion fails (network error, permissions, etc.), **stale files** may remain in storage. This is acceptable because:
+- The database record is already deleted (authoritative source)
+- Random tokens prevent any collision with future inserts
+- Stale files can be identified and cleaned via orphan detection utilities
+
+### No Reference Counting
+
+Each record owns its file exclusively. There is no deduplication or reference counting, simplifying delete logic.
 
 ## Migration Path
 
@@ -455,10 +586,10 @@ When a record with a `file` attribute is deleted:
 
 ## Future Extensions
 
-- [ ] Directory/folder support (store entire directories)
 - [ ] Compression options (gzip, lz4, zstd)
 - [ ] Encryption at rest
 - [ ] Versioning support
 - [ ] Streaming upload for large files
-- [ ] Checksum verification options
+- [ ] Checksum verification on fetch
 - [ ] Cache layer for frequently accessed files
+- [ ] Parallel upload/download for large folders
