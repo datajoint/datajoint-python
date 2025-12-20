@@ -8,12 +8,20 @@ The `object` type supports both **files and folders**. Content is copied to stor
 
 ### Immutability Contract
 
-Files stored via the `object` type are **immutable**. Users agree to:
-- **Insert**: Copy content to storage (only way to create)
+Objects stored via the `object` type are **immutable after finalization**. Users agree to:
+- **Insert (copy)**: Copy existing content to storage
+- **Insert (staged)**: Reserve path, write directly, then finalize
 - **Fetch**: Read content via handle (no modification)
 - **Delete**: Remove content when record is deleted (only way to remove)
 
-Users must not directly modify files in the object store.
+Once an object is **finalized** (either via copy-insert or staged-insert completion), users must not directly modify it in the object store.
+
+#### Two Insert Modes
+
+| Mode | Use Case | Workflow |
+|------|----------|----------|
+| **Copy** | Small files, existing data | Local file → copy to storage → insert record |
+| **Staged** | Large objects, Zarr/HDF5 | Reserve path → write directly to storage → finalize record |
 
 ## Storage Architecture
 
@@ -470,6 +478,97 @@ The file/folder is copied to storage **before** the database insert is attempted
 - If the copy succeeds but the database insert fails, an orphaned file may remain
 - Orphaned files are acceptable due to the random token (no collision with future inserts)
 
+### Staged Insert (Direct Write Mode)
+
+For large objects like Zarr arrays, copying from local storage is inefficient. **Staged insert** allows writing directly to the destination:
+
+```python
+# Stage an object for direct writing
+with Recording.stage_object(
+    {"subject_id": 123, "session_id": 45},
+    "raw_data",
+    "my_array.zarr"
+) as staged:
+    # Write directly to object storage (no local copy)
+    import zarr
+    z = zarr.open(staged.store, mode='w', shape=(10000, 10000), dtype='f4')
+    z[:] = compute_large_array()
+
+# On successful exit: metadata computed, record inserted
+# On exception: storage cleaned up, no record inserted
+```
+
+#### StagedObject Interface
+
+```python
+@dataclass
+class StagedObject:
+    """Handle for staged write operations."""
+
+    path: str                              # Reserved storage path
+    full_path: str                         # Full URI (e.g., 's3://bucket/path')
+    fs: fsspec.AbstractFileSystem          # fsspec filesystem
+    store: fsspec.FSMap                    # FSMap for Zarr/xarray
+
+    def open(self, subpath: str = "", mode: str = "wb") -> IO:
+        """Open a file within the staged object for writing."""
+        ...
+```
+
+#### Staged Insert Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 1. Reserve storage path with random token               │
+├─────────────────────────────────────────────────────────┤
+│ 2. Return StagedObject handle to user                   │
+├─────────────────────────────────────────────────────────┤
+│ 3. User writes data directly via fs/store               │
+├─────────────────────────────────────────────────────────┤
+│ 4. On context exit (success):                           │
+│    - Compute metadata (size, hash, item_count)          │
+│    - Execute database INSERT                            │
+├─────────────────────────────────────────────────────────┤
+│ 5. On context exit (exception):                         │
+│    - Delete any written data                            │
+│    - Re-raise exception                                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Zarr Example
+
+```python
+import zarr
+import numpy as np
+
+# Create a large Zarr array directly in object storage
+with Recording.stage_object(
+    {"subject_id": 123, "session_id": 45},
+    "neural_data",
+    "spikes.zarr"
+) as staged:
+    # Create Zarr hierarchy
+    root = zarr.open(staged.store, mode='w')
+    root.create_dataset('timestamps', data=np.arange(1000000))
+    root.create_dataset('waveforms', shape=(1000000, 82), chunks=(10000, 82))
+
+    # Write in chunks (streaming from acquisition)
+    for i, chunk in enumerate(data_stream):
+        root['waveforms'][i*10000:(i+1)*10000] = chunk
+
+# Record automatically inserted with computed metadata
+```
+
+#### Comparison: Copy vs Staged Insert
+
+| Aspect | Copy Insert | Staged Insert |
+|--------|-------------|---------------|
+| Data location | Must exist locally first | Written directly to storage |
+| Efficiency | Copy overhead | No copy needed |
+| Use case | Small files, existing data | Large arrays, streaming data |
+| Cleanup on failure | Orphan possible | Cleaned up |
+| API | `insert1({..., "field": path})` | `stage_object()` context manager |
+
 ## Transaction Handling
 
 Since storage backends don't support distributed transactions with MySQL, DataJoint uses a **copy-first** strategy.
@@ -652,6 +751,22 @@ class ObjectRef:
     item_count: int | None     # folders only
     _backend: StorageBackend   # internal reference
 
+    # fsspec access (for Zarr, xarray, etc.)
+    @property
+    def fs(self) -> fsspec.AbstractFileSystem:
+        """Return fsspec filesystem for direct access."""
+        ...
+
+    @property
+    def store(self) -> fsspec.FSMap:
+        """Return FSMap suitable for Zarr/xarray."""
+        ...
+
+    @property
+    def full_path(self) -> str:
+        """Return full URI (e.g., 's3://bucket/path')."""
+        ...
+
     # File operations
     def read(self) -> bytes: ...
     def open(self, subpath: str | None = None, mode: str = "rb") -> IO: ...
@@ -663,6 +778,29 @@ class ObjectRef:
     # Common operations
     def download(self, destination: Path | str, subpath: str | None = None) -> Path: ...
     def exists(self, subpath: str | None = None) -> bool: ...
+```
+
+#### fsspec Integration
+
+The `ObjectRef` provides direct fsspec access for integration with array libraries:
+
+```python
+import zarr
+import xarray as xr
+
+record = Recording.fetch1()
+obj_ref = record["raw_data"]
+
+# Direct Zarr access
+z = zarr.open(obj_ref.store, mode='r')
+print(z.shape)
+
+# Direct xarray access
+ds = xr.open_zarr(obj_ref.store)
+
+# Use fsspec filesystem directly
+fs = obj_ref.fs
+files = fs.ls(obj_ref.full_path)
 ```
 
 ## Dependencies
