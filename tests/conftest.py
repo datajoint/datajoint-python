@@ -23,6 +23,7 @@ from datajoint.errors import (
 
 from . import schema, schema_advanced, schema_external, schema_simple
 from . import schema_uuid as schema_uuid_module
+from . import schema_type_aliases as schema_type_aliases_module
 
 # Configure logging for container management
 logger = logging.getLogger(__name__)
@@ -767,6 +768,21 @@ def schema_uuid(connection_test, prefix):
     schema(schema_uuid_module.Basic)
     schema(schema_uuid_module.Topic)
     schema(schema_uuid_module.Item)
+    yield schema
+    schema.drop()
+
+
+@pytest.fixture(scope="module")
+def schema_type_aliases(connection_test, prefix):
+    """Schema for testing numeric type aliases."""
+    schema = dj.Schema(
+        prefix + "_type_aliases",
+        context=schema_type_aliases_module.LOCALS_TYPE_ALIASES,
+        connection=connection_test,
+    )
+    schema(schema_type_aliases_module.TypeAliasTable)
+    schema(schema_type_aliases_module.TypeAliasPrimaryKey)
+    schema(schema_type_aliases_module.TypeAliasNullable)
     yield schema
     schema.drop()
 
