@@ -58,6 +58,7 @@ __all__ = [
 ]
 
 from . import errors
+from . import migrate
 from .admin import kill
 from .attribute_adapter import AttributeAdapter
 from .attribute_type import AttributeType, list_types, register_type

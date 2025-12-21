@@ -476,3 +476,117 @@ def test_graph_type_roundtrip():
 
     assert set(g.edges) == set(decoded.edges)
 ```
+
+## Built-in Types
+
+DataJoint includes a built-in type for explicit blob serialization:
+
+### `<djblob>` - DataJoint Blob Serialization
+
+The `<djblob>` type provides explicit control over DataJoint's native binary
+serialization. It supports:
+
+- NumPy arrays (compatible with MATLAB)
+- Python dicts, lists, tuples, sets
+- datetime objects, Decimals, UUIDs
+- Nested data structures
+- Optional compression
+
+```python
+@schema
+class ProcessedData(dj.Manual):
+    definition = """
+    data_id : int
+    ---
+    results : <djblob>      # Explicit serialization
+    raw_bytes : longblob    # Backward-compatible (auto-serialized)
+    """
+```
+
+#### When to Use `<djblob>`
+
+- **New tables**: Prefer `<djblob>` for clarity and future-proofing
+- **Custom types**: Use `<djblob>` when your type chains to blob storage
+- **Migration**: Existing `longblob` columns can be migrated to `<djblob>`
+
+#### Backward Compatibility
+
+For backward compatibility, `longblob` columns without an explicit type
+still receive automatic serialization. The behavior is identical to `<djblob>`,
+but using `<djblob>` makes the serialization explicit in your code.
+
+## Schema Migration
+
+When upgrading existing schemas to use explicit type declarations, DataJoint
+provides migration utilities.
+
+### Analyzing Blob Columns
+
+```python
+import datajoint as dj
+
+schema = dj.schema("my_database")
+
+# Check migration status
+status = dj.migrate.check_migration_status(schema)
+print(f"Blob columns: {status['total_blob_columns']}")
+print(f"Already migrated: {status['migrated']}")
+print(f"Pending migration: {status['pending']}")
+```
+
+### Generating Migration SQL
+
+```python
+# Preview migration (dry run)
+result = dj.migrate.migrate_blob_columns(schema, dry_run=True)
+for sql in result['sql_statements']:
+    print(sql)
+```
+
+### Applying Migration
+
+```python
+# Apply migration
+result = dj.migrate.migrate_blob_columns(schema, dry_run=False)
+print(f"Migrated {result['migrated']} columns")
+```
+
+### Migration Details
+
+The migration updates MySQL column comments to include the type declaration.
+This is a **metadata-only** change - the actual blob data format is unchanged.
+
+Before migration:
+- Column: `longblob`
+- Comment: `user comment`
+- Behavior: Auto-serialization (implicit)
+
+After migration:
+- Column: `longblob`
+- Comment: `:<djblob>:user comment`
+- Behavior: Explicit serialization via `<djblob>`
+
+### Updating Table Definitions
+
+After database migration, update your Python table definitions for consistency:
+
+```python
+# Before
+class MyTable(dj.Manual):
+    definition = """
+    id : int
+    ---
+    data : longblob  # stored data
+    """
+
+# After
+class MyTable(dj.Manual):
+    definition = """
+    id : int
+    ---
+    data : <djblob>  # stored data
+    """
+```
+
+Both definitions work identically after migration, but using `<djblob>` makes
+the serialization explicit and documents the intended behavior.

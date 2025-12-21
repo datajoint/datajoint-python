@@ -345,3 +345,71 @@ class TestExportsAndAPI:
         assert hasattr(dj, "AttributeAdapter")
         # AttributeAdapter should be a subclass of AttributeType
         assert issubclass(dj.AttributeAdapter, dj.AttributeType)
+
+
+class TestDJBlobType:
+    """Tests for the built-in DJBlobType."""
+
+    def test_djblob_is_registered(self):
+        """Test that djblob is automatically registered."""
+        assert is_type_registered("djblob")
+
+    def test_djblob_properties(self):
+        """Test DJBlobType properties."""
+        blob_type = get_type("djblob")
+        assert blob_type.type_name == "djblob"
+        assert blob_type.dtype == "longblob"
+        assert blob_type.serializes is True
+
+    def test_djblob_encode_decode_roundtrip(self):
+        """Test that encode/decode is a proper roundtrip."""
+        import numpy as np
+
+        blob_type = get_type("djblob")
+
+        # Test with various data types
+        test_data = [
+            {"key": "value", "number": 42},
+            [1, 2, 3, 4, 5],
+            np.array([1.0, 2.0, 3.0]),
+            "simple string",
+            (1, 2, 3),
+            None,
+        ]
+
+        for original in test_data:
+            encoded = blob_type.encode(original)
+            assert isinstance(encoded, bytes)
+            decoded = blob_type.decode(encoded)
+            if isinstance(original, np.ndarray):
+                np.testing.assert_array_equal(decoded, original)
+            else:
+                assert decoded == original
+
+    def test_djblob_encode_produces_valid_blob_format(self):
+        """Test that encoded data has valid blob protocol header."""
+        blob_type = get_type("djblob")
+        encoded = blob_type.encode({"test": "data"})
+
+        # Should start with compression prefix or protocol header
+        valid_prefixes = (b"ZL123\0", b"mYm\0", b"dj0\0")
+        assert any(encoded.startswith(p) for p in valid_prefixes)
+
+    def test_djblob_in_list_types(self):
+        """Test that djblob appears in list_types."""
+        types = list_types()
+        assert "djblob" in types
+
+    def test_serializes_flag_prevents_double_pack(self):
+        """Test that serializes=True prevents blob.pack being called twice.
+
+        This is a unit test for the flag itself. Integration test with tables
+        is in test_blob.py or test_adapted_attributes.py.
+        """
+        blob_type = get_type("djblob")
+        assert blob_type.serializes is True
+
+        # Legacy adapters should not have serializes=True
+        # (they rely on blob.pack being called after encode)
+        # AttributeType base class defaults to False
+        assert AttributeType.serializes is False

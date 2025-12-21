@@ -88,18 +88,16 @@ def _get(connection, attr, data, squeeze, download_path):
             safe_write(local_filepath, data.split(b"\0", 1)[1])
         return adapt(str(local_filepath))  # download file from remote store
 
-    return adapt(
-        uuid.UUID(bytes=data)
-        if attr.uuid
-        else (
-            blob.unpack(
-                extern.get(uuid.UUID(bytes=data)) if attr.is_external else data,
-                squeeze=squeeze,
-            )
-            if attr.is_blob
-            else data
-        )
-    )
+    if attr.uuid:
+        return adapt(uuid.UUID(bytes=data))
+    elif attr.is_blob:
+        blob_data = extern.get(uuid.UUID(bytes=data)) if attr.is_external else data
+        # Skip unpack if adapter handles its own deserialization
+        if attr.adapter and getattr(attr.adapter, "serializes", False):
+            return attr.adapter.decode(blob_data, key=None)
+        return adapt(blob.unpack(blob_data, squeeze=squeeze))
+    else:
+        return adapt(data)
 
 
 class Fetch:

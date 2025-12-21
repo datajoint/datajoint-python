@@ -153,6 +153,10 @@ class AttributeType(ABC):
         """
         ...
 
+    # Class attribute: If True, encode() produces final binary data (no blob.pack needed)
+    # Override in subclasses that handle their own serialization
+    serializes: bool = False
+
     def validate(self, value: Any) -> None:
         """
         Validate a value before encoding.
@@ -409,3 +413,124 @@ def resolve_dtype(dtype: str, seen: set[str] | None = None) -> tuple[str, list[A
 
     # Not a custom type - return as-is
     return dtype, chain
+
+
+# =============================================================================
+# Built-in Attribute Types
+# =============================================================================
+
+
+class DJBlobType(AttributeType):
+    """
+    Built-in type for DataJoint's native serialization format.
+
+    This type handles serialization of arbitrary Python objects (including NumPy arrays,
+    dictionaries, lists, etc.) using DataJoint's binary blob format. The format includes:
+
+    - Protocol headers (``mYm`` for MATLAB-compatible, ``dj0`` for Python-native)
+    - Optional compression (zlib)
+    - Support for NumPy arrays, datetime objects, UUIDs, and nested structures
+
+    The ``<djblob>`` type is the explicit way to specify DataJoint's serialization.
+    It stores data in a MySQL ``LONGBLOB`` column.
+
+    Example:
+        @schema
+        class ProcessedData(dj.Manual):
+            definition = '''
+            data_id : int
+            ---
+            results : <djblob>      # Explicit DataJoint serialization
+            raw_bytes : longblob    # Raw bytes (no serialization)
+            '''
+
+    Note:
+        For backward compatibility, ``longblob`` columns without an explicit type
+        still use automatic serialization. Use ``<djblob>`` to be explicit about
+        serialization behavior.
+    """
+
+    type_name = "djblob"
+    dtype = "longblob"
+    serializes = True  # This type handles its own serialization
+
+    def encode(self, value: Any, *, key: dict | None = None) -> bytes:
+        """
+        Serialize a Python object to DataJoint's blob format.
+
+        Args:
+            value: Any serializable Python object (dict, list, numpy array, etc.)
+            key: Primary key values (unused for blob serialization).
+
+        Returns:
+            Serialized bytes with protocol header and optional compression.
+        """
+        from . import blob
+
+        return blob.pack(value, compress=True)
+
+    def decode(self, stored: bytes, *, key: dict | None = None) -> Any:
+        """
+        Deserialize DataJoint blob format back to a Python object.
+
+        Args:
+            stored: Serialized blob bytes.
+            key: Primary key values (unused for blob serialization).
+
+        Returns:
+            The deserialized Python object.
+        """
+        from . import blob
+
+        return blob.unpack(stored, squeeze=False)
+
+
+class DJBlobExternalType(AttributeType):
+    """
+    Built-in type for externally-stored DataJoint blobs.
+
+    Similar to ``<djblob>`` but stores data in external blob storage instead
+    of inline in the database. Useful for large objects.
+
+    The store name is specified when defining the column type.
+
+    Example:
+        @schema
+        class LargeData(dj.Manual):
+            definition = '''
+            data_id : int
+            ---
+            large_array : blob@mystore  # External storage with auto-serialization
+            '''
+    """
+
+    # Note: This type isn't directly usable via <djblob_external> syntax
+    # It's used internally when blob@store syntax is detected
+    type_name = "djblob_external"
+    dtype = "blob@store"  # Placeholder - actual store is determined at declaration time
+    serializes = True  # This type handles its own serialization
+
+    def encode(self, value: Any, *, key: dict | None = None) -> bytes:
+        """Serialize a Python object to DataJoint's blob format."""
+        from . import blob
+
+        return blob.pack(value, compress=True)
+
+    def decode(self, stored: bytes, *, key: dict | None = None) -> Any:
+        """Deserialize DataJoint blob format back to a Python object."""
+        from . import blob
+
+        return blob.unpack(stored, squeeze=False)
+
+
+def _register_builtin_types() -> None:
+    """
+    Register DataJoint's built-in attribute types.
+
+    Called automatically during module initialization.
+    """
+    register_type(DJBlobType)
+
+
+# Register built-in types when module is loaded
+_register_builtin_types()
