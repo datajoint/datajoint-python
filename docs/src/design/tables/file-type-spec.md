@@ -1003,10 +1003,27 @@ azure = ["adlfs"]
 | Store config | Per-attribute | Per-attribute | Per-pipeline |
 | Path control | DataJoint | User-managed | DataJoint |
 | DB column | binary(16) UUID | binary(16) UUID | JSON |
+| Hidden tables | Yes (external) | Yes (external) | **No** |
 | Backend | File/S3 only | File/S3 only | fsspec (any) |
 | Partitioning | Hash-based | User path | Configurable |
-| Metadata | External table | External table | Inline JSON |
+| Metadata storage | External table | External table | Inline JSON |
 | Deduplication | By content | By path | None |
+
+### No Hidden Tables
+
+A key architectural difference: the `object` type does **not** use hidden external tables.
+
+The legacy `attach@store` and `filepath@store` types store a UUID in the table column and maintain a separate hidden `~external_*` table containing:
+- File paths/keys
+- Checksums
+- Size information
+- Reference counts
+
+The `object` type eliminates this complexity by storing all metadata **inline** in the JSON column. This provides:
+- **Simpler schema** - no hidden tables to manage or migrate
+- **Self-contained records** - all information in one place
+- **Easier debugging** - metadata visible directly in queries
+- **No reference counting** - each record owns its object exclusively
 
 ### Legacy Type Deprecation
 
