@@ -170,7 +170,9 @@ s3://bucket/my_project/datajoint_store.json
     "project_name": "my_project",
     "created": "2025-01-15T10:30:00Z",
     "format_version": "1.0",
-    "datajoint_version": "0.15.0"
+    "datajoint_version": "0.15.0",
+    "database_host": "db.example.com",
+    "database_name": "my_project_db"
 }
 ```
 
@@ -182,6 +184,10 @@ s3://bucket/my_project/datajoint_store.json
 | `created` | string | Yes | ISO 8601 timestamp of store creation |
 | `format_version` | string | Yes | Store format version for compatibility |
 | `datajoint_version` | string | Yes | DataJoint version that created the store |
+| `database_host` | string | No | Database server hostname (for bidirectional mapping) |
+| `database_name` | string | No | Database name (for bidirectional mapping) |
+
+The optional `database_host` and `database_name` fields enable bidirectional mapping between object stores and databases. This is informational only - not enforced at runtime. Administrators can alternatively ensure unique `project_name` values across their namespace, and managed platforms may handle this mapping externally.
 
 ### Store Initialization
 
