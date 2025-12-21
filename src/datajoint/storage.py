@@ -6,7 +6,6 @@ backends (local filesystem, S3, GCS, Azure, etc.) using the fsspec library.
 """
 
 import logging
-from io import BytesIO
 from pathlib import Path, PurePosixPath
 from typing import Any
 
