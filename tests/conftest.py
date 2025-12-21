@@ -21,7 +21,7 @@ from datajoint.errors import (
     DataJointError,
 )
 
-from . import schema, schema_advanced, schema_external, schema_simple
+from . import schema, schema_advanced, schema_external, schema_object, schema_simple
 from . import schema_uuid as schema_uuid_module
 from . import schema_type_aliases as schema_type_aliases_module
 
@@ -906,7 +906,6 @@ def trash(schema_any):
 
 
 # Object storage fixtures
-from . import schema_object
 
 
 @pytest.fixture
