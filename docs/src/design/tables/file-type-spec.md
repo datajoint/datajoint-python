@@ -315,7 +315,7 @@ Supported hash algorithms: `sha256`, `md5`, `xxhash` (xxh3, faster for large fil
 
 ### Folder Manifests
 
-For folders (directories), a **manifest file** is created alongside the folder to enable integrity verification without computing content hashes:
+For folders (directories), a **manifest file** is created alongside the folder in the object store to enable integrity verification without computing content hashes:
 
 ```
 raw_data_pL9nR4wE/
@@ -335,6 +335,11 @@ raw_data_pL9nR4wE.manifest.json
     "created": "2025-01-15T10:30:00Z"
 }
 ```
+
+**Design rationale:**
+- Stored in object store (not database) to avoid bloating the JSON for folders with many files
+- Placed alongside folder (not inside) to avoid polluting folder contents and interfering with tools like Zarr
+- Enables self-contained verification without database access
 
 The manifest enables:
 - Quick verification that all expected files exist
