@@ -139,6 +139,7 @@ class StorageBackend:
         if self.protocol == "file":
             # For local filesystem, use safe copy with atomic rename
             from .utils import safe_copy
+
             Path(full_path).parent.mkdir(parents=True, exist_ok=True)
             safe_copy(local_path, full_path, overwrite=True)
         else:
@@ -161,6 +162,7 @@ class StorageBackend:
 
         if self.protocol == "file":
             from .utils import safe_copy
+
             safe_copy(full_path, local_path)
         else:
             self.fs.get_file(full_path, str(local_path))
@@ -178,6 +180,7 @@ class StorageBackend:
 
         if self.protocol == "file":
             from .utils import safe_write
+
             Path(full_path).parent.mkdir(parents=True, exist_ok=True)
             safe_write(full_path, buffer)
         else:

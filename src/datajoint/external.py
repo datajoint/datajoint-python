@@ -90,6 +90,7 @@ class ExternalTable(Table):
         )
         # For backward compatibility, return a legacy s3.Folder if needed
         from . import s3
+
         if not hasattr(self, "_s3_legacy") or self._s3_legacy is None:
             self._s3_legacy = s3.Folder(**self.spec)
         return self._s3_legacy
