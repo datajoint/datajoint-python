@@ -53,8 +53,9 @@ def _get(connection, attr, data, squeeze, download_path):
 
     extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
 
-    # apply attribute adapter if present
-    adapt = attr.adapter.get if attr.adapter else lambda x: x
+    # apply custom attribute type decoder if present
+    def adapt(x):
+        return attr.adapter.decode(x, key=None) if attr.adapter else x
 
     if attr.is_filepath:
         return adapt(extern.download_filepath(uuid.UUID(bytes=data))[0])

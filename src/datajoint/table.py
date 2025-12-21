@@ -726,7 +726,9 @@ class Table(QueryExpression):
             return None
         attr = self.heading[name]
         if attr.adapter:
-            value = attr.adapter.put(value)
+            # Custom attribute type: validate and encode
+            attr.adapter.validate(value)
+            value = attr.adapter.encode(value, key=None)
         if value is None or (attr.numeric and (value == "" or np.isnan(float(value)))):
             # set default value
             placeholder, value = "DEFAULT", None

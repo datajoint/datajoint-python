@@ -16,7 +16,6 @@ from packaging import version
 
 import datajoint as dj
 from datajoint.errors import (
-    ADAPTED_TYPE_SWITCH,
     FILEPATH_FEATURE_SWITCH,
     DataJointError,
 )
@@ -334,10 +333,14 @@ def monkeymodule():
 
 
 @pytest.fixture
-def enable_adapted_types(monkeypatch):
-    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, "TRUE")
+def enable_adapted_types():
+    """
+    Deprecated fixture - custom attribute types no longer require a feature flag.
+
+    This fixture is kept for backward compatibility but does nothing.
+    Custom types are now enabled by default via the AttributeType system.
+    """
     yield
-    monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
 
 
 @pytest.fixture

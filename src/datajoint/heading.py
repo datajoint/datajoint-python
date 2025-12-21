@@ -5,7 +5,8 @@ from itertools import chain
 
 import numpy as np
 
-from .attribute_adapter import AttributeAdapter, get_adapter
+from .attribute_adapter import get_adapter
+from .attribute_type import AttributeType
 from .declare import (
     EXTERNAL_TYPES,
     NATIVE_TYPES,
@@ -14,6 +15,36 @@ from .declare import (
     UUID_DATA_TYPE,
 )
 from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_types
+
+
+class _MissingType(AttributeType):
+    """Placeholder for missing/unregistered attribute types. Raises error on use."""
+
+    def __init__(self, name: str):
+        self._name = name
+
+    @property
+    def type_name(self) -> str:
+        return self._name
+
+    @property
+    def dtype(self) -> str:
+        raise DataJointError(
+            f"Attribute type <{self._name}> is not registered. "
+            "Register it with @dj.register_type or include it in the schema context."
+        )
+
+    def encode(self, value, *, key=None):
+        raise DataJointError(
+            f"Attribute type <{self._name}> is not registered. "
+            "Register it with @dj.register_type or include it in the schema context."
+        )
+
+    def decode(self, stored, *, key=None):
+        raise DataJointError(
+            f"Attribute type <{self._name}> is not registered. "
+            "Register it with @dj.register_type or include it in the schema context."
+        )
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -279,7 +310,7 @@ class Heading:
             if special:
                 special = special.groupdict()
                 attr.update(special)
-            # process adapted attribute types
+            # process custom attribute types (adapted types)
             if special and TYPE_PATTERN["ADAPTED"].match(attr["type"]):
                 assert context is not None, "Declaration context is not set"
                 adapter_name = special["type"]
@@ -287,14 +318,12 @@ class Heading:
                     attr.update(adapter=get_adapter(context, adapter_name))
                 except DataJointError:
                     # if no adapter, then delay the error until the first invocation
-                    attr.update(adapter=AttributeAdapter())
+                    attr.update(adapter=_MissingType(adapter_name))
                 else:
-                    attr.update(type=attr["adapter"].attribute_type)
+                    attr.update(type=attr["adapter"].dtype)
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):
                         raise DataJointError(
-                            "Invalid attribute type '{type}' in adapter object <{adapter_name}>.".format(
-                                adapter_name=adapter_name, **attr
-                            )
+                            f"Invalid dtype '{attr['type']}' in attribute type <{adapter_name}>."
                         )
                     special = not any(TYPE_PATTERN[c].match(attr["type"]) for c in NATIVE_TYPES)
 
