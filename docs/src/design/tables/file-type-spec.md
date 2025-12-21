@@ -42,19 +42,17 @@ A DataJoint project creates a structured hierarchical storage pattern:
 
 ```
 📁 project_name/
-├── datajoint.json
-├── 📁 schema_name1/
-├── 📁 schema_name2/
-├── 📁 schema_name3/
-│   ├── schema.py
-│   ├── 📁 tables/
-│   │   ├── table1/key1-value1.parquet
-│   │   ├── table2/key2-value2.parquet
-│   │   ...
-│   ├── 📁 objects/
-│   │   ├── table1-field1/key3-value3.zarr
-│   │   ├── table1-field2/key3-value3.gif
-│   │   ...
+├── datajoint_store.json         # store metadata (not client config)
+├── 📁 schema_name/
+│   ├── 📁 Table1/
+│   │   ├── data.parquet         # tabular data export (future)
+│   │   └── 📁 objects/          # object storage for this table
+│   │       ├── pk1=val1/pk2=val2/field1_token.dat
+│   │       └── pk1=val1/pk2=val2/field2_token.zarr
+│   ├── 📁 Table2/
+│   │   ├── data.parquet
+│   │   └── 📁 objects/
+│   │       └── ...
 ```
 
 ### Object Storage Keys
@@ -62,8 +60,8 @@ A DataJoint project creates a structured hierarchical storage pattern:
 When using cloud object storage:
 
 ```
-s3://bucket/project_name/schema_name3/objects/table1/key1-value1.parquet
-s3://bucket/project_name/schema_name3/objects/table1-field1/key3-value3.zarr
+s3://bucket/project_name/schema_name/Table1/objects/pk1=val1/field_token.dat
+s3://bucket/project_name/schema_name/Table1/objects/pk1=val1/field_token.zarr
 ```
 
 ## Configuration
@@ -145,24 +143,24 @@ The partition pattern is configured **per pipeline** (one per settings file). Pl
 **Example with partitioning:**
 
 ```
-s3://my-bucket/my_project/subject123/session45/schema_name/objects/Recording-raw_data/recording.dat
+s3://my-bucket/my_project/subject_id=123/session_id=45/schema_name/Recording/objects/raw_data_Ax7bQ2kM.dat
 ```
 
-If no partition pattern is specified, files are organized directly under `{location}/{schema}/objects/`.
+If no partition pattern is specified, files are organized directly under `{location}/{schema}/{Table}/objects/`.
 
-## Store Metadata (`dj-store-meta.json`)
+## Store Metadata (`datajoint_store.json`)
 
-Each object store contains a metadata file at its root that identifies the store and enables verification by DataJoint clients.
+Each object store contains a metadata file at its root that identifies the store and enables verification by DataJoint clients. This file is named `datajoint_store.json` to distinguish it from client configuration files (`datajoint.json`).
 
 ### Location
 
 ```
-{location}/dj-store-meta.json
+{location}/datajoint_store.json
 ```
 
 For cloud storage:
 ```
-s3://bucket/my_project/dj-store-meta.json
+s3://bucket/my_project/datajoint_store.json
 ```
 
 ### Content
@@ -172,7 +170,9 @@ s3://bucket/my_project/dj-store-meta.json
     "project_name": "my_project",
     "created": "2025-01-15T10:30:00Z",
     "format_version": "1.0",
-    "datajoint_version": "0.15.0"
+    "datajoint_version": "0.15.0",
+    "database_host": "db.example.com",
+    "database_name": "my_project_db"
 }
 ```
 
@@ -184,6 +184,10 @@ s3://bucket/my_project/dj-store-meta.json
 | `created` | string | Yes | ISO 8601 timestamp of store creation |
 | `format_version` | string | Yes | Store format version for compatibility |
 | `datajoint_version` | string | Yes | DataJoint version that created the store |
+| `database_host` | string | No | Database server hostname (for bidirectional mapping) |
+| `database_name` | string | No | Database name (for bidirectional mapping) |
+
+The optional `database_host` and `database_name` fields enable bidirectional mapping between object stores and databases. This is informational only - not enforced at runtime. Administrators can alternatively ensure unique `project_name` values across their namespace, and managed platforms may handle this mapping externally.
 
 ### Store Initialization
 
@@ -193,7 +197,7 @@ The store metadata file is created when the first `object` attribute is used:
 ┌─────────────────────────────────────────────────────────┐
 │ 1. Client attempts first file operation                 │
 ├─────────────────────────────────────────────────────────┤
-│ 2. Check if dj-store-meta.json exists                   │
+│ 2. Check if datajoint_store.json exists                 │
 │    ├─ If exists: verify project_name matches            │
 │    └─ If not: create with current project_name          │
 ├─────────────────────────────────────────────────────────┤
@@ -205,7 +209,7 @@ The store metadata file is created when the first `object` attribute is used:
 
 DataJoint performs a basic verification on connect to ensure store-database cohesion:
 
-1. **On connect**: Client reads `dj-store-meta.json` from store
+1. **On connect**: Client reads `datajoint_store.json` from store
 2. **Verify**: `project_name` in client settings matches store metadata
 3. **On mismatch**: Raise `DataJointError` with descriptive message
 
@@ -248,10 +252,23 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 **File example:**
 ```json
 {
-    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/recording_Ax7bQ2kM.dat",
+    "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
+    "size": 12345,
+    "hash": null,
+    "ext": ".dat",
+    "is_dir": false,
+    "timestamp": "2025-01-15T10:30:00Z",
+    "mime_type": "application/octet-stream"
+}
+```
+
+**File with optional hash:**
+```json
+{
+    "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
     "size": 12345,
     "hash": "sha256:abcdef1234...",
-    "original_name": "recording.dat",
+    "ext": ".dat",
     "is_dir": false,
     "timestamp": "2025-01-15T10:30:00Z",
     "mime_type": "application/octet-stream"
@@ -261,10 +278,10 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 **Folder example:**
 ```json
 {
-    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/data_folder_pL9nR4wE",
+    "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_pL9nR4wE",
     "size": 567890,
-    "hash": "sha256:fedcba9876...",
-    "original_name": "data_folder",
+    "hash": null,
+    "ext": null,
     "is_dir": true,
     "timestamp": "2025-01-15T10:30:00Z",
     "item_count": 42
@@ -277,12 +294,84 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 |-------|------|----------|-------------|
 | `path` | string | Yes | Full path/key within storage backend (includes token) |
 | `size` | integer | Yes | Total size in bytes (sum for folders) |
-| `hash` | string | Yes | Content hash with algorithm prefix |
-| `original_name` | string | Yes | Original file/folder name at insert time |
+| `hash` | string/null | Yes | Content hash with algorithm prefix, or null (default) |
+| `ext` | string/null | Yes | File extension (e.g., `.dat`, `.zarr`) or null |
 | `is_dir` | boolean | Yes | True if stored content is a directory |
 | `timestamp` | string | Yes | ISO 8601 upload timestamp |
-| `mime_type` | string | No | MIME type (files only, auto-detected or provided) |
+| `mime_type` | string | No | MIME type (files only, auto-detected from extension) |
 | `item_count` | integer | No | Number of files (folders only) |
+
+### Content Hashing
+
+By default, **no content hash is computed** to avoid performance overhead for large objects. Storage backend integrity is trusted.
+
+**Optional hashing** can be requested per-insert:
+
+```python
+# Default - no hash (fast)
+Recording.insert1({..., "raw_data": "/path/to/large.dat"})
+
+# Request hash computation
+Recording.insert1({..., "raw_data": "/path/to/important.dat"}, hash="sha256")
+```
+
+Supported hash algorithms: `sha256`, `md5`, `xxhash` (xxh3, faster for large files)
+
+**Staged inserts never compute hashes** - data is written directly to storage without a local copy to hash.
+
+### Folder Manifests
+
+For folders (directories), a **manifest file** is created alongside the folder in the object store to enable integrity verification without computing content hashes:
+
+```
+raw_data_pL9nR4wE/
+raw_data_pL9nR4wE.manifest.json
+```
+
+**Manifest content:**
+```json
+{
+    "files": [
+        {"path": "file1.dat", "size": 1234},
+        {"path": "subdir/file2.dat", "size": 5678},
+        {"path": "subdir/file3.dat", "size": 91011}
+    ],
+    "total_size": 567890,
+    "item_count": 42,
+    "created": "2025-01-15T10:30:00Z"
+}
+```
+
+**Design rationale:**
+- Stored in object store (not database) to avoid bloating the JSON for folders with many files
+- Placed alongside folder (not inside) to avoid polluting folder contents and interfering with tools like Zarr
+- Enables self-contained verification without database access
+
+The manifest enables:
+- Quick verification that all expected files exist
+- Size validation without reading file contents
+- Detection of missing or extra files
+
+### Filename Convention
+
+The stored filename is **always derived from the field name**:
+- **Base name**: The attribute/field name (e.g., `raw_data`)
+- **Extension**: Adopted from source file (copy insert) or optionally provided (staged insert)
+- **Token**: Random suffix for collision avoidance
+
+```
+Stored filename = {field}_{token}{ext}
+
+Examples:
+  raw_data_Ax7bQ2kM.dat     # file with .dat extension
+  raw_data_pL9nR4wE.zarr    # Zarr directory with .zarr extension
+  raw_data_kM3nP2qR         # directory without extension
+```
+
+This convention ensures:
+- Consistent, predictable naming across all objects
+- Field name visible in storage for easier debugging
+- Extension preserved for MIME type detection and tooling compatibility
 
 ## Path Generation
 
@@ -293,23 +382,24 @@ Storage paths are **deterministically constructed** from record metadata, enabli
 1. **Location** - from configuration (`object_storage.location`)
 2. **Partition attributes** - promoted PK attributes (if `partition_pattern` configured)
 3. **Schema name** - from the table's schema
-4. **Object directory** - `objects/`
-5. **Table name** - the table class name
+4. **Table name** - the table class name
+5. **Object directory** - `objects/`
 6. **Primary key encoding** - remaining PK attributes and values
-7. **Field name** - the attribute name
-8. **Suffixed filename** - original name with random token suffix
+7. **Suffixed filename** - `{field}_{token}{ext}`
 
 ### Path Template
 
 **Without partitioning:**
 ```
-{location}/{schema}/objects/{Table}/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../field/{basename}_{token}.{ext}
+{location}/{schema}/{Table}/objects/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../{field}_{token}{ext}
 ```
 
 **With partitioning:**
 ```
-{location}/{partition_attr}={val}/.../schema/objects/{Table}/{remaining_pk_attrs}/.../field/{basename}_{token}.{ext}
+{location}/{partition_attr}={val}/.../schema/{Table}/objects/{remaining_pk_attrs}/.../{field}_{token}{ext}
 ```
+
+Note: The `objects/` directory follows the table name, allowing each table folder to also contain tabular data exports (e.g., `data.parquet`) alongside the objects.
 
 ### Partitioning
 
@@ -344,15 +434,17 @@ class Recording(dj.Manual):
 Inserting `{"subject_id": 123, "session_id": 45, "raw_data": "/path/to/recording.dat"}` produces:
 
 ```
-my_project/my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/recording_Ax7bQ2kM.dat
+my_project/my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat
 ```
+
+Note: The filename is `raw_data` (field name) with `.dat` extension (from source file).
 
 ### Example With Partitioning
 
 With `partition_pattern = "{subject_id}"`:
 
 ```
-my_project/subject_id=123/my_schema/objects/Recording/session_id=45/raw_data/recording_Ax7bQ2kM.dat
+my_project/subject_id=123/my_schema/Recording/objects/session_id=45/raw_data_Ax7bQ2kM.dat
 ```
 
 The `subject_id` is promoted to the path root, grouping all files for subject 123 together regardless of schema or table.
@@ -396,14 +488,17 @@ description=a1b2c3d4_abc123     # long string truncated + hash
 
 ### Filename Collision Avoidance
 
-To prevent filename collisions, each stored file receives a **random token suffix** appended to its basename:
+To prevent filename collisions, each stored object receives a **random token suffix** appended to the field name:
 
 ```
-original: recording.dat
-stored:   recording_Ax7bQ2kM.dat
+field: raw_data, source: recording.dat
+stored: raw_data_Ax7bQ2kM.dat
 
-original: image.analysis.tiff
-stored:   image.analysis_pL9nR4wE.tiff
+field: image, source: scan.tiff
+stored: image_pL9nR4wE.tiff
+
+field: neural_data (staged with .zarr)
+stored: neural_data_kM3nP2qR.zarr
 ```
 
 #### Token Suffix Specification
@@ -417,7 +512,7 @@ At 8 characters with 64 possible values per character: 64^8 = 281 trillion combi
 #### Rationale
 
 - Avoids collisions without requiring existence checks
-- Preserves original filename for human readability
+- Field name visible in storage for easier debugging/auditing
 - URL-safe for web-based access to cloud storage
 - Filesystem-safe across all supported platforms
 
@@ -432,33 +527,35 @@ Each insert stores a separate copy of the file, even if identical content was pr
 
 At insert time, the `object` attribute accepts:
 
-1. **File path** (string or `Path`): Path to an existing file
+1. **File path** (string or `Path`): Path to an existing file (extension extracted)
 2. **Folder path** (string or `Path`): Path to an existing directory
-3. **Stream object**: File-like object with `read()` method
-4. **Tuple of (name, stream)**: Stream with explicit filename
+3. **Tuple of (ext, stream)**: File-like object with explicit extension
 
 ```python
-# From file path
+# From file path - extension (.dat) extracted from source
 Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
     "raw_data": "/local/path/to/recording.dat"
 })
+# Stored as: raw_data_Ax7bQ2kM.dat
 
-# From folder path
+# From folder path - no extension
 Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
     "raw_data": "/local/path/to/data_folder/"
 })
+# Stored as: raw_data_pL9nR4wE/
 
-# From stream with explicit name
+# From stream with explicit extension
 with open("/local/path/data.bin", "rb") as f:
     Recording.insert1({
         "subject_id": 123,
         "session_id": 45,
-        "raw_data": ("custom_name.dat", f)
+        "raw_data": (".bin", f)
     })
+# Stored as: raw_data_kM3nP2qR.bin
 ```
 
 ### Insert Processing Steps
@@ -480,38 +577,79 @@ The file/folder is copied to storage **before** the database insert is attempted
 
 ### Staged Insert (Direct Write Mode)
 
-For large objects like Zarr arrays, copying from local storage is inefficient. **Staged insert** allows writing directly to the destination:
+For large objects like Zarr arrays, copying from local storage is inefficient. **Staged insert** allows writing directly to the destination.
+
+#### Why a Separate Method?
+
+Staged insert uses a dedicated `staged_insert1` method rather than co-opting `insert1` because:
+
+1. **Explicit over implicit** - Staged inserts have fundamentally different semantics (file creation happens during context, commit on exit). A separate method makes this explicit.
+2. **Backward compatibility** - `insert1` returns `None` and doesn't support context manager protocol. Changing this could break existing code.
+3. **Clear error handling** - The context manager semantics (success = commit, exception = rollback) are obvious with `staged_insert1`.
+4. **Type safety** - The staged context exposes `.store()` for object fields. A dedicated method can return a properly-typed `StagedInsert` object.
+
+**Staged inserts are limited to `insert1`** (one row at a time). Multi-row inserts are not supported for staged operations.
+
+#### Basic Usage
 
 ```python
-# Stage an object for direct writing
-with Recording.stage_object(
-    {"subject_id": 123, "session_id": 45},
-    "raw_data",
-    "my_array.zarr"
-) as staged:
-    # Write directly to object storage (no local copy)
-    import zarr
-    z = zarr.open(staged.store, mode='w', shape=(10000, 10000), dtype='f4')
+# Stage an insert with direct object storage writes
+with Recording.staged_insert1 as staged:
+    # Set primary key values
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # Create object storage directly using store()
+    # Extension is optional - .zarr is conventional for Zarr arrays
+    z = zarr.open(staged.store('raw_data', '.zarr'), mode='w', shape=(10000, 10000), dtype='f4')
     z[:] = compute_large_array()
+
+    # Assign the created object to the record
+    staged.rec['raw_data'] = z
 
 # On successful exit: metadata computed, record inserted
 # On exception: storage cleaned up, no record inserted
+# Stored as: raw_data_Ax7bQ2kM.zarr
 ```
 
-#### StagedObject Interface
+#### StagedInsert Interface
 
 ```python
-@dataclass
-class StagedObject:
-    """Handle for staged write operations."""
+class StagedInsert:
+    """Context manager for staged insert operations."""
 
-    path: str                              # Reserved storage path
-    full_path: str                         # Full URI (e.g., 's3://bucket/path')
-    fs: fsspec.AbstractFileSystem          # fsspec filesystem
-    store: fsspec.FSMap                    # FSMap for Zarr/xarray
+    rec: dict[str, Any]  # Record dict for setting attribute values
 
-    def open(self, subpath: str = "", mode: str = "wb") -> IO:
-        """Open a file within the staged object for writing."""
+    def store(self, field: str, ext: str = "") -> fsspec.FSMap:
+        """
+        Get an FSMap store for direct writes to an object field.
+
+        Args:
+            field: Name of the object attribute
+            ext: Optional extension (e.g., ".zarr", ".hdf5")
+
+        Returns:
+            fsspec.FSMap suitable for Zarr/xarray
+        """
+        ...
+
+    def open(self, field: str, ext: str = "", mode: str = "wb") -> IO:
+        """
+        Open a file for direct writes to an object field.
+
+        Args:
+            field: Name of the object attribute
+            ext: Optional extension (e.g., ".bin", ".dat")
+            mode: File mode (default: "wb")
+
+        Returns:
+            File-like object for writing
+        """
+        ...
+
+    @property
+    def fs(self) -> fsspec.AbstractFileSystem:
+        """Return fsspec filesystem for advanced operations."""
         ...
 ```
 
@@ -519,17 +657,21 @@ class StagedObject:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ 1. Reserve storage path with random token               │
+│ 1. Enter context: create StagedInsert with empty rec    │
 ├─────────────────────────────────────────────────────────┤
-│ 2. Return StagedObject handle to user                   │
+│ 2. User sets primary key values in staged.rec           │
 ├─────────────────────────────────────────────────────────┤
-│ 3. User writes data directly via fs/store               │
+│ 3. User calls store()/open() to get storage handles     │
+│    - Path reserved with random token on first call      │
+│    - User writes data directly via fsspec               │
 ├─────────────────────────────────────────────────────────┤
-│ 4. On context exit (success):                           │
+│ 4. User assigns object references to staged.rec         │
+├─────────────────────────────────────────────────────────┤
+│ 5. On context exit (success):                           │
 │    - Compute metadata (size, hash, item_count)          │
 │    - Execute database INSERT                            │
 ├─────────────────────────────────────────────────────────┤
-│ 5. On context exit (exception):                         │
+│ 6. On context exit (exception):                         │
 │    - Delete any written data                            │
 │    - Re-raise exception                                 │
 └─────────────────────────────────────────────────────────┘
@@ -542,13 +684,13 @@ import zarr
 import numpy as np
 
 # Create a large Zarr array directly in object storage
-with Recording.stage_object(
-    {"subject_id": 123, "session_id": 45},
-    "neural_data",
-    "spikes.zarr"
-) as staged:
-    # Create Zarr hierarchy
-    root = zarr.open(staged.store, mode='w')
+with Recording.staged_insert1 as staged:
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # Create Zarr hierarchy directly in object storage
+    # .zarr extension is optional but conventional
+    root = zarr.open(staged.store('neural_data', '.zarr'), mode='w')
     root.create_dataset('timestamps', data=np.arange(1000000))
     root.create_dataset('waveforms', shape=(1000000, 82), chunks=(10000, 82))
 
@@ -556,7 +698,31 @@ with Recording.stage_object(
     for i, chunk in enumerate(data_stream):
         root['waveforms'][i*10000:(i+1)*10000] = chunk
 
+    # Assign to record
+    staged.rec['neural_data'] = root
+
 # Record automatically inserted with computed metadata
+# Stored as: neural_data_kM3nP2qR.zarr
+```
+
+#### Multiple Object Fields
+
+```python
+with Recording.staged_insert1 as staged:
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # Write multiple object fields - extension optional
+    raw = zarr.open(staged.store('raw_data', '.zarr'), mode='w', shape=(1000, 1000))
+    raw[:] = raw_array
+
+    processed = zarr.open(staged.store('processed', '.zarr'), mode='w', shape=(100, 100))
+    processed[:] = processed_array
+
+    staged.rec['raw_data'] = raw
+    staged.rec['processed'] = processed
+
+# Stored as: raw_data_Ax7bQ2kM.zarr, processed_pL9nR4wE.zarr
 ```
 
 #### Comparison: Copy vs Staged Insert
@@ -567,7 +733,8 @@ with Recording.stage_object(
 | Efficiency | Copy overhead | No copy needed |
 | Use case | Small files, existing data | Large arrays, streaming data |
 | Cleanup on failure | Orphan possible | Cleaned up |
-| API | `insert1({..., "field": path})` | `stage_object()` context manager |
+| API | `insert1({..., "field": path})` | `staged_insert1` context manager |
+| Multi-row | Supported | Not supported (insert1 only) |
 
 ## Transaction Handling
 
@@ -639,9 +806,9 @@ file_ref = record["raw_data"]
 # Access metadata (no I/O)
 print(file_ref.path)           # Full storage path
 print(file_ref.size)           # File size in bytes
-print(file_ref.hash)           # Content hash
-print(file_ref.original_name)  # Original filename
-print(file_ref.is_dir)      # True if stored content is a folder
+print(file_ref.hash)           # Content hash (if computed) or None
+print(file_ref.ext)            # File extension (e.g., ".dat") or None
+print(file_ref.is_dir)         # True if stored content is a folder
 
 # Read content directly from storage backend
 content = file_ref.read()      # Returns bytes (files only)
@@ -743,11 +910,11 @@ class ObjectRef:
 
     path: str
     size: int
-    hash: str
-    original_name: str
+    hash: str | None           # content hash (if computed) or None
+    ext: str | None            # file extension (e.g., ".dat") or None
     is_dir: bool
     timestamp: datetime
-    mime_type: str | None      # files only
+    mime_type: str | None      # files only, derived from ext
     item_count: int | None     # folders only
     _backend: StorageBackend   # internal reference
 
@@ -778,6 +945,18 @@ class ObjectRef:
     # Common operations
     def download(self, destination: Path | str, subpath: str | None = None) -> Path: ...
     def exists(self, subpath: str | None = None) -> bool: ...
+
+    # Integrity verification
+    def verify(self) -> bool:
+        """
+        Verify object integrity.
+
+        For files: checks size matches, and hash if available.
+        For folders: validates manifest (all files exist with correct sizes).
+
+        Returns True if valid, raises IntegrityError with details if not.
+        """
+        ...
 ```
 
 #### fsspec Integration
@@ -824,10 +1003,27 @@ azure = ["adlfs"]
 | Store config | Per-attribute | Per-attribute | Per-pipeline |
 | Path control | DataJoint | User-managed | DataJoint |
 | DB column | binary(16) UUID | binary(16) UUID | JSON |
+| Hidden tables | Yes (external) | Yes (external) | **No** |
 | Backend | File/S3 only | File/S3 only | fsspec (any) |
 | Partitioning | Hash-based | User path | Configurable |
-| Metadata | External table | External table | Inline JSON |
+| Metadata storage | External table | External table | Inline JSON |
 | Deduplication | By content | By path | None |
+
+### No Hidden Tables
+
+A key architectural difference: the `object` type does **not** use hidden external tables.
+
+The legacy `attach@store` and `filepath@store` types store a UUID in the table column and maintain a separate hidden `~external_*` table containing:
+- File paths/keys
+- Checksums
+- Size information
+- Reference counts
+
+The `object` type eliminates this complexity by storing all metadata **inline** in the JSON column. This provides:
+- **Simpler schema** - no hidden tables to manage or migrate
+- **Self-contained records** - all information in one place
+- **Easier debugging** - metadata visible directly in queries
+- **No reference counting** - each record owns its object exclusively
 
 ### Legacy Type Deprecation
 

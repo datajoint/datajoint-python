@@ -76,6 +76,9 @@ together with DataJoint.
 NumPy arrays, dicts, lists, datetime objects, and nested structures. Compatible with
 MATLAB. See [custom types](customtype.md) for details.
 
+- `object`: managed [file and folder storage](object.md) with support for direct writes
+(Zarr, HDF5) and fsspec integration. Recommended for new pipelines.
+
 - `attach`: a [file attachment](attach.md) similar to email attachments facillitating
 sending/receiving an opaque data file to/from a DataJoint pipeline.
 

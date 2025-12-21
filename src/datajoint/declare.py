@@ -64,6 +64,7 @@ TYPE_PATTERN = {
         INTERNAL_ATTACH=r"attach$",
         EXTERNAL_ATTACH=r"attach@(?P<store>[a-z][\-\w]*)$",
         FILEPATH=r"filepath@(?P<store>[a-z][\-\w]*)$",
+        OBJECT=r"object$",  # managed object storage (files/folders)
         UUID=r"uuid$",
         ADAPTED=r"<.+>$",
     ).items()
@@ -76,6 +77,7 @@ SPECIAL_TYPES = {
     "EXTERNAL_ATTACH",
     "EXTERNAL_BLOB",
     "FILEPATH",
+    "OBJECT",
     "ADAPTED",
 } | set(TYPE_ALIASES)
 NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
@@ -464,6 +466,9 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         match["type"] = UUID_DATA_TYPE
     elif category == "INTERNAL_ATTACH":
         match["type"] = "LONGBLOB"
+    elif category == "OBJECT":
+        # Object type stores metadata as JSON - no foreign key to external table
+        match["type"] = "JSON"
     elif category in EXTERNAL_TYPES:
         if category == "FILEPATH" and not _support_filepath_types():
             raise DataJointError(
