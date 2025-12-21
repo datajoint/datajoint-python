@@ -77,6 +77,10 @@ sending/receiving an opaque data file to/from a DataJoint pipeline.
 - `filepath@store`: a [filepath](filepath.md) used to link non-DataJoint managed files
 into a DataJoint pipeline.
 
+- `<custom_type>`: a [custom attribute type](customtype.md) that defines bidirectional
+conversion between Python objects and database storage formats. Use this to store
+complex data types like graphs, domain-specific objects, or custom data structures.
+
 ## Numeric type aliases
 
 DataJoint provides convenient type aliases that map to standard MySQL numeric types.
