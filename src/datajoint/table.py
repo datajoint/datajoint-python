@@ -307,9 +307,7 @@ class Table(QueryExpression):
         # Extract primary key values from row
         primary_key = {k: row[k] for k in self.primary_key if k in row}
         if not primary_key:
-            raise DataJointError(
-                "Primary key values must be provided before object attributes for insert."
-            )
+            raise DataJointError("Primary key values must be provided before object attributes for insert.")
 
         # Determine input type and extract extension
         is_dir = False
@@ -337,8 +335,7 @@ class Table(QueryExpression):
                 size = source_path.stat().st_size
         else:
             raise DataJointError(
-                f"Invalid value type for object attribute {name}. "
-                "Expected file path, folder path, or (ext, stream) tuple."
+                f"Invalid value type for object attribute {name}. " "Expected file path, folder path, or (ext, stream) tuple."
             )
 
         # Get storage spec for path building
@@ -913,8 +910,7 @@ class Table(QueryExpression):
                 # Object type - upload to object storage and return JSON metadata
                 if row is None:
                     raise DataJointError(
-                        f"Object attribute {name} requires full row context for insert. "
-                        "This is an internal error."
+                        f"Object attribute {name} requires full row context for insert. " "This is an internal error."
                     )
                 value = self._process_object_value(name, value, row)
             elif attr.numeric:
@@ -960,7 +956,8 @@ class Table(QueryExpression):
             row_dict = dict(row)
             attributes = [
                 self.__make_placeholder(name, row[name], ignore_extra_fields, row=row_dict)
-                for name in self.heading if name in row
+                for name in self.heading
+                if name in row
             ]
         else:  # positional
             try:

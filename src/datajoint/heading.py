@@ -138,7 +138,8 @@ class Heading:
     @property
     def non_blobs(self):
         return [
-            k for k, v in self.attributes.items()
+            k
+            for k, v in self.attributes.items()
             if not (v.is_blob or v.is_attachment or v.is_filepath or v.is_object or v.json)
         ]
 
@@ -348,8 +349,7 @@ class Heading:
                 )
             ):
                 raise DataJointError(
-                    "Json, Blob, attachment, filepath, or object attributes "
-                    "are not allowed in the primary key"
+                    "Json, Blob, attachment, filepath, or object attributes " "are not allowed in the primary key"
                 )
 
             if attr["string"] and attr["default"] is not None and attr["default"] not in sql_literals:

@@ -59,7 +59,7 @@ def encode_pk_value(value: Any) -> str:
     # String handling
     s = str(value)
     # Check if path-safe (no special characters)
-    unsafe_chars = "/\\:*?\"<>|"
+    unsafe_chars = '/\\:*?"<>|'
     if any(c in s for c in unsafe_chars) or len(s) > 100:
         # URL-encode unsafe strings or truncate long ones
         if len(s) > 100:

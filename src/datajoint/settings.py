@@ -394,8 +394,7 @@ class Config(BaseSettings):
         supported_protocols = ("file", "s3", "gcs", "azure")
         if protocol not in supported_protocols:
             raise DataJointError(
-                f"Invalid object_storage.protocol: {protocol}. "
-                f'Supported protocols: {", ".join(supported_protocols)}'
+                f"Invalid object_storage.protocol: {protocol}. " f'Supported protocols: {", ".join(supported_protocols)}'
             )
 
         # Build spec dict
@@ -413,13 +412,15 @@ class Config(BaseSettings):
                 raise DataJointError("object_storage.endpoint and object_storage.bucket are required for S3")
             if not os_settings.access_key or not os_settings.secret_key:
                 raise DataJointError("object_storage.access_key and object_storage.secret_key are required for S3")
-            spec.update({
-                "endpoint": os_settings.endpoint,
-                "bucket": os_settings.bucket,
-                "access_key": os_settings.access_key,
-                "secret_key": os_settings.secret_key.get_secret_value() if os_settings.secret_key else None,
-                "secure": os_settings.secure,
-            })
+            spec.update(
+                {
+                    "endpoint": os_settings.endpoint,
+                    "bucket": os_settings.bucket,
+                    "access_key": os_settings.access_key,
+                    "secret_key": os_settings.secret_key.get_secret_value() if os_settings.secret_key else None,
+                    "secure": os_settings.secure,
+                }
+            )
         elif protocol == "gcs":
             if not os_settings.bucket:
                 raise DataJointError("object_storage.bucket is required for GCS")
