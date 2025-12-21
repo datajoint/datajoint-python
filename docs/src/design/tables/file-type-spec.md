@@ -248,6 +248,19 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 {
     "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
     "size": 12345,
+    "hash": null,
+    "ext": ".dat",
+    "is_dir": false,
+    "timestamp": "2025-01-15T10:30:00Z",
+    "mime_type": "application/octet-stream"
+}
+```
+
+**File with optional hash:**
+```json
+{
+    "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
+    "size": 12345,
     "hash": "sha256:abcdef1234...",
     "ext": ".dat",
     "is_dir": false,
@@ -261,7 +274,7 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 {
     "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_pL9nR4wE",
     "size": 567890,
-    "hash": "sha256:fedcba9876...",
+    "hash": null,
     "ext": null,
     "is_dir": true,
     "timestamp": "2025-01-15T10:30:00Z",
@@ -275,12 +288,58 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 |-------|------|----------|-------------|
 | `path` | string | Yes | Full path/key within storage backend (includes token) |
 | `size` | integer | Yes | Total size in bytes (sum for folders) |
-| `hash` | string | Yes | Content hash with algorithm prefix |
+| `hash` | string/null | Yes | Content hash with algorithm prefix, or null (default) |
 | `ext` | string/null | Yes | File extension (e.g., `.dat`, `.zarr`) or null |
 | `is_dir` | boolean | Yes | True if stored content is a directory |
 | `timestamp` | string | Yes | ISO 8601 upload timestamp |
 | `mime_type` | string | No | MIME type (files only, auto-detected from extension) |
 | `item_count` | integer | No | Number of files (folders only) |
+
+### Content Hashing
+
+By default, **no content hash is computed** to avoid performance overhead for large objects. Storage backend integrity is trusted.
+
+**Optional hashing** can be requested per-insert:
+
+```python
+# Default - no hash (fast)
+Recording.insert1({..., "raw_data": "/path/to/large.dat"})
+
+# Request hash computation
+Recording.insert1({..., "raw_data": "/path/to/important.dat"}, hash="sha256")
+```
+
+Supported hash algorithms: `sha256`, `md5`, `xxhash` (xxh3, faster for large files)
+
+**Staged inserts never compute hashes** - data is written directly to storage without a local copy to hash.
+
+### Folder Manifests
+
+For folders (directories), a **manifest file** is created alongside the folder to enable integrity verification without computing content hashes:
+
+```
+raw_data_pL9nR4wE/
+raw_data_pL9nR4wE.manifest.json
+```
+
+**Manifest content:**
+```json
+{
+    "files": [
+        {"path": "file1.dat", "size": 1234},
+        {"path": "subdir/file2.dat", "size": 5678},
+        {"path": "subdir/file3.dat", "size": 91011}
+    ],
+    "total_size": 567890,
+    "item_count": 42,
+    "created": "2025-01-15T10:30:00Z"
+}
+```
+
+The manifest enables:
+- Quick verification that all expected files exist
+- Size validation without reading file contents
+- Detection of missing or extra files
 
 ### Filename Convention
 
@@ -736,7 +795,7 @@ file_ref = record["raw_data"]
 # Access metadata (no I/O)
 print(file_ref.path)           # Full storage path
 print(file_ref.size)           # File size in bytes
-print(file_ref.hash)           # Content hash
+print(file_ref.hash)           # Content hash (if computed) or None
 print(file_ref.ext)            # File extension (e.g., ".dat") or None
 print(file_ref.is_dir)         # True if stored content is a folder
 
@@ -840,7 +899,7 @@ class ObjectRef:
 
     path: str
     size: int
-    hash: str
+    hash: str | None           # content hash (if computed) or None
     ext: str | None            # file extension (e.g., ".dat") or None
     is_dir: bool
     timestamp: datetime
@@ -875,6 +934,18 @@ class ObjectRef:
     # Common operations
     def download(self, destination: Path | str, subpath: str | None = None) -> Path: ...
     def exists(self, subpath: str | None = None) -> bool: ...
+
+    # Integrity verification
+    def verify(self) -> bool:
+        """
+        Verify object integrity.
+
+        For files: checks size matches, and hash if available.
+        For folders: validates manifest (all files exist with correct sizes).
+
+        Returns True if valid, raises IntegrityError with details if not.
+        """
+        ...
 ```
 
 #### fsspec Integration
