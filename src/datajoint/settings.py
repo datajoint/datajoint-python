@@ -275,13 +275,19 @@ class Config(BaseSettings):
 
         # Validate protocol
         protocol = spec.get("protocol", "").lower()
-        if protocol not in ("file", "s3"):
-            raise DataJointError(f'Missing or invalid protocol in config.stores["{store}"]')
+        supported_protocols = ("file", "s3", "gcs", "azure")
+        if protocol not in supported_protocols:
+            raise DataJointError(
+                f'Missing or invalid protocol in config.stores["{store}"]. '
+                f'Supported protocols: {", ".join(supported_protocols)}'
+            )
 
         # Define required and allowed keys by protocol
         required_keys: dict[str, tuple[str, ...]] = {
             "file": ("protocol", "location"),
             "s3": ("protocol", "endpoint", "bucket", "access_key", "secret_key", "location"),
+            "gcs": ("protocol", "bucket", "location"),
+            "azure": ("protocol", "container", "location"),
         }
         allowed_keys: dict[str, tuple[str, ...]] = {
             "file": ("protocol", "location", "subfolding", "stage"),
@@ -296,6 +302,25 @@ class Config(BaseSettings):
                 "subfolding",
                 "stage",
                 "proxy_server",
+            ),
+            "gcs": (
+                "protocol",
+                "bucket",
+                "location",
+                "token",
+                "project",
+                "subfolding",
+                "stage",
+            ),
+            "azure": (
+                "protocol",
+                "container",
+                "location",
+                "account_name",
+                "account_key",
+                "connection_string",
+                "subfolding",
+                "stage",
             ),
         }
 
