@@ -5,7 +5,12 @@ This module provides a unified interface for storage operations across different
 backends (local filesystem, S3, GCS, Azure, etc.) using the fsspec library.
 """
 
+import json
 import logging
+import mimetypes
+import secrets
+import urllib.parse
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -14,6 +19,127 @@ import fsspec
 from . import errors
 
 logger = logging.getLogger(__name__.split(".")[0])
+
+# Characters safe for use in filenames and URLs
+TOKEN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+
+def generate_token(length: int = 8) -> str:
+    """
+    Generate a random token for filename collision avoidance.
+
+    Args:
+        length: Token length (4-16 characters, default 8)
+
+    Returns:
+        Random URL-safe string
+    """
+    length = max(4, min(16, length))
+    return "".join(secrets.choice(TOKEN_ALPHABET) for _ in range(length))
+
+
+def encode_pk_value(value: Any) -> str:
+    """
+    Encode a primary key value for use in storage paths.
+
+    Args:
+        value: Primary key value (int, str, date, etc.)
+
+    Returns:
+        Path-safe string representation
+    """
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, datetime):
+        # Use ISO format with safe separators
+        return value.strftime("%Y-%m-%dT%H-%M-%S")
+    if hasattr(value, "isoformat"):
+        # Handle date objects
+        return value.isoformat()
+
+    # String handling
+    s = str(value)
+    # Check if path-safe (no special characters)
+    unsafe_chars = "/\\:*?\"<>|"
+    if any(c in s for c in unsafe_chars) or len(s) > 100:
+        # URL-encode unsafe strings or truncate long ones
+        if len(s) > 100:
+            # Truncate and add hash suffix for uniqueness
+            import hashlib
+
+            hash_suffix = hashlib.md5(s.encode()).hexdigest()[:8]
+            s = s[:50] + "_" + hash_suffix
+        return urllib.parse.quote(s, safe="")
+    return s
+
+
+def build_object_path(
+    schema: str,
+    table: str,
+    field: str,
+    primary_key: dict[str, Any],
+    ext: str | None,
+    partition_pattern: str | None = None,
+    token_length: int = 8,
+) -> tuple[str, str]:
+    """
+    Build the storage path for an object attribute.
+
+    Args:
+        schema: Schema name
+        table: Table name
+        field: Field/attribute name
+        primary_key: Dict of primary key attribute names to values
+        ext: File extension (e.g., ".dat") or None
+        partition_pattern: Optional partition pattern with {attr} placeholders
+        token_length: Length of random token suffix
+
+    Returns:
+        Tuple of (relative_path, token)
+    """
+    token = generate_token(token_length)
+
+    # Build filename: field_token.ext
+    filename = f"{field}_{token}"
+    if ext:
+        if not ext.startswith("."):
+            ext = "." + ext
+        filename += ext
+
+    # Build primary key path components
+    pk_parts = []
+    partition_attrs = set()
+
+    # Extract partition attributes if pattern specified
+    if partition_pattern:
+        import re
+
+        partition_attrs = set(re.findall(r"\{(\w+)\}", partition_pattern))
+
+    # Build partition prefix (attributes specified in partition pattern)
+    partition_parts = []
+    for attr in partition_attrs:
+        if attr in primary_key:
+            partition_parts.append(f"{attr}={encode_pk_value(primary_key[attr])}")
+
+    # Build remaining PK path (attributes not in partition)
+    for attr, value in primary_key.items():
+        if attr not in partition_attrs:
+            pk_parts.append(f"{attr}={encode_pk_value(value)}")
+
+    # Construct full path
+    # Pattern: {partition_attrs}/{schema}/{table}/objects/{remaining_pk}/{filename}
+    parts = []
+    if partition_parts:
+        parts.extend(partition_parts)
+    parts.append(schema)
+    parts.append(table)
+    parts.append("objects")
+    if pk_parts:
+        parts.extend(pk_parts)
+    parts.append(filename)
+
+    return "/".join(parts), token
 
 
 class StorageBackend:
@@ -274,6 +400,104 @@ class StorageBackend:
         full_path = self._full_path(remote_path)
         return self.fs.open(full_path, mode)
 
+    def put_folder(self, local_path: str | Path, remote_path: str | PurePosixPath) -> dict:
+        """
+        Upload a folder to storage.
+
+        Args:
+            local_path: Path to local folder
+            remote_path: Destination path in storage
+
+        Returns:
+            Manifest dict with file list, total_size, and item_count
+        """
+        local_path = Path(local_path)
+        if not local_path.is_dir():
+            raise errors.DataJointError(f"Not a directory: {local_path}")
+
+        full_path = self._full_path(remote_path)
+        logger.debug(f"put_folder: {local_path} -> {self.protocol}:{full_path}")
+
+        # Collect file info for manifest
+        files = []
+        total_size = 0
+
+        for root, dirs, filenames in local_path.walk():
+            for filename in filenames:
+                file_path = root / filename
+                rel_path = file_path.relative_to(local_path).as_posix()
+                file_size = file_path.stat().st_size
+                files.append({"path": rel_path, "size": file_size})
+                total_size += file_size
+
+        # Upload folder contents
+        if self.protocol == "file":
+            import shutil
+
+            dest = Path(full_path)
+            dest.mkdir(parents=True, exist_ok=True)
+            for item in local_path.iterdir():
+                if item.is_file():
+                    shutil.copy2(item, dest / item.name)
+                else:
+                    shutil.copytree(item, dest / item.name, dirs_exist_ok=True)
+        else:
+            self.fs.put(str(local_path), full_path, recursive=True)
+
+        # Build manifest
+        manifest = {
+            "files": files,
+            "total_size": total_size,
+            "item_count": len(files),
+            "created": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Write manifest alongside folder
+        manifest_path = f"{remote_path}.manifest.json"
+        self.put_buffer(json.dumps(manifest, indent=2).encode(), manifest_path)
+
+        return manifest
+
+    def remove_folder(self, remote_path: str | PurePosixPath):
+        """
+        Remove a folder and its manifest from storage.
+
+        Args:
+            remote_path: Path to folder in storage
+        """
+        full_path = self._full_path(remote_path)
+        logger.debug(f"remove_folder: {self.protocol}:{full_path}")
+
+        try:
+            if self.protocol == "file":
+                import shutil
+
+                shutil.rmtree(full_path, ignore_errors=True)
+            else:
+                self.fs.rm(full_path, recursive=True)
+        except FileNotFoundError:
+            pass
+
+        # Also remove manifest
+        manifest_path = f"{remote_path}.manifest.json"
+        self.remove(manifest_path)
+
+    def get_fsmap(self, remote_path: str | PurePosixPath) -> fsspec.FSMap:
+        """
+        Get an FSMap for a path (useful for Zarr/xarray).
+
+        Args:
+            remote_path: Path in storage
+
+        Returns:
+            fsspec.FSMap instance
+        """
+        full_path = self._full_path(remote_path)
+        return fsspec.FSMap(full_path, self.fs)
+
+
+STORE_METADATA_FILENAME = "datajoint_store.json"
+
 
 def get_storage_backend(spec: dict[str, Any]) -> StorageBackend:
     """
@@ -286,3 +510,69 @@ def get_storage_backend(spec: dict[str, Any]) -> StorageBackend:
         StorageBackend instance
     """
     return StorageBackend(spec)
+
+
+def verify_or_create_store_metadata(backend: StorageBackend, spec: dict[str, Any]) -> dict:
+    """
+    Verify or create the store metadata file at the storage root.
+
+    On first use, creates the datajoint_store.json file with project info.
+    On subsequent uses, verifies the project_name matches.
+
+    Args:
+        backend: StorageBackend instance
+        spec: Object storage configuration spec
+
+    Returns:
+        Store metadata dict
+
+    Raises:
+        DataJointError: If project_name mismatch detected
+    """
+    from .version import __version__ as dj_version
+
+    project_name = spec.get("project_name")
+    location = spec.get("location", "")
+
+    # Metadata file path at storage root
+    metadata_path = f"{location}/{STORE_METADATA_FILENAME}" if location else STORE_METADATA_FILENAME
+
+    try:
+        # Try to read existing metadata
+        if backend.exists(metadata_path):
+            metadata_content = backend.get_buffer(metadata_path)
+            metadata = json.loads(metadata_content)
+
+            # Verify project_name matches
+            store_project = metadata.get("project_name")
+            if store_project and store_project != project_name:
+                raise errors.DataJointError(
+                    f"Object store project name mismatch.\n"
+                    f'  Client configured: "{project_name}"\n'
+                    f'  Store metadata: "{store_project}"\n'
+                    f"Ensure all clients use the same object_storage.project_name setting."
+                )
+
+            return metadata
+        else:
+            # Create new metadata
+            metadata = {
+                "project_name": project_name,
+                "created": datetime.now(timezone.utc).isoformat(),
+                "format_version": "1.0",
+                "datajoint_version": dj_version,
+            }
+
+            # Optional database info - not enforced, just informational
+            # These would need to be passed in from the connection context
+            # For now, omit them
+
+            backend.put_buffer(json.dumps(metadata, indent=2).encode(), metadata_path)
+            return metadata
+
+    except errors.DataJointError:
+        raise
+    except Exception as e:
+        # Log warning but don't fail - metadata is informational
+        logger.warning(f"Could not verify/create store metadata: {e}")
+        return {"project_name": project_name}

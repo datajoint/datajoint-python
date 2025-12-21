@@ -52,6 +52,7 @@ __all__ = [
     "key_hash",
     "logger",
     "cli",
+    "ObjectRef",
 ]
 
 from . import errors
@@ -66,6 +67,7 @@ from .expression import AndList, Not, Top, U
 from .fetch import key
 from .hash import key_hash
 from .logging import logger
+from .objectref import ObjectRef
 from .schemas import Schema, VirtualModule, list_schemas
 from .settings import config
 from .table import FreeTable, Table
