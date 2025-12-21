@@ -10,7 +10,7 @@ import pandas
 
 from datajoint.condition import Top
 
-from . import blob, hash
+from . import hash
 from .errors import DataJointError
 from .settings import config
 from .utils import safe_write

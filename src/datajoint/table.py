@@ -12,7 +12,6 @@ from pathlib import Path
 import numpy as np
 import pandas
 
-from . import blob
 from .condition import make_condition
 from .declare import alter, declare
 from .errors import (
