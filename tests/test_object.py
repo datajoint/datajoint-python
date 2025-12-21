@@ -132,14 +132,16 @@ class TestObjectRef:
 
     def test_from_json_string(self):
         """Test creating ObjectRef from JSON string."""
-        json_str = json.dumps({
-            "path": "schema/Table/objects/id=1/data_abc123.dat",
-            "size": 1024,
-            "hash": None,
-            "ext": ".dat",
-            "is_dir": False,
-            "timestamp": "2025-01-15T10:30:00+00:00",
-        })
+        json_str = json.dumps(
+            {
+                "path": "schema/Table/objects/id=1/data_abc123.dat",
+                "size": 1024,
+                "hash": None,
+                "ext": ".dat",
+                "is_dir": False,
+                "timestamp": "2025-01-15T10:30:00+00:00",
+            }
+        )
         obj = ObjectRef.from_json(json_str)
         assert obj.path == "schema/Table/objects/id=1/data_abc123.dat"
         assert obj.size == 1024
@@ -581,11 +583,13 @@ class TestObjectMultiple:
         processed_file = Path(source_folder, "processed.dat")
         processed_file.write_bytes(os.urandom(200))
 
-        table.insert1({
-            "record_id": 1,
-            "raw_data": str(raw_file),
-            "processed": str(processed_file),
-        })
+        table.insert1(
+            {
+                "record_id": 1,
+                "raw_data": str(raw_file),
+                "processed": str(processed_file),
+            }
+        )
 
         record = table.fetch1()
         raw_obj = record["raw_data"]
@@ -609,13 +613,15 @@ class TestObjectWithOtherAttributes:
         test_file = Path(source_folder, "data.bin")
         test_file.write_bytes(os.urandom(64))
 
-        table.insert1({
-            "subject_id": 1,
-            "session_id": 1,
-            "name": "Test Session",
-            "data_file": str(test_file),
-            "notes": "Some notes here",
-        })
+        table.insert1(
+            {
+                "subject_id": 1,
+                "session_id": 1,
+                "name": "Test Session",
+                "data_file": str(test_file),
+                "notes": "Some notes here",
+            }
+        )
 
         record = table.fetch1()
         assert record["name"] == "Test Session"
