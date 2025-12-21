@@ -7,11 +7,10 @@ access and direct fsspec-based file operations.
 """
 
 import json
-import mimetypes
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import IO, Any, Iterator
+from typing import IO, Iterator
 
 import fsspec
 
@@ -345,7 +344,7 @@ class ObjectRef:
                     errors.append(f"Size mismatch for {file_info['path']}: expected {expected_size}, got {actual_size}")
 
         if errors:
-            raise IntegrityError(f"Folder verification failed:\n" + "\n".join(errors))
+            raise IntegrityError("Folder verification failed:\n" + "\n".join(errors))
 
         return True
 

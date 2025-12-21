@@ -7,7 +7,6 @@ backends (local filesystem, S3, GCS, Azure, etc.) using the fsspec library.
 
 import json
 import logging
-import mimetypes
 import secrets
 import urllib.parse
 from datetime import datetime, timezone

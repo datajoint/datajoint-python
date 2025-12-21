@@ -9,14 +9,13 @@ import json
 import mimetypes
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import IO, Any
 
 import fsspec
 
 from .errors import DataJointError
 from .settings import config
-from .storage import StorageBackend, build_object_path, generate_token
+from .storage import StorageBackend, build_object_path
 
 
 class StagedInsert:
