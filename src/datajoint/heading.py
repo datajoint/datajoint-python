@@ -46,6 +46,7 @@ class _MissingType(AttributeType):
             "Register it with @dj.register_type or include it in the schema context."
         )
 
+
 logger = logging.getLogger(__name__.split(".")[0])
 
 default_attribute_properties = dict(  # these default values are set in computed attributes
@@ -322,9 +323,7 @@ class Heading:
                 else:
                     attr.update(type=attr["adapter"].dtype)
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):
-                        raise DataJointError(
-                            f"Invalid dtype '{attr['type']}' in attribute type <{adapter_name}>."
-                        )
+                        raise DataJointError(f"Invalid dtype '{attr['type']}' in attribute type <{adapter_name}>.")
                     special = not any(TYPE_PATTERN[c].match(attr["type"]) for c in NATIVE_TYPES)
 
             if special:

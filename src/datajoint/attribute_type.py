@@ -232,8 +232,7 @@ def register_type(cls: type[AttributeType]) -> type[AttributeType]:
         existing = _type_registry[name]
         if type(existing) is not cls:
             raise DataJointError(
-                f"Type <{name}> is already registered by "
-                f"{type(existing).__module__}.{type(existing).__name__}"
+                f"Type <{name}> is already registered by " f"{type(existing).__module__}.{type(existing).__name__}"
             )
         # Same class registered twice - idempotent, no error
         return cls
@@ -290,8 +289,7 @@ def get_type(name: str) -> AttributeType:
         return _type_registry[name]
 
     raise DataJointError(
-        f"Unknown attribute type: <{name}>. "
-        f"Ensure the type is registered via @dj.register_type or installed as a package."
+        f"Unknown attribute type: <{name}>. " f"Ensure the type is registered via @dj.register_type or installed as a package."
     )
 
 

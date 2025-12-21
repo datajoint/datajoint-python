@@ -83,8 +83,7 @@ class AttributeAdapter(AttributeType):
         attr_type = self.attribute_type
         if attr_type is None:
             raise NotImplementedError(
-                f"{self.__class__.__name__} must define 'attribute_type' "
-                "(or migrate to AttributeType with 'dtype')"
+                f"{self.__class__.__name__} must define 'attribute_type' " "(or migrate to AttributeType with 'dtype')"
             )
         return attr_type
 
@@ -109,9 +108,7 @@ class AttributeAdapter(AttributeType):
         Returns:
             Value to store in the database.
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement put() or migrate to encode()"
-        )
+        raise NotImplementedError(f"{self.__class__.__name__} must implement put() or migrate to encode()")
 
     def get(self, value: Any) -> Any:
         """
@@ -126,9 +123,7 @@ class AttributeAdapter(AttributeType):
         Returns:
             Object of the adapted type.
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement get() or migrate to decode()"
-        )
+        raise NotImplementedError(f"{self.__class__.__name__} must implement get() or migrate to decode()")
 
 
 def get_adapter(context: dict | None, adapter_name: str) -> AttributeType:
@@ -158,8 +153,7 @@ def get_adapter(context: dict | None, adapter_name: str) -> AttributeType:
     # Fall back to context-based lookup (legacy system)
     if context is None:
         raise DataJointError(
-            f"Attribute type <{adapter_name}> is not registered. "
-            "Use @dj.register_type to register custom types."
+            f"Attribute type <{adapter_name}> is not registered. " "Use @dj.register_type to register custom types."
         )
 
     try:
@@ -184,8 +178,6 @@ def get_adapter(context: dict | None, adapter_name: str) -> AttributeType:
     # Validate the dtype/attribute_type
     dtype = adapter.dtype
     if not isinstance(dtype, str) or not re.match(r"^\w", dtype):
-        raise DataJointError(
-            f"Invalid dtype '{dtype}' in attribute type <{adapter_name}>"
-        )
+        raise DataJointError(f"Invalid dtype '{dtype}' in attribute type <{adapter_name}>")
 
     return adapter
