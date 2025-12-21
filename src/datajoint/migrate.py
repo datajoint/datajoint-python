@@ -32,6 +32,8 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
     1. Have a MySQL blob type (tinyblob, blob, mediumblob, longblob)
     2. Do NOT already have an adapter/type specified in their comment
 
+    All blob size variants are included in the analysis.
+
     Args:
         schema: The DataJoint schema to analyze.
 
@@ -39,7 +41,7 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
         List of dicts with keys:
             - table_name: Full table name (database.table)
             - column_name: Name of the blob column
-            - column_type: MySQL column type
+            - column_type: MySQL column type (tinyblob, blob, mediumblob, longblob)
             - current_comment: Current column comment
             - needs_migration: True if column should be migrated
 
@@ -49,7 +51,7 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
         >>> columns = dj.migrate.analyze_blob_columns(schema)
         >>> for col in columns:
         ...     if col['needs_migration']:
-        ...         print(f"{col['table_name']}.{col['column_name']}")
+        ...         print(f"{col['table_name']}.{col['column_name']} ({col['column_type']})")
     """
     results = []
 

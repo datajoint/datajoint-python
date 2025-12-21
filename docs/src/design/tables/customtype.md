@@ -556,13 +556,15 @@ print(f"Migrated {result['migrated']} columns")
 The migration updates MySQL column comments to include the type declaration.
 This is a **metadata-only** change - the actual blob data format is unchanged.
 
+All blob type variants are handled: `tinyblob`, `blob`, `mediumblob`, `longblob`.
+
 Before migration:
-- Column: `longblob`
+- Column: `longblob` (or `blob`, `mediumblob`, etc.)
 - Comment: `user comment`
 - Behavior: Auto-serialization (implicit)
 
 After migration:
-- Column: `longblob`
+- Column: `longblob` (unchanged)
 - Comment: `:<djblob>:user comment`
 - Behavior: Explicit serialization via `<djblob>`
 
