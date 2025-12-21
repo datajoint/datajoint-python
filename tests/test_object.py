@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 import datajoint as dj
-from datajoint.objectref import ObjectRef, IntegrityError
+from datajoint.objectref import ObjectRef
 from datajoint.storage import build_object_path, generate_token, encode_pk_value
 
 from .schema_object import ObjectFile, ObjectFolder, ObjectMultiple, ObjectWithOther
