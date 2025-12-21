@@ -137,7 +137,10 @@ class Heading:
 
     @property
     def non_blobs(self):
-        return [k for k, v in self.attributes.items() if not (v.is_blob or v.is_attachment or v.is_filepath or v.is_object or v.json)]
+        return [
+            k for k, v in self.attributes.items()
+            if not (v.is_blob or v.is_attachment or v.is_filepath or v.is_object or v.json)
+        ]
 
     @property
     def new_attributes(self):
@@ -344,7 +347,10 @@ class Heading:
                     attr["json"],
                 )
             ):
-                raise DataJointError("Json, Blob, attachment, filepath, or object attributes are not allowed in the primary key")
+                raise DataJointError(
+                    "Json, Blob, attachment, filepath, or object attributes "
+                    "are not allowed in the primary key"
+                )
 
             if attr["string"] and attr["default"] is not None and attr["default"] not in sql_literals:
                 attr["default"] = '"%s"' % attr["default"]

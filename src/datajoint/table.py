@@ -959,7 +959,8 @@ class Table(QueryExpression):
             check_fields(row)
             row_dict = dict(row)
             attributes = [
-                self.__make_placeholder(name, row[name], ignore_extra_fields, row=row_dict) for name in self.heading if name in row
+                self.__make_placeholder(name, row[name], ignore_extra_fields, row=row_dict)
+                for name in self.heading if name in row
             ]
         else:  # positional
             try:
@@ -974,7 +975,8 @@ class Table(QueryExpression):
             else:
                 row_dict = dict(zip(self.heading.names, row))
                 attributes = [
-                    self.__make_placeholder(name, value, ignore_extra_fields, row=row_dict) for name, value in zip(self.heading, row)
+                    self.__make_placeholder(name, value, ignore_extra_fields, row=row_dict)
+                    for name, value in zip(self.heading, row)
                 ]
         if ignore_extra_fields:
             attributes = [a for a in attributes if a is not None]
