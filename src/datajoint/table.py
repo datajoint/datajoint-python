@@ -742,9 +742,8 @@ class Table(QueryExpression):
                         raise DataJointError("badly formed UUID value {v} for attribute `{n}`".format(v=value, n=name))
                 value = value.bytes
             elif attr.is_blob:
-                # Skip blob.pack if adapter already handles serialization
-                if not (attr.adapter and getattr(attr.adapter, "serializes", False)):
-                    value = blob.pack(value)
+                # Adapters (like <djblob>) handle serialization in encode()
+                # Without adapter, blob columns store raw bytes (no serialization)
                 if attr.is_external:
                     value = self.external[attr.store].put(value).bytes
             elif attr.is_attachment:

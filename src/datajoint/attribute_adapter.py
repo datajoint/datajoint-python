@@ -15,6 +15,9 @@ from typing import Any
 from .attribute_type import AttributeType, get_type, is_type_registered
 from .errors import DataJointError
 
+# Pattern to detect blob types for internal pack/unpack
+_BLOB_PATTERN = re.compile(r"^(tiny|small|medium|long|)blob", re.I)
+
 
 class AttributeAdapter(AttributeType):
     """
@@ -87,12 +90,37 @@ class AttributeAdapter(AttributeType):
             )
         return attr_type
 
+    def _is_blob_dtype(self) -> bool:
+        """Check if dtype is a blob type requiring pack/unpack."""
+        return bool(_BLOB_PATTERN.match(self.dtype))
+
     def encode(self, value: Any, *, key: dict | None = None) -> Any:
-        """Delegate to legacy put() method."""
-        return self.put(value)
+        """
+        Delegate to legacy put() method, with blob packing if needed.
+
+        Legacy adapters expect blob.pack to be called after put() when
+        the dtype is a blob type. This wrapper handles that automatically.
+        """
+        result = self.put(value)
+        # Legacy adapters expect blob.pack after put() for blob dtypes
+        if self._is_blob_dtype():
+            from . import blob
+
+            result = blob.pack(result)
+        return result
 
     def decode(self, stored: Any, *, key: dict | None = None) -> Any:
-        """Delegate to legacy get() method."""
+        """
+        Delegate to legacy get() method, with blob unpacking if needed.
+
+        Legacy adapters expect blob.unpack to be called before get() when
+        the dtype is a blob type. This wrapper handles that automatically.
+        """
+        # Legacy adapters expect blob.unpack before get() for blob dtypes
+        if self._is_blob_dtype():
+            from . import blob
+
+            stored = blob.unpack(stored)
         return self.get(stored)
 
     def put(self, obj: Any) -> Any:

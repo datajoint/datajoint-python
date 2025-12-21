@@ -153,10 +153,6 @@ class AttributeType(ABC):
         """
         ...
 
-    # Class attribute: If True, encode() produces final binary data (no blob.pack needed)
-    # Override in subclasses that handle their own serialization
-    serializes: bool = False
-
     def validate(self, value: Any) -> None:
         """
         Validate a value before encoding.
@@ -440,19 +436,19 @@ class DJBlobType(AttributeType):
             definition = '''
             data_id : int
             ---
-            results : <djblob>      # Explicit DataJoint serialization
+            results : <djblob>      # Serialized Python objects
             raw_bytes : longblob    # Raw bytes (no serialization)
             '''
 
     Note:
-        For backward compatibility, ``longblob`` columns without an explicit type
-        still use automatic serialization. Use ``<djblob>`` to be explicit about
-        serialization behavior.
+        Plain ``longblob`` columns store and return raw bytes without serialization.
+        Use ``<djblob>`` when you need automatic serialization of Python objects.
+        Existing schemas using implicit blob serialization should migrate to ``<djblob>``
+        using ``dj.migrate.migrate_blob_columns()``.
     """
 
     type_name = "djblob"
     dtype = "longblob"
-    serializes = True  # This type handles its own serialization
 
     def encode(self, value: Any, *, key: dict | None = None) -> bytes:
         """
@@ -508,7 +504,6 @@ class DJBlobExternalType(AttributeType):
     # It's used internally when blob@store syntax is detected
     type_name = "djblob_external"
     dtype = "blob@store"  # Placeholder - actual store is determined at declaration time
-    serializes = True  # This type handles its own serialization
 
     def encode(self, value: Any, *, key: dict | None = None) -> bytes:
         """Serialize a Python object to DataJoint's blob format."""

@@ -359,7 +359,6 @@ class TestDJBlobType:
         blob_type = get_type("djblob")
         assert blob_type.type_name == "djblob"
         assert blob_type.dtype == "longblob"
-        assert blob_type.serializes is True
 
     def test_djblob_encode_decode_roundtrip(self):
         """Test that encode/decode is a proper roundtrip."""
@@ -400,16 +399,21 @@ class TestDJBlobType:
         types = list_types()
         assert "djblob" in types
 
-    def test_serializes_flag_prevents_double_pack(self):
-        """Test that serializes=True prevents blob.pack being called twice.
+    def test_djblob_handles_serialization(self):
+        """Test that DJBlobType handles serialization internally.
 
-        This is a unit test for the flag itself. Integration test with tables
-        is in test_blob.py or test_adapted_attributes.py.
+        With the new design:
+        - Plain longblob columns store/return raw bytes (no serialization)
+        - <djblob> handles pack/unpack in encode/decode
+        - Legacy AttributeAdapter handles pack/unpack internally for backward compat
         """
         blob_type = get_type("djblob")
-        assert blob_type.serializes is True
 
-        # Legacy adapters should not have serializes=True
-        # (they rely on blob.pack being called after encode)
-        # AttributeType base class defaults to False
-        assert AttributeType.serializes is False
+        # DJBlobType.encode() should produce packed bytes
+        data = {"key": "value"}
+        encoded = blob_type.encode(data)
+        assert isinstance(encoded, bytes)
+
+        # DJBlobType.decode() should unpack back to original
+        decoded = blob_type.decode(encoded)
+        assert decoded == data

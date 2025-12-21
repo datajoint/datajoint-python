@@ -498,22 +498,42 @@ class ProcessedData(dj.Manual):
     definition = """
     data_id : int
     ---
-    results : <djblob>      # Explicit serialization
-    raw_bytes : longblob    # Backward-compatible (auto-serialized)
+    results : <djblob>      # Serialized Python objects
+    raw_bytes : longblob    # Raw bytes (no serialization)
     """
 ```
 
 #### When to Use `<djblob>`
 
-- **New tables**: Prefer `<djblob>` for clarity and future-proofing
-- **Custom types**: Use `<djblob>` when your type chains to blob storage
-- **Migration**: Existing `longblob` columns can be migrated to `<djblob>`
+- **Serialized data**: When storing Python objects (dicts, arrays, etc.)
+- **New tables**: Prefer `<djblob>` for automatic serialization
+- **Migration**: Existing schemas with implicit serialization must migrate
 
-#### Backward Compatibility
+#### Raw Blob Behavior
 
-For backward compatibility, `longblob` columns without an explicit type
-still receive automatic serialization. The behavior is identical to `<djblob>`,
-but using `<djblob>` makes the serialization explicit in your code.
+Plain `longblob` (and other blob variants) columns now store and return
+**raw bytes** without automatic serialization:
+
+```python
+@schema
+class RawData(dj.Manual):
+    definition = """
+    id : int
+    ---
+    raw_bytes : longblob    # Stores/returns raw bytes
+    serialized : <djblob>   # Stores Python objects with serialization
+    """
+
+# Raw bytes - no serialization
+RawData.insert1({"id": 1, "raw_bytes": b"raw binary data", "serialized": {"key": "value"}})
+
+row = (RawData & "id=1").fetch1()
+row["raw_bytes"]    # Returns: b"raw binary data"
+row["serialized"]   # Returns: {"key": "value"}
+```
+
+**Important**: Existing schemas that relied on implicit blob serialization
+must be migrated to `<djblob>` to preserve their behavior.
 
 ## Schema Migration
 

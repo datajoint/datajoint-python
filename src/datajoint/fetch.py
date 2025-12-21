@@ -92,10 +92,11 @@ def _get(connection, attr, data, squeeze, download_path):
         return adapt(uuid.UUID(bytes=data))
     elif attr.is_blob:
         blob_data = extern.get(uuid.UUID(bytes=data)) if attr.is_external else data
-        # Skip unpack if adapter handles its own deserialization
-        if attr.adapter and getattr(attr.adapter, "serializes", False):
+        # Adapters (like <djblob>) handle deserialization in decode()
+        # Without adapter, blob columns return raw bytes (no deserialization)
+        if attr.adapter:
             return attr.adapter.decode(blob_data, key=None)
-        return adapt(blob.unpack(blob_data, squeeze=squeeze))
+        return blob_data  # raw bytes
     else:
         return adapt(data)
 
