@@ -50,6 +50,7 @@ __all__ = [
     "list_types",
     "AttributeAdapter",  # Deprecated, use AttributeType
     "errors",
+    "migrate",
     "DataJointError",
     "key",
     "key_hash",

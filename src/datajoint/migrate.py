@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING
 from .errors import DataJointError
 
 if TYPE_CHECKING:
-    from .connection import Connection
     from .schemas import Schema
 
 logger = logging.getLogger(__name__.split(".")[0])
