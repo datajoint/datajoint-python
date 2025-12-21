@@ -454,7 +454,7 @@ schema = dj.schema("mydb")
 
 1. **Choose descriptive type names**: Use lowercase with underscores (e.g., `spike_train`, `graph_embedding`)
 
-2. **Select appropriate storage types**: Use `longblob` for complex objects, `json` for simple structures, external storage for large data
+2. **Select appropriate storage types**: Use `<djblob>` for complex objects, `json` for simple structures, external storage for large data
 
 3. **Add validation**: Use `validate()` to catch data errors early
 

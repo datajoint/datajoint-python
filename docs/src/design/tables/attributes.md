@@ -48,9 +48,10 @@ fractional digits.
    Because of its well-defined precision, `decimal` values can be used in equality
    comparison and be included in primary keys.
 
--  `longblob`: arbitrary numeric array (e.g. matrix, image, structure), up to 4
+-  `longblob`: raw binary data, up to 4
 [GiB](http://en.wikipedia.org/wiki/Gibibyte) in size.
-   Numeric arrays are compatible between MATLAB and Python (NumPy).
+   Stores and returns raw bytes without serialization.
+   For serialized Python objects (arrays, dicts, etc.), use `<djblob>` instead.
    The `longblob` and other `blob` datatypes can be configured to store data
    [externally](../../sysadmin/external-store.md) by using the `blob@store` syntax.
 
@@ -70,6 +71,10 @@ info).
 
 These types abstract certain kinds of non-database data to facilitate use
 together with DataJoint.
+
+- `<djblob>`: DataJoint's native serialization format for Python objects. Supports
+NumPy arrays, dicts, lists, datetime objects, and nested structures. Compatible with
+MATLAB. See [custom types](customtype.md) for details.
 
 - `attach`: a [file attachment](attach.md) similar to email attachments facillitating
 sending/receiving an opaque data file to/from a DataJoint pipeline.

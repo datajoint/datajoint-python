@@ -142,7 +142,7 @@ definition = """
 -> EEGRecording
 channel_idx : int
 ---
-channel_data : longblob
+channel_data : <djblob>
 """
 ```
 ![doc_1-many](../images/doc_1-many.png){: style="align:center"}
