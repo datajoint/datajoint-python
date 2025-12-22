@@ -85,7 +85,7 @@ libraries, making table definitions more readable and explicit about data precis
 
 | Alias | MySQL Type | Description |
 |-------|------------|-------------|
-| `bool` / `boolean` | `tinyint` | Boolean value (0 or 1) |
+| `bool` | `tinyint` | Boolean value (0 or 1) |
 | `int8` | `tinyint` | 8-bit signed integer (-128 to 127) |
 | `uint8` | `tinyint unsigned` | 8-bit unsigned integer (0 to 255) |
 | `int16` | `smallint` | 16-bit signed integer (-32,768 to 32,767) |

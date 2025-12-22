@@ -51,7 +51,7 @@ TYPE_PATTERN = {
         UINT16=r"uint16$",
         INT8=r"int8$",
         UINT8=r"uint8$",
-        BOOL=r"bool(ean)?$",  # aliased to tinyint
+        BOOL=r"bool$",  # aliased to tinyint
         # Native MySQL types
         INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",

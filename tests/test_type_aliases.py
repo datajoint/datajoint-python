@@ -26,7 +26,6 @@ class TestTypeAliasPatterns:
             ("int8", "INT8"),
             ("uint8", "UINT8"),
             ("bool", "BOOL"),
-            ("boolean", "BOOL"),
         ],
     )
     def test_type_alias_pattern_matching(self, alias, expected_category):
@@ -50,7 +49,6 @@ class TestTypeAliasPatterns:
             ("int8", "tinyint"),
             ("uint8", "tinyint unsigned"),
             ("bool", "tinyint"),
-            ("boolean", "tinyint"),
         ],
     )
     def test_type_alias_mysql_mapping(self, alias, expected_mysql_type):
