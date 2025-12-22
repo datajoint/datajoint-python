@@ -141,6 +141,7 @@ FilteredImage.jobs.refresh()          # Refresh job queue
 ```mermaid
 stateDiagram-v2
     [*] --> pending : refresh()
+    [*] --> ignore : ignore()
     pending --> reserved : reserve()
     reserved --> [*] : complete()\n[if not keeping completed]
     reserved --> success : complete()\n[if keeping completed]
@@ -152,6 +153,7 @@ stateDiagram-v2
 
 **Transition methods:**
 - `refresh()` — Adds new jobs as `pending` (from `key_source - target - jobs`)
+- `ignore()` — Marks a key as `ignore` (can be called on keys not yet in jobs table)
 - `reserve()` — Marks a pending job as `reserved` before calling `make()`
 - `complete()` — Marks reserved job as `success`, or deletes it (based on `jobs.keep_completed` setting)
 - `error()` — Marks reserved job as `error` with message and stack trace
@@ -452,21 +454,7 @@ The jobs table is created with the appropriate primary key structure matching th
 
 ### Conflict Resolution
 
-Job reservation does **not** use transaction-level locking for simplicity and performance. Instead, conflicts are resolved at the `make()` transaction level:
-
-```python
-# Simple reservation (no locking)
-UPDATE `_my_table__jobs`
-SET status = 'reserved',
-    reserved_time = NOW(),
-    user = CURRENT_USER(),
-    host = @@hostname,
-    pid = CONNECTION_ID()
-WHERE status = 'pending'
-  AND scheduled_time <= NOW()
-ORDER BY priority DESC, scheduled_time ASC
-LIMIT 1;
-```
+Job reservation is performed via `update1()` for each key individually before calling `make()`. The client provides its own `pid`, `host`, and `connection_id` information. No transaction-level locking is used.
 
 **Conflict scenario** (rare):
 1. Two workers reserve the same job nearly simultaneously
