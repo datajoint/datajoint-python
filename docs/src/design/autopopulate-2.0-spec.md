@@ -310,9 +310,12 @@ def populate(
 
     New behavior with reserve_jobs=True:
         1. If refresh=True, calls self.jobs.refresh(*restrictions)
-        2. Fetches jobs from self.jobs where status='pending' and scheduled_time <= now
-        3. Reserves and processes jobs using the jobs table
-        4. Records success/error status in jobs table
+        2. For each pending job (ordered by priority, scheduled_time):
+           a. Mark job as 'reserved' (per-key, before make)
+           b. Call make(key)
+           c. On success: mark job as 'success'
+           d. On error: mark job as 'error' with message/stack
+        3. Continue until no more pending jobs or max_calls reached
     """
     ...
 ```
