@@ -288,18 +288,50 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 }
 ```
 
+**Zarr example (large dataset, metadata fields omitted for performance):**
+```json
+{
+    "path": "my_schema/Recording/objects/subject_id=123/session_id=45/neural_data_kM3nP2qR.zarr",
+    "size": null,
+    "hash": null,
+    "ext": ".zarr",
+    "is_dir": true,
+    "timestamp": "2025-01-15T10:30:00Z"
+}
+```
+
 ### JSON Schema
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `path` | string | Yes | Full path/key within storage backend (includes token) |
-| `size` | integer | Yes | Total size in bytes (sum for folders) |
+| `size` | integer/null | No | Total size in bytes (sum for folders), or null if not computed. See [Performance Considerations](#performance-considerations). |
 | `hash` | string/null | Yes | Content hash with algorithm prefix, or null (default) |
-| `ext` | string/null | Yes | File extension (e.g., `.dat`, `.zarr`) or null |
-| `is_dir` | boolean | Yes | True if stored content is a directory |
+| `ext` | string/null | Yes | File extension as tooling hint (e.g., `.dat`, `.zarr`) or null. See [Extension Field](#extension-field). |
+| `is_dir` | boolean | Yes | True if stored content is a directory/key-prefix (e.g., Zarr store) |
 | `timestamp` | string | Yes | ISO 8601 upload timestamp |
 | `mime_type` | string | No | MIME type (files only, auto-detected from extension) |
-| `item_count` | integer | No | Number of files (folders only) |
+| `item_count` | integer | No | Number of files (folders only), or null if not computed. See [Performance Considerations](#performance-considerations). |
+
+### Extension Field
+
+The `ext` field is a **tooling hint** that preserves the original file extension or provides a conventional suffix for directory-based formats. It is:
+
+- **Not a content-type declaration**: Unlike `mime_type`, it does not attempt to describe the internal content format
+- **Useful for tooling**: Enables file browsers, IDEs, and other tools to display appropriate icons or suggest applications
+- **Conventional for formats like Zarr**: The `.zarr` extension is recognized by the ecosystem even though a Zarr store contains mixed content (JSON metadata + binary chunks)
+
+For single files, `ext` is extracted from the source filename. For staged inserts (like Zarr), it can be explicitly provided.
+
+### Performance Considerations
+
+For large hierarchical data like Zarr stores, computing certain metadata can be expensive:
+
+- **`size`**: Requires listing all objects and summing their sizes. For stores with millions of chunks, this can take minutes or hours.
+- **`item_count`**: Requires listing all objects. Same performance concern as `size`.
+- **`hash`**: Requires reading all content. Explicitly not supported for staged inserts.
+
+**These fields are optional** and default to `null` for staged inserts. Users can explicitly request computation when needed, understanding the performance implications.
 
 ### Content Hashing
 
@@ -996,6 +1028,20 @@ gcs = ["gcsfs"]
 azure = ["adlfs"]
 ```
 
+### Storage Access Architecture
+
+The `object` type separates **data declaration** (the JSON metadata stored in the database) from **storage access** (the library used to read/write objects):
+
+- **Data declaration**: The JSON schema (path, size, hash, etc.) is a pure data structure with no library dependencies
+- **Storage access**: Currently uses `fsspec` as the default accessor, but the architecture supports alternative backends
+
+**Why this matters**: While `fsspec` is a mature and widely-used library, alternatives like [`obstore`](https://github.com/developmentseed/obstore) offer performance advantages for certain workloads. By keeping the data model independent of the access library, future versions can support pluggable storage accessors without schema changes.
+
+**Current implementation**: The `ObjectRef` class provides fsspec-based accessors (`fs`, `store` properties). Future versions may add:
+- Pluggable accessor interface
+- Alternative backends (obstore, custom implementations)
+- Backend selection per-operation or per-configuration
+
 ## Comparison with Existing Types
 
 | Feature | `attach@store` | `filepath@store` | `object` |
@@ -1072,6 +1118,86 @@ Each record owns its file exclusively. There is no deduplication or reference co
 - Existing `attach@store` and `filepath@store` remain unchanged
 - `object` type is additive - new tables only
 - Future: Migration utilities to convert existing external storage
+
+## Zarr and Large Hierarchical Data
+
+The `object` type is designed with Zarr and similar hierarchical data formats (HDF5 via kerchunk, TileDB) in mind. This section provides guidance for these use cases.
+
+### Recommended Workflow
+
+For large Zarr stores, use **staged insert** to write directly to object storage:
+
+```python
+import zarr
+import numpy as np
+
+with Recording.staged_insert1 as staged:
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # Write Zarr directly to object storage
+    store = staged.store('neural_data', '.zarr')
+    root = zarr.open(store, mode='w')
+    root.create_dataset('spikes', shape=(1000000, 384), chunks=(10000, 384), dtype='f4')
+
+    # Stream data without local intermediate copy
+    for i, chunk in enumerate(acquisition_stream):
+        root['spikes'][i*10000:(i+1)*10000] = chunk
+
+    staged.rec['neural_data'] = root
+
+# Metadata recorded, no expensive size/hash computation
+```
+
+### JSON Metadata for Zarr
+
+For Zarr stores, the recommended JSON metadata omits expensive-to-compute fields:
+
+```json
+{
+    "path": "schema/Recording/objects/subject_id=123/session_id=45/neural_data_kM3nP2qR.zarr",
+    "size": null,
+    "hash": null,
+    "ext": ".zarr",
+    "is_dir": true,
+    "timestamp": "2025-01-15T10:30:00Z"
+}
+```
+
+**Field notes for Zarr:**
+- **`size`**: Set to `null` - computing total size requires listing all chunks
+- **`hash`**: Always `null` for staged inserts - no merkle tree support currently
+- **`ext`**: Set to `.zarr` as a conventional tooling hint
+- **`is_dir`**: Set to `true` - Zarr stores are key prefixes (logical directories)
+- **`item_count`**: Omitted - counting chunks is expensive and rarely useful
+- **`mime_type`**: Omitted - Zarr contains mixed content types
+
+### Reading Zarr Data
+
+The `ObjectRef` provides direct access compatible with Zarr and xarray:
+
+```python
+record = Recording.fetch1()
+obj_ref = record['neural_data']
+
+# Direct Zarr access
+z = zarr.open(obj_ref.store, mode='r')
+print(z['spikes'].shape)
+
+# xarray integration
+ds = xr.open_zarr(obj_ref.store)
+
+# Dask integration (lazy loading)
+import dask.array as da
+arr = da.from_zarr(obj_ref.store, component='spikes')
+```
+
+### Performance Tips
+
+1. **Use chunked writes**: Write data in chunks that match your Zarr chunk size
+2. **Avoid metadata computation**: Let `size` and `item_count` default to `null`
+3. **Use appropriate chunk sizes**: Balance between too many small files (overhead) and too few large files (memory)
+4. **Consider compression**: Configure Zarr compression (blosc, zstd) to reduce storage costs
 
 ## Future Extensions
 

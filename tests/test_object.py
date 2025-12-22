@@ -166,6 +166,24 @@ class TestObjectRef:
         assert obj.is_dir is True
         assert obj.item_count == 42
 
+    def test_from_json_zarr_style(self):
+        """Test creating ObjectRef from Zarr-style JSON with null size."""
+        data = {
+            "path": "schema/Recording/objects/id=1/neural_data_abc123.zarr",
+            "size": None,
+            "hash": None,
+            "ext": ".zarr",
+            "is_dir": True,
+            "timestamp": "2025-01-15T10:30:00+00:00",
+        }
+        obj = ObjectRef.from_json(data)
+        assert obj.path == "schema/Recording/objects/id=1/neural_data_abc123.zarr"
+        assert obj.size is None
+        assert obj.hash is None
+        assert obj.ext == ".zarr"
+        assert obj.is_dir is True
+        assert obj.item_count is None
+
     def test_to_json(self):
         """Test converting ObjectRef to JSON dict."""
         from datetime import datetime, timezone

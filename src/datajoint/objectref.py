@@ -35,17 +35,20 @@ class ObjectRef:
 
     Attributes:
         path: Full path/key within storage backend (includes token)
-        size: Total size in bytes (sum for folders)
+        size: Total size in bytes (sum for folders), or None if not computed.
+            For large hierarchical data like Zarr stores, size computation can
+            be expensive and is optional.
         hash: Content hash with algorithm prefix, or None if not computed
-        ext: File extension (e.g., ".dat", ".zarr") or None
-        is_dir: True if stored content is a directory
+        ext: File extension as tooling hint (e.g., ".dat", ".zarr") or None.
+            This is a conventional suffix for tooling, not a content-type declaration.
+        is_dir: True if stored content is a directory/key-prefix (e.g., Zarr store)
         timestamp: ISO 8601 upload timestamp
         mime_type: MIME type (files only, auto-detected from extension)
-        item_count: Number of files (folders only)
+        item_count: Number of files (folders only), or None if not computed
     """
 
     path: str
-    size: int
+    size: int | None
     hash: str | None
     ext: str | None
     is_dir: bool
@@ -307,10 +310,13 @@ class ObjectRef:
         if not self._backend.exists(self.path):
             raise IntegrityError(f"File does not exist: {self.path}")
 
-        # Check size
-        actual_size = self._backend.size(self.path)
-        if actual_size != self.size:
-            raise IntegrityError(f"Size mismatch for {self.path}: expected {self.size}, got {actual_size}")
+        # Check size if available
+        if self.size is not None:
+            actual_size = self._backend.size(self.path)
+            if actual_size != self.size:
+                raise IntegrityError(
+                    f"Size mismatch for {self.path}: expected {self.size}, got {actual_size}"
+                )
 
         # Check hash if available
         if self.hash:
