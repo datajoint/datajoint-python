@@ -124,3 +124,51 @@ frame = tab.fetch(format="frame")
 
 Returning results as a `DataFrame` is not possible when fetching a particular subset of
 attributes or when `as_dict` is set to `True`.
+
+## Object Attributes
+
+When fetching [`object`](../design/tables/object.md) attributes, DataJoint returns an
+`ObjectRef` handle instead of the raw data. This allows working with large files without
+copying them locally.
+
+```python
+record = Recording.fetch1()
+obj = record["raw_data"]
+
+# Access metadata (no I/O)
+print(obj.path)      # Storage path
+print(obj.size)      # Size in bytes
+print(obj.is_dir)    # True if folder
+
+# Read content
+content = obj.read()  # Returns bytes for files
+
+# Open as file object
+with obj.open() as f:
+    data = f.read()
+
+# Download to local path
+local_path = obj.download("/local/destination/")
+```
+
+### Integration with Array Libraries
+
+`ObjectRef` provides direct fsspec access for Zarr and xarray:
+
+```python
+import zarr
+import xarray as xr
+
+obj = Recording.fetch1()["neural_data"]
+
+# Open as Zarr array
+z = zarr.open(obj.store, mode='r')
+
+# Open with xarray
+ds = xr.open_zarr(obj.store)
+
+# Direct filesystem access
+fs = obj.fs
+```
+
+See the [object type documentation](../design/tables/object.md) for more details.

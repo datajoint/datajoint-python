@@ -28,6 +28,7 @@ TYPE_ALIASES = {
     "UINT16": "smallint unsigned",
     "INT8": "tinyint",
     "UINT8": "tinyint unsigned",
+    "BOOL": "tinyint",
 }
 MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {
@@ -50,6 +51,7 @@ TYPE_PATTERN = {
         UINT16=r"uint16$",
         INT8=r"int8$",
         UINT8=r"uint8$",
+        BOOL=r"bool$",  # aliased to tinyint
         # Native MySQL types
         INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
@@ -57,13 +59,13 @@ TYPE_PATTERN = {
         STRING=r"(var)?char\s*\(.+\)$",
         JSON=r"json$",
         ENUM=r"enum\s*\(.+\)$",
-        BOOL=r"bool(ean)?$",  # aliased to tinyint(1)
         TEMPORAL=r"(date|datetime|time|timestamp|year)(\s*\(.+\))?$",
         INTERNAL_BLOB=r"(tiny|small|medium|long|)blob$",
         EXTERNAL_BLOB=r"blob@(?P<store>[a-z][\-\w]*)$",
         INTERNAL_ATTACH=r"attach$",
         EXTERNAL_ATTACH=r"attach@(?P<store>[a-z][\-\w]*)$",
         FILEPATH=r"filepath@(?P<store>[a-z][\-\w]*)$",
+        OBJECT=r"object$",  # managed object storage (files/folders)
         UUID=r"uuid$",
         ADAPTED=r"<.+>$",
     ).items()
@@ -76,6 +78,7 @@ SPECIAL_TYPES = {
     "EXTERNAL_ATTACH",
     "EXTERNAL_BLOB",
     "FILEPATH",
+    "OBJECT",
     "ADAPTED",
 } | set(TYPE_ALIASES)
 NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
@@ -464,6 +467,9 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         match["type"] = UUID_DATA_TYPE
     elif category == "INTERNAL_ATTACH":
         match["type"] = "LONGBLOB"
+    elif category == "OBJECT":
+        # Object type stores metadata as JSON - no foreign key to external table
+        match["type"] = "JSON"
     elif category in EXTERNAL_TYPES:
         if category == "FILEPATH" and not _support_filepath_types():
             raise DataJointError(

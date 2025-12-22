@@ -188,6 +188,34 @@ class ExternalSettings(BaseSettings):
     aws_secret_access_key: SecretStr | None = Field(default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY")
 
 
+class ObjectStorageSettings(BaseSettings):
+    """Object storage configuration for the object type."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="DJ_OBJECT_STORAGE_",
+        case_sensitive=False,
+        extra="forbid",
+        validate_assignment=True,
+    )
+
+    # Required settings
+    project_name: str | None = Field(default=None, description="Unique project identifier")
+    protocol: str | None = Field(default=None, description="Storage protocol: file, s3, gcs, azure")
+    location: str | None = Field(default=None, description="Base path or bucket prefix")
+
+    # Cloud storage settings
+    bucket: str | None = Field(default=None, description="Bucket name (S3, GCS)")
+    container: str | None = Field(default=None, description="Container name (Azure)")
+    endpoint: str | None = Field(default=None, description="S3 endpoint URL")
+    access_key: str | None = Field(default=None, description="Access key")
+    secret_key: SecretStr | None = Field(default=None, description="Secret key")
+    secure: bool = Field(default=True, description="Use HTTPS")
+
+    # Optional settings
+    partition_pattern: str | None = Field(default=None, description="Path pattern with {attribute} placeholders")
+    token_length: int = Field(default=8, ge=4, le=16, description="Random suffix length for filenames")
+
+
 class Config(BaseSettings):
     """
     Main DataJoint configuration.
@@ -219,6 +247,7 @@ class Config(BaseSettings):
     connection: ConnectionSettings = Field(default_factory=ConnectionSettings)
     display: DisplaySettings = Field(default_factory=DisplaySettings)
     external: ExternalSettings = Field(default_factory=ExternalSettings)
+    object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
 
     # Top-level settings
     loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO", validation_alias="DJ_LOG_LEVEL")
@@ -275,13 +304,19 @@ class Config(BaseSettings):
 
         # Validate protocol
         protocol = spec.get("protocol", "").lower()
-        if protocol not in ("file", "s3"):
-            raise DataJointError(f'Missing or invalid protocol in config.stores["{store}"]')
+        supported_protocols = ("file", "s3", "gcs", "azure")
+        if protocol not in supported_protocols:
+            raise DataJointError(
+                f'Missing or invalid protocol in config.stores["{store}"]. '
+                f'Supported protocols: {", ".join(supported_protocols)}'
+            )
 
         # Define required and allowed keys by protocol
         required_keys: dict[str, tuple[str, ...]] = {
             "file": ("protocol", "location"),
             "s3": ("protocol", "endpoint", "bucket", "access_key", "secret_key", "location"),
+            "gcs": ("protocol", "bucket", "location"),
+            "azure": ("protocol", "container", "location"),
         }
         allowed_keys: dict[str, tuple[str, ...]] = {
             "file": ("protocol", "location", "subfolding", "stage"),
@@ -297,6 +332,25 @@ class Config(BaseSettings):
                 "stage",
                 "proxy_server",
             ),
+            "gcs": (
+                "protocol",
+                "bucket",
+                "location",
+                "token",
+                "project",
+                "subfolding",
+                "stage",
+            ),
+            "azure": (
+                "protocol",
+                "container",
+                "location",
+                "account_name",
+                "account_key",
+                "connection_string",
+                "subfolding",
+                "stage",
+            ),
         }
 
         # Check required keys
@@ -308,6 +362,73 @@ class Config(BaseSettings):
         invalid = [k for k in spec if k not in allowed_keys[protocol]]
         if invalid:
             raise DataJointError(f'Invalid key(s) in config.stores["{store}"]: {", ".join(invalid)}')
+
+        return spec
+
+    def get_object_storage_spec(self) -> dict[str, Any]:
+        """
+        Get validated object storage configuration.
+
+        Returns:
+            Object storage configuration dict
+
+        Raises:
+            DataJointError: If object storage is not configured or has invalid config
+        """
+        os_settings = self.object_storage
+
+        # Check if object storage is configured
+        if not os_settings.protocol:
+            raise DataJointError(
+                "Object storage is not configured. Set object_storage.protocol in datajoint.json "
+                "or DJ_OBJECT_STORAGE_PROTOCOL environment variable."
+            )
+
+        if not os_settings.project_name:
+            raise DataJointError(
+                "Object storage project_name is required. Set object_storage.project_name in datajoint.json "
+                "or DJ_OBJECT_STORAGE_PROJECT_NAME environment variable."
+            )
+
+        protocol = os_settings.protocol.lower()
+        supported_protocols = ("file", "s3", "gcs", "azure")
+        if protocol not in supported_protocols:
+            raise DataJointError(
+                f"Invalid object_storage.protocol: {protocol}. " f'Supported protocols: {", ".join(supported_protocols)}'
+            )
+
+        # Build spec dict
+        spec = {
+            "project_name": os_settings.project_name,
+            "protocol": protocol,
+            "location": os_settings.location or "",
+            "partition_pattern": os_settings.partition_pattern,
+            "token_length": os_settings.token_length,
+        }
+
+        # Add protocol-specific settings
+        if protocol == "s3":
+            if not os_settings.endpoint or not os_settings.bucket:
+                raise DataJointError("object_storage.endpoint and object_storage.bucket are required for S3")
+            if not os_settings.access_key or not os_settings.secret_key:
+                raise DataJointError("object_storage.access_key and object_storage.secret_key are required for S3")
+            spec.update(
+                {
+                    "endpoint": os_settings.endpoint,
+                    "bucket": os_settings.bucket,
+                    "access_key": os_settings.access_key,
+                    "secret_key": os_settings.secret_key.get_secret_value() if os_settings.secret_key else None,
+                    "secure": os_settings.secure,
+                }
+            )
+        elif protocol == "gcs":
+            if not os_settings.bucket:
+                raise DataJointError("object_storage.bucket is required for GCS")
+            spec["bucket"] = os_settings.bucket
+        elif protocol == "azure":
+            if not os_settings.container:
+                raise DataJointError("object_storage.container is required for Azure")
+            spec["container"] = os_settings.container
 
         return spec
 

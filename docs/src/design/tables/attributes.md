@@ -76,6 +76,9 @@ together with DataJoint.
 NumPy arrays, dicts, lists, datetime objects, and nested structures. Compatible with
 MATLAB. See [custom types](customtype.md) for details.
 
+- `object`: managed [file and folder storage](object.md) with support for direct writes
+(Zarr, HDF5) and fsspec integration. Recommended for new pipelines.
+
 - `attach`: a [file attachment](attach.md) similar to email attachments facillitating
 sending/receiving an opaque data file to/from a DataJoint pipeline.
 
@@ -94,6 +97,7 @@ libraries, making table definitions more readable and explicit about data precis
 
 | Alias | MySQL Type | Description |
 |-------|------------|-------------|
+| `bool` | `tinyint` | Boolean value (0 or 1) |
 | `int8` | `tinyint` | 8-bit signed integer (-128 to 127) |
 | `uint8` | `tinyint unsigned` | 8-bit unsigned integer (0 to 255) |
 | `int16` | `smallint` | 16-bit signed integer (-32,768 to 32,767) |
@@ -117,6 +121,7 @@ class Measurement(dj.Manual):
     precise_value : float64     # double-precision measurement
     sample_count : uint32       # unsigned 32-bit counter
     sensor_flags : uint8        # 8-bit status flags
+    is_valid : bool             # boolean flag
     """
 ```
 
