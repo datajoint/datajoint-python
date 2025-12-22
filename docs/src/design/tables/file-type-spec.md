@@ -23,6 +23,31 @@ Once an object is **finalized** (either via copy-insert or staged-insert complet
 | **Copy** | Small files, existing data | Local file → copy to storage → insert record |
 | **Staged** | Large objects, Zarr/HDF5 | Reserve path → write directly to storage → finalize record |
 
+### Augmented Schema vs External References
+
+The `object` type implements **Augmented Schema (AUS)** — a paradigm where the object store becomes a true extension of the relational database:
+
+- **DataJoint fully controls** the object store lifecycle
+- **Only DataJoint writes** to the object store (users may have direct read access)
+- **Tight coupling** between database and object store
+- **Joint transaction management** on objects and database records
+- **Single backend per pipeline** — all managed objects live together
+
+This is fundamentally different from **external references**, where DataJoint merely points to user-managed data:
+
+| Aspect | `object` (Augmented Schema) | `filepath@store` (External Reference) |
+|--------|----------------------------|--------------------------------------|
+| **Ownership** | DataJoint owns the data | User owns the data |
+| **Writes** | Only via DataJoint | User writes directly |
+| **Deletion** | DataJoint deletes on record delete | User manages lifecycle |
+| **Multi-backend** | Single backend per pipeline | Multiple named stores |
+| **Use case** | Pipeline-generated data | Collaborator data, legacy assets |
+
+**When to use each:**
+
+- Use `object` for data that DataJoint should own and manage as part of the schema (e.g., processed results, derived datasets)
+- Use `filepath@store` for referencing externally-managed data across multiple backends (e.g., collaborator data on different cloud providers, legacy data that shouldn't be moved)
+
 ## Storage Architecture
 
 ### Single Storage Backend Per Pipeline
