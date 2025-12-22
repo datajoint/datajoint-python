@@ -39,7 +39,6 @@ class ExternalTable(Table):
     def __init__(self, connection, store, database):
         self.store = store
         self.spec = config.get_store_spec(store)
-        self._storage = None
         self.database = database
         self._connection = connection
         self._heading = Heading(
@@ -54,7 +53,7 @@ class ExternalTable(Table):
         if not self.is_declared:
             self.declare()
         # Initialize storage backend (validates configuration)
-        _ = self.storage
+        self.storage = StorageBackend(self.spec)
 
     @property
     def definition(self):
@@ -72,13 +71,6 @@ class ExternalTable(Table):
     @property
     def table_name(self):
         return f"{EXTERNAL_TABLE_ROOT}_{self.store}"
-
-    @property
-    def storage(self) -> StorageBackend:
-        """Get or create the storage backend instance."""
-        if self._storage is None:
-            self._storage = StorageBackend(self.spec)
-        return self._storage
 
     @property
     def s3(self):
