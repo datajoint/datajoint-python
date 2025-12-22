@@ -22,6 +22,55 @@ logger = logging.getLogger(__name__.split(".")[0])
 # Characters safe for use in filenames and URLs
 TOKEN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
+# Supported remote URL protocols for copy insert
+REMOTE_PROTOCOLS = ("s3://", "gs://", "gcs://", "az://", "abfs://", "http://", "https://")
+
+
+def is_remote_url(path: str) -> bool:
+    """
+    Check if a path is a remote URL.
+
+    Args:
+        path: Path string to check
+
+    Returns:
+        True if path is a remote URL
+    """
+    if not isinstance(path, str):
+        return False
+    return path.lower().startswith(REMOTE_PROTOCOLS)
+
+
+def parse_remote_url(url: str) -> tuple[str, str]:
+    """
+    Parse a remote URL into protocol and path.
+
+    Args:
+        url: Remote URL (e.g., 's3://bucket/path/file.dat')
+
+    Returns:
+        Tuple of (protocol, path) where protocol is fsspec-compatible
+    """
+    url_lower = url.lower()
+
+    # Map URL schemes to fsspec protocols
+    protocol_map = {
+        "s3://": "s3",
+        "gs://": "gcs",
+        "gcs://": "gcs",
+        "az://": "abfs",
+        "abfs://": "abfs",
+        "http://": "http",
+        "https://": "https",
+    }
+
+    for prefix, protocol in protocol_map.items():
+        if url_lower.startswith(prefix):
+            path = url[len(prefix) :]
+            return protocol, path
+
+    raise errors.DataJointError(f"Unsupported remote URL protocol: {url}")
+
 
 def generate_token(length: int = 8) -> str:
     """
@@ -493,6 +542,155 @@ class StorageBackend:
         """
         full_path = self._full_path(remote_path)
         return fsspec.FSMap(full_path, self.fs)
+
+    def copy_from_url(self, source_url: str, dest_path: str | PurePosixPath) -> int:
+        """
+        Copy a file from a remote URL to managed storage.
+
+        Args:
+            source_url: Remote URL (s3://, gs://, http://, etc.)
+            dest_path: Destination path in managed storage
+
+        Returns:
+            Size of copied file in bytes
+        """
+        protocol, source_path = parse_remote_url(source_url)
+        full_dest = self._full_path(dest_path)
+
+        logger.debug(f"copy_from_url: {protocol}://{source_path} -> {self.protocol}:{full_dest}")
+
+        # Get source filesystem
+        source_fs = fsspec.filesystem(protocol)
+
+        # Check if source is a directory
+        if source_fs.isdir(source_path):
+            return self._copy_folder_from_url(source_fs, source_path, dest_path)
+
+        # Copy single file
+        if self.protocol == "file":
+            # Download to local destination
+            Path(full_dest).parent.mkdir(parents=True, exist_ok=True)
+            source_fs.get_file(source_path, full_dest)
+            return Path(full_dest).stat().st_size
+        else:
+            # Remote-to-remote copy via streaming
+            with source_fs.open(source_path, "rb") as src:
+                content = src.read()
+            self.fs.pipe_file(full_dest, content)
+            return len(content)
+
+    def _copy_folder_from_url(
+        self, source_fs: fsspec.AbstractFileSystem, source_path: str, dest_path: str | PurePosixPath
+    ) -> dict:
+        """
+        Copy a folder from a remote URL to managed storage.
+
+        Args:
+            source_fs: Source filesystem
+            source_path: Path in source filesystem
+            dest_path: Destination path in managed storage
+
+        Returns:
+            Manifest dict with file list, total_size, and item_count
+        """
+        full_dest = self._full_path(dest_path)
+        logger.debug(f"copy_folder_from_url: {source_path} -> {self.protocol}:{full_dest}")
+
+        # Collect file info for manifest
+        files = []
+        total_size = 0
+
+        # Walk source directory
+        for root, dirs, filenames in source_fs.walk(source_path):
+            for filename in filenames:
+                src_file = f"{root}/{filename}" if root != source_path else f"{source_path}/{filename}"
+                rel_path = src_file[len(source_path) :].lstrip("/")
+                file_size = source_fs.size(src_file)
+                files.append({"path": rel_path, "size": file_size})
+                total_size += file_size
+
+                # Copy file
+                dest_file = f"{full_dest}/{rel_path}"
+                if self.protocol == "file":
+                    Path(dest_file).parent.mkdir(parents=True, exist_ok=True)
+                    source_fs.get_file(src_file, dest_file)
+                else:
+                    with source_fs.open(src_file, "rb") as src:
+                        content = src.read()
+                    self.fs.pipe_file(dest_file, content)
+
+        # Build manifest
+        manifest = {
+            "files": files,
+            "total_size": total_size,
+            "item_count": len(files),
+            "created": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Write manifest alongside folder
+        manifest_path = f"{dest_path}.manifest.json"
+        self.put_buffer(json.dumps(manifest, indent=2).encode(), manifest_path)
+
+        return manifest
+
+    def source_is_directory(self, source: str) -> bool:
+        """
+        Check if a source path (local or remote URL) is a directory.
+
+        Args:
+            source: Local path or remote URL
+
+        Returns:
+            True if source is a directory
+        """
+        if is_remote_url(source):
+            protocol, path = parse_remote_url(source)
+            source_fs = fsspec.filesystem(protocol)
+            return source_fs.isdir(path)
+        else:
+            return Path(source).is_dir()
+
+    def source_exists(self, source: str) -> bool:
+        """
+        Check if a source path (local or remote URL) exists.
+
+        Args:
+            source: Local path or remote URL
+
+        Returns:
+            True if source exists
+        """
+        if is_remote_url(source):
+            protocol, path = parse_remote_url(source)
+            source_fs = fsspec.filesystem(protocol)
+            return source_fs.exists(path)
+        else:
+            return Path(source).exists()
+
+    def get_source_size(self, source: str) -> int | None:
+        """
+        Get the size of a source file (local or remote URL).
+
+        Args:
+            source: Local path or remote URL
+
+        Returns:
+            Size in bytes, or None if directory or cannot determine
+        """
+        try:
+            if is_remote_url(source):
+                protocol, path = parse_remote_url(source)
+                source_fs = fsspec.filesystem(protocol)
+                if source_fs.isdir(path):
+                    return None
+                return source_fs.size(path)
+            else:
+                p = Path(source)
+                if p.is_dir():
+                    return None
+                return p.stat().st_size
+        except Exception:
+            return None
 
 
 STORE_METADATA_FILENAME = "datajoint_store.json"

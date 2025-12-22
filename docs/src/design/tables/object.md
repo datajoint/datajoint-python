@@ -89,7 +89,7 @@ Note: No `@store` suffix needed—storage is determined by pipeline configuratio
 
 ### Inserting Files
 
-Insert a file by providing its path:
+Insert a file by providing its local path:
 
 ```python
 Recording.insert1({
@@ -112,6 +112,37 @@ Recording.insert1({
     "raw_data": "/local/path/to/data_folder/"
 })
 ```
+
+### Inserting from Remote URLs
+
+Insert from cloud storage or HTTP sources—content is copied to managed storage:
+
+```python
+# From S3
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "raw_data": "s3://source-bucket/path/to/data.dat"
+})
+
+# From Google Cloud Storage (e.g., collaborator data)
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "neural_data": "gs://collaborator-bucket/shared/experiment.zarr"
+})
+
+# From HTTP/HTTPS
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "raw_data": "https://example.com/public/data.dat"
+})
+```
+
+Supported protocols: `s3://`, `gs://`, `az://`, `http://`, `https://`
+
+Remote sources may require credentials configured via environment variables or fsspec configuration files.
 
 ### Inserting from Streams
 

@@ -584,12 +584,13 @@ Each insert stores a separate copy of the file, even if identical content was pr
 
 At insert time, the `object` attribute accepts:
 
-1. **File path** (string or `Path`): Path to an existing file (extension extracted)
-2. **Folder path** (string or `Path`): Path to an existing directory
-3. **Tuple of (ext, stream)**: File-like object with explicit extension
+1. **Local file path** (string or `Path`): Path to an existing local file (extension extracted)
+2. **Local folder path** (string or `Path`): Path to an existing local directory
+3. **Remote URL** (string): URL to remote file or folder (`s3://`, `gs://`, `az://`, `http://`, `https://`)
+4. **Tuple of (ext, stream)**: File-like object with explicit extension
 
 ```python
-# From file path - extension (.dat) extracted from source
+# From local file path - extension (.dat) extracted from source
 Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
@@ -597,13 +598,29 @@ Recording.insert1({
 })
 # Stored as: raw_data_Ax7bQ2kM.dat
 
-# From folder path - no extension
+# From local folder path - no extension
 Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
     "raw_data": "/local/path/to/data_folder/"
 })
 # Stored as: raw_data_pL9nR4wE/
+
+# From remote URL - copies from source to managed storage
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "raw_data": "s3://source-bucket/path/to/data.dat"
+})
+# Stored as: raw_data_kM3nP2qR.dat
+
+# From remote Zarr store (e.g., collaborator data on GCS)
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "neural_data": "gs://collaborator-bucket/shared/experiment.zarr"
+})
+# Copied to managed storage as: neural_data_pL9nR4wE.zarr
 
 # From stream with explicit extension
 with open("/local/path/data.bin", "rb") as f:
@@ -612,8 +629,24 @@ with open("/local/path/data.bin", "rb") as f:
         "session_id": 45,
         "raw_data": (".bin", f)
     })
-# Stored as: raw_data_kM3nP2qR.bin
+# Stored as: raw_data_xY8zW3vN.bin
 ```
+
+### Remote URL Support
+
+Remote URLs are detected by protocol prefix and handled via fsspec:
+
+| Protocol | Example | Notes |
+|----------|---------|-------|
+| `s3://` | `s3://bucket/path/file.dat` | AWS S3, MinIO |
+| `gs://` | `gs://bucket/path/file.dat` | Google Cloud Storage |
+| `az://` | `az://container/path/file.dat` | Azure Blob Storage |
+| `http://` | `http://server/path/file.dat` | HTTP (read-only source) |
+| `https://` | `https://server/path/file.dat` | HTTPS (read-only source) |
+
+**Authentication**: Remote sources may require credentials. fsspec uses standard credential discovery (environment variables, config files, IAM roles). For cross-cloud copies, ensure credentials are configured for both source and destination.
+
+**Performance note**: For large remote-to-remote copies, data flows through the client. This is acceptable for most use cases but may be slow for very large datasets. Future optimizations could include server-side copy for same-provider transfers.
 
 ### Insert Processing Steps
 

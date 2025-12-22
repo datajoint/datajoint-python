@@ -96,22 +96,36 @@ phase_two.Protocol.insert(protocols)
 ## Object attributes
 
 Tables with [`object`](../design/tables/object.md) type attributes can be inserted with
-file paths, folder paths, or streams. The content is automatically copied to object
-storage.
+local file paths, folder paths, remote URLs, or streams. The content is automatically
+copied to object storage.
 
 ```python
-# Insert with file path
+# Insert with local file path
 Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
     "raw_data": "/local/path/to/data.dat"
 })
 
-# Insert with folder path
+# Insert with local folder path
 Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
     "raw_data": "/local/path/to/data_folder/"
+})
+
+# Insert from remote URL (S3, GCS, Azure, HTTP)
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "raw_data": "s3://source-bucket/path/to/data.dat"
+})
+
+# Insert remote Zarr store (e.g., from collaborator)
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "neural_data": "gs://collaborator-bucket/shared/experiment.zarr"
 })
 
 # Insert from stream with explicit extension
@@ -122,6 +136,8 @@ with open("/path/to/data.bin", "rb") as f:
         "raw_data": (".bin", f)
     })
 ```
+
+Supported remote URL protocols: `s3://`, `gs://`, `az://`, `http://`, `https://`
 
 ### Staged inserts
 
