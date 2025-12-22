@@ -25,6 +25,8 @@ class TestTypeAliasPatterns:
             ("uint16", "UINT16"),
             ("int8", "INT8"),
             ("uint8", "UINT8"),
+            ("bool", "BOOL"),
+            ("boolean", "BOOL"),
         ],
     )
     def test_type_alias_pattern_matching(self, alias, expected_category):
@@ -47,6 +49,8 @@ class TestTypeAliasPatterns:
             ("uint16", "smallint unsigned"),
             ("int8", "tinyint"),
             ("uint8", "tinyint unsigned"),
+            ("bool", "tinyint"),
+            ("boolean", "tinyint"),
         ],
     )
     def test_type_alias_mysql_mapping(self, alias, expected_mysql_type):
@@ -107,6 +111,7 @@ class TestTypeAliasHeading:
         assert "uint16" in heading_str
         assert "int8" in heading_str
         assert "uint8" in heading_str
+        assert "bool" in heading_str
 
 
 class TestTypeAliasInsertFetch:
@@ -129,6 +134,7 @@ class TestTypeAliasInsertFetch:
             val_uint16=65535,  # max uint16
             val_int8=127,  # max int8
             val_uint8=255,  # max uint8
+            val_bool=1,  # boolean true
         )
 
         table.insert1(test_data)
@@ -145,6 +151,7 @@ class TestTypeAliasInsertFetch:
         assert fetched["val_uint16"] == test_data["val_uint16"]
         assert fetched["val_int8"] == test_data["val_int8"]
         assert fetched["val_uint8"] == test_data["val_uint8"]
+        assert fetched["val_bool"] == test_data["val_bool"]
 
     def test_insert_primary_key_with_aliases(self, schema_type_aliases):
         """Test using type aliases in primary key."""
