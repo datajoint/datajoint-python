@@ -4,7 +4,7 @@ Tests for numeric type aliases (float32, float64, int8, int16, int32, int64, etc
 
 import pytest
 
-from datajoint.declare import TYPE_ALIASES, SPECIAL_TYPES, match_type
+from datajoint.declare import SQL_TYPE_ALIASES, SPECIAL_TYPES, match_type
 
 from .schema_type_aliases import TypeAliasTable, TypeAliasPrimaryKey, TypeAliasNullable
 
@@ -33,7 +33,7 @@ class TestTypeAliasPatterns:
         category = match_type(alias)
         assert category == expected_category
         assert category in SPECIAL_TYPES
-        assert category in TYPE_ALIASES
+        assert category in SQL_TYPE_ALIASES
 
     @pytest.mark.parametrize(
         "alias,expected_mysql_type",
@@ -54,7 +54,7 @@ class TestTypeAliasPatterns:
     def test_type_alias_mysql_mapping(self, alias, expected_mysql_type):
         """Test that type aliases map to correct MySQL types."""
         category = match_type(alias)
-        mysql_type = TYPE_ALIASES[category]
+        mysql_type = SQL_TYPE_ALIASES[category]
         assert mysql_type == expected_mysql_type
 
     @pytest.mark.parametrize(
