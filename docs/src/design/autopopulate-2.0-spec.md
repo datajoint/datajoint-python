@@ -27,11 +27,54 @@ The existing `~jobs` table has significant limitations:
 
 ### Core Design Principles
 
-1. **Per-table jobs**: Each computed table gets its own hidden jobs table
-2. **Native primary keys**: Jobs table uses the same primary key structure as its parent table (no hashes)
-3. **Referential integrity**: Jobs are foreign-key linked to parent tables with cascading deletes
-4. **Rich status tracking**: Extended status values for full lifecycle visibility
-5. **Automatic refresh**: `populate()` automatically refreshes the jobs queue
+1. **Foreign-key-only primary keys**: Auto-populated tables cannot introduce new primary key attributes; their primary key must comprise only foreign key references
+2. **Per-table jobs**: Each computed table gets its own hidden jobs table
+3. **Native primary keys**: Jobs table uses the same primary key structure as its parent table (no hashes)
+4. **Referential integrity**: Jobs are foreign-key linked to parent tables with cascading deletes
+5. **Rich status tracking**: Extended status values for full lifecycle visibility
+6. **Automatic refresh**: `populate()` automatically refreshes the jobs queue
+
+### Primary Key Constraint
+
+**Auto-populated tables (`dj.Imported` and `dj.Computed`) must have primary keys composed entirely of foreign key references.**
+
+This constraint ensures:
+- **1:1 key_source mapping**: Each entry in `key_source` corresponds to exactly one potential job
+- **Deterministic job identity**: A job's identity is fully determined by its parent records
+- **Simplified jobs table**: The jobs table can directly reference the same parents as the computed table
+
+```python
+# VALID: Primary key is entirely foreign keys
+@schema
+class FilteredImage(dj.Computed):
+    definition = """
+    -> Image
+    ---
+    filtered_image : <djblob>
+    """
+
+# VALID: Multiple foreign keys in primary key
+@schema
+class Comparison(dj.Computed):
+    definition = """
+    -> Image.proj(image_a='image_id')
+    -> Image.proj(image_b='image_id')
+    ---
+    similarity : float
+    """
+
+# INVALID: Additional primary key attribute not allowed
+@schema
+class Analysis(dj.Computed):
+    definition = """
+    -> Recording
+    analysis_method : varchar(32)   # NOT ALLOWED - adds to primary key
+    ---
+    result : float
+    """
+```
+
+**Migration note**: Existing tables that violate this constraint will continue to work but cannot use the new jobs system. A deprecation warning will be issued.
 
 ## Architecture
 
@@ -525,3 +568,44 @@ The current system hashes primary keys to support arbitrary key types. The new s
 2. **Query efficiency**: Native keys can use table indexes
 3. **Foreign keys**: Hash-based keys cannot participate in foreign key relationships
 4. **Simplicity**: No need for hash computation and comparison
+
+### Why Require Foreign-Key-Only Primary Keys?
+
+Restricting auto-populated tables to foreign-key-only primary keys provides:
+
+1. **1:1 job correspondence**: Each `key_source` entry maps to exactly one job, eliminating ambiguity about what constitutes a "job"
+2. **Proper referential integrity**: The jobs table can reference the same parent tables, enabling cascading deletes
+3. **Eliminates key_source complexity**: No need for custom `key_source` definitions to enumerate non-foreign-key combinations
+4. **Clearer data model**: The computation graph is fully determined by table dependencies
+5. **Simpler populate logic**: No need to handle partial key matching or key enumeration
+
+**What if I need multiple outputs per parent?**
+
+Use a part table pattern instead:
+
+```python
+# Instead of adding analysis_method to primary key:
+@schema
+class Analysis(dj.Computed):
+    definition = """
+    -> Recording
+    ---
+    timestamp : datetime
+    """
+
+    class Method(dj.Part):
+        definition = """
+        -> master
+        analysis_method : varchar(32)
+        ---
+        result : float
+        """
+
+    def make(self, key):
+        self.insert1(key)
+        for method in ['pca', 'ica', 'nmf']:
+            result = run_analysis(key, method)
+            self.Method.insert1({**key, 'analysis_method': method, 'result': result})
+```
+
+This pattern maintains the 1:1 job mapping while supporting multiple outputs per computation.
