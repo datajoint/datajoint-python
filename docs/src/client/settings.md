@@ -1,6 +1,6 @@
 # Configuration Settings
 
-DataJoint uses a strongly-typed configuration system built on [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
+DataJoint uses a type-checked configuration system built on [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
 
 ## Configuration Sources
 
