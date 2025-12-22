@@ -17,7 +17,7 @@ from .settings import config
 UUID_DATA_TYPE = "binary(16)"
 
 # Type aliases for numeric types
-TYPE_ALIASES = {
+SQL_TYPE_ALIASES = {
     "FLOAT32": "float",
     "FLOAT64": "double",
     "INT64": "bigint",
@@ -80,7 +80,7 @@ SPECIAL_TYPES = {
     "FILEPATH",
     "OBJECT",
     "ADAPTED",
-} | set(TYPE_ALIASES)
+} | set(SQL_TYPE_ALIASES)
 NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
 EXTERNAL_TYPES = {
     "EXTERNAL_ATTACH",
@@ -492,8 +492,8 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         if category in SPECIAL_TYPES:
             # recursive redefinition from user-defined datatypes.
             substitute_special_type(match, category, foreign_key_sql, context)
-    elif category in TYPE_ALIASES:
-        match["type"] = TYPE_ALIASES[category]
+    elif category in SQL_TYPE_ALIASES:
+        match["type"] = SQL_TYPE_ALIASES[category]
     else:
         assert False, "Unknown special type"
 
