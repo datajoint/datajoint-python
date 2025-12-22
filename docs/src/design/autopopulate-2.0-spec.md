@@ -89,7 +89,7 @@ session_id : int
 ...                           # Same primary key attributes as MyTable (NO foreign key constraints)
 ---
 status          : enum('pending', 'reserved', 'success', 'error', 'ignore')
-priority        : int         # Higher priority = processed first (default: 0)
+priority        : int         # Lower = more urgent (0 = highest priority, default: 5)
 created_time    : datetime    # When job was added to queue
 scheduled_time  : datetime    # Process on or after this time (default: now)
 reserved_time   : datetime    # When job was reserved (null if not reserved)
@@ -140,17 +140,18 @@ FilteredImage.jobs.refresh()          # Refresh job queue
 
 ```mermaid
 stateDiagram-v2
-    state "(none)" as none
-    none --> pending : refresh()
-    none --> ignore : ignore()
+    state "(none)" as none1
+    state "(none)" as none2
+    none1 --> pending : refresh()
+    none1 --> ignore : ignore()
     pending --> reserved : reserve()
-    reserved --> none : complete()
+    reserved --> none2 : complete()
     reserved --> success : complete()*
     reserved --> error : error()
     success --> pending : refresh()*
-    error --> none : delete()
-    success --> none : delete()
-    ignore --> none : delete()
+    error --> none2 : delete()
+    success --> none2 : delete()
+    ignore --> none2 : delete()
 ```
 
 - `complete()` deletes the job entry (default when `jobs.keep_completed=False`)
@@ -163,12 +164,12 @@ stateDiagram-v2
 - `reserve()` — Marks a pending job as `reserved` before calling `make()`
 - `complete()` — Marks reserved job as `success`, or deletes it (based on `jobs.keep_completed` setting)
 - `error()` — Marks reserved job as `error` with message and stack trace
-- `delete()` — Removes job entries without confirmation (low-cost operation)
+- `delete()` — Inherited from `delete_quick()`; use `(jobs & condition).delete()` pattern
 
 **Manual status control:**
 - `ignore` is set manually via `jobs.ignore(key)` and is not part of automatic transitions
 - Jobs with `status='ignore'` are skipped by `populate()` and `refresh()`
-- To reset an ignored job, delete it and call `refresh()`
+- To reset an ignored job, delete it and call `refresh()`: `jobs.ignored.delete(); jobs.refresh()`
 
 ## API Design
 
@@ -187,7 +188,7 @@ class JobsTable(Table):
         self,
         *restrictions,
         scheduled_time: datetime = None,
-        priority: int = None,
+        priority: int = 5,
         stale_timeout: float = None
     ) -> dict:
         """
@@ -203,7 +204,7 @@ class JobsTable(Table):
             scheduled_time: When new jobs should become available for processing.
                            Default: now (jobs are immediately available).
                            Use future times to schedule jobs for later processing.
-            priority: Priority for new jobs (higher = processed first). Default: 0
+            priority: Priority for new jobs (lower = more urgent). Default: 5
             stale_timeout: Seconds after which pending jobs are checked for staleness.
                           Jobs older than this are removed if their key is no longer
                           in key_source. Default from config: jobs.stale_timeout (3600s)
@@ -249,22 +250,8 @@ class JobsTable(Table):
         """
         ...
 
-    def delete(self, *restrictions) -> int:
-        """
-        Delete jobs matching restrictions. No confirmation required.
-
-        Deleted jobs return to (none) state. Call refresh() to re-add
-        them as pending if their keys are still in key_source.
-
-        Examples:
-            jobs.errors.delete()                    # Delete all error jobs
-            (jobs & 'status="success"').delete()    # Delete completed jobs
-            (jobs & 'subject_id=42').delete()       # Delete jobs for specific key
-
-        Returns:
-            Number of jobs deleted.
-        """
-        ...
+    # delete() is inherited from delete_quick() - no confirmation required
+    # Usage: (jobs & condition).delete() or jobs.errors.delete()
 
     @property
     def pending(self) -> QueryExpression:
@@ -280,6 +267,11 @@ class JobsTable(Table):
     def errors(self) -> QueryExpression:
         """Return query for error jobs."""
         return self & 'status="error"'
+
+    @property
+    def ignored(self) -> QueryExpression:
+        """Return query for ignored jobs."""
+        return self & 'status="ignore"'
 
     @property
     def completed(self) -> QueryExpression:
@@ -305,20 +297,22 @@ def populate(
     processes: int = 1,
     make_kwargs: dict = None,
     # New parameters
-    priority: int = None,          # Only process jobs with this priority or higher
-    refresh: bool = True,          # Refresh jobs queue before populating
+    priority: int = None,          # Only process jobs at this priority or more urgent (lower values)
+    refresh: bool = True,          # Refresh jobs queue if no pending jobs available
 ) -> dict:
     """
     Populate the table by calling make() for each missing entry.
 
     New behavior with reserve_jobs=True:
-        1. If refresh=True, calls self.jobs.refresh(*restrictions)
-        2. For each pending job (ordered by priority, scheduled_time):
+        1. Fetch all non-stale pending jobs (ordered by priority ASC, scheduled_time ASC)
+        2. For each pending job:
            a. Mark job as 'reserved' (per-key, before make)
            b. Call make(key)
-           c. On success: mark job as 'success'
+           c. On success: mark job as 'success' or delete (based on keep_completed)
            d. On error: mark job as 'error' with message/stack
-        3. Continue until no more pending jobs or max_calls reached
+        3. If refresh=True and no pending jobs were found, call self.jobs.refresh()
+           and repeat from step 1
+        4. Continue until no more pending jobs or max_calls reached
     """
     ...
 ```
@@ -345,24 +339,30 @@ MyTable.jobs.progress()  # Returns detailed status breakdown
 
 ### Priority and Scheduling
 
-Priority and scheduling are handled via `refresh()` parameters:
+Priority and scheduling are handled via `refresh()` parameters. Lower priority values are more urgent (0 = highest priority).
 
 ```python
 from datetime import datetime, timedelta
 
-# Add jobs with high priority (higher = processed first)
+# Add urgent jobs (priority=0 is most urgent)
+MyTable.jobs.refresh(priority=0)
+
+# Add normal jobs (default priority=5)
+MyTable.jobs.refresh()
+
+# Add low-priority background jobs
 MyTable.jobs.refresh(priority=10)
 
 # Schedule jobs for future processing (2 hours from now)
 future_time = datetime.now() + timedelta(hours=2)
 MyTable.jobs.refresh(scheduled_time=future_time)
 
-# Combine: high-priority jobs scheduled for tonight
+# Combine: urgent jobs scheduled for tonight
 tonight = datetime.now().replace(hour=22, minute=0, second=0)
-MyTable.jobs.refresh(priority=100, scheduled_time=tonight)
+MyTable.jobs.refresh(priority=0, scheduled_time=tonight)
 
-# Add jobs for specific subjects with priority
-MyTable.jobs.refresh(Subject & 'priority="urgent"', priority=50)
+# Add urgent jobs for specific subjects
+MyTable.jobs.refresh(Subject & 'priority="urgent"', priority=0)
 ```
 
 ## Implementation Details
@@ -487,8 +487,8 @@ New configuration settings for job management:
 # In datajoint config
 dj.config['jobs.auto_refresh'] = True      # Auto-refresh on populate (default: True)
 dj.config['jobs.keep_completed'] = False   # Keep success records (default: False)
-dj.config['jobs.stale_timeout'] = 3600     # Seconds before reserved job is stale (default: 3600)
-dj.config['jobs.default_priority'] = 0     # Default priority for new jobs (default: 0)
+dj.config['jobs.stale_timeout'] = 3600     # Seconds before pending job is considered stale (default: 3600)
+dj.config['jobs.default_priority'] = 5     # Default priority for new jobs (lower = more urgent)
 ```
 
 ## Usage Examples
@@ -509,11 +509,11 @@ print(FilteredImage.jobs.progress())
 ### Priority-Based Processing
 
 ```python
-# Add urgent jobs with high priority
+# Add urgent jobs (priority=0 is most urgent)
 urgent_subjects = Subject & 'priority="urgent"'
-FilteredImage.jobs.refresh(urgent_subjects, priority=100)
+FilteredImage.jobs.refresh(urgent_subjects, priority=0)
 
-# Workers will process high-priority jobs first
+# Workers will process lowest-priority-value jobs first
 FilteredImage.populate(reserve_jobs=True)
 ```
 
