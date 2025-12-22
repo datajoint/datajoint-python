@@ -21,7 +21,7 @@ Once an object is **finalized** (either via copy-insert or staged-insert complet
 | Mode | Use Case | Workflow |
 |------|----------|----------|
 | **Copy** | Small files, existing data | Local file → copy to storage → insert record |
-| **Staged** | Large objects, Zarr/HDF5 | Reserve path → write directly to storage → finalize record |
+| **Staged** | Large objects, Zarr, TileDB | Reserve path → write directly to storage → finalize record |
 
 ### Augmented Schema vs External References
 
@@ -1144,11 +1144,36 @@ Each record owns its file exclusively. There is no deduplication or reference co
 - `object` type is additive - new tables only
 - Future: Migration utilities to convert existing external storage
 
-## Zarr and Large Hierarchical Data
+## Zarr, TileDB, and Large Hierarchical Data
 
-The `object` type is designed with Zarr and similar hierarchical data formats (HDF5 via kerchunk, TileDB) in mind. This section provides guidance for these use cases.
+The `object` type is designed with **chunk-based formats** like Zarr and TileDB in mind. These formats store each chunk as a separate object, which maps naturally to object storage.
 
-### Recommended Workflow
+### Staged Insert Compatibility
+
+**Staged inserts work with formats that support chunk-based writes:**
+
+| Format | Staged Insert | Why |
+|--------|---------------|-----|
+| **Zarr** | ✅ Yes | Each chunk is a separate object |
+| **TileDB** | ✅ Yes | Fragment-based storage maps to objects |
+| **HDF5** | ❌ No | Single monolithic file requires random-access seek/write |
+
+**HDF5 limitation**: HDF5 files have internal B-tree structures that require random-access modifications. Object storage only supports full object PUT/GET operations, not partial updates. For HDF5, use **copy insert**:
+
+```python
+# HDF5: Write locally, then copy to object storage
+import h5py
+import tempfile
+
+with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as f:
+    with h5py.File(f.name, 'w') as h5:
+        h5.create_dataset('data', data=large_array)
+    Recording.insert1({..., 'data_file': f.name})
+```
+
+For cloud-native workflows with large arrays, **Zarr is recommended** over HDF5.
+
+### Recommended Workflow (Zarr)
 
 For large Zarr stores, use **staged insert** to write directly to object storage:
 
