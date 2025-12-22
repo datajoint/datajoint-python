@@ -22,6 +22,7 @@ class TypeAliasTable(dj.Manual):
     val_uint16 : uint16       # 16-bit unsigned integer
     val_int8 : int8           # 8-bit signed integer
     val_uint8 : uint8         # 8-bit unsigned integer
+    val_bool : bool           # boolean value
     """
 
 

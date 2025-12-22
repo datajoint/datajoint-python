@@ -28,6 +28,7 @@ TYPE_ALIASES = {
     "UINT16": "smallint unsigned",
     "INT8": "tinyint",
     "UINT8": "tinyint unsigned",
+    "BOOL": "tinyint",
 }
 MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {
@@ -50,6 +51,7 @@ TYPE_PATTERN = {
         UINT16=r"uint16$",
         INT8=r"int8$",
         UINT8=r"uint8$",
+        BOOL=r"bool$",  # aliased to tinyint
         # Native MySQL types
         INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
@@ -57,7 +59,6 @@ TYPE_PATTERN = {
         STRING=r"(var)?char\s*\(.+\)$",
         JSON=r"json$",
         ENUM=r"enum\s*\(.+\)$",
-        BOOL=r"bool(ean)?$",  # aliased to tinyint(1)
         TEMPORAL=r"(date|datetime|time|timestamp|year)(\s*\(.+\))?$",
         INTERNAL_BLOB=r"(tiny|small|medium|long|)blob$",
         EXTERNAL_BLOB=r"blob@(?P<store>[a-z][\-\w]*)$",
