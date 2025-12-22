@@ -140,16 +140,17 @@ FilteredImage.jobs.refresh()          # Refresh job queue
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending : refresh()
-    [*] --> ignore : ignore()
+    state "(none)" as none
+    none --> pending : refresh()
+    none --> ignore : ignore()
     pending --> reserved : reserve()
-    reserved --> [*] : complete()\n[if not keeping completed]
+    reserved --> none : complete()\n[if not keeping completed]
     reserved --> success : complete()\n[if keeping completed]
     reserved --> error : error()
     success --> pending : refresh()\n[if key in key_source]
-    error --> [*] : delete()
-    success --> [*] : delete()
-    ignore --> [*] : delete()
+    error --> none : delete()
+    success --> none : delete()
+    ignore --> none : delete()
 ```
 
 **Transition methods:**
