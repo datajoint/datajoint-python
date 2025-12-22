@@ -30,9 +30,9 @@ The existing `~jobs` table has significant limitations:
 1. **Foreign-key-only primary keys**: Auto-populated tables cannot introduce new primary key attributes; their primary key must comprise only foreign key references
 2. **Per-table jobs**: Each computed table gets its own hidden jobs table
 3. **Native primary keys**: Jobs table uses the same primary key structure as its parent table (no hashes)
-4. **Referential integrity**: Jobs are foreign-key linked to parent tables with cascading deletes
+4. **No FK constraints on jobs**: Jobs tables omit foreign key constraints for performance; stale jobs are cleaned by `refresh()`
 5. **Rich status tracking**: Extended status values for full lifecycle visibility
-6. **Automatic refresh**: `populate()` automatically refreshes the jobs queue
+6. **Automatic refresh**: `populate()` automatically refreshes the jobs queue (adding new jobs, removing stale ones)
 
 ### Primary Key Constraint
 
@@ -84,12 +84,13 @@ Each `dj.Imported` or `dj.Computed` table `MyTable` will have an associated hidd
 
 ```
 # Job queue for MyTable
--> ParentTable1
--> ParentTable2
-...                           # Same primary key structure as MyTable
+subject_id : int
+session_id : int
+...                           # Same primary key attributes as MyTable (NO foreign key constraints)
 ---
 status          : enum('pending', 'reserved', 'success', 'error', 'ignore')
 priority        : int         # Higher priority = processed first (default: 0)
+created_time    : datetime    # When job was added to queue
 scheduled_time  : datetime    # Process on or after this time (default: now)
 reserved_time   : datetime    # When job was reserved (null if not reserved)
 completed_time  : datetime    # When job completed (null if not completed)
@@ -102,6 +103,11 @@ pid             : int unsigned   # Process ID of worker
 connection_id   : bigint unsigned  # MySQL connection ID
 version         : varchar(255)   # Code version (git hash, package version, etc.)
 ```
+
+**Important**: The jobs table has the same primary key *structure* as the target table but **no foreign key constraints**. This is intentional for performance:
+- Foreign key constraints add overhead on every insert/update/delete
+- Jobs tables are high-traffic (frequent reservations and completions)
+- Stale jobs (referencing deleted upstream records) are handled by `refresh()` instead
 
 ### Access Pattern
 
@@ -166,15 +172,23 @@ class JobsTable(Table):
         """Dynamically generated based on parent table's primary key."""
         ...
 
-    def refresh(self, *restrictions) -> int:
+    def refresh(self, *restrictions, stale_timeout: float = None) -> dict:
         """
-        Refresh the jobs queue by scanning for missing entries.
+        Refresh the jobs queue: add new jobs and remove stale ones.
 
-        Computes: (key_source & restrictions) - target - jobs
-        Inserts new entries with status='pending'.
+        Operations performed:
+        1. Add new jobs: (key_source & restrictions) - target - jobs → insert as 'pending'
+        2. Remove stale jobs: pending jobs older than stale_timeout whose keys
+           are no longer in key_source (upstream records were deleted)
+
+        Args:
+            restrictions: Conditions to filter key_source
+            stale_timeout: Seconds after which pending jobs are checked for staleness.
+                          Jobs older than this are removed if their key is no longer
+                          in key_source. Default from config: jobs.stale_timeout (3600s)
 
         Returns:
-            Number of new jobs added to queue.
+            {'added': int, 'removed': int} - counts of jobs added and stale jobs removed
         """
         ...
 
@@ -335,9 +349,9 @@ Jobs tables follow the existing hidden table naming pattern:
 - Table `FilteredImage` (stored as `__filtered_image`)
 - Jobs table: `~filtered_image__jobs` (stored as `_filtered_image__jobs`)
 
-### Referential Integrity
+### Primary Key Matching (No Foreign Keys)
 
-The jobs table references the same parent tables as the computed table:
+The jobs table has the same primary key *attributes* as the target table, but **without foreign key constraints**:
 
 ```python
 # If FilteredImage has definition:
@@ -349,18 +363,31 @@ class FilteredImage(dj.Computed):
     filtered_image : <djblob>
     """
 
-# The jobs table will have:
-# -> Image  (same foreign key reference)
-# This ensures cascading deletes work correctly
+# The jobs table will have the same primary key (image_id),
+# but NO foreign key constraint to Image.
+# This is for performance - FK constraints add overhead.
 ```
 
-### Cascading Behavior
+### Stale Job Handling
 
-When a parent record is deleted:
-1. The corresponding computed table record is deleted (existing behavior)
-2. The corresponding jobs table record is also deleted (new behavior)
+When upstream records are deleted, their corresponding jobs become "stale" (orphaned). Since there are no FK constraints, these jobs remain in the table until cleaned up:
 
-This prevents orphaned job records.
+```python
+# refresh() handles stale jobs automatically
+result = FilteredImage.jobs.refresh()
+# Returns: {'added': 10, 'removed': 3}  # 3 stale jobs cleaned up
+
+# Stale detection logic:
+# 1. Find pending jobs where created_time < (now - stale_timeout)
+# 2. Check if their keys still exist in key_source
+# 3. Remove jobs whose keys no longer exist
+```
+
+**Why not use foreign key cascading deletes?**
+- FK constraints add overhead on every insert/update/delete operation
+- Jobs tables are high-traffic (frequent reservations and status updates)
+- Stale jobs are harmless until refresh—they simply won't match key_source
+- The `refresh()` approach is more efficient for batch cleanup
 
 ### Migration from Current System
 
@@ -557,7 +584,7 @@ Per-table jobs tables provide:
 1. **Better isolation**: Jobs for one table don't affect others
 2. **Simpler queries**: No need to filter by table_name
 3. **Native keys**: Primary keys are readable, not hashed
-4. **Referential integrity**: Automatic cleanup via foreign keys
+4. **High performance**: No FK constraints means minimal overhead on job operations
 5. **Scalability**: Each table's jobs can be indexed independently
 
 ### Why Remove Key Hashing?
@@ -574,7 +601,7 @@ The current system hashes primary keys to support arbitrary key types. The new s
 Restricting auto-populated tables to foreign-key-only primary keys provides:
 
 1. **1:1 job correspondence**: Each `key_source` entry maps to exactly one job, eliminating ambiguity about what constitutes a "job"
-2. **Proper referential integrity**: The jobs table can reference the same parent tables, enabling cascading deletes
+2. **Matching key structure**: The jobs table primary key exactly matches the target table, enabling efficient stale detection via `key_source` comparison
 3. **Eliminates key_source complexity**: No need for custom `key_source` definitions to enumerate non-foreign-key combinations
 4. **Clearer data model**: The computation graph is fully determined by table dependencies
 5. **Simpler populate logic**: No need to handle partial key matching or key enumeration
