@@ -25,6 +25,11 @@ The existing `~jobs` table has significant limitations:
 
 ## Proposed Solution
 
+### Terminology
+
+- **Stale job**: A pending job whose upstream records have been deleted. The job references keys that no longer exist in `key_source`. Stale jobs are automatically cleaned up by `refresh()`.
+- **Orphaned job**: A reserved job from a crashed or terminated process. The worker that reserved the job is no longer running, but the job remains in `reserved` status. Orphaned jobs must be cleared manually (see below).
+
 ### Core Design Principles
 
 1. **Foreign-key-only primary keys**: Auto-populated tables cannot introduce new primary key attributes; their primary key must comprise only foreign key references
@@ -394,7 +399,7 @@ class FilteredImage(dj.Computed):
 
 ### Stale Job Handling
 
-When upstream records are deleted, their corresponding jobs become "stale" (orphaned). Since there are no FK constraints, these jobs remain in the table until cleaned up:
+Stale jobs are pending jobs whose upstream records have been deleted. Since there are no FK constraints on jobs tables, these jobs remain until cleaned up by `refresh()`:
 
 ```python
 # refresh() handles stale jobs automatically
@@ -404,7 +409,7 @@ result = FilteredImage.jobs.refresh()
 # Stale detection logic:
 # 1. Find pending jobs where created_time < (now - stale_timeout)
 # 2. Check if their keys still exist in key_source
-# 3. Remove jobs whose keys no longer exist
+# 3. Remove pending jobs whose keys no longer exist
 ```
 
 **Why not use foreign key cascading deletes?**
@@ -466,18 +471,28 @@ Job reservation is performed via `update1()` for each key individually before ca
 - Avoids locking overhead on the high-traffic jobs table
 - Wasted computation is minimal compared to locking complexity
 
-### Stale Reserved Job Detection
+### Orphaned Job Handling
 
-Reserved jobs that have been running too long may indicate crashed workers:
+Orphaned jobs are reserved jobs from crashed or terminated processes. The API does not provide an algorithmic method for detecting or clearing orphaned jobs because this is dependent on the orchestration system (e.g., Slurm job IDs, Kubernetes pod status, process heartbeats).
+
+Users must manually clear orphaned jobs using the `delete()` method:
 
 ```python
-# Find potentially stale jobs (reserved > 1 hour ago)
-stale = MyTable.jobs & 'status="reserved"' & 'reserved_time < NOW() - INTERVAL 1 HOUR'
+# Delete all reserved jobs (use with caution - may kill active jobs!)
+MyTable.jobs.reserved.delete()
 
-# Delete stale jobs and re-add as pending
-stale.delete()
+# Delete reserved jobs from a specific host that crashed
+(MyTable.jobs.reserved & 'host="crashed-node"').delete()
+
+# Delete reserved jobs older than 1 hour (likely orphaned)
+(MyTable.jobs.reserved & 'reserved_time < NOW() - INTERVAL 1 HOUR').delete()
+
+# Delete and re-add as pending
+MyTable.jobs.reserved.delete()
 MyTable.jobs.refresh()
 ```
+
+**Important**: Be careful when deleting reserved jobs—you may accidentally terminate jobs that are still running. Coordinate with your orchestration system to identify truly orphaned jobs.
 
 ## Configuration Options
 
