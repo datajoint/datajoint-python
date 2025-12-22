@@ -204,11 +204,11 @@ class JobsTable(Table):
         """
         Attempt to reserve a job for processing.
 
-        Uses SELECT FOR UPDATE to prevent race conditions.
-        Only reserves jobs with status='pending' and scheduled_time <= now.
+        Updates status to 'reserved' if currently 'pending' and scheduled_time <= now.
+        No locking is used; rare conflicts are resolved by the make() transaction.
 
         Returns:
-            True if reservation successful, False if already taken.
+            True if reservation successful, False if job not found or not pending.
         """
         ...
 
@@ -435,31 +435,37 @@ FilteredImage.jobs.refresh()
 
 The jobs table is created with the appropriate primary key structure matching the target table's foreign-key-derived attributes.
 
-### Race Condition Handling
+### Conflict Resolution
 
-Job reservation uses database-level locking to prevent race conditions:
+Job reservation does **not** use transaction-level locking for simplicity and performance. Instead, conflicts are resolved at the `make()` transaction level:
 
-```sql
--- Reserve a job atomically
-START TRANSACTION;
-SELECT * FROM `_my_table__jobs`
-WHERE status = 'pending'
-  AND scheduled_time <= NOW()
-ORDER BY priority DESC, scheduled_time ASC
-LIMIT 1
-FOR UPDATE SKIP LOCKED;
-
--- If row found, update it
+```python
+# Simple reservation (no locking)
 UPDATE `_my_table__jobs`
 SET status = 'reserved',
     reserved_time = NOW(),
     user = CURRENT_USER(),
     host = @@hostname,
     pid = CONNECTION_ID()
-WHERE <primary_key_match>;
-
-COMMIT;
+WHERE status = 'pending'
+  AND scheduled_time <= NOW()
+ORDER BY priority DESC, scheduled_time ASC
+LIMIT 1;
 ```
+
+**Conflict scenario** (rare):
+1. Two workers reserve the same job nearly simultaneously
+2. Both run `make()` for the same key
+3. First worker's `make()` transaction commits, inserting the result
+4. Second worker's `make()` transaction fails with duplicate key error
+5. Second worker catches the error and moves to the next job
+
+**Why this is acceptable**:
+- Conflicts are rare in practice (requires near-simultaneous reservation)
+- The `make()` transaction already guarantees data integrity
+- Duplicate key error is a clean, expected signal
+- Avoids locking overhead on the high-traffic jobs table
+- Wasted computation is minimal compared to locking complexity
 
 ### Stale Reserved Job Detection
 
