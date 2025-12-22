@@ -314,9 +314,7 @@ class ObjectRef:
         if self.size is not None:
             actual_size = self._backend.size(self.path)
             if actual_size != self.size:
-                raise IntegrityError(
-                    f"Size mismatch for {self.path}: expected {self.size}, got {actual_size}"
-                )
+                raise IntegrityError(f"Size mismatch for {self.path}: expected {self.size}, got {actual_size}")
 
         # Check hash if available
         if self.hash:
