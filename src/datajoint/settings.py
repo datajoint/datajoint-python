@@ -33,7 +33,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union
+from typing import Any, Iterator, Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -58,7 +58,7 @@ prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix))
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def find_config_file(start: Optional[Path] = None) -> Optional[Path]:
+def find_config_file(start: Path | None = None) -> Path | None:
     """
     Search for datajoint.json in current and parent directories.
 
@@ -89,7 +89,7 @@ def find_config_file(start: Optional[Path] = None) -> Optional[Path]:
         current = current.parent
 
 
-def find_secrets_dir(config_path: Optional[Path] = None) -> Optional[Path]:
+def find_secrets_dir(config_path: Path | None = None) -> Path | None:
     """
     Find the secrets directory.
 
@@ -116,7 +116,7 @@ def find_secrets_dir(config_path: Optional[Path] = None) -> Optional[Path]:
     return None
 
 
-def read_secret_file(secrets_dir: Optional[Path], name: str) -> Optional[str]:
+def read_secret_file(secrets_dir: Path | None, name: str) -> str | None:
     """
     Read a secret value from a file in the secrets directory.
 
@@ -148,11 +148,11 @@ class DatabaseSettings(BaseSettings):
     )
 
     host: str = Field(default="localhost", validation_alias="DJ_HOST")
-    user: Optional[str] = Field(default=None, validation_alias="DJ_USER")
-    password: Optional[SecretStr] = Field(default=None, validation_alias="DJ_PASS")
+    user: str | None = Field(default=None, validation_alias="DJ_USER")
+    password: SecretStr | None = Field(default=None, validation_alias="DJ_PASS")
     port: int = Field(default=3306, validation_alias="DJ_PORT")
     reconnect: bool = True
-    use_tls: Optional[bool] = None
+    use_tls: bool | None = None
 
 
 class ConnectionSettings(BaseSettings):
@@ -160,7 +160,7 @@ class ConnectionSettings(BaseSettings):
 
     model_config = SettingsConfigDict(extra="forbid", validate_assignment=True)
 
-    init_function: Optional[str] = None
+    init_function: str | None = None
     charset: str = ""  # pymysql uses '' as default
 
 
@@ -184,8 +184,8 @@ class ExternalSettings(BaseSettings):
         validate_assignment=True,
     )
 
-    aws_access_key_id: Optional[str] = Field(default=None, validation_alias="DJ_AWS_ACCESS_KEY_ID")
-    aws_secret_access_key: Optional[SecretStr] = Field(default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY")
+    aws_access_key_id: str | None = Field(default=None, validation_alias="DJ_AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: SecretStr | None = Field(default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY")
 
 
 class Config(BaseSettings):
@@ -226,18 +226,18 @@ class Config(BaseSettings):
     fetch_format: Literal["array", "frame"] = "array"
     enable_python_native_blobs: bool = True
     add_hidden_timestamp: bool = False
-    filepath_checksum_size_limit: Optional[int] = None
+    filepath_checksum_size_limit: int | None = None
 
     # External stores configuration
-    stores: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    stores: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     # Cache paths
-    cache: Optional[Path] = None
-    query_cache: Optional[Path] = None
+    cache: Path | None = None
+    query_cache: Path | None = None
 
     # Internal: track where config was loaded from
-    _config_path: Optional[Path] = None
-    _secrets_dir: Optional[Path] = None
+    _config_path: Path | None = None
+    _secrets_dir: Path | None = None
 
     @field_validator("loglevel", mode="after")
     @classmethod
@@ -248,13 +248,13 @@ class Config(BaseSettings):
 
     @field_validator("cache", "query_cache", mode="before")
     @classmethod
-    def convert_path(cls, v: Any) -> Optional[Path]:
+    def convert_path(cls, v: Any) -> Path | None:
         """Convert string paths to Path objects."""
         if v is None:
             return None
         return Path(v) if not isinstance(v, Path) else v
 
-    def get_store_spec(self, store: str) -> Dict[str, Any]:
+    def get_store_spec(self, store: str) -> dict[str, Any]:
         """
         Get configuration for an external store.
 
@@ -279,11 +279,11 @@ class Config(BaseSettings):
             raise DataJointError(f'Missing or invalid protocol in config.stores["{store}"]')
 
         # Define required and allowed keys by protocol
-        required_keys: Dict[str, Tuple[str, ...]] = {
+        required_keys: dict[str, tuple[str, ...]] = {
             "file": ("protocol", "location"),
             "s3": ("protocol", "endpoint", "bucket", "access_key", "secret_key", "location"),
         }
-        allowed_keys: Dict[str, Tuple[str, ...]] = {
+        allowed_keys: dict[str, tuple[str, ...]] = {
             "file": ("protocol", "location", "subfolding", "stage"),
             "s3": (
                 "protocol",
@@ -311,7 +311,7 @@ class Config(BaseSettings):
 
         return spec
 
-    def load(self, filename: Union[str, Path]) -> None:
+    def load(self, filename: str | Path) -> None:
         """
         Load settings from a JSON file.
 
@@ -330,7 +330,7 @@ class Config(BaseSettings):
         self._update_from_flat_dict(data)
         self._config_path = filepath
 
-    def _update_from_flat_dict(self, data: Dict[str, Any]) -> None:
+    def _update_from_flat_dict(self, data: dict[str, Any]) -> None:
         """Update settings from a flat dict with dot notation keys."""
         for key, value in data.items():
             parts = key.split(".")

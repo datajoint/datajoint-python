@@ -12,7 +12,7 @@ Advanced users can install DataJoint locally. Please see the installation instru
 ## Installation
 
 First, please [install Python](https://www.python.org/downloads/) version
-3.8 or later.
+3.10 or later.
 
 Next, please install DataJoint via one of the following:
 
@@ -413,7 +413,7 @@ data = query.fetch(order_by='`select` desc')
 ```
 
 The `order_by` value is eventually passed to the `ORDER BY`
-[clause](https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html).
+[clause](https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html).
 
 ### Limiting results
 
