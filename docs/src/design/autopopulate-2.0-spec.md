@@ -132,35 +132,30 @@ FilteredImage.jobs.refresh()          # Refresh job queue
 |--------|-------------|
 | `pending` | Job is queued and ready to be processed |
 | `reserved` | Job is currently being processed by a worker |
-| `success` | Job completed successfully |
+| `success` | Job completed successfully (optional, depends on settings) |
 | `error` | Job failed with an error |
 | `ignore` | Job should be skipped (manually set, not part of automatic transitions) |
 
 ### Status Transitions
 
-Automatic transitions during `populate()`:
-
-```
-┌─────────┐    ┌──────────┐    ┌───────────┐    ┌───────────┐
-│ (none)  │───▶│ pending  │───▶│ reserved  │───▶│  success  │
-└─────────┘    └──────────┘    └───────────┘    └───────────┘
-   refresh()    reserve()         complete()
-                     │
-                     │ error()
-                     ▼
-               ┌───────────┐
-               │   error   │
-               └───────────┘
-                     │
-                     │ delete
-                     ▼
-               ┌───────────┐    ┌──────────┐
-               │  (none)   │───▶│ pending  │
-               └───────────┘    └──────────┘
-                                 refresh()
+```mermaid
+stateDiagram-v2
+    [*] --> pending : refresh()
+    pending --> reserved : reserve()
+    reserved --> [*] : complete()\n[if not keeping completed]
+    reserved --> success : complete()\n[if keeping completed]
+    reserved --> error : error()
+    error --> [*] : delete()
+    success --> [*] : delete()
+    ignore --> [*] : delete()
 ```
 
-**Resetting jobs:** To reset a job (error or otherwise), simply delete it from the jobs table. The next `refresh()` will re-add it as `pending` if the key is still in `key_source`.
+**Transition methods:**
+- `refresh()` — Adds new jobs as `pending` (from `key_source - target - jobs`)
+- `reserve()` — Marks a pending job as `reserved` before calling `make()`
+- `complete()` — Marks reserved job as `success`, or deletes it (based on `jobs.keep_completed` setting)
+- `error()` — Marks reserved job as `error` with message and stack trace
+- `delete()` — Removes job entry, returning it to `(none)` state
 
 **Manual status control:**
 - `ignore` is set manually via `jobs.ignore(key)` and is not part of automatic transitions
@@ -180,7 +175,13 @@ class JobsTable(Table):
         """Dynamically generated based on parent table's primary key."""
         ...
 
-    def refresh(self, *restrictions, stale_timeout: float = None) -> dict:
+    def refresh(
+        self,
+        *restrictions,
+        scheduled_time: datetime = None,
+        priority: int = None,
+        stale_timeout: float = None
+    ) -> dict:
         """
         Refresh the jobs queue: add new jobs and remove stale ones.
 
@@ -191,6 +192,10 @@ class JobsTable(Table):
 
         Args:
             restrictions: Conditions to filter key_source
+            scheduled_time: When new jobs should become available for processing.
+                           Default: now (jobs are immediately available).
+                           Use future times to schedule jobs for later processing.
+            priority: Priority for new jobs (higher = processed first). Default: 0
             stale_timeout: Seconds after which pending jobs are checked for staleness.
                           Jobs older than this are removed if their key is no longer
                           in key_source. Default from config: jobs.stale_timeout (3600s)
@@ -342,17 +347,24 @@ MyTable.jobs.progress()  # Returns detailed status breakdown
 
 ### Priority and Scheduling
 
+Priority and scheduling are handled via `refresh()` parameters:
+
 ```python
-# Set priority for specific jobs (higher = processed first)
-MyTable.jobs.set_priority(restriction, priority=10)
-
-# Schedule jobs for future processing
 from datetime import datetime, timedelta
-future_time = datetime.now() + timedelta(hours=2)
-MyTable.jobs.schedule(restriction, scheduled_time=future_time)
 
-# Insert with priority during refresh
-MyTable.jobs.refresh(priority=5)  # All new jobs get priority=5
+# Add jobs with high priority (higher = processed first)
+MyTable.jobs.refresh(priority=10)
+
+# Schedule jobs for future processing (2 hours from now)
+future_time = datetime.now() + timedelta(hours=2)
+MyTable.jobs.refresh(scheduled_time=future_time)
+
+# Combine: high-priority jobs scheduled for tonight
+tonight = datetime.now().replace(hour=22, minute=0, second=0)
+MyTable.jobs.refresh(priority=100, scheduled_time=tonight)
+
+# Add jobs for specific subjects with priority
+MyTable.jobs.refresh(Subject & 'priority="urgent"', priority=50)
 ```
 
 ## Implementation Details
@@ -513,9 +525,9 @@ print(FilteredImage.jobs.progress())
 ### Priority-Based Processing
 
 ```python
-# Mark urgent jobs as high priority
+# Add urgent jobs with high priority
 urgent_subjects = Subject & 'priority="urgent"'
-FilteredImage.jobs.set_priority(urgent_subjects, priority=100)
+FilteredImage.jobs.refresh(urgent_subjects, priority=100)
 
 # Workers will process high-priority jobs first
 FilteredImage.populate(reserve_jobs=True)
@@ -528,7 +540,7 @@ FilteredImage.populate(reserve_jobs=True)
 from datetime import datetime, timedelta
 
 tonight = datetime.now().replace(hour=22, minute=0, second=0)
-FilteredImage.jobs.schedule('subject_id > 100', scheduled_time=tonight)
+FilteredImage.jobs.refresh('subject_id > 100', scheduled_time=tonight)
 
 # Only jobs scheduled for now or earlier will be processed
 FilteredImage.populate(reserve_jobs=True)
