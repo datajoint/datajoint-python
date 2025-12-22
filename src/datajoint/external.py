@@ -38,7 +38,6 @@ class ExternalTable(Table):
 
     def __init__(self, connection, store, database):
         self.store = store
-        self.spec = config.get_store_spec(store)
         self.database = database
         self._connection = connection
         self._heading = Heading(
@@ -53,7 +52,7 @@ class ExternalTable(Table):
         if not self.is_declared:
             self.declare()
         # Initialize storage backend (validates configuration)
-        self.storage = StorageBackend(self.spec)
+        self.storage = StorageBackend(config.get_store_spec(store))
 
     @property
     def definition(self):
@@ -84,28 +83,29 @@ class ExternalTable(Table):
         from . import s3
 
         if not hasattr(self, "_s3_legacy") or self._s3_legacy is None:
-            self._s3_legacy = s3.Folder(**self.spec)
+            self._s3_legacy = s3.Folder(**self.storage.spec)
         return self._s3_legacy
 
     # - low-level operations - private
 
     def _make_external_filepath(self, relative_filepath):
         """resolve the complete external path based on the relative path"""
+        spec = self.storage.spec
         # Strip root for S3 paths
-        if self.spec["protocol"] == "s3":
-            posix_path = PurePosixPath(PureWindowsPath(self.spec["location"]))
+        if spec["protocol"] == "s3":
+            posix_path = PurePosixPath(PureWindowsPath(spec["location"]))
             location_path = (
                 Path(*posix_path.parts[1:])
-                if len(self.spec["location"]) > 0 and any(case in posix_path.parts[0] for case in ("\\", ":"))
+                if len(spec["location"]) > 0 and any(case in posix_path.parts[0] for case in ("\\", ":"))
                 else Path(posix_path)
             )
             return PurePosixPath(location_path, relative_filepath)
         # Preserve root for local filesystem
-        elif self.spec["protocol"] == "file":
-            return PurePosixPath(Path(self.spec["location"]), relative_filepath)
+        elif spec["protocol"] == "file":
+            return PurePosixPath(Path(spec["location"]), relative_filepath)
         else:
             # For other protocols (gcs, azure, etc.), treat like S3
-            location = self.spec.get("location", "")
+            location = spec.get("location", "")
             return PurePosixPath(location, relative_filepath) if location else PurePosixPath(relative_filepath)
 
     def _make_uuid_path(self, uuid, suffix=""):
@@ -113,7 +113,7 @@ class ExternalTable(Table):
         return self._make_external_filepath(
             PurePosixPath(
                 self.database,
-                "/".join(subfold(uuid.hex, self.spec["subfolding"])),
+                "/".join(subfold(uuid.hex, self.storage.spec["subfolding"])),
                 uuid.hex,
             ).with_suffix(suffix)
         )
@@ -235,9 +235,11 @@ class ExternalTable(Table):
         """
         local_filepath = Path(local_filepath)
         try:
-            relative_filepath = str(local_filepath.relative_to(self.spec["stage"]).as_posix())
+            relative_filepath = str(local_filepath.relative_to(self.storage.spec["stage"]).as_posix())
         except ValueError:
-            raise DataJointError("The path {path} is not in stage {stage}".format(path=local_filepath.parent, **self.spec))
+            raise DataJointError(
+                f"The path {local_filepath.parent} is not in stage {self.storage.spec['stage']}"
+            )
         uuid = uuid_from_buffer(init_string=relative_filepath)  # hash relative path, not contents
         contents_hash = uuid_from_file(local_filepath)
 
@@ -285,7 +287,7 @@ class ExternalTable(Table):
                 "filepath", "contents_hash", "size"
             )
             external_path = self._make_external_filepath(relative_filepath)
-            local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
+            local_filepath = Path(self.storage.spec["stage"]).absolute() / relative_filepath
 
             file_exists = Path(local_filepath).is_file() and (
                 not _need_checksum(local_filepath, size) or uuid_from_file(local_filepath) == contents_hash
