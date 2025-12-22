@@ -74,7 +74,7 @@ class Analysis(dj.Computed):
     """
 ```
 
-**Migration note**: Existing tables that violate this constraint will continue to work but cannot use the new jobs system. A deprecation warning will be issued.
+**Legacy table support**: Existing tables that introduce additional primary key attributes (beyond foreign keys) can still use the jobs system, but their jobs table will only include the foreign-key-derived primary key attributes. This means multiple target rows may map to a single job entry. A deprecation warning will be issued for such tables.
 
 ## Architecture
 
@@ -148,16 +148,24 @@ Automatic transitions during `populate()`:
                      │
                      │ error()
                      ▼
+               ┌───────────┐
+               │   error   │
+               └───────────┘
+                     │
+                     │ delete
+                     ▼
                ┌───────────┐    ┌──────────┐
-               │   error   │───▶│ pending  │
+               │  (none)   │───▶│ pending  │
                └───────────┘    └──────────┘
-                                 reset()
+                                 refresh()
 ```
+
+**Resetting jobs:** To reset a job (error or otherwise), simply delete it from the jobs table. The next `refresh()` will re-add it as `pending` if the key is still in `key_source`.
 
 **Manual status control:**
 - `ignore` is set manually via `jobs.ignore(key)` and is not part of automatic transitions
 - Jobs with `status='ignore'` are skipped by `populate()` and `refresh()`
-- Use `jobs.reset()` to move `ignore` jobs back to `pending`
+- To reset an ignored job, delete it and call `refresh()`
 
 ## API Design
 
@@ -223,19 +231,22 @@ class JobsTable(Table):
     def ignore(self, key: dict) -> None:
         """
         Mark a job to be ignored (skipped during populate).
+
+        To reset an ignored job, delete it and call refresh().
         """
         ...
 
-    def reset(self, *restrictions, include_errors: bool = True) -> int:
+    def delete(self, *restrictions) -> int:
         """
-        Reset jobs to pending status.
+        Delete jobs matching restrictions.
 
-        Args:
-            restrictions: Conditions to filter which jobs to reset
-            include_errors: If True, also reset error jobs (default: True)
+        Deleted jobs return to (none) state. Call refresh() to re-add
+        them as pending if their keys are still in key_source.
+
+        This is the standard way to "reset" error or ignored jobs.
 
         Returns:
-            Number of jobs reset.
+            Number of jobs deleted.
         """
         ...
 
@@ -409,17 +420,20 @@ FilteredImage.alter()
 FilteredImage.jobs.refresh()
 ```
 
-### Migration from Current System
+### Lazy Table Creation
 
-The schema-level `~jobs` table will be:
-1. **Maintained** for backward compatibility during transition
-2. **Deprecated** with warnings when `reserve_jobs=True` is used
-3. **Migration utility** provided to convert existing jobs to new format
+Jobs tables are created automatically on first use:
 
 ```python
-# Migration utility
-schema.migrate_jobs()  # Migrates ~jobs entries to per-table jobs tables
+# First call to populate with reserve_jobs=True creates the jobs table
+FilteredImage.populate(reserve_jobs=True)
+# Creates ~filtered_image__jobs if it doesn't exist, then populates
+
+# Alternatively, explicitly create/refresh the jobs table
+FilteredImage.jobs.refresh()
 ```
+
+The jobs table is created with the appropriate primary key structure matching the target table's foreign-key-derived attributes.
 
 ### Race Condition Handling
 
@@ -447,7 +461,7 @@ WHERE <primary_key_match>;
 COMMIT;
 ```
 
-### Stale Job Detection
+### Stale Reserved Job Detection
 
 Reserved jobs that have been running too long may indicate crashed workers:
 
@@ -455,8 +469,9 @@ Reserved jobs that have been running too long may indicate crashed workers:
 # Find potentially stale jobs (reserved > 1 hour ago)
 stale = MyTable.jobs & 'status="reserved"' & 'reserved_time < NOW() - INTERVAL 1 HOUR'
 
-# Reset stale jobs to pending
-MyTable.jobs.reset(stale)
+# Delete stale jobs and re-add as pending
+stale.delete()
+MyTable.jobs.refresh()
 ```
 
 ## Configuration Options
@@ -518,11 +533,14 @@ errors = FilteredImage.jobs.errors.fetch(as_dict=True)
 for err in errors:
     print(f"Key: {err['subject_id']}, Error: {err['error_message']}")
 
-# Reset specific errors after fixing the issue
-FilteredImage.jobs.reset('subject_id=42')
+# Delete specific error jobs after fixing the issue
+(FilteredImage.jobs & 'subject_id=42').delete()
 
-# Reset all errors
-FilteredImage.jobs.reset(include_errors=True)
+# Delete all error jobs
+FilteredImage.jobs.errors.delete()
+
+# Re-add deleted jobs as pending (if keys still in key_source)
+FilteredImage.jobs.refresh()
 ```
 
 ### Dashboard Queries
@@ -556,21 +574,13 @@ for jt in schema.jobs:
 
 ## Backward Compatibility
 
-### Deprecation Path
+### Migration
 
-1. **Phase 1 (Current Release)**:
-   - New jobs tables created alongside existing `~jobs`
-   - `reserve_jobs=True` uses new system by default
-   - `reserve_jobs='legacy'` uses old system
-   - Deprecation warning when using legacy system
+This is a major release. The legacy schema-level `~jobs` table is replaced by per-table jobs tables:
 
-2. **Phase 2 (Next Release)**:
-   - Legacy `~jobs` table no longer updated
-   - `reserve_jobs='legacy'` removed
-   - Migration utility provided
-
-3. **Phase 3 (Future Release)**:
-   - Legacy `~jobs` table dropped on schema upgrade
+- **Legacy `~jobs` table**: No longer used; can be dropped manually if present
+- **New jobs tables**: Created automatically on first `populate(reserve_jobs=True)` call
+- **No parallel support**: Teams should migrate cleanly to the new system
 
 ### API Compatibility
 
