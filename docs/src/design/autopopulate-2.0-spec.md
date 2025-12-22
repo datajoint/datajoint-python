@@ -389,6 +389,26 @@ result = FilteredImage.jobs.refresh()
 - Stale jobs are harmless until refresh—they simply won't match key_source
 - The `refresh()` approach is more efficient for batch cleanup
 
+### Table Drop and Alter Behavior
+
+When an auto-populated table is **dropped**, its associated jobs table is automatically dropped:
+
+```python
+# Dropping FilteredImage also drops ~filtered_image__jobs
+FilteredImage.drop()
+```
+
+When an auto-populated table is **altered** (e.g., primary key changes), the jobs table is dropped and can be recreated via `refresh()`:
+
+```python
+# Alter that changes primary key structure
+# Jobs table is dropped since its structure no longer matches
+FilteredImage.alter()
+
+# Recreate jobs table with new structure
+FilteredImage.jobs.refresh()
+```
+
 ### Migration from Current System
 
 The schema-level `~jobs` table will be:
@@ -508,20 +528,30 @@ FilteredImage.jobs.reset(include_errors=True)
 ### Dashboard Queries
 
 ```python
-# Get pipeline-wide status
+# Get pipeline-wide status using schema.jobs
 def pipeline_status(schema):
-    status = {}
-    for table in schema.list_tables():
-        tbl = getattr(schema, table)
-        if hasattr(tbl, 'jobs'):
-            status[table] = tbl.jobs.progress()
-    return status
+    return {
+        jt.target.table_name: jt.progress()
+        for jt in schema.jobs
+    }
 
 # Example output:
 # {
 #     'FilteredImage': {'pending': 150, 'reserved': 3, 'success': 847, 'error': 12},
 #     'Analysis': {'pending': 500, 'reserved': 0, 'success': 0, 'error': 0},
 # }
+
+# Refresh all jobs tables in the schema
+for jobs_table in schema.jobs:
+    jobs_table.refresh()
+
+# Get all errors across the pipeline
+all_errors = []
+for jt in schema.jobs:
+    errors = jt.errors.fetch(as_dict=True)
+    for err in errors:
+        err['_table'] = jt.target.table_name
+        all_errors.append(err)
 ```
 
 ## Backward Compatibility
@@ -544,15 +574,26 @@ def pipeline_status(schema):
 
 ### API Compatibility
 
-The `schema.jobs` property will continue to work but return a unified view:
+The `schema.jobs` property returns a list of all jobs table objects for auto-populated tables in the schema:
 
 ```python
-# Returns all jobs across all tables in the schema
-schema.jobs  # Deprecated, shows warning
+# Returns list of JobsTable objects
+schema.jobs
+# [FilteredImage.jobs, Analysis.jobs, ...]
 
-# Equivalent to:
-# SELECT * FROM _table1__jobs UNION SELECT * FROM _table2__jobs ...
+# Iterate over all jobs tables
+for jobs_table in schema.jobs:
+    print(f"{jobs_table.target.table_name}: {jobs_table.progress()}")
+
+# Query all errors across the schema
+all_errors = [job for jt in schema.jobs for job in jt.errors.fetch(as_dict=True)]
+
+# Refresh all jobs tables
+for jobs_table in schema.jobs:
+    jobs_table.refresh()
 ```
+
+This replaces the legacy single `~jobs` table with direct access to per-table jobs.
 
 ## Future Extensions
 
