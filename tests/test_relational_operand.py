@@ -198,7 +198,7 @@ def test_outer_union_fail_2(schema_any_pop):
 
 
 def test_preview(schema_simp_pop):
-    with dj.config(display__limit=7):
+    with dj.config.override(display__limit=7):
         x = A().proj(a="id_a")
         s = x.preview()
         assert len(s.split("\n")) == len(x) + 2

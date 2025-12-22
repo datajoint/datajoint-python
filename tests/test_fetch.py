@@ -250,7 +250,7 @@ def test_nullable_numbers(schema_any):
 
 def test_fetch_format(subject):
     """test fetch_format='frame'"""
-    with dj.config(fetch_format="frame"):
+    with dj.config.override(fetch_format="frame"):
         # test if lists are both dicts
         list1 = sorted(subject.proj().fetch(as_dict=True), key=itemgetter("subject_id"))
         list2 = sorted(subject.fetch(dj.key), key=itemgetter("subject_id"))
@@ -273,9 +273,9 @@ def test_fetch_format(subject):
 
 def test_key_fetch1(subject):
     """test KEY fetch1 - issue #976"""
-    with dj.config(fetch_format="array"):
+    with dj.config.override(fetch_format="array"):
         k1 = (subject & "subject_id=10").fetch1("KEY")
-    with dj.config(fetch_format="frame"):
+    with dj.config.override(fetch_format="frame"):
         k2 = (subject & "subject_id=10").fetch1("KEY")
     assert k1 == k2
 
@@ -290,7 +290,7 @@ def test_query_caching(schema_any):
     # initialize cache directory
     os.mkdir(os.path.expanduser("~/dj_query_cache"))
 
-    with dj.config(query_cache=os.path.expanduser("~/dj_query_cache")):
+    with dj.config.override(query_cache=os.path.expanduser("~/dj_query_cache")):
         conn = schema.TTest3.connection
         # insert sample data and load cache
         schema.TTest3.insert([dict(key=100 + i, value=200 + i) for i in range(2)])
