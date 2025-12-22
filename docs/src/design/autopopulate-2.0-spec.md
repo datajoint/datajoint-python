@@ -146,13 +146,14 @@ stateDiagram-v2
     reserved --> [*] : complete()\n[if not keeping completed]
     reserved --> success : complete()\n[if keeping completed]
     reserved --> error : error()
+    success --> pending : refresh()\n[if key in key_source]
     error --> [*] : delete()
     success --> [*] : delete()
     ignore --> [*] : delete()
 ```
 
 **Transition methods:**
-- `refresh()` — Adds new jobs as `pending` (from `key_source - target - jobs`)
+- `refresh()` — Adds new jobs as `pending`; also re-pends `success` jobs if key is in `key_source` but not in target
 - `ignore()` — Marks a key as `ignore` (can be called on keys not yet in jobs table)
 - `reserve()` — Marks a pending job as `reserved` before calling `make()`
 - `complete()` — Marks reserved job as `success`, or deletes it (based on `jobs.keep_completed` setting)
