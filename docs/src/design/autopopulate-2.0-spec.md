@@ -144,14 +144,18 @@ stateDiagram-v2
     none --> pending : refresh()
     none --> ignore : ignore()
     pending --> reserved : reserve()
-    reserved --> none : complete()\n[if not keeping completed]
-    reserved --> success : complete()\n[if keeping completed]
+    reserved --> none : complete()
+    reserved --> success : complete()*
     reserved --> error : error()
-    success --> pending : refresh()\n[if key in key_source]
+    success --> pending : refresh()*
     error --> none : delete()
     success --> none : delete()
     ignore --> none : delete()
 ```
+
+- `complete()` deletes the job entry (default when `jobs.keep_completed=False`)
+- `complete()*` keeps the job as `success` (when `jobs.keep_completed=True`)
+- `refresh()*` re-pends a `success` job if its key is in `key_source` but not in target
 
 **Transition methods:**
 - `refresh()` — Adds new jobs as `pending`; also re-pends `success` jobs if key is in `key_source` but not in target
@@ -159,7 +163,7 @@ stateDiagram-v2
 - `reserve()` — Marks a pending job as `reserved` before calling `make()`
 - `complete()` — Marks reserved job as `success`, or deletes it (based on `jobs.keep_completed` setting)
 - `error()` — Marks reserved job as `error` with message and stack trace
-- `delete()` — Removes job entry, returning it to `(none)` state
+- `delete()` — Removes job entries without confirmation (low-cost operation)
 
 **Manual status control:**
 - `ignore` is set manually via `jobs.ignore(key)` and is not part of automatic transitions
@@ -247,28 +251,18 @@ class JobsTable(Table):
 
     def delete(self, *restrictions) -> int:
         """
-        Delete jobs matching restrictions.
+        Delete jobs matching restrictions. No confirmation required.
 
         Deleted jobs return to (none) state. Call refresh() to re-add
         them as pending if their keys are still in key_source.
 
-        This is the standard way to "reset" error or ignored jobs.
+        Examples:
+            jobs.errors.delete()                    # Delete all error jobs
+            (jobs & 'status="success"').delete()    # Delete completed jobs
+            (jobs & 'subject_id=42').delete()       # Delete jobs for specific key
 
         Returns:
             Number of jobs deleted.
-        """
-        ...
-
-    def clear_completed(self, *restrictions, before: datetime = None) -> int:
-        """
-        Remove completed jobs from the queue.
-
-        Args:
-            restrictions: Conditions to filter which jobs to clear
-            before: Only clear jobs completed before this time
-
-        Returns:
-            Number of jobs cleared.
         """
         ...
 
