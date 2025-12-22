@@ -134,30 +134,30 @@ FilteredImage.jobs.refresh()          # Refresh job queue
 | `reserved` | Job is currently being processed by a worker |
 | `success` | Job completed successfully |
 | `error` | Job failed with an error |
-| `ignore` | Job should be skipped (manually set) |
+| `ignore` | Job should be skipped (manually set, not part of automatic transitions) |
 
 ### Status Transitions
 
+Automatic transitions during `populate()`:
+
 ```
-                    ┌─────────────────────────────────────┐
-                    │                                     │
-                    ▼                                     │
-┌─────────┐    ┌──────────┐    ┌───────────┐    ┌────────┴──┐
+┌─────────┐    ┌──────────┐    ┌───────────┐    ┌───────────┐
 │ (none)  │───▶│ pending  │───▶│ reserved  │───▶│  success  │
 └─────────┘    └──────────┘    └───────────┘    └───────────┘
-     │              │               │
-     │              │               │
-     │              ▼               ▼
-     │         ┌──────────┐    ┌───────────┐
-     └────────▶│  ignore  │    │   error   │───┐
-               └──────────┘    └───────────┘   │
-                    ▲               │          │
-                    │               ▼          │
-                    │          ┌──────────┐    │
-                    └──────────│ pending  │◀───┘
-                               └──────────┘
-                               (after reset)
+   refresh()    reserve()         complete()
+                     │
+                     │ error()
+                     ▼
+               ┌───────────┐    ┌──────────┐
+               │   error   │───▶│ pending  │
+               └───────────┘    └──────────┘
+                                 reset()
 ```
+
+**Manual status control:**
+- `ignore` is set manually via `jobs.ignore(key)` and is not part of automatic transitions
+- Jobs with `status='ignore'` are skipped by `populate()` and `refresh()`
+- Use `jobs.reset()` to move `ignore` jobs back to `pending`
 
 ## API Design
 
