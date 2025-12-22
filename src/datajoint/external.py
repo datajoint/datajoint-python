@@ -237,9 +237,7 @@ class ExternalTable(Table):
         try:
             relative_filepath = str(local_filepath.relative_to(self.storage.spec["stage"]).as_posix())
         except ValueError:
-            raise DataJointError(
-                f"The path {local_filepath.parent} is not in stage {self.storage.spec['stage']}"
-            )
+            raise DataJointError(f"The path {local_filepath.parent} is not in stage {self.storage.spec['stage']}")
         uuid = uuid_from_buffer(init_string=relative_filepath)  # hash relative path, not contents
         contents_hash = uuid_from_file(local_filepath)
 
