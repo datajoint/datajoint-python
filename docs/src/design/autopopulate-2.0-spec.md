@@ -431,11 +431,13 @@ When two workers attempt to populate the same key:
 1. Both call `make()` for the same key
 2. First worker's `make()` transaction commits, inserting the result
 3. Second worker's `make()` transaction fails with duplicate key error
-4. Second worker catches the error and moves to the next job
+4. Second worker catches the error, and the job returns to `pending` or `(none)` state
+
+**Important**: Only errors that occur *inside* `make()` are logged with `error` status. Duplicate key errors from collisions occur outside the `make()` logic and are handled silently—the job is either retried or reverts to `pending`/`(none)`. This distinction ensures the error log contains only genuine computation failures, not coordination artifacts.
 
 **Why this is acceptable**:
 - The `make()` transaction guarantees data integrity
-- Duplicate key error is a clean, expected signal
+- Duplicate key error is a clean, expected signal (not a real error)
 - With `reserve_jobs=True`, conflicts are rare (requires near-simultaneous reservation)
 - Wasted computation is minimal compared to locking complexity
 
