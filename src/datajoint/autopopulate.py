@@ -368,8 +368,6 @@ class AutoPopulate:
         """
         import time
 
-        # use the legacy `_make_tuples` callback.
-        make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
         start_time = time.time()
 
         # Reserve the job (per-key, before make)
@@ -377,7 +375,7 @@ class AutoPopulate:
             jobs.reserve(key)
 
         # if make is a generator, transaction can be delayed until the final stage
-        is_generator = inspect.isgeneratorfunction(make)
+        is_generator = inspect.isgeneratorfunction(self.make)
         if not is_generator:
             self.connection.start_transaction()
 
@@ -394,16 +392,16 @@ class AutoPopulate:
 
         try:
             if not is_generator:
-                make(dict(key), **(make_kwargs or {}))
+                self.make(dict(key), **(make_kwargs or {}))
             else:
                 # tripartite make - transaction is delayed until the final stage
-                gen = make(dict(key), **(make_kwargs or {}))
+                gen = self.make(dict(key), **(make_kwargs or {}))
                 fetched_data = next(gen)
                 fetch_hash = deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[fetched_data]
                 computed_result = next(gen)  # perform the computation
                 # fetch and insert inside a transaction
                 self.connection.start_transaction()
-                gen = make(dict(key), **(make_kwargs or {}))  # restart make
+                gen = self.make(dict(key), **(make_kwargs or {}))  # restart make
                 fetched_data = next(gen)
                 if (
                     fetch_hash != deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[fetched_data]
