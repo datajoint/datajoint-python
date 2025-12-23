@@ -216,7 +216,7 @@ Such attributes must be uniquely named in each table, such as `session_start_tim
 
 Secondary attributes can be given default values.
 A default value will be used for an attribute if no other value is given at the time
-the entity is [inserted](../../manipulation/insert.md) into the table.
+the entity is [inserted](../../operations/insert.md) into the table.
 Generally, default values are numerical values or character strings.
 Default values for dates must be given as strings as well, contained within quotes
 (with the exception of `CURRENT_TIMESTAMP`).

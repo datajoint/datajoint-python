@@ -33,7 +33,7 @@ languages to simplify and enhance the construction and interpretation of precise
 efficient data queries.
 
 1. **Entity integrity**: Data are represented and manipulated in the form of tables
-representing [well-formed entity sets](../design/integrity.md).
+representing well-formed entity sets.
    This applies to the inputs and outputs of query operators.
    The output of a query operator is an entity set with a well-defined entity type, a
    primary key, unique attribute names, etc.
@@ -155,8 +155,8 @@ and others.
 
 The result of the union operator `A + B` contains all the entities from both operands.
 
-[Entity normalization](../design/normalization) requires that `A` and `B` are of the same type,
-with with the same [primary key](../concepts/glossary#primary-key), using homologous
+Entity normalization requires that `A` and `B` are of the same type,
+with the same primary key, using homologous
 attributes. Without secondary attributes, the result is the simple set union. With
 secondary attributes, they must have the same names and datatypes. The two operands
 must also be **disjoint**, without any duplicate primary key values across both inputs.

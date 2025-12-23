@@ -7,7 +7,7 @@ Union is rarely needed in practice.
 ## Union operator `+`
 
 The result of the union operator `A + B` contains all the entities from both operands.
-[Entity normalization](../design/normalization.md) requires that the operands in a
+Entity normalization requires that the operands in a
 union both belong to the same entity type with the same primary key using homologous
 attributes.
 In the absence of any secondary attributes, the result of a union is the simple set union.

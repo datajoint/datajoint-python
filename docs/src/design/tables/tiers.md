@@ -26,7 +26,7 @@ superclass.
 Therefore, the corresponding User table on the database would be of the Manual tier.
 Furthermore, the classes for **imported** and **computed** tables have additional
 capabilities for automated processing as described in
-[Auto-populate](../../compute/populate.md).
+[Auto-populate](../../operations/populate.md).
 
 ## Internal conventions for naming tables
 

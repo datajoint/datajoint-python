@@ -53,7 +53,7 @@ fractional digits.
    Stores and returns raw bytes without serialization.
    For serialized Python objects (arrays, dicts, etc.), use `<djblob>` instead.
    The `longblob` and other `blob` datatypes can be configured to store data
-   [externally](../../sysadmin/external-store.md) by using the `blob@store` syntax.
+   [externally](../../admin/external-store.md) by using the `blob@store` syntax.
 
 ## Less common (but supported) datatypes
 

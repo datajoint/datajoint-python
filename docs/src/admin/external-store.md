@@ -34,7 +34,7 @@ For example, the following table stores motion-aligned two-photon movies.
 aligned_movie :  blob@external  # motion-aligned movie in 'external' store
 ```
 
-All [insert](../manipulation/insert.md) and [fetch](../query/fetch.md) operations work
+All [insert](../operations/insert.md) and [fetch](../query/fetch.md) operations work
 identically for `external` attributes as they do for `blob` attributes, with the same
 serialization protocol.
 Similar to `blobs`, `external` attributes cannot be used in restriction conditions.
@@ -116,12 +116,12 @@ configured external store.
 [foreign keys](../design/tables/dependencies.md) referencing the
 `~external_<storename>` table (but are not shown as such to the user).
 
-8. The [insert](../manipulation/insert.md) operation encodes and hashes the blob data.
+8. The [insert](../operations/insert.md) operation encodes and hashes the blob data.
 If an external object is not present in storage for the same hash, the object is saved
 and if the save operation is successful, corresponding entities in table
 `~external_<storename>` for that store are created.
 
-9. The [delete](../manipulation/delete.md)  operation first deletes the foreign key
+9. The [delete](../operations/delete.md) operation first deletes the foreign key
 reference in the target table. The external table entry and actual external object is
 not actually deleted at this time (`soft-delete`).
 

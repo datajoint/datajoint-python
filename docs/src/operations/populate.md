@@ -22,7 +22,7 @@ Their data definition follows the same [definition syntax](../design/tables/decl
 ## Make
 
 For auto-populated tables, data should never be entered using
-[insert](../manipulation/insert.md) directly.
+[insert](insert.md) directly.
 Instead these tables must define the callback method `make(self, key)`.
 The `insert` method then can only be called on `self` inside this callback method.
 

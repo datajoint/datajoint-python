@@ -68,7 +68,7 @@ directly.
 The only valid method to delete from a part table is to delete the master.
 This has been an unenforced rule, but upcoming versions of DataJoint will prohibit
 direct deletes from the master table.
-DataJoint's [delete](../../manipulation/delete.md) operation is also enclosed in a
+DataJoint's [delete](../../operations/delete.md) operation is also enclosed in a
 transaction.
 
 Together, the rules of master-part relationships ensure a key aspect of data integrity:

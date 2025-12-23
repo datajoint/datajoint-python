@@ -16,7 +16,7 @@ tables to reference data which reside outside of DataJoint
 pipelines.
 
 To define a table using the `filepath` datatype, an existing DataJoint
-[store](../../sysadmin/external-store.md) should be created and then referenced in the
+[store](../admin/external-store.md) should be created and then referenced in the
 new table definition. For example, given a simple store:
 
 ```python

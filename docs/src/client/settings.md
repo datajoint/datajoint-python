@@ -152,7 +152,7 @@ dj.config.database.use_tls = None   # Auto (default)
 
 ## External Storage
 
-Configure external stores in the `stores` section. See [External Storage](../sysadmin/external-store.md) for details.
+Configure external stores in the `stores` section. See [External Storage](../admin/external-store.md) for details.
 
 ```json
 {

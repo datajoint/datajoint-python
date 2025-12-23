@@ -72,7 +72,7 @@ n = len(Session & 'session_date >= "2018-01-01"')
 
 ## Normalization in queries
 
-Query objects adhere to entity [entity normalization](../design/normalization.md) just
+Query objects adhere to entity normalization just
 like the stored tables do.
 The result of a query is a well-defined entity set with an readily identifiable entity
 class and designated primary attributes that jointly distinguish any two entities from

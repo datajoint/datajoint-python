@@ -319,7 +319,7 @@ Area.populate(display_progress=True)
 ```
 
 The `make` method populates automated tables from inserted data. Read more in the
-full article [here](./compute/make.md)
+full article [here](./operations/make.md)
 
 ## Query
 

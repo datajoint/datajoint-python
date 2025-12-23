@@ -178,7 +178,7 @@ is equivalent to `A - cond`.
 
 Restriction by a query object is a generalization of restriction by a table (which is
 also a query object), because DataJoint queries always produce well-defined entity
-sets, as described in  [entity normalization](../design/normalization.md).
+sets, as described in entity normalization.
 As such, restriction by queries follows the same behavior as restriction by tables
 described above.
 

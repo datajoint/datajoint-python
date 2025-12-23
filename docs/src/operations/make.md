@@ -1,6 +1,6 @@
 # Transactions in Make
 
-Each call of the [make](../compute/make.md) method is enclosed in a transaction.
+Each call of the `make` method is enclosed in a transaction.
 DataJoint users do not need to explicitly manage transactions but must be aware of
 their use.
 
@@ -16,8 +16,7 @@ become visible to other processes until the `make` call completes execution.
 If the `make` method raises an exception, all changes made so far will be discarded and
 will never become visible to other processes.
 
-Transactions are particularly important in maintaining
-[group integrity](../design/integrity.md#group-integrity) with
+Transactions are particularly important in maintaining group integrity with
 [master-part relationships](../design/tables/master-part.md).
 The `make` call of a master table first inserts the master entity and then inserts all
 the matching part entities in the part tables.
