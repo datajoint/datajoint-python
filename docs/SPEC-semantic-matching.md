@@ -187,17 +187,35 @@ class SchemaGraph:
 
 ## Implementation Plan
 
-### Phase 1: Add Lineage to Attribute
+### Phase 1: Add Lineage Infrastructure
 
-1. Add `lineage` field to `default_attribute_properties` in `heading.py`
-2. Update `Attribute` namedtuple (automatically from `default_attribute_properties`)
-3. Add `lineage` parameter to all Attribute creation sites
+1. **Add `lineage` field to `Attribute`** (`heading.py`)
+   - Add `lineage` to `default_attribute_properties` with default `None`
+   - Lineage is a tuple: `(origin_schema, origin_table, origin_attribute)` or `None`
+
+2. **Create `~lineage` table management** (new file: `datajoint/lineage.py`)
+   - `LineageTable` class (similar to `ExternalTable`)
+   - Methods: `declare()`, `insert()`, `lookup()`, `compute_from_fk()`
+   - Database-agnostic SQL generation for MySQL and PostgreSQL
+
+3. **Integrate with Schema** (`schemas.py`)
+   - Create `~lineage` table when schema is activated
+   - Provide `schema.migrate_lineage()` method for existing schemas
 
 ### Phase 2: Populate Lineage During Table Declaration
 
-1. Modify `compile_foreign_key` in `declare.py` to preserve lineage when copying attributes from referenced tables
-2. For non-FK attributes, set lineage to `(current_schema, current_table, attr_name)`
-3. Store lineage in heading metadata (potentially in attribute comments or a separate metadata table)
+1. **Modify `compile_foreign_key`** (`declare.py`)
+   - When copying attributes from referenced table, record their lineage
+   - Return lineage info along with attribute SQL
+
+2. **Modify `declare`** (`declare.py`)
+   - For native attributes: lineage = `(current_schema, current_table, attr_name)`
+   - For FK attributes: lineage = inherited from referenced table
+   - Insert lineage records into `~lineage` table after table creation
+
+3. **Load lineage into Heading** (`heading.py`)
+   - When `Heading` is initialized from `table_info`, query `~lineage`
+   - Store lineage in each `Attribute` instance
 
 ### Phase 3: Propagate Lineage Through Query Operations
 
@@ -229,68 +247,197 @@ Update these methods to preserve lineage:
    - Check for namesake collisions (same name, different lineage)
    - Check that homologous attributes are in primary key
 
-### Phase 5: Error Handling and Migration
+### Phase 5: Error Handling
 
-1. Raise clear errors for:
-   - Namesake collision (same name, different lineage)
-   - Joining on non-primary-key homologous attributes
+1. **Clear error messages** for:
+   - Namesake collision: `"Cannot join: attribute 'name' exists in both operands with different lineages (Student.name vs Course.name). Use .proj() to rename one."`
+   - Non-PK homologous: `"Cannot join on secondary attribute 'value' - must be in primary key of at least one operand."`
 
-2. Provide resolution guidance:
-   - Use projection to rename colliding attributes
-   - Use the permissive join operator `@` to bypass checks
+2. **Resolution guidance** in error messages:
+   - Suggest specific projection syntax to resolve
+   - Mention permissive join `@` as escape hatch
 
-3. Migration path for existing code:
-   - Backward compatibility mode?
-   - Deprecation warnings?
+### Phase 6: Migration Utility
 
-## Open Questions
+1. **`dj.migrate_lineage(schema)`** function
+   - Analyzes existing FK constraints via `INFORMATION_SCHEMA` (MySQL) or `pg_catalog` (PostgreSQL)
+   - Computes lineage for each attribute using recursive FK traversal
+   - Populates `~lineage` table
 
-### Q1: How to store lineage in the database?
+2. **Automatic migration on schema activation** (optional)
+   - If `~lineage` table is empty but tables exist, offer to run migration
+   - Configuration flag: `datajoint.config['auto_migrate_lineage'] = True/False`
 
-**Options:**
-- A. Encode in attribute comments (JSON suffix)
-- B. Separate metadata table per schema
-- C. Compute from foreign key constraints at runtime
+3. **CLI command**
+   ```bash
+   python -m datajoint migrate-lineage myschema
+   ```
 
-**Recommendation**: Option A is simplest but limits comment space. Option B is cleaner but adds tables. Option C is dynamic but slower.
+## Design Decisions
 
-### Q2: What happens with renamed attributes?
+### D1: Lineage Storage - Hidden Metadata Table
+
+**Decision**: Use a hidden metadata table (`~lineage`) per schema.
+
+This approach:
+- Works consistently for both **MySQL** and **PostgreSQL**
+- Provides explicit, queryable lineage data
+- Follows the existing pattern for hidden tables (e.g., `~external_*`, `~log`)
+- Easier to migrate existing schemas
+
+#### Table Structure
+
+```sql
+CREATE TABLE `~lineage` (
+    table_name       VARCHAR(64)  NOT NULL,
+    attribute_name   VARCHAR(64)  NOT NULL,
+    origin_schema    VARCHAR(64)  NOT NULL,
+    origin_table     VARCHAR(64)  NOT NULL,
+    origin_attribute VARCHAR(64)  NOT NULL,
+    PRIMARY KEY (table_name, attribute_name)
+) ENGINE=InnoDB;
+```
+
+For PostgreSQL:
+```sql
+CREATE TABLE "~lineage" (
+    table_name       VARCHAR(64)  NOT NULL,
+    attribute_name   VARCHAR(64)  NOT NULL,
+    origin_schema    VARCHAR(64)  NOT NULL,
+    origin_table     VARCHAR(64)  NOT NULL,
+    origin_attribute VARCHAR(64)  NOT NULL,
+    PRIMARY KEY (table_name, attribute_name)
+);
+```
+
+#### Lineage Lookup
+
+When a `Heading` is initialized from a table, query the `~lineage` table:
+
+```python
+def _load_lineage(self, connection, database, table_name):
+    """Load lineage information from the ~lineage metadata table."""
+    query = """
+        SELECT attribute_name, origin_schema, origin_table, origin_attribute
+        FROM `{database}`.`~lineage`
+        WHERE table_name = %s
+    """.format(database=database)
+    # ... populate self.lineage dict
+```
+
+### D2: Renamed Attributes Preserve Lineage
+
+**Decision**: Yes, renamed attributes preserve their original lineage.
 
 When an attribute is renamed via projection:
 ```python
 table.proj(new_name='old_name')
 ```
 
-Should the lineage remain the same (pointing to `old_name`'s origin) or become new?
+The `new_name` attribute retains the lineage of `old_name`. The rename is cosmetic; the semantic identity (what entity the attribute represents) remains unchanged.
 
-**Recommendation**: Renamed attributes should keep their original lineage. The rename is cosmetic; the semantic identity remains.
+This enables:
+```python
+# These two expressions can still join on the underlying subject_id
+A.proj(subj='subject_id') * B.proj(subj='subject_id')  # OK - same lineage
+```
 
-### Q3: What about computed attributes?
+### D3: Computed Attributes Have No Lineage
+
+**Decision**: Lineage breaks for computed attributes.
 
 For computed attributes like:
 ```python
 table.proj(total='price * quantity')
 ```
 
-**Recommendation**: Computed attributes have no lineage (or a special "computed" lineage). They cannot participate in semantic matching.
+The `total` attribute has `lineage = None`. Computed attributes:
+- Cannot participate in semantic matching
+- Will cause a namesake collision error if another table has an attribute named `total`
+- Must be renamed via projection to avoid collisions
 
-### Q4: How does this interact with `dj.U` (universal set)?
+This is intentional: a computed value is a new entity, not inherited from any source table.
 
-The `U` class modifies which attributes are treated as primary key.
+### D4: `dj.U` Does Not Affect Lineage
 
-**Recommendation**: `U` should not affect lineage - it only affects the primary key membership check, not semantic matching.
+**Decision**: The universal set `U` only affects primary key membership, not lineage.
 
-### Q5: Backward compatibility?
+`dj.U` promotes attributes to the primary key for grouping/aggregation purposes, but the semantic identity of the attributes remains unchanged.
 
-Should there be a migration path for existing pipelines?
+### D5: Migration via Utility Function
 
-**Options:**
-- A. Breaking change - require updates to all pipelines
-- B. Deprecation period with warnings
-- C. Configuration flag to switch between old/new behavior
-- D. Default to permissive join (`@`) semantics when lineage is unknown
+**Decision**: Provide a migration utility that computes the `~lineage` table from existing schema.
 
-**Recommendation**: Option C or D for transition period.
+For existing schemas without lineage metadata, a utility will:
+1. Analyze the foreign key graph using `INFORMATION_SCHEMA`
+2. Trace each attribute to its origin table
+3. Populate the `~lineage` table
+
+```python
+def migrate_schema_lineage(schema):
+    """
+    Compute and populate the ~lineage table for an existing schema.
+
+    Analyzes foreign key relationships to determine attribute origins.
+    """
+    # 1. Create ~lineage table if not exists
+    # 2. For each table in schema:
+    #    a. For each attribute:
+    #       - If attribute is inherited via FK, trace to origin
+    #       - If attribute is native, origin is this table
+    #    b. Insert into ~lineage
+```
+
+#### Algorithm for Computing Lineage
+
+```python
+def compute_attribute_lineage(schema, table, attribute):
+    """
+    Trace an attribute to its original definition.
+
+    Returns (origin_schema, origin_table, origin_attribute)
+    """
+    # Check if this attribute is part of a foreign key
+    fk_info = get_foreign_key_for_attribute(schema, table, attribute)
+
+    if fk_info is None:
+        # Native attribute - origin is this table
+        return (schema, table, attribute)
+
+    # Inherited via FK - recurse to referenced table
+    ref_schema, ref_table, ref_attribute = fk_info
+    return compute_attribute_lineage(ref_schema, ref_table, ref_attribute)
+```
+
+#### MySQL Query for FK Analysis
+
+```sql
+SELECT
+    kcu.COLUMN_NAME as attribute_name,
+    kcu.REFERENCED_TABLE_SCHEMA as ref_schema,
+    kcu.REFERENCED_TABLE_NAME as ref_table,
+    kcu.REFERENCED_COLUMN_NAME as ref_attribute
+FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+WHERE kcu.TABLE_SCHEMA = %s
+  AND kcu.TABLE_NAME = %s
+  AND kcu.REFERENCED_TABLE_NAME IS NOT NULL
+```
+
+#### PostgreSQL Query for FK Analysis
+
+```sql
+SELECT
+    a.attname as attribute_name,
+    cl2.relnamespace::regnamespace::text as ref_schema,
+    cl2.relname as ref_table,
+    a2.attname as ref_attribute
+FROM pg_constraint c
+JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
+JOIN pg_class cl2 ON cl2.oid = c.confrelid
+JOIN pg_attribute a2 ON a2.attrelid = c.confrelid AND a2.attnum = ANY(c.confkey)
+WHERE c.contype = 'f'
+  AND c.conrelid = %s::regclass
+```
 
 ## Testing Strategy
 
@@ -310,12 +457,47 @@ Should there be a migration path for existing pipelines?
 
 ## Summary
 
-Semantic matching is a significant change to DataJoint's join semantics that improves correctness by preventing accidental joins on coincidentally-named attributes. The recommended implementation adds a `lineage` tuple to each `Attribute`, populated during table declaration and preserved through query operations.
+Semantic matching is a significant change to DataJoint's join semantics that improves correctness by preventing accidental joins on coincidentally-named attributes.
 
-Key files to modify:
-- `datajoint/heading.py` - Add lineage to Attribute
-- `datajoint/declare.py` - Populate lineage during FK processing
-- `datajoint/expression.py` - Use lineage in join logic
-- `datajoint/condition.py` - Update compatibility checks
+### Key Design Decisions
 
-This is a breaking change that will require a migration strategy for existing pipelines.
+| Decision | Choice |
+|----------|--------|
+| Lineage storage | Hidden `~lineage` metadata table (MySQL + PostgreSQL compatible) |
+| Renamed attributes | Preserve original lineage |
+| Computed attributes | Lineage = `None` (breaks matching) |
+| `dj.U` interaction | Does not affect lineage |
+| Migration | Utility function that computes lineage from FK graph |
+
+### Files to Create
+
+| File | Purpose |
+|------|---------|
+| `datajoint/lineage.py` | `LineageTable` class, migration utilities |
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `datajoint/heading.py` | Add `lineage` field to `Attribute`, load from `~lineage` |
+| `datajoint/declare.py` | Record lineage during table declaration |
+| `datajoint/expression.py` | Use lineage equality in join matching |
+| `datajoint/condition.py` | Update compatibility checks for lineage collisions |
+| `datajoint/schemas.py` | Create `~lineage` table on schema activation |
+
+### Breaking Changes
+
+This is a **semantically breaking change**:
+- Joins that previously matched on coincidental name matches will now fail
+- Users must explicitly rename colliding attributes with `.proj()`
+- Migration utility provides a path for existing schemas
+
+### Next Steps
+
+1. Review and approve this specification
+2. Implement Phase 1 (infrastructure) with tests
+3. Implement Phase 2 (population) with tests
+4. Implement Phase 3-4 (query propagation and join logic)
+5. Implement Phase 5-6 (error handling and migration)
+6. Update documentation
+7. Release with deprecation warnings, then enforce in subsequent release
