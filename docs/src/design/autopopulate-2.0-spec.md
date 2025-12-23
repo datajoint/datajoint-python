@@ -489,7 +489,7 @@ MyTable.jobs.reserved.delete()
 MyTable.jobs.refresh()
 ```
 
-**Important**: Be careful when deleting reserved jobs—you may accidentally terminate jobs that are still running. Coordinate with your orchestration system to identify truly orphaned jobs.
+**Note**: Deleting a reserved job does not terminate the running worker—it simply removes the reservation record. If the worker is still running, it will complete its `make()` call. If the job is then refreshed as pending and picked up by another worker, duplicated work may occur. Coordinate with your orchestration system to identify truly orphaned jobs before clearing them.
 
 ## Configuration Options
 
@@ -666,7 +666,7 @@ This section identifies potential hazards and their mitigations.
 | Hazard | Description | Mitigation |
 |--------|-------------|------------|
 | **Accidental job deletion** | User runs `jobs.delete()` without restriction | `delete()` inherits from `delete_quick()` (no confirmation); users must apply restrictions carefully |
-| **Clearing active jobs** | User clears reserved jobs while workers are running | Document warning in Orphaned Job Handling; recommend coordinating with orchestrator |
+| **Clearing active jobs** | User clears reserved jobs while workers are still running | May cause duplicated work if job is refreshed and picked up again; coordinate with orchestrator |
 | **Priority confusion** | User expects higher number = higher priority | Document clearly: lower values are more urgent (0 = highest priority) |
 
 ### Migration
