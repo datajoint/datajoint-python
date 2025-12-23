@@ -54,10 +54,11 @@ Every attribute has a **lineage** - a reference to its original definition. Line
 ### Join Compatibility Rules
 
 For a join `A * B` to be valid:
-1. All namesake attributes (same name in both) must be homologous
-2. Homologous attributes must be in the primary key of at least one operand
+1. All namesake attributes (same name in both) must be homologous (same lineage)
 
 If namesake attributes exist that are **not** homologous, an error should be raised (collision of non-homologous namesakes).
+
+**Note**: The current restriction that joins cannot be done on secondary attributes is **deprecated**. As long as attributes are homologous, they can participate in joins regardless of primary/secondary status. A warning may be raised for joins on unindexed attributes (performance consideration).
 
 ## Current Implementation Analysis
 
@@ -228,7 +229,15 @@ Update these methods to preserve lineage:
 
 ### Phase 4: Implement Semantic Join Matching
 
-1. Modify `join()` in `expression.py`:
+1. **Ensure dependencies are loaded** before join operations:
+   ```python
+   def join(self, other, semantic_check=True, left=False):
+       # Dependencies must be loaded for lineage computation
+       self.connection.dependencies.load(force=False)
+       # ...
+   ```
+
+2. **Modify `join()` in `expression.py`**:
    ```python
    def join(self, other, semantic_check=True, left=False):
        if semantic_check:
@@ -243,9 +252,10 @@ Update these methods to preserve lineage:
        # ...
    ```
 
-2. Modify `assert_join_compatibility()` in `condition.py`:
+3. **Modify `assert_join_compatibility()` in `condition.py`**:
+   - **Remove** the secondary attribute restriction (deprecated)
    - Check for namesake collisions (same name, different lineage)
-   - Check that homologous attributes are in primary key
+   - Optionally warn about unindexed join attributes
 
 ### Phase 5: Error Handling
 
@@ -275,15 +285,55 @@ Update these methods to preserve lineage:
 
 ## Design Decisions
 
-### D1: Lineage Storage - Hidden Metadata Table
+### D1: Lineage Storage - Hidden Metadata Table with Fallback
 
-**Decision**: Use a hidden metadata table (`~lineage`) per schema.
+**Decision**: Use a hidden metadata table (`~lineage`) per schema, with **in-memory fallback** when table doesn't exist.
 
 This approach:
 - Works consistently for both **MySQL** and **PostgreSQL**
 - Provides explicit, queryable lineage data
 - Follows the existing pattern for hidden tables (e.g., `~external_*`, `~log`)
 - Easier to migrate existing schemas
+- **Works with databases not created by DataJoint** via fallback computation
+
+#### Fallback: Compute Lineage from Dependencies
+
+When the `~lineage` table does not exist (e.g., external databases, legacy schemas), lineage is computed **in-memory** from the FK graph using the existing `Dependencies` class:
+
+```python
+def compute_lineage_from_dependencies(connection, table_name, attribute_name):
+    """
+    Compute lineage by traversing the FK graph.
+    Uses connection.dependencies which already loads FK info from INFORMATION_SCHEMA.
+    """
+    connection.dependencies.load(force=False)  # ensure dependencies are loaded
+
+    full_table_name = f"`{schema}`.`{table_name}`"
+
+    # Check incoming edges (foreign keys TO this table)
+    for parent, props in connection.dependencies.parents(full_table_name).items():
+        attr_map = props.get('attr_map', {})
+        if attribute_name in attr_map:
+            # This attribute is inherited from parent
+            parent_attr = attr_map[attribute_name]
+            parent_schema, parent_table = parse_full_table_name(parent)
+            # Recurse to find ultimate origin
+            return compute_lineage_from_dependencies(
+                connection, parent_table, parent_attr, parent_schema
+            )
+
+    # Not inherited - this table is the origin
+    return (schema, table_name, attribute_name)
+```
+
+#### Integration with Dependencies Loading
+
+**Dependencies must be loaded before joins.** This is already the pattern for operations like `delete`, `drop`, and `populate`. The join operation will:
+
+1. Ensure `connection.dependencies.load(force=False)` is called
+2. Check if `~lineage` table exists for involved schemas
+3. If exists: read lineage from table (fast)
+4. If not exists: compute lineage from FK graph (slower but works for any database)
 
 #### Table Structure
 
@@ -364,7 +414,33 @@ This is intentional: a computed value is a new entity, not inherited from any so
 
 `dj.U` promotes attributes to the primary key for grouping/aggregation purposes, but the semantic identity of the attributes remains unchanged.
 
-### D5: Migration via Utility Function
+### D5: Deprecate Secondary Attribute Join Restriction
+
+**Decision**: Remove the current restriction that prevents joining on secondary attributes.
+
+**Current behavior** (`condition.py:assert_join_compatibility`):
+```python
+# Raises error if both expressions have the same secondary attribute
+raise DataJointError(
+    "Cannot join query expressions on dependent attribute `%s`" % attr
+)
+```
+
+**New behavior**: Any homologous attributes can participate in joins, regardless of primary/secondary status. The only requirement is matching lineage.
+
+**Rationale**: The original restriction was a heuristic to prevent accidental joins on coincidentally-named attributes. With proper lineage tracking, this heuristic is no longer needed - lineage provides the authoritative answer.
+
+**Performance warning**: Consider warning when joining on attributes that lack indexes in one or both tables:
+```python
+# Optional warning for unindexed join attributes
+if not has_index(table1, attr) or not has_index(table2, attr):
+    warnings.warn(
+        f"Join on '{attr}' may be slow: attribute is not indexed in both tables",
+        PerformanceWarning
+    )
+```
+
+### D6: Migration via Utility Function
 
 **Decision**: Provide a migration utility that computes the `~lineage` table from existing schema.
 
@@ -463,11 +539,19 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 
 | Decision | Choice |
 |----------|--------|
-| Lineage storage | Hidden `~lineage` metadata table (MySQL + PostgreSQL compatible) |
-| Renamed attributes | Preserve original lineage |
-| Computed attributes | Lineage = `None` (breaks matching) |
-| `dj.U` interaction | Does not affect lineage |
-| Migration | Utility function that computes lineage from FK graph |
+| **D1**: Lineage storage | Hidden `~lineage` table + in-memory fallback from FK graph |
+| **D2**: Renamed attributes | Preserve original lineage |
+| **D3**: Computed attributes | Lineage = `None` (breaks matching) |
+| **D4**: `dj.U` interaction | Does not affect lineage |
+| **D5**: Secondary attr restriction | **Deprecated** - homologous attrs can join regardless of PK status |
+| **D6**: Migration | Utility function + automatic fallback computation |
+
+### Compatibility
+
+- **MySQL**: Fully supported (INFORMATION_SCHEMA for FK analysis)
+- **PostgreSQL**: Fully supported (pg_constraint/pg_attribute for FK analysis)
+- **External databases**: Works via in-memory lineage computation from FK graph
+- **Legacy DataJoint schemas**: Works via migration utility or automatic fallback
 
 ### Files to Create
 
