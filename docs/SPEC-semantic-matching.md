@@ -37,13 +37,12 @@ With semantic matching: The `name` attributes have different lineages (one origi
 
 ## Key Concepts
 
-### Homologous Attributes
+### Terminology
 
-Two attributes are **homologous** if they:
-1. Have the same name
-2. Trace back to the same original attribute definition through foreign key chains
-
-Homologous attributes are also called **semantically matched** attributes.
+- **Homologous attributes**: attributes with the same lineage (whether or not they have the same name)
+- **Namesake attributes**: attributes with the same name (whether or not they have the same lineage)
+- **Homologous namesakes**: attributes with the same name AND the same lineage — used for join matching
+- **Non-homologous namesakes**: attributes with the same name BUT different lineage — cause join errors
 
 ### Attribute Lineage
 
@@ -65,21 +64,23 @@ Lineage propagates through:
 - **Foreign key references**: inherited attributes retain their origin lineage regardless of PK/secondary status
 - **Query expressions**: projections preserve lineage for renamed attributes; computed attributes have no lineage
 
-### Join Compatibility Rules
+### Join Rules
 
-For a join `A * B` to be valid, all namesake attributes must be homologous (same lineage).
+**The `*` operator** performs a semantic join:
+1. Joins on **homologous namesakes** (same name AND same lineage)
+2. Raises an error on **non-homologous namesakes** (same name, different lineage)
+3. Attributes with no namesake in the other operand pass through unchanged
 
-**Cases**:
-1. **Both have lineage** → lineages must match (same origin)
-2. **Both have no lineage** → collision (both are native secondary attrs)
-3. **One has lineage, one doesn't** → collision (cannot be the same entity)
+**The `.join()` method** provides additional control via kwargs:
+- Defaults to semantic matching (same as `*`)
+- `semantic_check=False` bypasses the non-homologous namesake error (equivalent to `@` operator)
 
-If namesake attributes are **not** homologous, an error should be raised.
+**Non-homologous namesake cases**:
+- Both have lineage but different origins → error
+- Both have no lineage (native secondary attrs) → error
+- One has lineage, other doesn't → error
 
-**Implications**:
-- FK-inherited attributes (PK or secondary) can match if they share lineage
-- Native secondary attributes with the same name always collide - one must be renamed via `.proj()`
-- This replaces the old heuristic with a principled rule: lineage must match
+**Resolution**: Use `.proj()` to rename one of the colliding attributes.
 
 **Note**: A warning may be raised for joins on unindexed attributes (performance consideration).
 
