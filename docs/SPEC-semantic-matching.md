@@ -47,33 +47,39 @@ Homologous attributes are also called **semantically matched** attributes.
 
 ### Attribute Lineage
 
-Lineage applies **only to primary key attributes**:
+Lineage is determined by how an attribute is introduced:
 
-1. **Primary key attributes** have lineage:
-   - If native to the table: `lineage = (this_schema, this_table, attr_name)`
-   - If inherited via foreign key: `lineage = (origin_schema, origin_table, origin_attr)`
+1. **Attributes inherited via foreign key** have lineage:
+   - Whether they end up as primary or secondary in the referencing table
+   - `lineage = (origin_schema, origin_table, origin_attr)` traced to the original definition
+   - Example: `-> Subject` in the dependent section introduces `subject_id` as a secondary attribute WITH lineage
 
-2. **Secondary attributes** do NOT have lineage:
-   - `lineage = None` for all secondary (non-primary-key) attributes
-   - Secondary attributes are table-specific data, not entity identifiers
-   - Foreign keys can only reference primary keys, so secondary attributes cannot be inherited
+2. **Native primary key attributes** have lineage:
+   - `lineage = (this_schema, this_table, attr_name)` - the table where they are defined
+
+3. **Native secondary attributes** do NOT have lineage:
+   - `lineage = None` for secondary attributes defined directly (not via FK)
+   - These are table-specific data, not entity identifiers
 
 Lineage propagates through:
-- **Foreign key references**: when table B references table A, the inherited primary key attributes in B have the same lineage as their counterparts in A
-- **Query expressions**: projections preserve lineage for renamed PK attributes; computed attributes have no lineage
+- **Foreign key references**: inherited attributes retain their origin lineage regardless of PK/secondary status
+- **Query expressions**: projections preserve lineage for renamed attributes; computed attributes have no lineage
 
 ### Join Compatibility Rules
 
-For a join `A * B` to be valid:
-1. **Primary key namesakes** must be homologous (same lineage)
-2. **Secondary attribute namesakes** always collide (both have `lineage = None`)
+For a join `A * B` to be valid, all namesake attributes must be homologous (same lineage).
 
-If namesake attributes exist that are **not** homologous, an error should be raised (collision of non-homologous namesakes).
+**Cases**:
+1. **Both have lineage** → lineages must match (same origin)
+2. **Both have no lineage** → collision (both are native secondary attrs)
+3. **One has lineage, one doesn't** → collision (cannot be the same entity)
+
+If namesake attributes are **not** homologous, an error should be raised.
 
 **Implications**:
-- Two tables with the same secondary attribute name (e.g., both have `value`) cannot be joined directly - one must be renamed via `.proj()`
-- Primary key attributes can only match if they share lineage through the FK graph
-- This replaces the old heuristic (secondary attributes can't be join keys) with a principled rule (lineage must match)
+- FK-inherited attributes (PK or secondary) can match if they share lineage
+- Native secondary attributes with the same name always collide - one must be renamed via `.proj()`
+- This replaces the old heuristic with a principled rule: lineage must match
 
 **Note**: A warning may be raised for joins on unindexed attributes (performance consideration).
 
@@ -463,12 +469,23 @@ raise DataJointError(
 )
 ```
 
-**New behavior**: The restriction is now a consequence of lineage rules:
-- Secondary attributes have `lineage = None`
-- Two `None` lineages do not match (collision)
-- Therefore, secondary attribute namesakes still cause errors, but for the right reason
+**New behavior**: Lineage determines joinability:
+- Attributes with matching lineage can participate in joins (even if secondary)
+- Attributes with `lineage = None` (native secondary) always collide with namesakes
+- The key distinction is HOW the attribute was introduced, not WHERE it ends up
 
-**Key insight**: Since foreign keys can only reference primary keys, secondary attributes cannot be inherited. They are always native to their table and have no lineage. The old heuristic was correct in effect, but the new rule is principled.
+**Key insight**: Secondary attributes introduced via foreign key DO have lineage and CAN participate in joins. Only native secondary attributes (defined directly in the table, not via FK) have no lineage.
+
+**Example**:
+```python
+# Table A: -> Subject in dependent section gives secondary `subject_id` WITH lineage
+# Table B: -> Subject in dependent section gives secondary `subject_id` WITH lineage
+# A * B works! Both subject_id attributes trace to Subject.subject_id
+
+# Table C: has native secondary `value` (no lineage)
+# Table D: has native secondary `value` (no lineage)
+# C * D fails - collision, must rename one
+```
 
 **Error message change**:
 ```python
@@ -603,7 +620,7 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 | **D2**: Renamed attributes | Preserve original lineage |
 | **D3**: Computed attributes | Lineage = `None` (breaks matching) |
 | **D4**: `dj.U` interaction | Does not affect lineage |
-| **D5**: Secondary attr restriction | Replaced by lineage rule - secondary attrs have no lineage, so namesakes collide |
+| **D5**: Secondary attr restriction | Replaced by lineage rule - FK-inherited attrs have lineage, native secondary don't |
 | **D6**: Migration | Utility function + automatic fallback computation |
 
 ### Compatibility
