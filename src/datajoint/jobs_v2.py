@@ -273,7 +273,6 @@ version=""      : varchar(255)    # Code version
         added = 0
         for key in new_keys:
             try:
-                # Use raw SQL to set scheduled_time using server time
                 self._insert_job_with_delay(key, priority, delay)
                 added += 1
             except DuplicateError:
