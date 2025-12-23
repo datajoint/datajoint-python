@@ -1,319 +1,194 @@
 # DataJoint Python Documentation Update Plan
 
-This plan outlines the comprehensive update to the DataJoint Python documentation, aligning it with the [DataJoint Book](https://datajoint.github.io/datajoint-book) structure while adding Python-specific API details.
+This plan outlines updates to the DataJoint Python documentation, focusing on **practical API usage and Python-specific implementation details**. Conceptual and theoretical content is kept minimal with links to the [DataJoint Book](https://datajoint.github.io/datajoint-book) for deeper coverage.
 
 ## Goals
 
-1. **Align with DataJoint Book** - Follow the same conceptual structure and terminology
-2. **Add API Details** - Include Python-specific implementation details, method signatures, and code examples
-3. **Document New Features** - Cover new features like `object` type, pydantic-settings configuration, staged inserts
-4. **Improve Navigation** - Create a clearer, more logical navigation structure
+1. **Focus on API & Implementation** - Python-specific details, method signatures, code examples
+2. **Keep Theory Minimal** - Link to DataJoint Book for concepts; don't duplicate
+3. **Document New Features** - `object` type, pydantic-settings, staged inserts, jobs
+4. **Improve Navigation** - Clearer structure aligned with Book terminology
 
 ---
 
 ## Proposed Navigation Structure
 
-### 1. Introduction (NEW/ENHANCED)
-Aligns with Book: Introduction section
+### 1. Getting Started
+Practical setup and first steps.
 
 | Current | Proposed | Changes |
 |---------|----------|---------|
-| `index.md` | `index.md` | Add purpose statement, executive summary |
-| `quick-start.md` | `quick-start.md` | Expand with prerequisites, environment setup |
-| — | `intro/prerequisites.md` | NEW: Python version, dependencies, database requirements |
-| — | `intro/environment.md` | NEW: Development environment setup (IDE, Jupyter, Docker) |
-| `client/install.md` | `intro/install.md` | Move and expand installation guide |
-| `client/credentials.md` | `intro/connection.md` | Merge credentials into connection setup |
+| `index.md` | `index.md` | Keep concise, link to Book for concepts |
+| `quick-start.md` | `quick-start.md` | Focus on working code examples |
+| `client/install.md` | `getting-started/install.md` | Move, keep practical |
+| `client/credentials.md` | `getting-started/connect.md` | Rename, connection setup |
+| `client/settings.md` | `getting-started/settings.md` | Move, keep detailed API docs |
 
-### 2. Concepts (ENHANCED)
-Aligns with Book: Concepts section
-
-| Current | Proposed | Changes |
-|---------|----------|---------|
-| `concepts/principles.md` | `concepts/principles.md` | Expand with complete theory |
-| `concepts/data-model.md` | `concepts/relational-model.md` | Rename, align with Book terminology |
-| — | `concepts/databases.md` | NEW: What databases are, why use them |
-| — | `concepts/data-integrity.md` | NEW: Entity, referential, group integrity |
-| `concepts/data-pipelines.md` | `concepts/pipelines.md` | Expand pipeline concepts |
-| `concepts/teamwork.md` | `concepts/teamwork.md` | Keep, enhance collaboration aspects |
-| `concepts/terminology.md` | `concepts/terminology.md` | Update with Book terminology |
-
-### 3. Configuration (REORGANIZED)
-Combines: Client Configuration + System Administration
+### 2. Concepts (MINIMAL)
+Brief overview with links to Book for theory.
 
 | Current | Proposed | Changes |
 |---------|----------|---------|
-| `client/settings.md` | `config/settings.md` | Keep new pydantic-settings docs |
-| `client/stores.md` | `config/stores.md` | External store configuration |
-| `sysadmin/database-admin.md` | `config/database-admin.md` | Move to config section |
-| `sysadmin/bulk-storage.md` | `config/storage-backends.md` | Rename, enhance with fsspec |
-| `sysadmin/external-store.md` | `config/external-store.md` | Keep, enhance |
-| — | `config/object-storage.md` | NEW: Object storage configuration |
+| `concepts/principles.md` | `concepts/index.md` | Consolidate to single overview page |
+| `concepts/data-model.md` | — | Remove, link to Book |
+| `concepts/data-pipelines.md` | — | Remove, link to Book |
+| `concepts/teamwork.md` | — | Remove, link to Book |
+| `concepts/terminology.md` | `concepts/terminology.md` | Keep as quick reference |
 
-### 4. Design (ENHANCED)
-Aligns with Book: Design section
+### 3. Schema Design (API-FOCUSED)
+How to define schemas and tables in Python.
 
 | Current | Proposed | Changes |
 |---------|----------|---------|
-| `design/schema.md` | `design/schema.md` | Keep, add API details |
-| **Tables subsection** | | |
-| `design/tables/tiers.md` | `design/tables/tiers.md` | Expand tier explanations |
-| `design/tables/declare.md` | `design/tables/declare.md` | Add more syntax examples |
-| `design/tables/primary.md` | `design/tables/primary-key.md` | Rename for consistency |
-| `design/tables/attributes.md` | `design/tables/attributes.md` | Expand data types, defaults |
-| `design/tables/lookup.md` | `design/tables/lookup.md` | Add use cases |
-| `design/tables/manual.md` | `design/tables/manual.md` | Keep |
-| — | `design/tables/imported.md` | NEW: Document Imported tables |
-| — | `design/tables/computed.md` | NEW: Document Computed tables |
-| `design/tables/dependencies.md` | `design/tables/foreign-keys.md` | Rename to match Book |
-| `design/tables/indexes.md` | `design/tables/indexes.md` | Keep |
-| `design/tables/master-part.md` | `design/tables/master-part.md` | Keep |
-| **Data Types subsection** | | |
-| `design/tables/blobs.md` | `design/datatypes/blob.md` | Move to datatypes |
-| `design/tables/attach.md` | `design/datatypes/attach.md` | Move to datatypes |
-| `design/tables/filepath.md` | `design/datatypes/filepath.md` | Move to datatypes |
-| `design/tables/object.md` | `design/datatypes/object.md` | Move to datatypes (NEW feature) |
-| `design/tables/customtype.md` | `design/datatypes/adapters.md` | Move, rename to match Book |
-| **Other Design** | | |
-| `design/diagrams.md` | `design/diagrams.md` | Keep, add API details |
-| `design/normalization.md` | `design/normalization.md` | Expand with examples |
-| `design/integrity.md` | `design/integrity.md` | Expand integrity concepts |
+| `design/schema.md` | `design/schema.md` | Keep, focus on `dj.Schema` API |
+| `design/tables/tiers.md` | `design/tiers.md` | Keep, document Python classes |
+| `design/tables/declare.md` | `design/declaration.md` | Keep, syntax reference |
+| `design/tables/primary.md` | `design/primary-key.md` | Keep |
+| `design/tables/attributes.md` | `design/attributes.md` | Keep, data type reference |
+| `design/tables/dependencies.md` | `design/foreign-keys.md` | Rename |
+| `design/tables/indexes.md` | `design/indexes.md` | Keep |
+| `design/tables/lookup.md` | `design/lookup.md` | Keep |
+| `design/tables/manual.md` | `design/manual.md` | Keep |
+| `design/tables/master-part.md` | `design/master-part.md` | Keep |
+| `design/diagrams.md` | `design/diagrams.md` | Keep, `dj.Diagram` API |
 | `design/alter.md` | `design/alter.md` | Keep |
-| `design/recall.md` | `design/recall.md` | Keep |
 | `design/drop.md` | `design/drop.md` | Keep |
+| `design/recall.md` | `design/recall.md` | Keep |
+| `design/normalization.md` | — | Remove, link to Book |
+| `design/integrity.md` | — | Remove, link to Book |
 
-### 5. Operations (ENHANCED)
-Aligns with Book: Operations section
+### 4. Data Types (API-FOCUSED)
+Python-specific data type handling.
 
 | Current | Proposed | Changes |
 |---------|----------|---------|
-| `manipulation/index.md` | `operations/index.md` | Rename section |
-| `manipulation/insert.md` | `operations/insert.md` | Expand with staged insert |
-| `manipulation/delete.md` | `operations/delete.md` | Add cascade examples |
+| `design/tables/blobs.md` | `datatypes/blob.md` | Move |
+| `design/tables/attach.md` | `datatypes/attach.md` | Move |
+| `design/tables/filepath.md` | `datatypes/filepath.md` | Move |
+| `design/tables/object.md` | `datatypes/object.md` | Move (NEW feature) |
+| `design/tables/customtype.md` | `datatypes/adapters.md` | Move, rename |
+
+### 5. Data Operations (API-FOCUSED)
+CRUD operations and computations.
+
+| Current | Proposed | Changes |
+|---------|----------|---------|
+| `manipulation/index.md` | `operations/index.md` | Rename |
+| `manipulation/insert.md` | `operations/insert.md` | Add staged insert docs |
+| `manipulation/delete.md` | `operations/delete.md` | Keep |
 | `manipulation/update.md` | `operations/update.md` | Keep |
 | `manipulation/transactions.md` | `operations/transactions.md` | Keep |
-| **Computations** | | |
-| `compute/make.md` | `operations/make.md` | Move to operations |
-| `compute/populate.md` | `operations/populate.md` | Move to operations |
-| `compute/key-source.md` | `operations/key-source.md` | Move to operations |
-| `compute/distributed.md` | `operations/distributed.md` | Move to operations |
-| — | `operations/jobs.md` | NEW: Job management and reservations |
+| `compute/make.md` | `operations/make.md` | Move |
+| `compute/populate.md` | `operations/populate.md` | Move |
+| `compute/key-source.md` | `operations/key-source.md` | Move |
+| `compute/distributed.md` | `operations/distributed.md` | Move |
+| — | `operations/jobs.md` | NEW: Job reservation API |
 
-### 6. Queries (ENHANCED)
-Aligns with Book: Queries section
+### 6. Queries (API-FOCUSED)
+Query operators and fetch methods.
 
 | Current | Proposed | Changes |
 |---------|----------|---------|
-| `query/principles.md` | `queries/index.md` | Rename to index |
-| `query/fetch.md` | `queries/fetch.md` | Expand fetch options |
-| `query/operators.md` | `queries/operators.md` | Overview of all operators |
-| `query/restrict.md` | `queries/restriction.md` | Rename to match Book |
-| `query/project.md` | `queries/projection.md` | Rename to match Book |
+| `query/principles.md` | `queries/index.md` | Brief intro, link to Book |
+| `query/fetch.md` | `queries/fetch.md` | Full fetch API reference |
+| `query/operators.md` | `queries/operators.md` | Operator overview |
+| `query/restrict.md` | `queries/restrict.md` | Keep |
+| `query/project.md` | `queries/project.md` | Keep |
 | `query/join.md` | `queries/join.md` | Keep |
 | `query/union.md` | `queries/union.md` | Keep |
-| `query/aggregation.md` | `queries/aggregation.md` | Keep |
-| `query/universals.md` | `queries/universal-sets.md` | Keep |
+| `query/aggregation.md` | `queries/aggr.md` | Rename |
+| `query/universals.md` | `queries/universals.md` | Keep |
 | `query/iteration.md` | `queries/iteration.md` | Keep |
-| `query/query-caching.md` | `queries/caching.md` | Keep |
-| `query/example-schema.md` | `examples/query-examples.md` | Move to examples |
+| `query/query-caching.md` | `queries/caching.md` | Rename |
+| `query/example-schema.md` | `queries/example-schema.md` | Keep |
 
-### 7. Examples (NEW SECTION)
-Aligns with Book: Examples section
-
-| Proposed | Description |
-|----------|-------------|
-| `examples/index.md` | Examples overview |
-| `examples/university.md` | University schema example (adapt from Book) |
-| `examples/query-examples.md` | Query examples (moved from query section) |
-| `tutorials/json.ipynb` | Keep existing tutorial |
-| `tutorials/dj-top.ipynb` | Keep existing tutorial |
-
-### 8. Special Topics (NEW SECTION)
-Aligns with Book: Special Topics section
-
-| Proposed | Description |
-|----------|-------------|
-| `topics/uuid.md` | UUID primary keys |
-| `topics/caching.md` | Query and result caching |
-| `topics/adapters.md` | Adapted attribute types (moved) |
-| `topics/migrations.md` | Schema migrations |
-
-### 9. Reference (ENHANCED)
+### 7. Administration
+Database and storage administration.
 
 | Current | Proposed | Changes |
 |---------|----------|---------|
-| `internal/transpilation.md` | `reference/transpilation.md` | Move to reference |
-| `api/` | `api/` | Keep auto-generated API docs |
-| `faq.md` | `reference/faq.md` | Move to reference |
-| `develop.md` | `reference/develop.md` | Move to reference |
-| `citation.md` | `reference/citation.md` | Move to reference |
-| `changelog.md` | `reference/changelog.md` | Move to reference |
+| `sysadmin/database-admin.md` | `admin/database.md` | Move |
+| `sysadmin/bulk-storage.md` | `admin/storage.md` | Move |
+| `sysadmin/external-store.md` | `admin/external-store.md` | Move |
+
+### 8. Reference
+
+| Current | Proposed | Changes |
+|---------|----------|---------|
+| `api/` | `api/` | Keep auto-generated |
+| `internal/transpilation.md` | `reference/transpilation.md` | Move |
+| `faq.md` | `reference/faq.md` | Move |
+| `develop.md` | `reference/develop.md` | Move |
+| `citation.md` | `reference/citation.md` | Move |
+| `changelog.md` | `reference/changelog.md` | Move |
+| `publish-data.md` | `reference/publish-data.md` | Move |
 
 ---
 
-## Content Updates by Section
+## Content Guidelines
 
-### 1. Introduction Updates
+### Keep Minimal (Link to Book)
+- Relational model theory
+- Data normalization theory
+- Entity-relationship concepts
+- Data integrity theory
+- Pipeline design principles
 
-**index.md**
-- [ ] Add DataJoint purpose statement (from Book)
-- [ ] Add executive summary of capabilities
-- [ ] Update "Getting Started" links to new structure
-- [ ] Keep pipeline example image
-
-**quick-start.md**
-- [ ] Add prerequisites section
-- [ ] Expand connection setup with all methods
-- [ ] Add troubleshooting tips
-- [ ] Add links to full documentation sections
-
-**NEW: intro/prerequisites.md**
-- [ ] Python version requirements (3.10+)
-- [ ] Required packages (automatically installed)
-- [ ] Optional packages (graphviz, pandas)
-- [ ] Database requirements (MySQL 8.0+, MariaDB)
-
-**NEW: intro/environment.md**
-- [ ] Development environment options
-- [ ] Docker Compose setup
-- [ ] GitHub Codespaces
-- [ ] Local development setup
-
-### 2. Concepts Updates
-
-**concepts/principles.md**
-- [ ] Complete the incomplete sections (Object Serialization, Diagramming, etc.)
-- [ ] Add examples for each principle
-- [ ] Link to implementation details
-
-**concepts/relational-model.md** (renamed from data-model.md)
-- [ ] Align terminology with Book
-- [ ] Add relational algebra basics
-- [ ] Explain entity-relationship model
-
-**NEW: concepts/data-integrity.md**
-- [ ] Entity integrity explanation
-- [ ] Referential integrity (foreign keys)
-- [ ] Group integrity (master-part)
-- [ ] How DataJoint enforces each
-
-### 3. Configuration Updates
-
-**config/settings.md**
-- [ ] Already updated with pydantic-settings - verify completeness
-- [ ] Add migration guide from old config system
-
-**NEW: config/object-storage.md**
-- [ ] Object storage setup for `object` type
-- [ ] S3, GCS, Azure, local backends
-- [ ] fsspec configuration
-- [ ] Credential management
-
-### 4. Design Updates
-
-**design/tables/tiers.md**
-- [ ] Add tier selection decision tree
-- [ ] Include practical examples for each tier
-- [ ] Document tier-specific behaviors
-
-**NEW: design/tables/imported.md**
-- [ ] Document Imported table class
-- [ ] External data source integration
-- [ ] Make method requirements
-
-**NEW: design/tables/computed.md**
-- [ ] Document Computed table class
-- [ ] Make method requirements
-- [ ] Key source configuration
-
-**design/datatypes/object.md**
-- [ ] Already documented - verify completeness
-- [ ] Add migration guide from attach/filepath
-
-### 5. Operations Updates
-
-**operations/insert.md**
-- [ ] Document staged insert feature
-- [ ] Add batch insert best practices
-- [ ] Error handling examples
-
-**NEW: operations/jobs.md**
-- [ ] Job table functionality
-- [ ] Job reservation system
-- [ ] Error tracking
-- [ ] Distributed computing coordination
-
-### 6. Queries Updates
-
-**queries/fetch.md**
-- [ ] Document all fetch parameters
-- [ ] Add format options (array, frame, dict)
-- [ ] Performance considerations
-
-**queries/restriction.md**
-- [ ] Complete operator syntax
-- [ ] Add AND/OR combinations
-- [ ] NOT operator usage
-
-### 7. Examples Section
-
-**examples/university.md**
-- [ ] Adapt University example from Book
-- [ ] Include complete working code
-- [ ] Show all CRUD operations
-- [ ] Demonstrate queries
+### Document Thoroughly (Python-Specific)
+- `dj.Schema` class and decorator usage
+- Table class hierarchy (`Manual`, `Lookup`, `Imported`, `Computed`, `Part`)
+- Definition syntax and all data types
+- `dj.config` settings API (pydantic-settings)
+- Insert/delete/update method signatures
+- `populate()` and `make()` method patterns
+- All query operators with Python syntax
+- `fetch()` method parameters and formats
+- `object` type and `ObjectRef` API
+- Job reservation system
+- Staged insert API
 
 ---
 
-## Implementation Order
+## Priority Updates
 
-### Phase 1: Structure and Navigation
-1. Update `mkdocs.yaml` with new navigation structure
-2. Create new directories and placeholder files
-3. Move existing files to new locations
-4. Update internal links
+### High Priority (New Features)
+1. `operations/jobs.md` - Document job reservation system
+2. `datatypes/object.md` - Verify completeness of object type docs
+3. `operations/insert.md` - Add staged insert documentation
+4. `getting-started/settings.md` - Verify pydantic-settings docs
 
-### Phase 2: Core Content
-1. Update Introduction section
-2. Enhance Concepts section
-3. Update Configuration section
-4. Complete Design section
+### Medium Priority (Reorganization)
+1. Update `mkdocs.yaml` navigation
+2. Move files to new locations
+3. Update internal links
+4. Consolidate concepts to single page with Book links
 
-### Phase 3: Operations and Queries
-1. Enhance Operations section
-2. Improve Queries section
-3. Add Examples section
-
-### Phase 4: Polish
-1. Add Special Topics
-2. Update Reference section
-3. Verify all links work
-4. Review for consistency
+### Lower Priority (Polish)
+1. Add more code examples throughout
+2. Ensure all method signatures documented
+3. Add troubleshooting sections
 
 ---
 
 ## Files to Create
 
 New files needed:
-- `docs/src/intro/prerequisites.md`
-- `docs/src/intro/environment.md`
-- `docs/src/concepts/databases.md`
-- `docs/src/concepts/data-integrity.md`
-- `docs/src/design/tables/imported.md`
-- `docs/src/design/tables/computed.md`
-- `docs/src/config/object-storage.md`
-- `docs/src/operations/jobs.md`
-- `docs/src/examples/index.md`
-- `docs/src/examples/university.md`
-- `docs/src/topics/uuid.md`
-- `docs/src/topics/migrations.md`
+- `docs/src/concepts/index.md` (consolidated concepts overview)
+- `docs/src/operations/jobs.md` (job reservation API)
+
+Files to remove/consolidate:
+- `docs/src/concepts/data-model.md` → link to Book
+- `docs/src/concepts/data-pipelines.md` → link to Book
+- `docs/src/concepts/teamwork.md` → link to Book
+- `docs/src/design/normalization.md` → link to Book
+- `docs/src/design/integrity.md` → link to Book
 
 ---
 
 ## Notes
 
-- Keep Python-specific API details that differ from the generic Book
-- Maintain existing good content, enhance where needed
-- All code examples should be tested and working
-- Use admonitions for tips, warnings, and notes
-- Include cross-references between related topics
+- Every page should have working Python code examples
+- Link to DataJoint Book for conceptual depth
+- Focus on "how to do X in Python" rather than "what is X"
+- Include method signatures and parameter documentation
+- Use admonitions sparingly for critical warnings only
