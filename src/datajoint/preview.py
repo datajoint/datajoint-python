@@ -24,18 +24,6 @@ def _format_object_display(json_data):
         return "=OBJ[file]="
 
 
-def _get_display_value(tup, field, object_fields, object_data):
-    """Get display value for a field, handling objects specially."""
-    if field in tup.dtype.names:
-        return tup[field]
-    elif field in object_fields and object_data is not None:
-        # Find the matching tuple in object_data by index
-        idx = list(tup.dtype.names).index(list(tup.dtype.names)[0])  # placeholder
-        return _format_object_display(object_data.get(field))
-    else:
-        return "=BLOB="
-
-
 def preview(query_expression, limit, width):
     heading = query_expression.heading
     rel = query_expression.proj(*heading.non_blobs)
@@ -90,9 +78,7 @@ def preview(query_expression, limit, width):
         + "\n"
         + " ".join(["+" + "-" * (widths[column] - 2) + "+" for column in columns])
         + "\n"
-        + "\n".join(
-            " ".join(templates[f] % get_display_value(tup, f, idx) for f in columns) for idx, tup in enumerate(tuples)
-        )
+        + "\n".join(" ".join(templates[f] % get_display_value(tup, f, idx) for f in columns) for idx, tup in enumerate(tuples))
         + ("\n   ...\n" if has_more else "\n")
         + (" (Total: %d)\n" % len(rel) if config["display.show_tuple_count"] else "")
     )
@@ -206,9 +192,7 @@ def repr_html(query_expression):
         ellipsis="<p>...</p>" if has_more else "",
         body="</tr><tr>".join(
             [
-                "\n".join(
-                    ["<td>%s</td>" % get_html_display_value(tup, name, idx) for name in heading.names]
-                )
+                "\n".join(["<td>%s</td>" % get_html_display_value(tup, name, idx) for name in heading.names])
                 for idx, tup in enumerate(tuples)
             ]
         ),
