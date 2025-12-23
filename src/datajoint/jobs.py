@@ -420,7 +420,8 @@ version=""      : varchar(255)    # Code version
         """
         Mark a key to be ignored (skipped during populate).
 
-        Can be called on keys not yet in the jobs table.
+        Only inserts new records. Existing job entries cannot be converted to
+        ignore status - they must be cleared first.
 
         Args:
             key: Primary key dict for the job
@@ -430,22 +431,10 @@ version=""      : varchar(255)    # Code version
         pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
         job_key = {attr: key[attr] for attr in pk_attrs if attr in key}
 
-        # Check if job already exists
-        if job_key in self:
-            # Update existing job to ignore
-            key_conditions = " AND ".join(
-                f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str) else f"`{attr}`={job_key[attr]}"
-                for attr in pk_attrs
-            )
-            sql = f"""
-                UPDATE {self.full_table_name}
-                SET status='ignore'
-                WHERE {key_conditions}
-            """
-            self.connection.query(sql)
-        else:
-            # Insert new job with ignore status
+        try:
             self._insert_job_with_status(job_key, "ignore")
+        except DuplicateError:
+            pass  # Already tracked
 
     def _insert_job_with_status(self, key: dict, status: str) -> None:
         """Insert a new job with the given status."""
