@@ -374,18 +374,14 @@ version=""      : varchar(255)    # Code version
 
         if keep:
             # Update to success status
-            duration_sql = f", duration={duration}" if duration is not None else ""
-            key_conditions = " AND ".join(
-                f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str) else f"`{attr}`={job_key[attr]}"
-                for attr in pk_attrs
-            )
-            sql = f"""
-                UPDATE {self.full_table_name}
-                SET status='success',
-                    completed_time=NOW(6){duration_sql}
-                WHERE {key_conditions}
-            """
-            self.connection.query(sql)
+            update_row = {
+                **job_key,
+                "status": "success",
+                "completed_time": datetime.now(),
+            }
+            if duration is not None:
+                update_row["duration"] = duration
+            self.update1(update_row)
         else:
             # Delete the job entry
             (self & job_key).delete_quick()
