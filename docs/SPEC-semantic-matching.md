@@ -190,9 +190,25 @@ class SchemaGraph:
 
 ### Phase 1: Add Lineage Infrastructure
 
-1. **Add `lineage` field to `Attribute`** (`heading.py`)
-   - Add `lineage` to `default_attribute_properties` with default `None`
-   - Lineage is a tuple: `(origin_schema, origin_table, origin_attribute)` or `None`
+1. **Add `lineage` and `lineage_hash` fields to `Attribute`** (`heading.py`)
+   - `lineage`: tuple `(origin_schema, origin_table, origin_attribute)` or `None`
+   - `lineage_hash`: short hash (e.g., 8 bytes) for fast comparison
+   - Add both to `default_attribute_properties` with default `None`
+
+   ```python
+   def compute_lineage_hash(lineage):
+       """Compute a short hash for fast lineage comparison."""
+       if lineage is None:
+           return None
+       # Use first 8 bytes of SHA-256 for compact representation
+       canonical = f"{lineage[0]}.{lineage[1]}.{lineage[2]}"
+       return hashlib.sha256(canonical.encode()).digest()[:8]
+   ```
+
+   **Comparison strategy**:
+   - Fast path: compare `lineage_hash` (8-byte comparison)
+   - On hash match: verify full `lineage` tuple (collision protection)
+   - `None` lineage never matches anything (computed attributes)
 
 2. **Create `~lineage` table management** (new file: `datajoint/lineage.py`)
    - `LineageTable` class (similar to `ExternalTable`)
@@ -344,7 +360,9 @@ CREATE TABLE `~lineage` (
     origin_schema    VARCHAR(64)  NOT NULL,
     origin_table     VARCHAR(64)  NOT NULL,
     origin_attribute VARCHAR(64)  NOT NULL,
-    PRIMARY KEY (table_name, attribute_name)
+    lineage_hash     BINARY(8)    NOT NULL,  -- fast comparison hash
+    PRIMARY KEY (table_name, attribute_name),
+    INDEX idx_lineage_hash (lineage_hash)    -- enables hash-based lookups
 ) ENGINE=InnoDB;
 ```
 
@@ -356,8 +374,10 @@ CREATE TABLE "~lineage" (
     origin_schema    VARCHAR(64)  NOT NULL,
     origin_table     VARCHAR(64)  NOT NULL,
     origin_attribute VARCHAR(64)  NOT NULL,
+    lineage_hash     BYTEA        NOT NULL,  -- 8 bytes
     PRIMARY KEY (table_name, attribute_name)
 );
+CREATE INDEX idx_lineage_hash ON "~lineage" (lineage_hash);
 ```
 
 #### Lineage Lookup
@@ -527,9 +547,24 @@ WHERE c.contype = 'f'
 
 ## Performance Considerations
 
-1. **Memory**: Additional field per attribute (minimal impact)
-2. **Comparison**: Lineage comparison is O(1) tuple equality
-3. **Storage**: If stored in database, small overhead per attribute
+1. **Memory**: Two additional fields per attribute
+   - `lineage`: tuple of 3 strings (~100-200 bytes typical)
+   - `lineage_hash`: 8 bytes (fixed)
+
+2. **Comparison**: Two-phase strategy for optimal performance
+   - **Fast path**: Compare 8-byte `lineage_hash` values (single comparison)
+   - **Verification**: On hash match, verify full tuple (collision protection)
+   - Hash collisions are astronomically rare (1 in 2^64) but we verify anyway
+
+3. **Storage**: Small overhead in `~lineage` table
+   - ~200 bytes per attribute (table_name + attribute_name + origin tuple + hash)
+   - Indexed by (table_name, attribute_name) for fast lookup
+   - Secondary index on `lineage_hash` for potential future optimizations
+
+4. **Dependency loading**: Required before joins
+   - Already cached per connection (`connection.dependencies`)
+   - Reused across multiple join operations
+   - Fallback lineage computation adds ~1 query per table (when `~lineage` missing)
 
 ## Summary
 
