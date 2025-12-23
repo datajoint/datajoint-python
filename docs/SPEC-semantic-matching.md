@@ -214,8 +214,8 @@ class SchemaGraph:
 ### Phase 1: Add Lineage Infrastructure
 
 1. **Add `lineage` and `lineage_hash` fields to `Attribute`** (`heading.py`)
-   - `lineage`: tuple `(origin_schema, origin_table, origin_attribute)` or `None`
-   - `lineage_hash`: short hash (e.g., 8 bytes) for fast comparison
+   - `lineage`: string `"schema.table.attribute"` or `None`
+   - `lineage_hash`: 8-byte hash for fast comparison
    - Add both to `default_attribute_properties` with default `None`
 
    ```python
@@ -224,14 +224,13 @@ class SchemaGraph:
        if lineage is None:
            return None
        # Use first 8 bytes of SHA-256 for compact representation
-       canonical = f"{lineage[0]}.{lineage[1]}.{lineage[2]}"
-       return hashlib.sha256(canonical.encode()).digest()[:8]
+       return hashlib.sha256(lineage.encode()).digest()[:8]
    ```
 
    **Comparison strategy**:
-   - Fast path: compare `lineage_hash` (8-byte comparison)
-   - On hash match: verify full `lineage` tuple (collision protection)
-   - `None` lineage never matches anything (computed attributes)
+   - Compare `lineage_hash` only (8-byte comparison)
+   - Hash collisions (1 in 2^64) are acceptable given the low probability and cost
+   - `None` lineage never matches anything
 
 2. **Create `~lineage` table management** (new file: `datajoint/lineage.py`)
    - `LineageTable` class (similar to `ExternalTable`)
@@ -340,10 +339,12 @@ This approach:
 When the `~lineage` table does not exist (e.g., external databases, legacy schemas), lineage is computed **in-memory** from the FK graph using the existing `Dependencies` class:
 
 ```python
-def compute_lineage_from_dependencies(connection, table_name, attribute_name):
+def compute_lineage_from_dependencies(connection, schema, table_name, attribute_name):
     """
     Compute lineage by traversing the FK graph.
     Uses connection.dependencies which already loads FK info from INFORMATION_SCHEMA.
+
+    Returns lineage string "schema.table.attribute" or None for native secondary attrs.
     """
     connection.dependencies.load(force=False)  # ensure dependencies are loaded
 
@@ -353,16 +354,18 @@ def compute_lineage_from_dependencies(connection, table_name, attribute_name):
     for parent, props in connection.dependencies.parents(full_table_name).items():
         attr_map = props.get('attr_map', {})
         if attribute_name in attr_map:
-            # This attribute is inherited from parent
+            # This attribute is inherited from parent - recurse to find origin
             parent_attr = attr_map[attribute_name]
             parent_schema, parent_table = parse_full_table_name(parent)
-            # Recurse to find ultimate origin
             return compute_lineage_from_dependencies(
-                connection, parent_table, parent_attr, parent_schema
+                connection, parent_schema, parent_table, parent_attr
             )
 
-    # Not inherited - this table is the origin
-    return (schema, table_name, attribute_name)
+    # Not inherited - origin is this table (for PK attrs) or None (for native secondary)
+    if is_primary_key(connection, schema, table_name, attribute_name):
+        return f"{schema}.{table_name}.{attribute_name}"
+    else:
+        return None  # native secondary attribute
 ```
 
 #### Integration with Dependencies Loading
@@ -380,12 +383,10 @@ def compute_lineage_from_dependencies(connection, table_name, attribute_name):
 CREATE TABLE `~lineage` (
     table_name       VARCHAR(64)  NOT NULL,
     attribute_name   VARCHAR(64)  NOT NULL,
-    origin_schema    VARCHAR(64)  NOT NULL,
-    origin_table     VARCHAR(64)  NOT NULL,
-    origin_attribute VARCHAR(64)  NOT NULL,
+    lineage          VARCHAR(200) NOT NULL,  -- "schema.table.attribute"
     lineage_hash     BINARY(8)    NOT NULL,  -- fast comparison hash
     PRIMARY KEY (table_name, attribute_name),
-    INDEX idx_lineage_hash (lineage_hash)    -- enables hash-based lookups
+    INDEX idx_lineage_hash (lineage_hash)
 ) ENGINE=InnoDB;
 ```
 
@@ -394,9 +395,7 @@ For PostgreSQL:
 CREATE TABLE "~lineage" (
     table_name       VARCHAR(64)  NOT NULL,
     attribute_name   VARCHAR(64)  NOT NULL,
-    origin_schema    VARCHAR(64)  NOT NULL,
-    origin_table     VARCHAR(64)  NOT NULL,
-    origin_attribute VARCHAR(64)  NOT NULL,
+    lineage          VARCHAR(200) NOT NULL,  -- "schema.table.attribute"
     lineage_hash     BYTEA        NOT NULL,  -- 8 bytes
     PRIMARY KEY (table_name, attribute_name)
 );
@@ -411,7 +410,7 @@ When a `Heading` is initialized from a table, query the `~lineage` table:
 def _load_lineage(self, connection, database, table_name):
     """Load lineage information from the ~lineage metadata table."""
     query = """
-        SELECT attribute_name, origin_schema, origin_table, origin_attribute
+        SELECT attribute_name, lineage, lineage_hash
         FROM `{database}`.`~lineage`
         WHERE table_name = %s
     """.format(database=database)
@@ -529,22 +528,25 @@ def migrate_schema_lineage(schema):
 #### Algorithm for Computing Lineage
 
 ```python
-def compute_attribute_lineage(schema, table, attribute):
+def compute_attribute_lineage(schema, table, attribute, is_pk):
     """
     Trace an attribute to its original definition.
 
-    Returns (origin_schema, origin_table, origin_attribute)
+    Returns lineage string "schema.table.attribute" or None for native secondary.
     """
     # Check if this attribute is part of a foreign key
     fk_info = get_foreign_key_for_attribute(schema, table, attribute)
 
     if fk_info is None:
-        # Native attribute - origin is this table
-        return (schema, table, attribute)
+        # Native attribute
+        if is_pk:
+            return f"{schema}.{table}.{attribute}"  # PK has lineage
+        else:
+            return None  # native secondary has no lineage
 
     # Inherited via FK - recurse to referenced table
     ref_schema, ref_table, ref_attribute = fk_info
-    return compute_attribute_lineage(ref_schema, ref_table, ref_attribute)
+    return compute_attribute_lineage(ref_schema, ref_table, ref_attribute, is_pk=True)
 ```
 
 #### MySQL Query for FK Analysis
@@ -590,16 +592,16 @@ WHERE c.contype = 'f'
 ## Performance Considerations
 
 1. **Memory**: Two additional fields per attribute
-   - `lineage`: tuple of 3 strings (~100-200 bytes typical)
+   - `lineage`: string `"schema.table.attribute"` (~50-100 bytes typical) or `None`
    - `lineage_hash`: 8 bytes (fixed)
 
-2. **Comparison**: Two-phase strategy for optimal performance
-   - **Fast path**: Compare 8-byte `lineage_hash` values (single comparison)
-   - **Verification**: On hash match, verify full tuple (collision protection)
-   - Hash collisions are astronomically rare (1 in 2^64) but we verify anyway
+2. **Comparison**: Hash-only comparison
+   - Compare 8-byte `lineage_hash` values (single integer comparison)
+   - No fallback verification needed - collision probability (1 in 2^64) is negligible
+   - `None` hashes never match
 
 3. **Storage**: Small overhead in `~lineage` table
-   - ~200 bytes per attribute (table_name + attribute_name + origin tuple + hash)
+   - ~150 bytes per attribute (table_name + attribute_name + lineage string + hash)
    - Indexed by (table_name, attribute_name) for fast lookup
    - Secondary index on `lineage_hash` for potential future optimizations
 
