@@ -6,7 +6,7 @@ import random
 import string
 
 import datajoint as dj
-from datajoint.jobs_v2 import JobsTable, ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
+from datajoint.jobs import JobsTable, ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 
 from . import schema
 

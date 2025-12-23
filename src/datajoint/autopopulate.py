@@ -171,7 +171,7 @@ class AutoPopulate:
         :return: JobsTable instance for this table
         """
         if self._jobs_table is None:
-            from .jobs_v2 import JobsTable
+            from .jobs import JobsTable
 
             self._jobs_table = JobsTable(self.target)
         return self._jobs_table
