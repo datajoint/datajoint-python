@@ -71,6 +71,7 @@ class Schema:
         self.create_schema = create_schema
         self.create_tables = create_tables
         self._jobs = None
+        self._auto_populated_tables = []  # Track auto-populated table classes
         self.external = ExternalMapping(self)
         self.add_objects = add_objects
         self.declare_list = []
@@ -227,6 +228,11 @@ class Schema:
                 else:
                     instance.insert(contents, skip_duplicates=True)
 
+        # Track auto-populated tables for schema.jobs
+        if isinstance(instance, (Imported, Computed)) and not isinstance(instance, Part):
+            if table_class not in self._auto_populated_tables:
+                self._auto_populated_tables.append(table_class)
+
     @property
     def log(self):
         self._assert_exists()
@@ -338,9 +344,25 @@ class Schema:
     @property
     def jobs(self):
         """
-        schema.jobs provides a view of the job reservation table for the schema
+        Access job tables for all auto-populated tables in the schema.
 
-        :return: jobs table
+        Returns a list of JobsTable objects, one for each Imported or Computed
+        table in the schema.
+
+        :return: list of JobsTable objects
+        """
+        self._assert_exists()
+        return [table_class().jobs for table_class in self._auto_populated_tables]
+
+    @property
+    def legacy_jobs(self):
+        """
+        Access the legacy schema-level job reservation table (~jobs).
+
+        This is provided for backward compatibility and migration purposes.
+        New code should use per-table jobs via `MyTable.jobs` or `schema.jobs`.
+
+        :return: legacy JobTable
         """
         self._assert_exists()
         if self._jobs is None:

@@ -55,6 +55,7 @@ class AutoPopulate:
 
     _key_source = None
     _allow_insert = False
+    _jobs_table = None  # Cached JobsTable instance
 
     @property
     def key_source(self):
@@ -160,6 +161,21 @@ class AutoPopulate:
         """
         return self
 
+    @property
+    def jobs(self):
+        """
+        Access the jobs table for this auto-populated table.
+
+        The jobs table provides per-table job queue management with rich status
+        tracking (pending, reserved, success, error, ignore).
+
+        :return: JobsTable instance for this table
+        """
+        if self._jobs_table is None:
+            from .jobs_v2 import JobsTable
+            self._jobs_table = JobsTable(self.target)
+        return self._jobs_table
+
     def _job_key(self, key):
         """
         :param key:  they key returned for the job from the key source
@@ -209,6 +225,9 @@ class AutoPopulate:
         display_progress=False,
         processes=1,
         make_kwargs=None,
+        # New parameters for Autopopulate 2.0
+        priority=None,
+        refresh=True,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -230,6 +249,10 @@ class AutoPopulate:
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
         :type make_kwargs: dict, optional
+        :param priority: Only process jobs at this priority or more urgent (lower values).
+            Only applies when reserve_jobs=True.
+        :param refresh: If True and no pending jobs are found, refresh the jobs queue
+            before giving up. Only applies when reserve_jobs=True.
         :return: a dict with two keys
             "success_count": the count of successful ``make()`` calls in this ``populate()`` call
             "error_list": the error list that is filled if `suppress_errors` is True
@@ -240,7 +263,9 @@ class AutoPopulate:
         valid_order = ["original", "reverse", "random"]
         if order not in valid_order:
             raise DataJointError("The order argument must be one of %s" % str(valid_order))
-        jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
+
+        # Get the jobs table (per-table JobsTable for new system)
+        jobs_table = self.jobs if reserve_jobs else None
 
         if reserve_jobs:
             # Define a signal handler for SIGTERM
@@ -250,15 +275,21 @@ class AutoPopulate:
 
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        if keys is None:
-            keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+        error_list = []
+        success_list = []
 
-        # exclude "error", "ignore" or "reserved" jobs
         if reserve_jobs:
-            exclude_key_hashes = (
-                jobs & {"table_name": self.target.table_name} & 'status in ("error", "ignore", "reserved")'
-            ).fetch("key_hash")
-            keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
+            # New Autopopulate 2.0 logic: use jobs table
+            keys = self._get_pending_jobs(
+                restrictions=restrictions,
+                priority=priority,
+                limit=limit,
+                refresh=refresh,
+            )
+        else:
+            # Legacy behavior: get keys from key_source
+            if keys is None:
+                keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
 
         if order == "reverse":
             keys.reverse()
@@ -269,9 +300,6 @@ class AutoPopulate:
 
         keys = keys[:max_calls]
         nkeys = len(keys)
-
-        error_list = []
-        success_list = []
 
         if nkeys:
             processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
@@ -284,7 +312,7 @@ class AutoPopulate:
 
             if processes == 1:
                 for key in tqdm(keys, desc=self.__class__.__name__) if display_progress else keys:
-                    status = self._populate1(key, jobs, **populate_kwargs)
+                    status = self._populate1(key, jobs_table, **populate_kwargs)
                     if status is True:
                         success_list.append(1)
                     elif isinstance(status, tuple):
@@ -296,7 +324,7 @@ class AutoPopulate:
                 self.connection.close()  # disconnect parent process from MySQL server
                 del self.connection._conn.ctx  # SSLContext is not pickleable
                 with (
-                    mp.Pool(processes, _initialize_populate, (self, jobs, populate_kwargs)) as pool,
+                    mp.Pool(processes, _initialize_populate, (self, jobs_table, populate_kwargs)) as pool,
                     tqdm(desc="Processes: ", total=nkeys) if display_progress else contextlib.nullcontext() as progress_bar,
                 ):
                     for status in pool.imap(_call_populate1, keys, chunksize=1):
@@ -319,23 +347,54 @@ class AutoPopulate:
             "error_list": error_list,
         }
 
+    def _get_pending_jobs(self, restrictions, priority, limit, refresh):
+        """
+        Get pending jobs from the jobs table.
+
+        If no pending jobs are found and refresh=True, refreshes the jobs queue
+        and tries again.
+
+        :param restrictions: Restrictions to apply when refreshing
+        :param priority: Only get jobs at this priority or more urgent
+        :param limit: Maximum number of jobs to return
+        :param refresh: Whether to refresh if no pending jobs found
+        :return: List of key dicts
+        """
+        jobs_table = self.jobs
+
+        # First, try to get pending jobs
+        keys = jobs_table.fetch_pending(limit=limit, priority=priority)
+
+        # If no pending jobs and refresh is enabled, refresh and try again
+        if not keys and refresh:
+            logger.debug("No pending jobs found, refreshing jobs queue")
+            jobs_table.refresh(*restrictions)
+            keys = jobs_table.fetch_pending(limit=limit, priority=priority)
+
+        return keys
+
     def _populate1(self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None):
         """
         populates table for one source key, calling self.make inside a transaction.
-        :param jobs: the jobs table or None if not reserve_jobs
+        :param jobs: the jobs table (JobsTable) or None if not reserve_jobs
         :param key: dict specifying job to populate
         :param suppress_errors: bool if errors should be suppressed and returned
         :param return_exception_objects: if True, errors must be returned as objects
         :return: (key, error) when suppress_errors=True,
             True if successfully invoke one `make()` call, otherwise False
         """
+        import time
+
         # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
+        job_key = self._job_key(key)
+        start_time = time.time()
 
-        if jobs is not None and not jobs.reserve(self.target.table_name, self._job_key(key)):
+        # Try to reserve the job (per-key, before make)
+        if jobs is not None and not jobs.reserve(job_key):
             return False
 
-        # if make is a generator, it transaction can be delayed until the final stage
+        # if make is a generator, transaction can be delayed until the final stage
         is_generator = inspect.isgeneratorfunction(make)
         if not is_generator:
             self.connection.start_transaction()
@@ -344,7 +403,8 @@ class AutoPopulate:
             if not is_generator:
                 self.connection.cancel_transaction()
             if jobs is not None:
-                jobs.complete(self.target.table_name, self._job_key(key))
+                # Job already done - mark complete or delete
+                jobs.complete(job_key, duration=0)
             return False
 
         logger.debug(f"Making {key} -> {self.target.full_table_name}")
@@ -379,14 +439,23 @@ class AutoPopulate:
                 msg=": " + str(error) if str(error) else "",
             )
             logger.debug(f"Error making {key} -> {self.target.full_table_name} - {error_message}")
+
+            # Only log errors from inside make() - not collision errors
             if jobs is not None:
-                # show error name and error message (if any)
-                jobs.error(
-                    self.target.table_name,
-                    self._job_key(key),
-                    error_message=error_message,
-                    error_stack=traceback.format_exc(),
-                )
+                from .errors import DuplicateError
+                if isinstance(error, DuplicateError):
+                    # Collision error - job reverts to pending or gets deleted
+                    # This is not a real error, just coordination artifact
+                    logger.debug(f"Duplicate key collision for {key}, reverting job")
+                    # Delete the reservation, letting the job be picked up again or cleaned
+                    (jobs & job_key).delete_quick()
+                else:
+                    # Real error inside make() - log it
+                    jobs.error(
+                        job_key,
+                        error_message=error_message,
+                        error_stack=traceback.format_exc(),
+                    )
             if not suppress_errors or isinstance(error, SystemExit):
                 raise
             else:
@@ -394,9 +463,10 @@ class AutoPopulate:
                 return key, error if return_exception_objects else error_message
         else:
             self.connection.commit_transaction()
+            duration = time.time() - start_time
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
             if jobs is not None:
-                jobs.complete(self.target.table_name, self._job_key(key))
+                jobs.complete(job_key, duration=duration)
             return True
         finally:
             self.__class__._allow_insert = False
