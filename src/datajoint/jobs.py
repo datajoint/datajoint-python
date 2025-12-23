@@ -328,41 +328,31 @@ version=""      : varchar(255)    # Code version
         """
         self.connection.query(sql)
 
-    def reserve(self, key: dict) -> bool:
+    def reserve(self, key: dict) -> None:
         """
-        Attempt to reserve a job for processing.
+        Reserve a job for processing.
 
-        Updates status to 'reserved' if currently 'pending' and scheduled_time <= now.
+        Updates the job record to 'reserved' status. The caller (populate) is
+        responsible for verifying the job is pending before calling this method.
 
         Args:
             key: Primary key dict for the job
-
-        Returns:
-            True if reservation successful, False if job not found or not pending.
         """
         self._ensure_declared()
 
-        # Build WHERE clause for the key
         pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
-        key_conditions = " AND ".join(
-            f"`{attr}`='{key[attr]}'" if isinstance(key[attr], str) else f"`{attr}`={key[attr]}" for attr in pk_attrs
-        )
+        job_key = {attr: key[attr] for attr in pk_attrs if attr in key}
 
-        # Attempt atomic update: pending -> reserved
-        sql = f"""
-            UPDATE {self.full_table_name}
-            SET status='reserved',
-                reserved_time=NOW(6),
-                user='{self._user}',
-                host='{platform.node()}',
-                pid={os.getpid()},
-                connection_id={self.connection.connection_id}
-            WHERE {key_conditions}
-              AND status='pending'
-              AND scheduled_time <= NOW(6)
-        """
-        result = self.connection.query(sql)
-        return result.rowcount > 0
+        update_row = {
+            **job_key,
+            "status": "reserved",
+            "reserved_time": datetime.now(),
+            "user": self._user,
+            "host": platform.node(),
+            "pid": os.getpid(),
+            "connection_id": self.connection.connection_id,
+        }
+        self.update1(update_row)
 
     def complete(self, key: dict, duration: float = None, keep: bool = None) -> None:
         """

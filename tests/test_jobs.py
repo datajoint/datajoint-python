@@ -97,32 +97,30 @@ class TestJobsReserve:
 
         # Get first pending job
         key = jobs.pending.fetch("KEY", limit=1)[0]
-        assert jobs.reserve(key)
+        jobs.reserve(key)
 
         # Verify status changed
         status = (jobs & key).fetch1("status")
         assert status == "reserved"
 
-    def test_reserve_already_reserved(self, schema_any):
-        """Test that reserve() returns False for already reserved job."""
+    def test_reserve_sets_metadata(self, schema_any):
+        """Test that reserve() sets user, host, pid, connection_id."""
         table = schema.SigIntTable()
         jobs = table.jobs
         jobs.delete()
         jobs.refresh()
 
         key = jobs.pending.fetch("KEY", limit=1)[0]
-        assert jobs.reserve(key)
-        assert not jobs.reserve(key)  # Second reserve should fail
+        jobs.reserve(key)
 
-    def test_reserve_scheduled_future(self, schema_any):
-        """Test that reserve() fails for jobs scheduled in the future."""
-        table = schema.SigIntTable()
-        jobs = table.jobs
-        jobs.delete()
-        jobs.refresh(delay=3600)  # 1 hour delay
-
-        key = jobs.fetch("KEY", limit=1)[0]
-        assert not jobs.reserve(key)  # Should fail - not yet scheduled
+        # Verify metadata was set
+        row = (jobs & key).fetch1()
+        assert row["status"] == "reserved"
+        assert row["reserved_time"] is not None
+        assert row["user"] != ""
+        assert row["host"] != ""
+        assert row["pid"] > 0
+        assert row["connection_id"] > 0
 
 
 class TestJobsComplete:
