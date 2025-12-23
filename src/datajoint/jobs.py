@@ -9,6 +9,7 @@ with FK-derived primary keys and rich status tracking.
 import logging
 import os
 import platform
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from .errors import DataJointError, DuplicateError
@@ -134,10 +135,10 @@ class JobsTable(Table):
             )
 
         # Build primary key section
-        pk_lines = [attr_def for _, attr_def in pk_attrs]
+        pk_section = "\n".join(attr_def for _, attr_def in pk_attrs)
 
         definition = f"""# Job queue for {self._target.class_name}
-{chr(10).join(pk_lines)}
+{pk_section}
 ---
 status          : enum('pending', 'reserved', 'success', 'error', 'ignore')
 priority        : int             # Lower = more urgent (0 = highest priority)
@@ -147,7 +148,7 @@ reserved_time=null : datetime(6)  # When job was reserved
 completed_time=null : datetime(6) # When job completed
 duration=null   : float           # Execution duration in seconds
 error_message="" : varchar({ERROR_MESSAGE_LENGTH})  # Error message if failed
-error_stack=null : mediumblob     # Full error traceback
+error_stack=null : <djblob>       # Full error traceback
 user=""         : varchar(255)    # Database user who reserved/completed job
 host=""         : varchar(255)    # Hostname of worker
 pid=0           : int unsigned    # Process ID of worker
@@ -417,27 +418,17 @@ version=""      : varchar(255)    # Code version
         pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
         job_key = {attr: key[attr] for attr in pk_attrs if attr in key}
 
-        key_conditions = " AND ".join(
-            f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str) else f"`{attr}`={job_key[attr]}"
-            for attr in pk_attrs
-        )
-
-        # Escape error message for SQL
-        error_message_escaped = error_message.replace("'", "''").replace("\\", "\\\\")
-
-        sql = f"""
-            UPDATE {self.full_table_name}
-            SET status='error',
-                completed_time=NOW(6),
-                error_message='{error_message_escaped}'
-            WHERE {key_conditions}
-        """
-        self.connection.query(sql)
-
-        # Update error_stack separately using parameterized query if provided
+        # Build update dict with all required fields
+        update_row = {
+            **job_key,
+            "status": "error",
+            "completed_time": datetime.now(),
+            "error_message": error_message,
+        }
         if error_stack is not None:
-            with config.override(enable_python_native_blobs=True):
-                (self & job_key)._update("error_stack", error_stack)
+            update_row["error_stack"] = error_stack
+
+        self.update1(update_row)
 
     def ignore(self, key: dict) -> None:
         """
