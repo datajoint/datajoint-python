@@ -1,173 +1,327 @@
 # Insert
 
-The `insert` method of DataJoint table objects inserts entities into the table.
+The `insert` operation adds new entities to tables. It is the primary way data
+enters a DataJoint pipeline from external sources.
 
-In Python there is a separate method `insert1` to insert one entity at a time.
-The entity may have the form of a Python dictionary with key names matching the
-attribute names in the table.
+## Single Entity: insert1
 
-```python
-lab.Person.insert1(
-          dict(username='alice',
-               first_name='Alice',
-               last_name='Cooper'))
-```
-
-The entity also may take the form of a sequence of values in the same order as the
-attributes in the table.
+Use `insert1` to insert one entity at a time:
 
 ```python
-lab.Person.insert1(['alice', 'Alice', 'Cooper'])
-```
-
-Additionally, the entity may be inserted as a
-[NumPy record array](https://docs.scipy.org/doc/numpy/reference/generated/numpy.record.html#numpy.record)
- or [Pandas DataFrame](https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html).
-
-The `insert` method accepts a sequence or a generator of multiple entities and is used
-to insert multiple entities at once.
-
-```python
-lab.Person.insert([
-          ['alice',   'Alice',   'Cooper'],
-          ['bob',     'Bob',     'Dylan'],
-          ['carol',   'Carol',   'Douglas']])
-```
-
-Several optional parameters can be used with `insert`:
-
-  `replace` If `True`, replaces the existing entity.
-  (Default `False`.)
-
-  `skip_duplicates` If `True`, silently skip duplicate inserts.
-  (Default `False`.)
-
-  `ignore_extra_fields` If `False`, fields that are not in the heading raise an error.
-  (Default `False`.)
-
-  `allow_direct_insert` If `True`, allows inserts outside of populate calls.
-  Applies only in auto-populated tables.
-  (Default `None`.)
-
-## Batched inserts
-
-Inserting a set of entities in a single `insert` differs from inserting the same set of
-entities one-by-one in a `for` loop in two ways:
-
-1. Network overhead is reduced.
-   Network overhead can be tens of milliseconds per query.
-   Inserting 1000 entities in a single `insert` call may save a few seconds over
-   inserting them individually.
-2. The insert is performed as an all-or-nothing transaction.
-   If even one insert fails because it violates any constraint, then none of the
-   entities in the set are inserted.
-
-However, inserting too many entities in a single query may run against buffer size or
-packet size limits of the database server.
-Due to these limitations, performing inserts of very large numbers of entities should
-be broken up into moderately sized batches, such as a few hundred at a time.
-
-## Server-side inserts
-
-Data inserted into a table often come from other tables already present on the database server.
-In such cases, data can be [fetched](../query/fetch.md) from the first table and then
-inserted into another table, but this results in transfers back and forth between the
-database and the local system.
-Instead, data can be inserted from one table into another without transfers between the
-database and the local system using [queries](../query/principles.md).
-
-In the example below, a new schema has been created in preparation for phase two of a
-project.
-Experimental protocols from the first phase of the project will be reused in the second
-phase.
-Since the entities are already present on the database in the `Protocol` table of the
-`phase_one` schema, we can perform a server-side insert into `phase_two.Protocol`
-without fetching a local copy.
-
-```python
-# Server-side inserts are faster...
-phase_two.Protocol.insert(phase_one.Protocol)
-
-# ...than fetching before inserting
-protocols = phase_one.Protocol.fetch()
-phase_two.Protocol.insert(protocols)
-```
-
-## Object attributes
-
-Tables with [`object`](../design/tables/object.md) type attributes can be inserted with
-local file paths, folder paths, remote URLs, or streams. The content is automatically
-copied to object storage.
-
-```python
-# Insert with local file path
-Recording.insert1({
-    "subject_id": 123,
-    "session_id": 45,
-    "raw_data": "/local/path/to/data.dat"
+# Insert as dictionary (recommended)
+Subject.insert1({
+    'subject_id': 1,
+    'species': 'mouse',
+    'date_of_birth': '2023-06-15',
+    'sex': 'M'
 })
 
-# Insert with local folder path
+# Insert as ordered sequence (matches attribute order)
+Subject.insert1([1, 'mouse', '2023-06-15', 'M'])
+
+# Insert with dict() constructor
+Subject.insert1(dict(
+    subject_id=1,
+    species='mouse',
+    date_of_birth='2023-06-15',
+    sex='M'
+))
+```
+
+Dictionary format is recommended because it's explicit and doesn't depend on
+attribute order.
+
+## Multiple Entities: insert
+
+Use `insert` for batch operations with a list of entities:
+
+```python
+# Insert multiple entities
+Subject.insert([
+    {'subject_id': 1, 'species': 'mouse', 'date_of_birth': '2023-01-15', 'sex': 'M'},
+    {'subject_id': 2, 'species': 'mouse', 'date_of_birth': '2023-02-20', 'sex': 'F'},
+    {'subject_id': 3, 'species': 'rat', 'date_of_birth': '2023-03-10', 'sex': 'M'},
+])
+
+# Insert from generator (memory efficient)
+def generate_subjects():
+    for i in range(1000):
+        yield {'subject_id': i, 'species': 'mouse',
+               'date_of_birth': '2023-01-01', 'sex': 'U'}
+
+Subject.insert(generate_subjects())
+
+# Insert from pandas DataFrame
+import pandas as pd
+df = pd.DataFrame({
+    'subject_id': [1, 2, 3],
+    'species': ['mouse', 'mouse', 'rat'],
+    'date_of_birth': ['2023-01-15', '2023-02-20', '2023-03-10'],
+    'sex': ['M', 'F', 'M']
+})
+Subject.insert(df)
+
+# Insert from numpy record array
+import numpy as np
+data = np.array([
+    (1, 'mouse', '2023-01-15', 'M'),
+    (2, 'mouse', '2023-02-20', 'F'),
+], dtype=[('subject_id', 'i4'), ('species', 'U30'),
+          ('date_of_birth', 'U10'), ('sex', 'U1')])
+Subject.insert(data)
+```
+
+## Insert Options
+
+### skip_duplicates
+
+Silently skip entities with existing primary keys:
+
+```python
+# Insert new subjects, skip if already exists
+Subject.insert(subjects, skip_duplicates=True)
+```
+
+Use for idempotent scripts that can safely be re-run.
+
+### ignore_extra_fields
+
+Ignore dictionary keys that don't match table attributes:
+
+```python
+# External data with extra fields
+external_data = {
+    'subject_id': 1,
+    'species': 'mouse',
+    'date_of_birth': '2023-01-15',
+    'sex': 'M',
+    'extra_field': 'ignored',  # not in table
+    'another_field': 123       # not in table
+}
+Subject.insert1(external_data, ignore_extra_fields=True)
+```
+
+### replace
+
+Replace existing entities with matching primary keys:
+
+```python
+# Update subject if exists, insert if new
+Subject.insert1({
+    'subject_id': 1,
+    'species': 'mouse',
+    'date_of_birth': '2023-01-15',
+    'sex': 'F'  # corrected value
+}, replace=True)
+```
+
+**Warning**: Use `replace` carefully. It circumvents DataJoint's data integrity
+model. Prefer delete-and-insert for most corrections.
+
+### allow_direct_insert
+
+Allow inserts into auto-populated tables outside of `make()`:
+
+```python
+# Normally auto-populated tables only allow inserts in make()
+# This overrides that restriction
+ComputedTable.insert1(data, allow_direct_insert=True)
+```
+
+Use sparingly, typically for data migration or recovery.
+
+## Batch Insert Behavior
+
+Batched inserts differ from individual inserts:
+
+1. **Reduced network overhead**: One round-trip instead of many
+2. **Atomic transaction**: All-or-nothing (if one fails, none are inserted)
+
+```python
+# Efficient: single transaction
+Subject.insert([entity1, entity2, entity3])  # ~10ms total
+
+# Less efficient: multiple transactions
+for entity in [entity1, entity2, entity3]:
+    Subject.insert1(entity)  # ~10ms each = ~30ms total
+```
+
+For very large batches, break into chunks to avoid buffer limits:
+
+```python
+def chunked_insert(table, entities, chunk_size=500):
+    """Insert entities in chunks."""
+    chunk = []
+    for entity in entities:
+        chunk.append(entity)
+        if len(chunk) >= chunk_size:
+            table.insert(chunk, skip_duplicates=True)
+            chunk = []
+    if chunk:
+        table.insert(chunk, skip_duplicates=True)
+
+chunked_insert(Subject, large_entity_list)
+```
+
+## Server-Side Insert
+
+Insert data from one table to another without local transfer:
+
+```python
+# Server-side: data never leaves the database
+TargetTable.insert(SourceTable & 'condition="value"')
+
+# Equivalent but slower: fetch then insert
+data = (SourceTable & 'condition="value"').fetch()
+TargetTable.insert(data)
+```
+
+Server-side inserts are efficient for:
+- Copying between schemas
+- Populating from query results
+- Data migration
+
+```python
+# Copy all protocols from phase 1 to phase 2
+phase2.Protocol.insert(phase1.Protocol)
+
+# Copy subset with projection
+phase2.Summary.insert(
+    phase1.Experiment.proj('experiment_id', 'start_date')
+    & 'start_date > "2024-01-01"'
+)
+```
+
+## Referential Integrity
+
+Inserts must satisfy foreign key constraints:
+
+```python
+# Subject must exist before Session can reference it
+Subject.insert1({'subject_id': 1, 'species': 'mouse', ...})
+Session.insert1({'subject_id': 1, 'session_date': '2024-01-15', ...})
+
+# This fails - subject_id=999 doesn't exist
+Session.insert1({'subject_id': 999, 'session_date': '2024-01-15'})
+# IntegrityError: foreign key constraint fails
+```
+
+## Object Attributes
+
+Tables with [`object`](../datatypes/object.md) type attributes accept various input formats:
+
+```python
+@schema
+class Recording(dj.Manual):
+    definition = """
+    recording_id : int
+    ---
+    raw_data : <object@store>
+    """
+
+# Insert from local file
 Recording.insert1({
-    "subject_id": 123,
-    "session_id": 45,
-    "raw_data": "/local/path/to/data_folder/"
+    'recording_id': 1,
+    'raw_data': '/local/path/to/data.dat'
+})
+
+# Insert from local folder
+Recording.insert1({
+    'recording_id': 2,
+    'raw_data': '/local/path/to/data_folder/'
 })
 
 # Insert from remote URL (S3, GCS, Azure, HTTP)
 Recording.insert1({
-    "subject_id": 123,
-    "session_id": 45,
-    "raw_data": "s3://source-bucket/path/to/data.dat"
+    'recording_id': 3,
+    'raw_data': 's3://bucket/path/to/data.dat'
 })
 
-# Insert remote Zarr store (e.g., from collaborator)
-Recording.insert1({
-    "subject_id": 123,
-    "session_id": 45,
-    "neural_data": "gs://collaborator-bucket/shared/experiment.zarr"
-})
-
-# Insert from stream with explicit extension
-with open("/path/to/data.bin", "rb") as f:
+# Insert from stream with extension
+with open('/path/to/data.bin', 'rb') as f:
     Recording.insert1({
-        "subject_id": 123,
-        "session_id": 45,
-        "raw_data": (".bin", f)
+        'recording_id': 4,
+        'raw_data': ('.bin', f)
     })
 ```
 
-Supported remote URL protocols: `s3://`, `gs://`, `az://`, `http://`, `https://`
+### Staged Inserts
 
-### Staged inserts
-
-For large objects like Zarr arrays, use `staged_insert1` to write directly to storage
-without creating a local copy first:
+For large objects (Zarr arrays, HDF5), write directly to storage:
 
 ```python
 import zarr
 
 with Recording.staged_insert1 as staged:
-    # Set primary key values first
-    staged.rec['subject_id'] = 123
-    staged.rec['session_id'] = 45
+    # Set key values
+    staged.rec['recording_id'] = 5
 
     # Create Zarr array directly in object storage
-    z = zarr.open(staged.store('raw_data', '.zarr'), mode='w', shape=(10000, 10000))
+    z = zarr.open(staged.store('raw_data', '.zarr'), mode='w',
+                  shape=(10000, 10000), dtype='f4')
     z[:] = compute_large_array()
 
     # Assign to record
     staged.rec['raw_data'] = z
 
-# On successful exit: metadata computed, record inserted
-# On exception: storage cleaned up, no record inserted
+# On success: metadata computed, record inserted
+# On exception: storage cleaned up, nothing inserted
 ```
 
-The `staged_insert1` context manager provides:
+## Common Patterns
 
-- `staged.rec`: Dict for setting attribute values
-- `staged.store(field, ext)`: Returns fsspec store for Zarr/xarray
-- `staged.open(field, ext, mode)`: Returns file handle for writing
-- `staged.fs`: Direct fsspec filesystem access
+### Ingestion Script
 
-See the [object type documentation](../design/tables/object.md) for more details.
+```python
+def ingest_subjects(csv_file):
+    """Ingest subjects from CSV file."""
+    import pandas as pd
+    df = pd.read_csv(csv_file)
+
+    # Validate and transform
+    df['date_of_birth'] = pd.to_datetime(df['date_of_birth']).dt.date
+    df['sex'] = df['sex'].str.upper()
+
+    # Insert with conflict handling
+    Subject.insert(df.to_dict('records'),
+                   skip_duplicates=True,
+                   ignore_extra_fields=True)
+```
+
+### Conditional Insert
+
+```python
+def insert_if_missing(table, entity):
+    """Insert entity only if not already present."""
+    key = {k: entity[k] for k in table.primary_key}
+    if not (table & key):
+        table.insert1(entity)
+```
+
+### Insert with Default Values
+
+```python
+# Table with defaults
+@schema
+class Experiment(dj.Manual):
+    definition = """
+    experiment_id : int
+    ---
+    notes='' : varchar(2000)
+    status='pending' : enum('pending', 'running', 'complete')
+    created=CURRENT_TIMESTAMP : timestamp
+    """
+
+# Defaults are applied automatically
+Experiment.insert1({'experiment_id': 1})
+# Result: notes='', status='pending', created=<current time>
+```
+
+## Best Practices
+
+1. **Use dictionaries**: Explicit attribute names prevent ordering errors
+2. **Batch when possible**: Reduce network overhead with multi-entity inserts
+3. **Use skip_duplicates for idempotency**: Safe to re-run scripts
+4. **Validate before insert**: Check data quality before committing
+5. **Handle errors gracefully**: Wrap inserts in try/except for production code
+6. **Use server-side inserts**: When copying between tables

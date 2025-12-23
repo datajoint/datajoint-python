@@ -1,241 +1,378 @@
-# Dependencies
+# Foreign Keys
 
-## Understanding dependencies
+Foreign keys define dependencies between tables. They link entities in one table
+to entities in another, enabling both data relationships and workflow dependencies.
 
-A schema contains collections of tables of related data.
-Accordingly, entities in one table often derive some of their meaning or context from
-entities in other tables.
-A **foreign key** defines a **dependency** of entities in one table on entities in
-another within a schema.
-In more complex designs, dependencies can even exist between entities in tables from
-different schemas.
-Dependencies play a functional role in DataJoint and do not simply label the structure
-of a pipeline.
-Dependencies provide entities in one table with access to data in another table and
-establish certain constraints on entities containing a foreign key.
+## Basic Syntax
 
-A DataJoint pipeline, including the dependency relationships established by foreign
-keys, can be visualized as a graph with nodes and edges.
-The diagram of such a graph is called the **entity relationship diagram** or
-[Diagram](../diagrams.md).
-The nodes of the graph are tables and the edges connecting them are foreign keys.
-The edges are directed and the overall graph is a **directed acyclic graph**, a graph
-with no loops.
-
-For example, the Diagram below is the pipeline for multipatching experiments
-
-![mp-diagram](../../images/mp-diagram.png){: style="align:center"}
-
-The graph defines the direction of the workflow.
-The tables at the top of the flow need to be populated first, followed by those tables
-one step below and so forth until the last table is populated at the bottom of the
-pipeline.
-The top of the pipeline tends to be dominated by lookup tables (gray stars) and manual
-tables (green squares).
-The middle has many imported tables (blue triangles), and the bottom has computed
-tables (red stars).
-
-## Defining a dependency
-
-Foreign keys are defined with arrows `->` in the [table definition](declare.md),
-pointing to another table.
-
-A foreign key may be defined as part of the [primary-key](primary.md).
-
-In the Diagram, foreign keys from the primary key are shown as solid lines.
-This means that the primary key of the referenced table becomes part of the primary key
-of the new table.
-A foreign key outside the primary key is indicated by dashed line in the ERD.
-
-For example, the following definition for the table `mp.Slice` has three foreign keys,
-including one within the primary key.
+Foreign keys use the arrow `->` notation in table definitions:
 
 ```python
-# brain slice
--> mp.Subject
-slice_id        : smallint       # slice number within subject
----
--> mp.BrainRegion
--> mp.Plane
-slice_date        : date                 # date of the slicing (not patching)
-thickness         : smallint unsigned    # slice thickness in microns
-experimenter      : varchar(20)          # person who performed this experiment
+@schema
+class Session(dj.Manual):
+    definition = """
+    -> Subject                 # references Subject table
+    session_date : date
+    ---
+    notes='' : varchar(2000)
+    """
 ```
 
-You can examine the resulting table heading with
+This creates a dependency where each `Session` must reference an existing `Subject`.
+
+## Foreign Key Effects
+
+When table `B` references table `A` with `-> A`:
+
+1. **Attribute inheritance**: `A`'s primary key attributes become part of `B`
+2. **Referential constraint**: Entities in `B` cannot exist without a matching entity in `A`
+3. **Cascading delete**: Deleting from `A` automatically deletes dependent entities in `B`
+4. **Automatic indexing**: Indexes are created to accelerate lookups
+
+## Primary vs Secondary Foreign Keys
+
+### Primary Key Foreign Keys (Solid Lines in Diagrams)
+
+Foreign keys **above** the `---` line become part of the child's primary key:
 
 ```python
-mp.BrainSlice.heading
+@schema
+class Trial(dj.Imported):
+    definition = """
+    -> Session             # part of primary key
+    trial_id : smallint    # additional primary key attribute
+    ---
+    start_time : float     # (seconds)
+    """
 ```
 
-The heading of `mp.Slice` may look something like
+The `Trial` table has primary key `(subject_id, session_date, trial_id)`.
+
+### Secondary Foreign Keys (Dashed Lines in Diagrams)
+
+Foreign keys **below** the `---` line are secondary attributes:
 
 ```python
-subject_id      : char(8)        # experiment subject id
-slice_id        : smallint       # slice number within subject
----
-brain_region        : varchar(12)        # abbreviated name for brain region
-plane               : varchar(12)        # plane of section
-slice_date          : date               # date of the slicing (not patching)
-thickness           : smallint unsigned  # slice thickness in microns
-experimenter        : varchar(20)        # person who performed this experiment
+@schema
+class Session(dj.Manual):
+    definition = """
+    -> Subject
+    session_date : date
+    ---
+    -> [nullable] User     # optional reference
+    notes='' : varchar(2000)
+    """
 ```
 
-This displayed heading reflects the actual attributes in the table.
-The foreign keys have been replaced by the primary key attributes of the referenced
-tables, including their data types and comments.
-
-## How dependencies work
-
-The foreign key `-> A` in the definition of table `B` has the following effects:
-
-1. The primary key attributes of `A` are made part of `B`'s definition.
-2. A referential constraint is created in `B` with reference to `A`.
-3. If one does not already exist, an index is created to speed up searches in `B` for
-matches to `A`.
-   (The reverse search is already fast because it uses the primary key of `A`.)
-
-A referential constraint means that an entity in `B` cannot exist without a matching
-entity in `A`.
-**Matching** means attributes in `B` that correspond to the primary key of `A` must
-have the same values.
-An attempt to insert an entity into `B` that does not have a matching counterpart in
-`A` will fail.
-Conversely, deleting an entity from `A` that has matching entities in `B` will result
-in the deletion of those matching entities and so forth, recursively, downstream in the
-pipeline.
-
-When `B` references `A` with a foreign key, one can say that `B` **depends** on `A`.
-In DataJoint terms, `B` is the **dependent table** and `A` is the **referenced table**
-with respect to the foreign key from `B` to `A`.
-
-Note to those already familiar with the theory of relational databases: The usage of
-the words "depends" and "dependency" here should not be confused with the unrelated
-concept of *functional dependencies* that is used to define normal forms.
-
-## Referential integrity
-
-Dependencies enforce the desired property of databases known as
-**referential integrity**.
-Referential integrity is the guarantee made by the data management process that related
-data across the database remain present, correctly associated, and mutually consistent.
-Guaranteeing referential integrity means enforcing the constraint that no entity can
-exist in the database without all the other entities on which it depends.
-An entity in table `B` depends on an entity in table `A` when they belong to them or
-are computed from them.
-
-## Dependencies with renamed attributes
-
-In most cases, a dependency includes the primary key attributes of the referenced table
-as they appear in its table definition.
-Sometimes it can be helpful to choose a new name for a foreign key attribute that
-better fits the context of the dependent table.
-DataJoint provides the following [projection](../../query/project.md) syntax to rename
-the primary key attributes when they are included in the new table.
-
-The dependency
+## Complete Example Schema
 
 ```python
-->  Table.project(new_attr='old_attr')
+import datajoint as dj
+schema = dj.Schema('lab')
+
+@schema
+class User(dj.Lookup):
+    definition = """
+    username : varchar(20)
+    ---
+    full_name : varchar(100)
+    """
+    contents = [
+        ('alice', 'Alice Smith'),
+        ('bob', 'Bob Jones'),
+    ]
+
+@schema
+class Subject(dj.Manual):
+    definition = """
+    subject_id : int
+    ---
+    species : varchar(30)
+    date_of_birth : date
+    sex : enum('M', 'F', 'U')
+    """
+
+@schema
+class Session(dj.Manual):
+    definition = """
+    -> Subject
+    session_date : date
+    ---
+    -> [nullable] User
+    session_notes='' : varchar(2000)
+    """
+
+@schema
+class Trial(dj.Imported):
+    definition = """
+    -> Session
+    trial_id : smallint
+    ---
+    start_time : float  # seconds
+    duration : float    # seconds
+    """
 ```
 
-renames the primary key attribute `old_attr` of `Table` as `new_attr` before
-integrating it into the table definition.
-Any additional primary key attributes will retain their original names.
-For example, the table `Experiment` may depend on table `User` but rename the `user`
-attribute into `operator` as follows:
+## Referential Integrity
+
+Foreign keys enforce **referential integrity**—the guarantee that related data
+remains consistent:
 
 ```python
--> User.proj(operator='user')
+# Insert a subject
+Subject.insert1({'subject_id': 1, 'species': 'mouse',
+                 'date_of_birth': '2023-01-15', 'sex': 'M'})
+
+# Insert a session - requires existing subject
+Session.insert1({'subject_id': 1, 'session_date': '2024-01-01',
+                 'username': 'alice'})
+
+# This fails - subject_id=999 doesn't exist
+Session.insert1({'subject_id': 999, 'session_date': '2024-01-01'})
+# IntegrityError: Cannot add or update a child row: foreign key constraint fails
 ```
 
-In the above example, an entity in the dependent table depends on exactly one entity in
-the referenced table.
-Sometimes entities may depend on multiple entities from the same table.
-Such a design requires a way to distinguish between dependent attributes having the
-same name in the reference table.
-For example, a table for `Synapse` may reference the table `Cell` twice as
-`presynaptic` and `postsynaptic`.
-The table definition may appear as
+### Cascading Deletes
+
+Deleting a parent automatically deletes all dependent children:
 
 ```python
-# synapse between two cells
--> Cell.proj(presynaptic='cell_id')
--> Cell.proj(postsynaptic='cell_id')
----
-connection_strength : double  # (pA) peak synaptic current
+# Delete subject 1 - also deletes all its sessions and trials
+(Subject & 'subject_id=1').delete()
 ```
 
-If the primary key of `Cell` is (`animal_id`, `slice_id`, `cell_id`), then the primary
-key of `Synapse` resulting from the above definition will be (`animal_id`, `slice_id`,
-`presynaptic`, `postsynaptic`).
-Projection always returns all of the primary key attributes of a table, so `animal_id`
-and `slice_id` are included, with their original names.
+DataJoint prompts for confirmation showing all affected tables and entity counts.
 
-Note that the design of the `Synapse` table above imposes the constraint that the
-synapse can only be found between cells in the same animal and in the same slice.
+## Foreign Key Options
 
-Allowing representation of synapses between cells from different slices requires the
-renamimg of `slice_id` as well:
+### nullable
+
+Makes the reference optional:
 
 ```python
-# synapse between two cells
--> Cell(presynaptic_slice='slice_id', presynaptic_cell='cell_id')
--> Cell(postsynaptic_slice='slice_id', postsynaptic_cell='cell_id')
----
-connection_strength : double  # (pA) peak synaptic current
+@schema
+class Session(dj.Manual):
+    definition = """
+    -> Subject
+    session_date : date
+    ---
+    -> [nullable] User     # experimenter may be unknown
+    """
 ```
 
-In this case, the primary key of `Synapse` will be (`animal_id`, `presynaptic_slice`,
-`presynaptic_cell`, `postsynaptic_slice`, `postsynaptic_cell`).
-This primary key still imposes the constraint that synapses can only form between cells
-within the same animal but now allows connecting cells across different slices.
+With `nullable`, the `User` attributes can be `NULL` if no user is specified.
 
-In the Diagram, renamed foreign keys are shown as red lines with an additional dot node
-in the middle to indicate that a renaming took place.
+### unique
 
-## Foreign key options
-
-Note: Foreign key options are currently in development.
-
-Foreign keys allow the additional options `nullable` and `unique`, which can be
-inserted in square brackets following the arrow.
-
-For example, in the following table definition
+Enforces one-to-one relationships:
 
 ```python
-rig_id  : char(4)   # experimental rig
----
--> Person
+@schema
+class Equipment(dj.Manual):
+    definition = """
+    equipment_id : int
+    ---
+    name : varchar(100)
+    -> [unique] User       # each user owns at most one equipment
+    """
 ```
 
-each rig belongs to a person, but the table definition does not prevent one person
-owning multiple rigs.
-With the `unique` option, a person may only appear once in the entire table, which
-means that no one person can own more than one rig.
+### Combined Options
 
 ```python
-rig_id  : char(4)   # experimental rig
----
--> [unique] Person
+@schema
+class Rig(dj.Manual):
+    definition = """
+    rig_id : char(4)
+    ---
+    -> [unique, nullable] User   # optionally assigned to at most one user
+    """
 ```
 
-With the `nullable` option, a rig may not belong to anyone, in which case the foreign
-key attributes for `Person` are set to `NULL`:
+**Note**: Primary key foreign keys cannot be `nullable` since primary keys cannot
+contain NULL values. They can be `unique`.
+
+## Renamed Foreign Keys
+
+Rename inherited attributes using projection syntax:
+
+### Single Attribute Rename
 
 ```python
-rig_id  : char(4)   # experimental rig
----
--> [nullable] Person
+@schema
+class Experiment(dj.Manual):
+    definition = """
+    experiment_id : int
+    ---
+    -> User.proj(experimenter='username')  # rename 'username' to 'experimenter'
+    start_date : date
+    """
 ```
 
-Finally with both `unique` and `nullable`, a rig may or may not be owned by anyone and
-each person may own up to one rig.
+### Multiple References to Same Table
+
+When referencing a table multiple times, use renames to distinguish:
 
 ```python
-rig_id  : char(4)   # experimental rig
----
--> [unique, nullable] Person
+@schema
+class Synapse(dj.Manual):
+    definition = """
+    -> Cell.proj(pre_cell='cell_id')   # presynaptic cell
+    -> Cell.proj(post_cell='cell_id')  # postsynaptic cell
+    ---
+    strength : float   # synaptic strength
+    """
 ```
 
-Foreign keys made from the primary key cannot be nullable but may be unique.
+If `Cell` has primary key `(animal_id, slice_id, cell_id)`, then `Synapse` has
+primary key `(animal_id, slice_id, pre_cell, post_cell)`.
+
+### Fully Disambiguated References
+
+To allow connections across slices, rename additional attributes:
+
+```python
+@schema
+class Synapse(dj.Manual):
+    definition = """
+    -> Cell.proj(pre_slice='slice_id', pre_cell='cell_id')
+    -> Cell.proj(post_slice='slice_id', post_cell='cell_id')
+    ---
+    strength : float
+    """
+```
+
+Primary key: `(animal_id, pre_slice, pre_cell, post_slice, post_cell)`
+
+## Viewing Dependencies
+
+### Examine Table Heading
+
+```python
+Session.heading
+# Shows all attributes including those inherited via foreign keys
+```
+
+### Entity Relationship Diagram
+
+```python
+dj.Diagram(schema)
+# Visualize all tables and their dependencies
+```
+
+In diagrams:
+- **Solid lines**: Primary key foreign keys
+- **Dashed lines**: Secondary foreign keys
+- **Red lines with dots**: Renamed foreign keys
+
+## Dependency Patterns
+
+### Hub Pattern
+
+Multiple tables reference a central table:
+
+```python
+@schema
+class Subject(dj.Manual):
+    definition = """
+    subject_id : int
+    ---
+    ...
+    """
+
+@schema
+class Surgery(dj.Manual):
+    definition = """
+    -> Subject
+    surgery_date : date
+    ---
+    ...
+    """
+
+@schema
+class Behavior(dj.Imported):
+    definition = """
+    -> Subject
+    behavior_date : date
+    ---
+    ...
+    """
+
+@schema
+class Imaging(dj.Imported):
+    definition = """
+    -> Subject
+    imaging_date : date
+    ---
+    ...
+    """
+```
+
+### Chain Pattern
+
+Sequential processing pipeline:
+
+```python
+@schema
+class RawData(dj.Imported):
+    definition = """
+    -> Session
+    ---
+    data : longblob
+    """
+
+@schema
+class ProcessedData(dj.Computed):
+    definition = """
+    -> RawData
+    ---
+    processed : longblob
+    """
+
+@schema
+class Analysis(dj.Computed):
+    definition = """
+    -> ProcessedData
+    ---
+    result : float
+    """
+```
+
+### Fork/Join Pattern
+
+Multiple paths converging:
+
+```python
+@schema
+class NeuralData(dj.Imported):
+    definition = """
+    -> Session
+    ---
+    spikes : longblob
+    """
+
+@schema
+class BehaviorData(dj.Imported):
+    definition = """
+    -> Session
+    ---
+    events : longblob
+    """
+
+@schema
+class NeuralBehaviorAnalysis(dj.Computed):
+    definition = """
+    -> NeuralData
+    -> BehaviorData
+    ---
+    correlation : float
+    """
+```
+
+## Best Practices
+
+1. **Use meaningful names**: Choose descriptive table and attribute names
+2. **Keep primary keys minimal**: Include only attributes necessary to identify entities
+3. **Design for queries**: Consider what joins you'll need when placing foreign keys
+4. **Avoid circular dependencies**: DataJoint requires a directed acyclic graph
+5. **Use nullable sparingly**: Only when the reference is truly optional

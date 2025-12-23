@@ -1,205 +1,338 @@
 # Restriction
 
-## Restriction operators `&` and `-`
+Restriction selects entities from a table that satisfy specific conditions.
+It's the most frequently used query operator in DataJoint.
 
-The restriction operator `A & cond` selects the subset of entities from `A` that meet
-the condition `cond`.
-The exclusion operator `A - cond` selects the complement of restriction, i.e. the
-subset of entities from `A` that do not meet the condition `cond`.
+## Basic Syntax
 
-Restriction and exclusion.
+```python
+# Restriction (inclusion): select matching entities
+result = Table & condition
+
+# Exclusion: select non-matching entities
+result = Table - condition
+```
 
 ![Restriction and exclusion](../images/op-restrict.png){: style="width:400px; align:center"}
 
-The condition `cond` may be one of the following:
+## Condition Types
 
-+ another table
-+ a mapping, e.g. `dict`
-+ an expression in a character string
-+ a collection of conditions as a `list`, `tuple`, or Pandas `DataFrame`
-+ a Boolean expression (`True` or `False`)
-+ an `AndList`
-+ a `Not` object
-+ a query expression
+### Dictionary Conditions
 
-As the restriction and exclusion operators are complementary, queries can be
-constructed using both operators that will return the same results.
-For example, the queries `A & cond` and `A - Not(cond)` will return the same entities.
+Dictionaries specify exact equality matches:
 
-## Restriction by a table
+```python
+# Single attribute match
+Session & {'subject_id': 1}
 
-When restricting table `A` with another table, written `A & B`, the two tables must be
-**join-compatible** (see `join-compatible` in [Operators](./operators.md)).
-The result will contain all entities from `A` for which there exist a matching entity
-in `B`.
-Exclusion of table `A` with table `B`, or `A - B`, will contain all entities from `A`
-for which there are no matching entities in `B`.
+# Multiple attribute match (AND)
+Session & {'subject_id': 1, 'session_date': '2024-01-15'}
 
-Restriction by another table.
+# Primary key lookup (returns at most one entity)
+subject = (Subject & {'subject_id': 1}).fetch1()
+```
+
+**Note**: Unmatched dictionary keys are silently ignored:
+
+```python
+# Typo in key name - returns ALL entities (no filter applied)
+Session & {'sesion_date': '2024-01-15'}  # 's' missing
+```
+
+### String Conditions
+
+Strings allow SQL-like expressions:
+
+```python
+# Equality
+Session & 'user = "Alice"'
+
+# Inequality
+Experiment & 'duration >= 60'
+
+# Range
+Subject & 'date_of_birth BETWEEN "2023-01-01" AND "2023-12-31"'
+
+# Pattern matching
+Subject & 'species LIKE "mouse%"'
+
+# NULL checks
+Session & 'notes IS NOT NULL'
+
+# Arithmetic
+Trial & 'end_time - start_time > 10'
+```
+
+### Table Conditions (Semijoins)
+
+Restrict by related entities in another table:
+
+```python
+# Sessions that have at least one trial
+Session & Trial
+
+# Sessions with no trials
+Session - Trial
+
+# Subjects that have sessions
+Subject & Session
+
+# Subjects with no sessions
+Subject - Session
+```
 
 ![Restriction by another table](../images/restrict-example1.png){: style="width:546px; align:center"}
 
-Exclusion by another table.
+### Query Conditions
 
-![Exclusion by another table](../images/diff-example1.png){: style="width:539px; align:center"}
-
-### Restriction by a table with no common attributes
-
-Restriction of table `A` with another table `B` having none of the same attributes as
-`A` will simply return all entities in `A`, unless `B` is empty as described below.
-Exclusion of table `A` with `B` having no common attributes will return no entities,
-unless `B` is empty as described below.
-
-Restriction by a table having no common attributes.
-
-![Restriction by a table with no common attributes](../images/restrict-example2.png){: style="width:571px; align:center"}
-
-Exclusion by a table having no common attributes.
-
-![Exclusion by a table having no common attributes](../images/diff-example2.png){: style="width:571px; align:center"}
-
-### Restriction by an empty table
-
-Restriction of table `A` with an empty table will return no entities regardless of
-whether there are any matching attributes.
-Exclusion of table `A` with an empty table will return all entities in `A`.
-
-Restriction by an empty table.
-
-![Restriction by an empty table](../images/restrict-example3.png){: style="width:563px; align:center"}
-
-Exclusion by an empty table.
-
-![Exclusion by an empty table](../images/diff-example3.png){: style="width:571px; align:center"}
-
-## Restriction by a mapping
-
-A key-value mapping may be used as an operand in restriction.
-For each key that is an attribute in `A`, the paired value is treated as part of an
-equality condition.
-Any key-value pairs without corresponding attributes in `A` are ignored.
-
-Restriction by an empty mapping or by a mapping with no keys matching the attributes in
-`A` will return all the entities in `A`.
-Exclusion by an empty mapping or by a mapping with no matches will return no entities.
-
-For example, let's say that table `Session` has the attribute `session_date` of
-[datatype](../design/tables/attributes.md) `datetime`.
-You are interested in sessions from January 1st, 2018, so you write the following
-restriction query using a mapping.
+Use query expressions as conditions:
 
 ```python
-Session & {'session_date': "2018-01-01"}
+# Sessions by Alice
+alice_sessions = Session & 'user = "Alice"'
+
+# Experiments in Alice's sessions
+Experiment & alice_sessions
+
+# Trials from experiments longer than 60 seconds
+long_experiments = Experiment & 'duration >= 60'
+Trial & long_experiments
 ```
 
-Our mapping contains a typo omitting the final `e` from `session_date`, so no keys in
-our mapping will match any attribute in `Session`.
-As such, our query will return all of the entities of `Session`.
+## Combining Conditions
 
-## Restriction by a string
-
-Restriction can be performed when `cond` is an explicit condition on attribute values,
-expressed as a string.
-Such conditions may include arithmetic operations, functions, range tests, etc.
-Restriction of table `A` by a string containing an attribute not found in table `A`
-produces an error.
+### AND Logic (Chain Restrictions)
 
 ```python
-# All the sessions performed by Alice
+# Multiple conditions combined with AND
+Session & 'user = "Alice"' & 'session_date > "2024-01-01"'
+
+# Equivalent using AndList
+Session & dj.AndList([
+    'user = "Alice"',
+    'session_date > "2024-01-01"'
+])
+```
+
+### OR Logic (List/Tuple)
+
+```python
+# Entities matching ANY condition (OR)
+Subject & ['subject_id = 1', 'subject_id = 2', 'subject_id = 3']
+
+# Multiple users
+Session & ['user = "Alice"', 'user = "Bob"']
+
+# Equivalent using tuple
+Session & ('user = "Alice"', 'user = "Bob"')
+```
+
+### NOT Logic
+
+```python
+# Exclusion operator
+Session - 'user = "Alice"'  # Sessions NOT by Alice
+
+# Not object
+Session & dj.Not('user = "Alice"')  # Same result
+```
+
+### Complex Combinations
+
+```python
+# (Alice's sessions) OR (sessions after 2024)
+(Session & 'user = "Alice"') + (Session & 'session_date > "2024-01-01"')
+
+# Alice's sessions that are NOT in 2024
+(Session & 'user = "Alice"') - 'session_date > "2024-01-01"'
+
+# Sessions with trials but no experiments
+(Session & Trial) - Experiment
+```
+
+## Practical Examples
+
+### Filter by Primary Key
+
+```python
+# Fetch specific subject
+subject = (Subject & {'subject_id': 5}).fetch1()
+
+# Fetch multiple specific subjects
+subjects = (Subject & [{'subject_id': 1}, {'subject_id': 2}]).fetch()
+```
+
+### Filter by Date Range
+
+```python
+# Sessions in January 2024
+jan_sessions = Session & 'session_date BETWEEN "2024-01-01" AND "2024-01-31"'
+
+# Sessions in the last 30 days
+recent = Session & 'session_date >= CURDATE() - INTERVAL 30 DAY'
+```
+
+### Filter by Related Data
+
+```python
+# Subjects with at least 5 sessions
+active_subjects = Subject & (
+    Subject.aggr(Session, n='count(*)') & 'n >= 5'
+).proj()
+
+# Sessions with successful trials
+successful_sessions = Session & (Trial & 'success = 1')
+
+# Experiments with all trials complete
+complete_experiments = Experiment - (Trial & 'status != "complete"')
+```
+
+### Filter by Computed Values
+
+```python
+# Trials longer than average
+avg_duration = Trial.proj().aggr(Trial, avg='avg(duration)').fetch1('avg')
+long_trials = Trial & f'duration > {avg_duration}'
+
+# Sessions with above-average trial count
+Session & (
+    Session.aggr(Trial, n='count(*)') &
+    f'n > {len(Trial) / len(Session)}'
+).proj()
+```
+
+## Query Patterns
+
+### Existence Check
+
+```python
+# Does subject 1 exist?
+if Subject & {'subject_id': 1}:
+    print("Subject exists")
+
+# Are there any sessions today?
+if Session & f'session_date = "{date.today()}"':
+    print("Sessions recorded today")
+```
+
+### Find Missing Data
+
+```python
+# Subjects without sessions
+orphan_subjects = Subject - Session
+
+# Sessions without trials
+empty_sessions = Session - Trial
+
+# Experiments missing analysis
+unanalyzed = Experiment - Analysis
+```
+
+### Universal Quantification
+
+```python
+# Subjects where ALL sessions are complete
+# (subjects with no incomplete sessions)
+complete_subjects = Subject - (Session - 'status = "complete"')
+
+# Experiments where ALL trials succeeded
+successful_experiments = Experiment - (Trial - 'success = 1')
+```
+
+### Find Related Entities
+
+```python
+# All sessions for a specific subject
+subject_sessions = Session & (Subject & {'subject_id': 1})
+
+# All trials across all sessions for a subject
+subject_trials = Trial & (Session & {'subject_id': 1})
+```
+
+## Special Restrictions
+
+### dj.Top
+
+Limit results with optional ordering:
+
+```python
+# First 10 sessions by date
+Session & dj.Top(limit=10, order_by='session_date')
+
+# Latest 5 sessions
+Session & dj.Top(limit=5, order_by='session_date DESC')
+
+# Pagination: skip first 10, get next 10
+Session & dj.Top(limit=10, offset=10, order_by='session_date')
+```
+
+### Boolean Values
+
+```python
+# True: returns all entities
+Session & True  # Same as Session
+
+# False: returns no entities
+Session & False  # Empty result
+```
+
+### Empty Conditions
+
+```python
+# Empty dict: returns all entities
+Session & {}  # Same as Session
+
+# Empty list: returns no entities
+Session & []  # Empty result
+
+# Empty AndList: returns all entities
+Session & dj.AndList([])  # Same as Session
+```
+
+## Performance Tips
+
+1. **Primary key restrictions are fastest**: Use when possible
+2. **Indexed attributes**: Restrictions on indexed columns are faster
+3. **Chain restrictions**: `A & cond1 & cond2` is often faster than complex strings
+4. **Avoid fetching then filtering**: Filter in the query, not in Python
+
+```python
+# Good: filter in query
+results = (Session & 'session_date > "2024-01-01"').fetch()
+
+# Bad: filter after fetch
+all_sessions = Session.fetch(as_dict=True)
+results = [s for s in all_sessions if s['session_date'] > date(2024, 1, 1)]
+```
+
+## Common Mistakes
+
+### Typos in Dictionary Keys
+
+```python
+# Wrong: key doesn't match, returns ALL rows
+Session & {'sesion_date': '2024-01-01'}
+
+# Right: correct spelling
+Session & {'session_date': '2024-01-01'}
+```
+
+### Quoting in String Conditions
+
+```python
+# Wrong: missing quotes around string value
+Session & 'user = Alice'
+
+# Right: quoted string value
 Session & 'user = "Alice"'
-
-# All the experiments at least one minute long
-Experiment & 'duration >= 60'
 ```
 
-## Restriction by a collection
-
-A collection can be a list, a tuple, or a Pandas `DataFrame`.
+### List vs AndList
 
 ```python
-# a list:
-cond_list = ['first_name = "Aaron"', 'last_name = "Aaronson"']
+# List = OR (any match)
+Session & ['user = "Alice"', 'user = "Bob"']  # Alice OR Bob
 
-# a tuple:
-cond_tuple = ('first_name = "Aaron"', 'last_name = "Aaronson"')
-
-# a dataframe:
-import pandas as pd
-cond_frame = pd.DataFrame(
-               data={'first_name': ['Aaron'], 'last_name': ['Aaronson']})
-```
-
-When `cond` is a collection of conditions, the conditions are applied by logical
-disjunction (logical OR).
-Thus, restriction of table `A` by a collection will return all entities in `A` that
-meet *any* of the conditions in the collection.
-For example, if you restrict the `Student` table by a collection containing two
-conditions, one for a first and one for a last name, your query will return any
-students with a matching first name *or* a matching last name.
-
-```python
-Student() & ['first_name = "Aaron"', 'last_name = "Aaronson"']
-```
-
-Restriction by a collection, returning all entities matching any condition in the collection.
-
-![Restriction by collection](../images/python_collection.png){: style="align:center"}
-
-Restriction by an empty collection returns no entities.
-Exclusion of table `A` by an empty collection returns all the entities of `A`.
-
-## Restriction by a Boolean expression
-
-`A & True` and `A - False` are equivalent to `A`.
-
-`A & False` and `A - True` are empty.
-
-## Restriction by an `AndList`
-
-The special function `dj.AndList` represents logical conjunction (logical AND).
-Restriction of table `A` by an `AndList` will return all entities in `A` that meet
-*all* of the conditions in the list.
-`A & dj.AndList([c1, c2, c3])` is equivalent to `A & c1 & c2 & c3`.
-Usually, it is more convenient to simply write out all of the conditions, as
-`A & c1 & c2 & c3`.
-However, when a list of conditions has already been generated, the list can simply be
-passed as the argument to `dj.AndList`.
-
-Restriction of table `A` by an empty `AndList`, as in `A & dj.AndList([])`, will return
-all of the entities in `A`.
-Exclusion by an empty `AndList` will return no entities.
-
-## Restriction by a `Not` object
-
-The special function `dj.Not` represents logical negation, such that `A & dj.Not(cond)`
-is equivalent to `A - cond`.
-
-## Restriction by a query
-
-Restriction by a query object is a generalization of restriction by a table (which is
-also a query object), because DataJoint queries always produce well-defined entity
-sets, as described in entity normalization.
-As such, restriction by queries follows the same behavior as restriction by tables
-described above.
-
-The example below creates a query object corresponding to all the sessions performed by
-the user Alice.
-The `Experiment` table is then restricted by the query object, returning all the
-experiments that are part of sessions performed by Alice.
-
-```python
-query = Session & 'user = "Alice"'
-Experiment & query
-```
-
-## Restriction by `dj.Top`
-
-Restriction by `dj.Top` returns the number of entities specified by the `limit`
-argument. These entities can be returned in the order specified by the `order_by`
-argument. And finally, the `offset` argument can be used to offset the returned entities
-which is useful for pagination in web applications.
-
-```python
-# Return the first 10 sessions in descending order of session date
-Session & dj.Top(limit=10, order_by='session_date DESC')
+# AndList = AND (all must match)
+Session & dj.AndList(['session_date > "2024-01-01"', 'user = "Alice"'])
 ```
