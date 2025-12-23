@@ -423,21 +423,50 @@ The jobs table is created with a primary key derived from the target table's for
 
 ### Conflict Resolution
 
-Job reservation is performed via `update1()` for each key individually before calling `make()`. The client provides its own `pid`, `host`, and `connection_id` information. No transaction-level locking is used.
+Conflict resolution relies on the transaction surrounding each `make()` call. This applies regardless of whether `reserve_jobs=True` or `reserve_jobs=False`:
 
-**Conflict scenario** (rare):
-1. Two workers reserve the same job nearly simultaneously
-2. Both run `make()` for the same key
-3. First worker's `make()` transaction commits, inserting the result
-4. Second worker's `make()` transaction fails with duplicate key error
-5. Second worker catches the error and moves to the next job
+- With `reserve_jobs=False`: Workers query `key_source` directly and may attempt the same key
+- With `reserve_jobs=True`: Job reservation reduces conflicts but doesn't eliminate them entirely
+
+When two workers attempt to populate the same key:
+1. Both call `make()` for the same key
+2. First worker's `make()` transaction commits, inserting the result
+3. Second worker's `make()` transaction fails with duplicate key error
+4. Second worker catches the error and moves to the next job
 
 **Why this is acceptable**:
-- Conflicts are rare in practice (requires near-simultaneous reservation)
-- The `make()` transaction already guarantees data integrity
+- The `make()` transaction guarantees data integrity
 - Duplicate key error is a clean, expected signal
-- Avoids locking overhead on the high-traffic jobs table
+- With `reserve_jobs=True`, conflicts are rare (requires near-simultaneous reservation)
 - Wasted computation is minimal compared to locking complexity
+
+### Job Reservation vs Pre-Partitioning
+
+The job reservation mechanism (`reserve_jobs=True`) allows workers to dynamically claim jobs from a shared queue. However, some orchestration systems may prefer to **pre-partition** jobs before distributing them to workers:
+
+```python
+# Pre-partitioning example: orchestrator divides work explicitly
+all_pending = FilteredImage.jobs.pending.fetch("KEY")
+
+# Split jobs among workers (e.g., by worker index)
+n_workers = 4
+for worker_id in range(n_workers):
+    worker_jobs = all_pending[worker_id::n_workers]  # Round-robin assignment
+    # Send worker_jobs to worker via orchestration system (Slurm, K8s, etc.)
+
+# Worker receives its assigned keys and processes them directly
+for key in assigned_keys:
+    FilteredImage.populate(key, reserve_jobs=False)
+```
+
+**When to use each approach**:
+
+| Approach | Use Case |
+|----------|----------|
+| **Dynamic reservation** (`reserve_jobs=True`) | Simple setups, variable job durations, workers that start/stop dynamically |
+| **Pre-partitioning** | Batch schedulers (Slurm, PBS), predictable job counts, avoiding reservation overhead |
+
+Both approaches benefit from the same transaction-based conflict resolution as a safety net.
 
 ### Orphaned Job Handling
 
