@@ -32,54 +32,11 @@ The existing `~jobs` table has significant limitations:
 
 ### Core Design Principles
 
-1. **Foreign-key-only primary keys**: Auto-populated tables cannot introduce new primary key attributes; their primary key must comprise only foreign key references
-2. **Per-table jobs**: Each computed table gets its own hidden jobs table
-3. **Native primary keys**: Jobs table uses the same primary key structure as its parent table (no hashes)
-4. **No FK constraints on jobs**: Jobs tables omit foreign key constraints for performance; stale jobs are cleaned by `refresh()`
-5. **Rich status tracking**: Extended status values for full lifecycle visibility
-6. **Automatic refresh**: `populate()` automatically refreshes the jobs queue (adding new jobs, removing stale ones)
-
-### Primary Key Constraint
-
-**Auto-populated tables (`dj.Imported` and `dj.Computed`) must have primary keys composed entirely of foreign key references.**
-
-This constraint ensures:
-- **1:1 key_source mapping**: Each entry in `key_source` corresponds to exactly one potential job
-- **Deterministic job identity**: A job's identity is fully determined by its parent records
-- **Simplified jobs table**: The jobs table can directly reference the same parents as the computed table
-
-```python
-# VALID: Primary key is entirely foreign keys
-@schema
-class FilteredImage(dj.Computed):
-    definition = """
-    -> Image
-    ---
-    filtered_image : <djblob>
-    """
-
-# VALID: Multiple foreign keys in primary key
-@schema
-class Comparison(dj.Computed):
-    definition = """
-    -> Image.proj(image_a='image_id')
-    -> Image.proj(image_b='image_id')
-    ---
-    similarity : float
-    """
-
-# INVALID: Additional primary key attribute not allowed
-@schema
-class Analysis(dj.Computed):
-    definition = """
-    -> Recording
-    analysis_method : varchar(32)   # NOT ALLOWED - adds to primary key
-    ---
-    result : float
-    """
-```
-
-**Legacy table support**: Existing tables that introduce additional primary key attributes (beyond foreign keys) can still use the jobs system, but their jobs table will only include the foreign-key-derived primary key attributes. This means multiple target rows may map to a single job entry. A deprecation warning will be issued for such tables.
+1. **Per-table jobs**: Each computed table gets its own hidden jobs table
+2. **FK-derived primary keys**: Jobs table primary key includes only attributes derived from foreign keys in the target table's primary key (not additional primary key attributes)
+3. **No FK constraints on jobs**: Jobs tables omit foreign key constraints for performance; stale jobs are cleaned by `refresh()`
+4. **Rich status tracking**: Extended status values for full lifecycle visibility
+5. **Automatic refresh**: `populate()` automatically refreshes the jobs queue (adding new jobs, removing stale ones)
 
 ## Architecture
 
@@ -91,7 +48,7 @@ Each `dj.Imported` or `dj.Computed` table `MyTable` will have an associated hidd
 # Job queue for MyTable
 subject_id : int
 session_id : int
-...                           # Same primary key attributes as MyTable (NO foreign key constraints)
+...                           # Only FK-derived primary key attributes (NO foreign key constraints)
 ---
 status          : enum('pending', 'reserved', 'success', 'error', 'ignore')
 priority        : int         # Lower = more urgent (0 = highest priority, default: 5)
@@ -109,10 +66,10 @@ connection_id   : bigint unsigned  # MySQL connection ID
 version         : varchar(255)   # Code version (git hash, package version, etc.)
 ```
 
-**Important**: The jobs table has the same primary key *structure* as the target table but **no foreign key constraints**. This is intentional for performance:
-- Foreign key constraints add overhead on every insert/update/delete
-- Jobs tables are high-traffic (frequent reservations and completions)
-- Stale jobs (referencing deleted upstream records) are handled by `refresh()` instead
+**Important**: The jobs table primary key includes only those attributes that come through foreign keys in the target table's primary key. Additional primary key attributes (if any) are excluded. This means:
+- If a target table has primary key `(-> Subject, -> Session, method)`, the jobs table has primary key `(subject_id, session_id)` only
+- Multiple target rows may map to a single job entry when additional PK attributes exist
+- Jobs tables have **no foreign key constraints** for performance (stale jobs handled by `refresh()`)
 
 ### Access Pattern
 
@@ -378,12 +335,12 @@ Jobs tables follow the existing hidden table naming pattern:
 - Table `FilteredImage` (stored as `__filtered_image`)
 - Jobs table: `~filtered_image__jobs` (stored as `_filtered_image__jobs`)
 
-### Primary Key Matching (No Foreign Keys)
+### Primary Key Derivation
 
-The jobs table has the same primary key *attributes* as the target table, but **without foreign key constraints**:
+The jobs table primary key includes only those attributes derived from foreign keys in the target table's primary key:
 
 ```python
-# If FilteredImage has definition:
+# Example 1: FK-only primary key (simple case)
 @schema
 class FilteredImage(dj.Computed):
     definition = """
@@ -391,11 +348,22 @@ class FilteredImage(dj.Computed):
     ---
     filtered_image : <djblob>
     """
+# Jobs table primary key: (image_id) — same as target
 
-# The jobs table will have the same primary key (image_id),
-# but NO foreign key constraint to Image.
-# This is for performance - FK constraints add overhead.
+# Example 2: Target with additional PK attribute
+@schema
+class Analysis(dj.Computed):
+    definition = """
+    -> Recording
+    analysis_method : varchar(32)   # Additional PK attribute
+    ---
+    result : float
+    """
+# Jobs table primary key: (recording_id) — excludes 'analysis_method'
+# One job entry covers all analysis_method values for a given recording
 ```
+
+The jobs table has **no foreign key constraints** for performance reasons.
 
 ### Stale Job Handling
 
@@ -451,7 +419,7 @@ FilteredImage.populate(reserve_jobs=True)
 FilteredImage.jobs.refresh()
 ```
 
-The jobs table is created with the appropriate primary key structure matching the target table's foreign-key-derived attributes.
+The jobs table is created with a primary key derived from the target table's foreign key attributes.
 
 ### Conflict Resolution
 
@@ -625,6 +593,61 @@ for jobs_table in schema.jobs:
 
 This replaces the legacy single `~jobs` table with direct access to per-table jobs.
 
+## Hazard Analysis
+
+This section identifies potential hazards and their mitigations.
+
+### Race Conditions
+
+| Hazard | Description | Mitigation |
+|--------|-------------|------------|
+| **Simultaneous reservation** | Two workers reserve the same pending job at nearly the same time | Acceptable: duplicate `make()` calls are resolved by transaction—second worker gets duplicate key error |
+| **Reserve during refresh** | Worker reserves a job while another process is running `refresh()` | No conflict: `refresh()` adds new jobs and removes stale ones; reservation updates existing rows |
+| **Concurrent refresh calls** | Multiple processes call `refresh()` simultaneously | Acceptable: may result in duplicate insert attempts, but primary key constraint prevents duplicates |
+| **Complete vs delete race** | One process completes a job while another deletes it | Acceptable: one operation succeeds, other becomes no-op (row not found) |
+
+### State Transitions
+
+| Hazard | Description | Mitigation |
+|--------|-------------|------------|
+| **Invalid state transition** | Code attempts illegal transition (e.g., pending → success) | Implementation enforces valid transitions; invalid attempts raise error |
+| **Stuck in reserved** | Worker crashes while job is reserved (orphaned job) | Manual intervention required: `jobs.reserved.delete()` (see Orphaned Job Handling) |
+| **Success re-pended unexpectedly** | `refresh()` re-pends a success job when user expected it to stay | Only occurs if `keep_completed=True` AND key exists in `key_source` but not in target; document clearly |
+| **Ignore not respected** | Ignored jobs get processed anyway | Implementation must skip `status='ignore'` in `populate()` job fetching |
+
+### Data Integrity
+
+| Hazard | Description | Mitigation |
+|--------|-------------|------------|
+| **Stale job processed** | Job references deleted upstream data | `make()` will fail or produce invalid results; `refresh()` cleans stale jobs before processing |
+| **Jobs table out of sync** | Jobs table doesn't match `key_source` | `refresh()` synchronizes; call periodically or rely on `populate(refresh=True)` |
+| **Partial make failure** | `make()` partially succeeds then fails | DataJoint transaction rollback ensures atomicity; job marked as error |
+| **Error message truncation** | Error details exceed `varchar(2047)` | Full stack stored in `error_stack` (mediumblob); `error_message` is summary only |
+
+### Performance
+
+| Hazard | Description | Mitigation |
+|--------|-------------|------------|
+| **Large jobs table** | Jobs table grows very large with `keep_completed=True` | Default is `keep_completed=False`; provide guidance on periodic cleanup |
+| **Slow refresh on large key_source** | `refresh()` queries entire `key_source` | Can restrict refresh to subsets: `jobs.refresh(Subject & 'lab="smith"')` |
+| **Many jobs tables per schema** | Schema with many computed tables has many jobs tables | Jobs tables are lightweight; only created on first use |
+
+### Operational
+
+| Hazard | Description | Mitigation |
+|--------|-------------|------------|
+| **Accidental job deletion** | User runs `jobs.delete()` without restriction | `delete()` inherits from `delete_quick()` (no confirmation); users must apply restrictions carefully |
+| **Clearing active jobs** | User clears reserved jobs while workers are running | Document warning in Orphaned Job Handling; recommend coordinating with orchestrator |
+| **Priority confusion** | User expects higher number = higher priority | Document clearly: lower values are more urgent (0 = highest priority) |
+
+### Migration
+
+| Hazard | Description | Mitigation |
+|--------|-------------|------------|
+| **Legacy ~jobs table conflict** | Old `~jobs` table exists alongside new per-table jobs | Systems are independent; legacy table can be dropped manually |
+| **Mixed version workers** | Some workers use old system, some use new | Major release; do not support mixed operation—require full migration |
+| **Lost error history** | Migrating loses error records from legacy table | Document migration procedure; users can export legacy errors before migration |
+
 ## Future Extensions
 
 - [ ] Web-based dashboard for job monitoring
@@ -667,43 +690,10 @@ The current system hashes primary keys to support arbitrary key types. The new s
 3. **Foreign keys**: Hash-based keys cannot participate in foreign key relationships
 4. **Simplicity**: No need for hash computation and comparison
 
-### Why Require Foreign-Key-Only Primary Keys?
+### Why FK-Derived Primary Keys Only?
 
-Restricting auto-populated tables to foreign-key-only primary keys provides:
+The jobs table primary key includes only attributes derived from foreign keys in the target table's primary key. This design:
 
-1. **1:1 job correspondence**: Each `key_source` entry maps to exactly one job, eliminating ambiguity about what constitutes a "job"
-2. **Matching key structure**: The jobs table primary key exactly matches the target table, enabling efficient stale detection via `key_source` comparison
-3. **Eliminates key_source complexity**: No need for custom `key_source` definitions to enumerate non-foreign-key combinations
-4. **Clearer data model**: The computation graph is fully determined by table dependencies
-5. **Simpler populate logic**: No need to handle partial key matching or key enumeration
-
-**What if I need multiple outputs per parent?**
-
-Use a part table pattern instead:
-
-```python
-# Instead of adding analysis_method to primary key:
-@schema
-class Analysis(dj.Computed):
-    definition = """
-    -> Recording
-    ---
-    timestamp : datetime
-    """
-
-    class Method(dj.Part):
-        definition = """
-        -> master
-        analysis_method : varchar(32)
-        ---
-        result : float
-        """
-
-    def make(self, key):
-        self.insert1(key)
-        for method in ['pca', 'ica', 'nmf']:
-            result = run_analysis(key, method)
-            self.Method.insert1({**key, 'analysis_method': method, 'result': result})
-```
-
-This pattern maintains the 1:1 job mapping while supporting multiple outputs per computation.
+1. **Aligns with key_source**: The `key_source` query naturally produces keys matching the FK-derived attributes
+2. **Simplifies job identity**: A job's identity is determined by its upstream dependencies
+3. **Handles additional PK attributes**: When targets have additional PK attributes (e.g., `method`), one job covers all values for that attribute
