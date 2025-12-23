@@ -95,6 +95,50 @@ Note: `A - B` is the negated form of restriction (equivalent to `A & ~B`), not a
 
 **Note**: A warning may be raised for joins on unindexed attributes (performance consideration).
 
+### Primary Key Formation in Joins
+
+The primary key of `A * B` is determined by functional dependency analysis, not simple union.
+
+Let J = join attributes (homologous namesakes matched during the join).
+
+**Rule**:
+```
+PK(A * B) =
+  PK(A)           if PK(B) ⊆ J    -- B's entire PK is in the join
+  PK(B)           if PK(A) ⊆ J    -- A's entire PK is in the join
+  PK(A) ∪ PK(B)   otherwise       -- neither PK is fully covered
+```
+
+**When both conditions hold** (both PKs are subsets of J), use **PK(A)** — the left operand's primary key. This makes join non-commutative with respect to primary key formation.
+
+**Rationale** (Armstrong's axioms):
+- If PK(B) ⊆ J, then by reflexivity: J → PK(B)
+- From A: PK(A) → J (A determines its attributes including join attrs)
+- By transitivity: PK(A) → J → PK(B) → all of B
+- Therefore PK(A) alone determines all attributes in the result
+
+**Examples**:
+
+1. **B's PK covered by join**:
+   - A: PK = {session_id}, secondary {subject_id}
+   - B: PK = {subject_id}
+   - J = {subject_id}, PK(B) ⊆ J ✓
+   - Result PK = {session_id}
+
+2. **Neither PK covered**:
+   - A: PK = {a, b}
+   - B: PK = {b, c}
+   - J = {b}
+   - PK(A) ⊄ J, PK(B) ⊄ J
+   - Result PK = {a, b, c}
+
+3. **Both PKs covered** (non-commutative case):
+   - A: PK = {a}, secondary {b}
+   - B: PK = {b}, secondary {a}
+   - J = {a, b}
+   - Both PK(A) ⊆ J and PK(B) ⊆ J
+   - Result PK = PK(A) = {a} (left operand wins)
+
 ## Current Implementation Analysis
 
 ### Attribute Representation (`heading.py:48`)
@@ -598,6 +642,19 @@ WHERE c.contype = 'f'
   AND c.conrelid = %s::regclass
 ```
 
+### D8: Primary Key Formation Using Functional Dependencies
+
+**Decision**: Use functional dependency analysis to form minimal primary keys in joins.
+
+**Rule**: For `A * B` joining on attributes J:
+- If PK(B) ⊆ J: result PK = PK(A)
+- Else if PK(A) ⊆ J: result PK = PK(B)
+- Else: result PK = PK(A) ∪ PK(B)
+
+**Tie-breaker**: When both PK(A) ⊆ J and PK(B) ⊆ J, use PK(A) (left operand). This makes join **non-commutative** with respect to primary key formation.
+
+**Rationale**: Based on Armstrong's axioms. If PK(B) ⊆ J, then PK(A) → J → PK(B) by transitivity, so PK(A) alone determines all result attributes. The union rule is only needed when neither PK is fully covered by the join.
+
 ## Testing Strategy
 
 1. **Unit tests** for lineage propagation through all query operations
@@ -642,6 +699,7 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 | **D5**: Secondary attr restriction | Replaced by lineage rule - FK-inherited attrs have lineage, native secondary don't |
 | **D6**: `@` operator | Deprecated - use `.join(semantic_check=False)` |
 | **D7**: Migration | Utility function + automatic fallback computation |
+| **D8**: PK formation | Functional dependency analysis; left operand wins ties; non-commutative |
 
 ### Compatibility
 
