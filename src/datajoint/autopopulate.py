@@ -390,9 +390,9 @@ class AutoPopulate:
         job_key = self._job_key(key)
         start_time = time.time()
 
-        # Try to reserve the job (per-key, before make)
-        if jobs is not None and not jobs.reserve(job_key):
-            return False
+        # Reserve the job (per-key, before make)
+        if jobs is not None:
+            jobs.reserve(job_key)
 
         # if make is a generator, transaction can be delayed until the final stage
         is_generator = inspect.isgeneratorfunction(make)
