@@ -213,24 +213,14 @@ class SchemaGraph:
 
 ### Phase 1: Add Lineage Infrastructure
 
-1. **Add `lineage` and `lineage_hash` fields to `Attribute`** (`heading.py`)
+1. **Add `lineage` field to `Attribute`** (`heading.py`)
    - `lineage`: string `"schema.table.attribute"` or `None`
-   - `lineage_hash`: 8-byte hash for fast comparison
-   - Add both to `default_attribute_properties` with default `None`
-
-   ```python
-   def compute_lineage_hash(lineage):
-       """Compute a short hash for fast lineage comparison."""
-       if lineage is None:
-           return None
-       # Use first 8 bytes of SHA-256 for compact representation
-       return hashlib.sha256(lineage.encode()).digest()[:8]
-   ```
+   - Add to `default_attribute_properties` with default `None`
 
    **Comparison strategy**:
-   - Compare `lineage_hash` only (8-byte comparison)
-   - Hash collisions (1 in 2^64) are acceptable given the low probability and cost
-   - `None` lineage never matches anything
+   - Direct string comparison (simple equality check)
+   - Lineage strings are short (~50-100 chars) and comparisons short-circuit on first difference
+   - `None` lineage never matches anything (including other `None`)
 
 2. **Create `~lineage` table management** (new file: `datajoint/lineage.py`)
    - `LineageTable` class (similar to `ExternalTable`)
@@ -384,9 +374,7 @@ CREATE TABLE `~lineage` (
     table_name       VARCHAR(64)  NOT NULL,
     attribute_name   VARCHAR(64)  NOT NULL,
     lineage          VARCHAR(200) NOT NULL,  -- "schema.table.attribute"
-    lineage_hash     BINARY(8)    NOT NULL,  -- fast comparison hash
-    PRIMARY KEY (table_name, attribute_name),
-    INDEX idx_lineage_hash (lineage_hash)
+    PRIMARY KEY (table_name, attribute_name)
 ) ENGINE=InnoDB;
 ```
 
@@ -396,10 +384,8 @@ CREATE TABLE "~lineage" (
     table_name       VARCHAR(64)  NOT NULL,
     attribute_name   VARCHAR(64)  NOT NULL,
     lineage          VARCHAR(200) NOT NULL,  -- "schema.table.attribute"
-    lineage_hash     BYTEA        NOT NULL,  -- 8 bytes
     PRIMARY KEY (table_name, attribute_name)
 );
-CREATE INDEX idx_lineage_hash ON "~lineage" (lineage_hash);
 ```
 
 #### Lineage Lookup
@@ -410,7 +396,7 @@ When a `Heading` is initialized from a table, query the `~lineage` table:
 def _load_lineage(self, connection, database, table_name):
     """Load lineage information from the ~lineage metadata table."""
     query = """
-        SELECT attribute_name, lineage, lineage_hash
+        SELECT attribute_name, lineage
         FROM `{database}`.`~lineage`
         WHERE table_name = %s
     """.format(database=database)
@@ -591,19 +577,17 @@ WHERE c.contype = 'f'
 
 ## Performance Considerations
 
-1. **Memory**: Two additional fields per attribute
+1. **Memory**: One additional field per attribute
    - `lineage`: string `"schema.table.attribute"` (~50-100 bytes typical) or `None`
-   - `lineage_hash`: 8 bytes (fixed)
 
-2. **Comparison**: Hash-only comparison
-   - Compare 8-byte `lineage_hash` values (single integer comparison)
-   - No fallback verification needed - collision probability (1 in 2^64) is negligible
-   - `None` hashes never match
+2. **Comparison**: Direct string comparison
+   - Short strings (~50-100 chars) with early short-circuit on difference
+   - Only compared for namesake attributes (same name in both tables)
+   - `None` lineage never matches anything
 
 3. **Storage**: Small overhead in `~lineage` table
-   - ~150 bytes per attribute (table_name + attribute_name + lineage string + hash)
+   - ~130 bytes per attribute (table_name + attribute_name + lineage string)
    - Indexed by (table_name, attribute_name) for fast lookup
-   - Secondary index on `lineage_hash` for potential future optimizations
 
 4. **Dependency loading**: Required before joins
    - Already cached per connection (`connection.dependencies`)
