@@ -71,8 +71,10 @@ Semantic matching applies to all binary operations that match attributes between
 | Operator | Operation | Semantic Matching |
 |----------|-----------|-------------------|
 | `A * B` | Join | Matches on homologous namesakes |
-| `A & B` | Restriction (subquery) | Matches on homologous namesakes |
-| `A - B` | Difference | Matches on homologous namesakes |
+| `A & B` | Restriction | Matches on homologous namesakes |
+| `A - B` | Anti-restriction | Matches on homologous namesakes |
+
+Note: `A - B` is the negated form of restriction (equivalent to `A & ~B`), not a true set difference.
 
 **All operators**:
 1. Match on **homologous namesakes** (same name AND same lineage)
