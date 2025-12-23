@@ -42,6 +42,7 @@ nav:
     - Make Method: operations/make.md
     - Populate: operations/populate.md
     - Key Source: operations/key-source.md
+    - Jobs: operations/jobs.md
     - Distributed: operations/distributed.md
   - Queries:
     - query/principles.md
