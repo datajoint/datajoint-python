@@ -224,9 +224,6 @@ class AutoPopulate:
         if order not in valid_order:
             raise DataJointError("The order argument must be one of %s" % str(valid_order))
 
-        # Get the jobs table (per-table JobsTable for new system)
-        jobs_table = self.jobs if reserve_jobs else None
-
         if reserve_jobs:
             # Define a signal handler for SIGTERM
             def handler(signum, frame):
@@ -247,7 +244,7 @@ class AutoPopulate:
                 refresh=refresh,
             )
         else:
-            # Legacy behavior: get keys from key_source
+            # Without job reservations: compute keys directly from key_source
             if keys is None:
                 todo = (self.key_source & AndList(restrictions)).proj()
                 keys = (todo - self).fetch("KEY", limit=limit)
@@ -271,9 +268,11 @@ class AutoPopulate:
                 make_kwargs=make_kwargs,
             )
 
+            jobs = self.jobs if reserve_jobs else None
+
             if processes == 1:
                 for key in tqdm(keys, desc=self.__class__.__name__) if display_progress else keys:
-                    status = self._populate1(key, jobs_table, **populate_kwargs)
+                    status = self._populate1(key, jobs, **populate_kwargs)
                     if status is True:
                         success_list.append(1)
                     elif isinstance(status, tuple):
@@ -285,7 +284,7 @@ class AutoPopulate:
                 self.connection.close()  # disconnect parent process from MySQL server
                 del self.connection._conn.ctx  # SSLContext is not pickleable
                 with (
-                    mp.Pool(processes, _initialize_populate, (self, jobs_table, populate_kwargs)) as pool,
+                    mp.Pool(processes, _initialize_populate, (self, jobs, populate_kwargs)) as pool,
                     tqdm(desc="Processes: ", total=nkeys) if display_progress else contextlib.nullcontext() as progress_bar,
                 ):
                     for status in pool.imap(_call_populate1, keys, chunksize=1):
@@ -321,16 +320,14 @@ class AutoPopulate:
         :param refresh: Whether to refresh if no pending jobs found
         :return: List of key dicts
         """
-        jobs_table = self.jobs
-
         # First, try to get pending jobs
-        keys = jobs_table.fetch_pending(limit=limit, priority=priority)
+        keys = self.jobs.fetch_pending(limit=limit, priority=priority)
 
         # If no pending jobs and refresh is enabled, refresh and try again
         if not keys and refresh:
             logger.debug("No pending jobs found, refreshing jobs queue")
-            jobs_table.refresh(*restrictions)
-            keys = jobs_table.fetch_pending(limit=limit, priority=priority)
+            self.jobs.refresh(*restrictions)
+            keys = self.jobs.fetch_pending(limit=limit, priority=priority)
 
         return keys
 
