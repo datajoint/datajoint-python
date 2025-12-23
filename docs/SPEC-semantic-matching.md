@@ -47,18 +47,35 @@ Homologous attributes are also called **semantically matched** attributes.
 
 ### Attribute Lineage
 
-Every attribute has a **lineage** - a reference to its original definition. Lineage is propagated through:
-- Foreign key references: when table B references table A, the inherited primary key attributes in B have the same lineage as in A
-- Query expressions: projections, joins, and other operations preserve lineage
+Lineage applies **only to primary key attributes**:
+
+1. **Primary key attributes** have lineage:
+   - If native to the table: `lineage = (this_schema, this_table, attr_name)`
+   - If inherited via foreign key: `lineage = (origin_schema, origin_table, origin_attr)`
+
+2. **Secondary attributes** do NOT have lineage:
+   - `lineage = None` for all secondary (non-primary-key) attributes
+   - Secondary attributes are table-specific data, not entity identifiers
+   - Foreign keys can only reference primary keys, so secondary attributes cannot be inherited
+
+Lineage propagates through:
+- **Foreign key references**: when table B references table A, the inherited primary key attributes in B have the same lineage as their counterparts in A
+- **Query expressions**: projections preserve lineage for renamed PK attributes; computed attributes have no lineage
 
 ### Join Compatibility Rules
 
 For a join `A * B` to be valid:
-1. All namesake attributes (same name in both) must be homologous (same lineage)
+1. **Primary key namesakes** must be homologous (same lineage)
+2. **Secondary attribute namesakes** always collide (both have `lineage = None`)
 
 If namesake attributes exist that are **not** homologous, an error should be raised (collision of non-homologous namesakes).
 
-**Note**: The current restriction that joins cannot be done on secondary attributes is **deprecated**. As long as attributes are homologous, they can participate in joins regardless of primary/secondary status. A warning may be raised for joins on unindexed attributes (performance consideration).
+**Implications**:
+- Two tables with the same secondary attribute name (e.g., both have `value`) cannot be joined directly - one must be renamed via `.proj()`
+- Primary key attributes can only match if they share lineage through the FK graph
+- This replaces the old heuristic (secondary attributes can't be join keys) with a principled rule (lineage must match)
+
+**Note**: A warning may be raised for joins on unindexed attributes (performance consideration).
 
 ## Current Implementation Analysis
 
@@ -276,8 +293,8 @@ Update these methods to preserve lineage:
 ### Phase 5: Error Handling
 
 1. **Clear error messages** for:
-   - Namesake collision: `"Cannot join: attribute 'name' exists in both operands with different lineages (Student.name vs Course.name). Use .proj() to rename one."`
-   - Non-PK homologous: `"Cannot join on secondary attribute 'value' - must be in primary key of at least one operand."`
+   - PK lineage mismatch: `"Cannot join: attribute 'subject_id' exists in both operands with different lineages (lab.Subject.subject_id vs other.Experiment.subject_id). Use .proj() to rename one."`
+   - Secondary attr collision: `"Cannot join: attribute 'value' has no lineage in both operands (secondary attributes). Use .proj() to rename one."`
 
 2. **Resolution guidance** in error messages:
    - Suggest specific projection syntax to resolve
@@ -434,9 +451,9 @@ This is intentional: a computed value is a new entity, not inherited from any so
 
 `dj.U` promotes attributes to the primary key for grouping/aggregation purposes, but the semantic identity of the attributes remains unchanged.
 
-### D5: Deprecate Secondary Attribute Join Restriction
+### D5: Replace Secondary Attribute Heuristic with Lineage Rule
 
-**Decision**: Remove the current restriction that prevents joining on secondary attributes.
+**Decision**: Replace the current heuristic with a principled lineage-based rule.
 
 **Current behavior** (`condition.py:assert_join_compatibility`):
 ```python
@@ -446,13 +463,21 @@ raise DataJointError(
 )
 ```
 
-**New behavior**: Any homologous attributes can participate in joins, regardless of primary/secondary status. The only requirement is matching lineage.
+**New behavior**: The restriction is now a consequence of lineage rules:
+- Secondary attributes have `lineage = None`
+- Two `None` lineages do not match (collision)
+- Therefore, secondary attribute namesakes still cause errors, but for the right reason
 
-**Rationale**: The original restriction was a heuristic to prevent accidental joins on coincidentally-named attributes. With proper lineage tracking, this heuristic is no longer needed - lineage provides the authoritative answer.
+**Key insight**: Since foreign keys can only reference primary keys, secondary attributes cannot be inherited. They are always native to their table and have no lineage. The old heuristic was correct in effect, but the new rule is principled.
 
-**Performance warning**: Consider warning when joining on attributes that lack indexes in one or both tables:
+**Error message change**:
 ```python
-# Optional warning for unindexed join attributes
+# Old: "Cannot join query expressions on dependent attribute `value`"
+# New: "Cannot join: attribute 'value' has no lineage in both operands. Use .proj() to rename one."
+```
+
+**Performance warning**: Consider warning when joining on attributes that lack indexes:
+```python
 if not has_index(table1, attr) or not has_index(table2, attr):
     warnings.warn(
         f"Join on '{attr}' may be slow: attribute is not indexed in both tables",
@@ -578,7 +603,7 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 | **D2**: Renamed attributes | Preserve original lineage |
 | **D3**: Computed attributes | Lineage = `None` (breaks matching) |
 | **D4**: `dj.U` interaction | Does not affect lineage |
-| **D5**: Secondary attr restriction | **Deprecated** - homologous attrs can join regardless of PK status |
+| **D5**: Secondary attr restriction | Replaced by lineage rule - secondary attrs have no lineage, so namesakes collide |
 | **D6**: Migration | Utility function + automatic fallback computation |
 
 ### Compatibility
