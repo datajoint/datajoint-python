@@ -149,7 +149,7 @@ class JobsTable(Table):
     def refresh(
         self,
         *restrictions,
-        scheduled_time: datetime = None,
+        delay: float = 0,
         priority: int = 5,
         stale_timeout: float = None
     ) -> dict:
@@ -163,9 +163,9 @@ class JobsTable(Table):
 
         Args:
             restrictions: Conditions to filter key_source
-            scheduled_time: When new jobs should become available for processing.
-                           Default: now (jobs are immediately available).
-                           Use future times to schedule jobs for later processing.
+            delay: Seconds from now until jobs become available for processing.
+                   Default: 0 (jobs are immediately available).
+                   Uses database server time to avoid client clock synchronization issues.
             priority: Priority for new jobs (lower = more urgent). Default: 5
             stale_timeout: Seconds after which pending jobs are checked for staleness.
                           Jobs older than this are removed if their key is no longer
@@ -301,11 +301,9 @@ MyTable.jobs.progress()  # Returns detailed status breakdown
 
 ### Priority and Scheduling
 
-Priority and scheduling are handled via `refresh()` parameters. Lower priority values are more urgent (0 = highest priority).
+Priority and scheduling are handled via `refresh()` parameters. Lower priority values are more urgent (0 = highest priority). Scheduling uses relative time (seconds from now) based on database server time.
 
 ```python
-from datetime import datetime, timedelta
-
 # Add urgent jobs (priority=0 is most urgent)
 MyTable.jobs.refresh(priority=0)
 
@@ -316,12 +314,13 @@ MyTable.jobs.refresh()
 MyTable.jobs.refresh(priority=10)
 
 # Schedule jobs for future processing (2 hours from now)
-future_time = datetime.now() + timedelta(hours=2)
-MyTable.jobs.refresh(scheduled_time=future_time)
+MyTable.jobs.refresh(delay=2*60*60)  # 7200 seconds
 
-# Combine: urgent jobs scheduled for tonight
-tonight = datetime.now().replace(hour=22, minute=0, second=0)
-MyTable.jobs.refresh(priority=0, scheduled_time=tonight)
+# Schedule jobs for tomorrow (24 hours from now)
+MyTable.jobs.refresh(delay=24*60*60)
+
+# Combine: urgent jobs with 1-hour delay
+MyTable.jobs.refresh(priority=0, delay=3600)
 
 # Add urgent jobs for specific subjects
 MyTable.jobs.refresh(Subject & 'priority="urgent"', priority=0)
@@ -532,13 +531,10 @@ FilteredImage.populate(reserve_jobs=True)
 ### Scheduled Processing
 
 ```python
-# Schedule jobs for overnight processing
-from datetime import datetime, timedelta
+# Schedule jobs for overnight processing (8 hours from now)
+FilteredImage.jobs.refresh('subject_id > 100', delay=8*60*60)
 
-tonight = datetime.now().replace(hour=22, minute=0, second=0)
-FilteredImage.jobs.refresh('subject_id > 100', scheduled_time=tonight)
-
-# Only jobs scheduled for now or earlier will be processed
+# Only jobs whose scheduled_time <= now will be processed
 FilteredImage.populate(reserve_jobs=True)
 ```
 
