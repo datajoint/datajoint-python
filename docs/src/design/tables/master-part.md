@@ -86,23 +86,44 @@ For example:
 ```python
 @schema
 class ArrayResponse(dj.Computed):
-definition = """
-array: int
-"""
+    definition = """
+    -> ArrayInfo
+    ---
+    timestamp : datetime
+    """
 
-class ElectrodeResponse(dj.Part):
-definition = """
--> master
-electrode: int    # electrode number on the probe
-"""
+    class ElectrodeResponse(dj.Part):
+        definition = """
+        -> master
+        electrode : int    # electrode number on the probe
+        ---
+        electrode_signal : longblob
+        """
 
-class ChannelResponse(dj.Part):
-definition = """
--> ElectrodeResponse
-channel: int
----
-response: <djblob>  # response of a channel
-"""
+    class ChannelResponse(dj.Part):
+        definition = """
+        -> master.ElectrodeResponse
+        channel : int
+        ---
+        response : longblob  # response of a channel
+        """
+
+    def make(self, key):
+        # Insert master record
+        self.insert1(dict(key, timestamp=datetime.now()))
+
+        # Get electrode data and insert ElectrodeResponse parts
+        for electrode_id, electrode_data in enumerate(get_electrodes(key)):
+            electrode_key = dict(key, electrode=electrode_id)
+            self.ElectrodeResponse.insert1(
+                dict(electrode_key, electrode_signal=electrode_data['signal'])
+            )
+
+            # Insert ChannelResponse parts for each electrode
+            for channel_id, channel_data in enumerate(electrode_data['channels']):
+                self.ChannelResponse.insert1(
+                    dict(electrode_key, channel=channel_id, response=channel_data)
+                )
 ```
 
 Conceptually, one or more channels belongs to an electrode, and one or more electrodes
