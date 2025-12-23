@@ -9,7 +9,6 @@ import warnings
 from .connection import conn
 from .errors import AccessError, DataJointError
 from .heading import Heading
-from .jobs import JobTable
 from .settings import config
 from .table import FreeTable, Log, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
@@ -69,7 +68,6 @@ class Schema:
         self.context = context
         self.create_schema = create_schema
         self.create_tables = create_tables
-        self._jobs = None
         self._auto_populated_tables = []  # Track auto-populated table classes
         self.add_objects = add_objects
         self.declare_list = []
@@ -351,21 +349,6 @@ class Schema:
         """
         self._assert_exists()
         return [table_class().jobs for table_class in self._auto_populated_tables]
-
-    @property
-    def legacy_jobs(self):
-        """
-        Access the legacy schema-level job reservation table (~jobs).
-
-        This is provided for backward compatibility and migration purposes.
-        New code should use per-table jobs via `MyTable.jobs` or `schema.jobs`.
-
-        :return: legacy JobTable
-        """
-        self._assert_exists()
-        if self._jobs is None:
-            self._jobs = JobTable(self.connection, self.database)
-        return self._jobs
 
     @property
     def code(self):
