@@ -61,17 +61,22 @@ def test_populate_key_list(clean_autopopulate, subject, experiment, trial):
     assert n == ret["success_count"]
 
 
-def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, schema_any, subject, experiment):
+def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, subject, experiment):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
 
+    # Ensure jobs table is set up by refreshing
+    jobs = experiment.jobs
+    jobs.refresh()
+
     keys = experiment.key_source.fetch("KEY", limit=2)
     for idx, key in enumerate(keys):
         if idx == 0:
-            schema_any.jobs.ignore(experiment.table_name, key)
+            jobs.ignore(key)
         else:
-            schema_any.jobs.error(experiment.table_name, key, "")
+            jobs.reserve(key)
+            jobs.error(key, error_message="Test error")
 
     experiment.populate(reserve_jobs=True)
     assert len(experiment.key_source & experiment) == len(experiment.key_source) - 2
