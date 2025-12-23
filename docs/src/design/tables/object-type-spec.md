@@ -54,6 +54,42 @@ This is fundamentally different from **external references**, where DataJoint me
 
 Each DataJoint pipeline has **one** associated storage backend configured in `datajoint.json`. DataJoint fully controls the path structure within this backend.
 
+**Why single backend?** The object store is a logical extension of the schema—its integrity must be verifiable as a unit. With a single backend:
+- Schema completeness can be verified with one listing operation
+- Orphan detection is straightforward
+- Migration requires only config changes, not mass URL updates in the database
+
+### Access Control Patterns
+
+The deterministic path structure (`project/schema/Table/objects/pk=val/...`) enables **prefix-based access control policies** on the storage backend.
+
+**Supported access control levels:**
+
+| Level | Implementation | Example Policy Prefix |
+|-------|---------------|----------------------|
+| Project-level | IAM/bucket policy | `my-bucket/my_project/*` |
+| Schema-level | IAM/bucket policy | `my-bucket/my_project/lab_internal/*` |
+| Table-level | IAM/bucket policy | `my-bucket/my_project/schema/SensitiveTable/*` |
+| Row-level | Per-object ACL or signed URLs | Future enhancement |
+
+**Example: Private and public data in one bucket**
+
+Rather than using separate buckets, use prefix-based policies:
+
+```
+s3://my-bucket/my_project/
+├── internal_schema/           ← restricted IAM policy
+│   └── ProcessingResults/
+│       └── objects/...
+└── publications/              ← public bucket policy
+    └── PublishedDatasets/
+        └── objects/...
+```
+
+This achieves the same access separation as multiple buckets while maintaining schema integrity in a single backend.
+
+**Row-level access control** (access to objects for specific primary key values) is not directly supported by object store policies. Future versions may address this via DataJoint-generated signed URLs that project database permissions onto object access.
+
 ### Supported Backends
 
 DataJoint uses **[`fsspec`](https://filesystem-spec.readthedocs.io/en/latest/)** to ensure compatibility across multiple storage backends:
@@ -1337,3 +1373,4 @@ arr = da.from_zarr(obj_ref.store, component='spikes')
 - [ ] Checksum verification on fetch
 - [ ] Cache layer for frequently accessed files
 - [ ] Parallel upload/download for large folders
+- [ ] Row-level object access control via signed URLs (project DB permissions onto object access)
