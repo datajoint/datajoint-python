@@ -265,7 +265,7 @@ version=""      : varchar(255)    # Code version
         # Project to FK-derived attributes only
         key_source_proj = key_source.proj(*pk_attrs)
         target_proj = self._target.proj(*pk_attrs)
-        existing_jobs = self.proj(*pk_attrs)
+        existing_jobs = self.proj()  # jobs table PK is the FK-derived attrs
 
         # Keys that need jobs: in key_source, not in target, not already in jobs
         new_keys = (key_source_proj - target_proj - existing_jobs).fetch("KEY")
@@ -285,7 +285,7 @@ version=""      : varchar(255)    # Code version
         removed = 0
         if stale_timeout > 0:
             stale_condition = f'status="pending" AND ' f"created_time < NOW() - INTERVAL {stale_timeout} SECOND"
-            stale_jobs = (self & stale_condition).proj(*pk_attrs)
+            stale_jobs = (self & stale_condition).proj()
 
             # Check which stale jobs are no longer in key_source
             orphaned_keys = (stale_jobs - key_source_proj).fetch("KEY")
