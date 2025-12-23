@@ -74,7 +74,7 @@ class AutoPopulate:
             )
 
         if self._key_source is None:
-            parents = self.target.parents(primary=True, as_objects=True, foreign_key_info=True)
+            parents = self.parents(primary=True, as_objects=True, foreign_key_info=True)
             if not parents:
                 raise DataJointError("A table must have dependencies from its primary key for auto-populate to work")
             self._key_source = _rename_attributes(*parents[0])
@@ -152,15 +152,6 @@ class AutoPopulate:
         yield
 
     @property
-    def target(self):
-        """
-        :return: table to be populated.
-        In the typical case, dj.AutoPopulate is mixed into a dj.Table class by
-        inheritance and the target is self.
-        """
-        return self
-
-    @property
     def jobs(self):
         """
         Access the jobs table for this auto-populated table.
@@ -173,7 +164,7 @@ class AutoPopulate:
         if self._jobs_table is None:
             from .jobs import JobsTable
 
-            self._jobs_table = JobsTable(self.target)
+            self._jobs_table = JobsTable(self)
         return self._jobs_table
 
     def _jobs_to_do(self, restrictions):
@@ -198,7 +189,7 @@ class AutoPopulate:
             raise DataJointError(
                 "The populate target lacks attribute %s "
                 "from the primary key of key_source"
-                % next(name for name in todo.heading.primary_key if name not in self.target.heading)
+                % next(name for name in todo.heading.primary_key if name not in self.heading)
             )
         except StopIteration:
             pass
@@ -281,7 +272,7 @@ class AutoPopulate:
         else:
             # Legacy behavior: get keys from key_source
             if keys is None:
-                keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+                keys = (self._jobs_to_do(restrictions) - self).fetch("KEY", limit=limit)
 
         if order == "reverse":
             keys.reverse()
@@ -390,7 +381,7 @@ class AutoPopulate:
         if not is_generator:
             self.connection.start_transaction()
 
-        if key in self.target:  # already populated
+        if key in self:  # already populated
             if not is_generator:
                 self.connection.cancel_transaction()
             if jobs is not None:
@@ -398,7 +389,7 @@ class AutoPopulate:
                 jobs.complete(key, duration=0)
             return False
 
-        logger.debug(f"Making {key} -> {self.target.full_table_name}")
+        logger.debug(f"Making {key} -> {self.full_table_name}")
         self.__class__._allow_insert = True
 
         try:
@@ -429,7 +420,7 @@ class AutoPopulate:
                 exception=error.__class__.__name__,
                 msg=": " + str(error) if str(error) else "",
             )
-            logger.debug(f"Error making {key} -> {self.target.full_table_name} - {error_message}")
+            logger.debug(f"Error making {key} -> {self.full_table_name} - {error_message}")
 
             # Only log errors from inside make() - not collision errors
             if jobs is not None:
@@ -456,7 +447,7 @@ class AutoPopulate:
         else:
             self.connection.commit_transaction()
             duration = time.time() - start_time
-            logger.debug(f"Success making {key} -> {self.target.full_table_name}")
+            logger.debug(f"Success making {key} -> {self.full_table_name}")
             if jobs is not None:
                 jobs.complete(key, duration=duration)
             return True
@@ -470,7 +461,7 @@ class AutoPopulate:
         """
         todo = self._jobs_to_do(restrictions)
         total = len(todo)
-        remaining = len(todo - self.target)
+        remaining = len(todo - self)
         if display:
             logger.info(
                 "%-20s" % self.__class__.__name__
