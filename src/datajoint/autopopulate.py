@@ -176,14 +176,6 @@ class AutoPopulate:
             self._jobs_table = JobsTable(self.target)
         return self._jobs_table
 
-    def _job_key(self, key):
-        """
-        :param key:  they key returned for the job from the key source
-        :return: the dict to use to generate the job reservation hash
-        This method allows subclasses to control the job reservation granularity.
-        """
-        return key
-
     def _jobs_to_do(self, restrictions):
         """
         :return: the query yielding the keys to be computed (derived from self.key_source)
@@ -387,12 +379,11 @@ class AutoPopulate:
 
         # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
-        job_key = self._job_key(key)
         start_time = time.time()
 
         # Reserve the job (per-key, before make)
         if jobs is not None:
-            jobs.reserve(job_key)
+            jobs.reserve(key)
 
         # if make is a generator, transaction can be delayed until the final stage
         is_generator = inspect.isgeneratorfunction(make)
@@ -404,7 +395,7 @@ class AutoPopulate:
                 self.connection.cancel_transaction()
             if jobs is not None:
                 # Job already done - mark complete or delete
-                jobs.complete(job_key, duration=0)
+                jobs.complete(key, duration=0)
             return False
 
         logger.debug(f"Making {key} -> {self.target.full_table_name}")
@@ -449,11 +440,11 @@ class AutoPopulate:
                     # This is not a real error, just coordination artifact
                     logger.debug(f"Duplicate key collision for {key}, reverting job")
                     # Delete the reservation, letting the job be picked up again or cleaned
-                    (jobs & job_key).delete_quick()
+                    (jobs & key).delete_quick()
                 else:
                     # Real error inside make() - log it
                     jobs.error(
-                        job_key,
+                        key,
                         error_message=error_message,
                         error_stack=traceback.format_exc(),
                     )
@@ -467,7 +458,7 @@ class AutoPopulate:
             duration = time.time() - start_time
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
             if jobs is not None:
-                jobs.complete(job_key, duration=duration)
+                jobs.complete(key, duration=duration)
             return True
         finally:
             self.__class__._allow_insert = False
