@@ -64,12 +64,19 @@ Lineage propagates through:
 - **Foreign key references**: inherited attributes retain their origin lineage regardless of PK/secondary status
 - **Query expressions**: projections preserve lineage for renamed attributes; computed attributes have no lineage
 
-### Join Rules
+### Semantic Matching Rules
 
-**The `*` operator** performs a semantic join:
-1. Joins on **homologous namesakes** (same name AND same lineage)
-2. Raises an error on **non-homologous namesakes** (same name, different lineage)
-3. Attributes with no namesake in the other operand pass through unchanged
+Semantic matching applies to all binary operations that match attributes between two query expressions:
+
+| Operator | Operation | Semantic Matching |
+|----------|-----------|-------------------|
+| `A * B` | Join | Matches on homologous namesakes |
+| `A & B` | Restriction (subquery) | Matches on homologous namesakes |
+| `A - B` | Difference | Matches on homologous namesakes |
+
+**All operators**:
+1. Match on **homologous namesakes** (same name AND same lineage)
+2. Raise an error on **non-homologous namesakes** (same name, different lineage)
 
 **The `.join()` method** provides additional control via kwargs:
 - Defaults to semantic matching (same as `*`)
