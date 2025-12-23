@@ -152,6 +152,15 @@ class Imported(UserTable, AutoPopulate):
     _prefix = "_"
     tier_regexp = r"(?P<imported>" + _prefix + _base_regexp + ")"
 
+    def drop_quick(self):
+        """
+        Drop the table and its associated jobs table.
+        """
+        # Drop the jobs table first if it exists
+        if self._jobs_table is not None and self._jobs_table.is_declared:
+            self._jobs_table.drop_quick()
+        super().drop_quick()
+
 
 class Computed(UserTable, AutoPopulate):
     """
@@ -161,6 +170,15 @@ class Computed(UserTable, AutoPopulate):
 
     _prefix = "__"
     tier_regexp = r"(?P<computed>" + _prefix + _base_regexp + ")"
+
+    def drop_quick(self):
+        """
+        Drop the table and its associated jobs table.
+        """
+        # Drop the jobs table first if it exists
+        if self._jobs_table is not None and self._jobs_table.is_declared:
+            self._jobs_table.drop_quick()
+        super().drop_quick()
 
 
 class Part(UserTable):
