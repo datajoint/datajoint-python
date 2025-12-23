@@ -2,7 +2,6 @@
 Tests for the Autopopulate 2.0 per-table jobs system.
 """
 
-import time
 import random
 import string
 
@@ -17,7 +16,7 @@ class TestJobsTableStructure:
 
     def test_jobs_property_exists(self, schema_any):
         """Test that Computed tables have a jobs property."""
-        assert hasattr(schema.SigIntTable, 'jobs')
+        assert hasattr(schema.SigIntTable, "jobs")
         jobs = schema.SigIntTable().jobs
         assert isinstance(jobs, JobsTable)
 
@@ -25,25 +24,25 @@ class TestJobsTableStructure:
         """Test that jobs table has correct naming convention."""
         jobs = schema.SigIntTable().jobs
         # SigIntTable is __sig_int_table, jobs should be ~sig_int_table__jobs
-        assert jobs.table_name.startswith('~')
-        assert jobs.table_name.endswith('__jobs')
+        assert jobs.table_name.startswith("~")
+        assert jobs.table_name.endswith("__jobs")
 
     def test_jobs_table_primary_key(self, schema_any):
         """Test that jobs table has FK-derived primary key."""
         jobs = schema.SigIntTable().jobs
         # SigIntTable depends on SimpleSource with pk 'id'
-        assert 'id' in jobs.primary_key
+        assert "id" in jobs.primary_key
 
     def test_jobs_table_status_column(self, schema_any):
         """Test that jobs table has status column with correct enum values."""
         jobs = schema.SigIntTable().jobs
         jobs._ensure_declared()
-        status_attr = jobs.heading.attributes['status']
-        assert 'pending' in status_attr.type
-        assert 'reserved' in status_attr.type
-        assert 'success' in status_attr.type
-        assert 'error' in status_attr.type
-        assert 'ignore' in status_attr.type
+        status_attr = jobs.heading.attributes["status"]
+        assert "pending" in status_attr.type
+        assert "reserved" in status_attr.type
+        assert "success" in status_attr.type
+        assert "error" in status_attr.type
+        assert "ignore" in status_attr.type
 
 
 class TestJobsRefresh:
@@ -56,7 +55,7 @@ class TestJobsRefresh:
         jobs.delete()  # Clear any existing jobs
 
         result = jobs.refresh()
-        assert result['added'] > 0
+        assert result["added"] > 0
         assert len(jobs.pending) > 0
 
     def test_refresh_with_priority(self, schema_any):
@@ -66,7 +65,7 @@ class TestJobsRefresh:
         jobs.delete()
 
         jobs.refresh(priority=3)
-        priorities = jobs.pending.fetch('priority')
+        priorities = jobs.pending.fetch("priority")
         assert all(p == 3 for p in priorities)
 
     def test_refresh_with_delay(self, schema_any):
@@ -97,12 +96,12 @@ class TestJobsReserve:
         jobs.refresh()
 
         # Get first pending job
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         assert jobs.reserve(key)
 
         # Verify status changed
-        status = (jobs & key).fetch1('status')
-        assert status == 'reserved'
+        status = (jobs & key).fetch1("status")
+        assert status == "reserved"
 
     def test_reserve_already_reserved(self, schema_any):
         """Test that reserve() returns False for already reserved job."""
@@ -111,7 +110,7 @@ class TestJobsReserve:
         jobs.delete()
         jobs.refresh()
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         assert jobs.reserve(key)
         assert not jobs.reserve(key)  # Second reserve should fail
 
@@ -122,7 +121,7 @@ class TestJobsReserve:
         jobs.delete()
         jobs.refresh(delay=3600)  # 1 hour delay
 
-        key = jobs.fetch('KEY', limit=1)[0]
+        key = jobs.fetch("KEY", limit=1)[0]
         assert not jobs.reserve(key)  # Should fail - not yet scheduled
 
 
@@ -136,7 +135,7 @@ class TestJobsComplete:
         jobs.delete()
         jobs.refresh()
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         jobs.reserve(key)
         jobs.complete(key, duration=1.5, keep=False)
 
@@ -149,12 +148,12 @@ class TestJobsComplete:
         jobs.delete()
         jobs.refresh()
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         jobs.reserve(key)
         jobs.complete(key, duration=1.5, keep=True)
 
-        status = (jobs & key).fetch1('status')
-        assert status == 'success'
+        status = (jobs & key).fetch1("status")
+        assert status == "success"
 
 
 class TestJobsError:
@@ -167,12 +166,12 @@ class TestJobsError:
         jobs.delete()
         jobs.refresh()
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         jobs.reserve(key)
         jobs.error(key, error_message="Test error", error_stack="stack trace")
 
-        status, msg = (jobs & key).fetch1('status', 'error_message')
-        assert status == 'error'
+        status, msg = (jobs & key).fetch1("status", "error_message")
+        assert status == "error"
         assert msg == "Test error"
 
     def test_error_truncates_long_message(self, schema_any):
@@ -182,14 +181,13 @@ class TestJobsError:
         jobs.delete()
         jobs.refresh()
 
-        long_message = ''.join(random.choice(string.ascii_letters)
-                               for _ in range(ERROR_MESSAGE_LENGTH + 100))
+        long_message = "".join(random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH + 100))
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         jobs.reserve(key)
         jobs.error(key, error_message=long_message)
 
-        msg = (jobs & key).fetch1('error_message')
+        msg = (jobs & key).fetch1("error_message")
         assert len(msg) == ERROR_MESSAGE_LENGTH
         assert msg.endswith(TRUNCATION_APPENDIX)
 
@@ -204,11 +202,11 @@ class TestJobsIgnore:
         jobs.delete()
         jobs.refresh()
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         jobs.ignore(key)
 
-        status = (jobs & key).fetch1('status')
-        assert status == 'ignore'
+        status = (jobs & key).fetch1("status")
+        assert status == "ignore"
 
     def test_ignore_new_key(self, schema_any):
         """Test that ignore() can create new job with ignore status."""
@@ -217,11 +215,11 @@ class TestJobsIgnore:
         jobs.delete()
 
         # Don't refresh - ignore a key directly
-        key = {'id': 1}
+        key = {"id": 1}
         jobs.ignore(key)
 
-        status = (jobs & key).fetch1('status')
-        assert status == 'ignore'
+        status = (jobs & key).fetch1("status")
+        assert status == "ignore"
 
 
 class TestJobsStatusProperties:
@@ -235,8 +233,8 @@ class TestJobsStatusProperties:
         jobs.refresh()
 
         assert len(jobs.pending) > 0
-        statuses = jobs.pending.fetch('status')
-        assert all(s == 'pending' for s in statuses)
+        statuses = jobs.pending.fetch("status")
+        assert all(s == "pending" for s in statuses)
 
     def test_reserved_property(self, schema_any):
         """Test that reserved property returns reserved jobs."""
@@ -245,12 +243,12 @@ class TestJobsStatusProperties:
         jobs.delete()
         jobs.refresh()
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         jobs.reserve(key)
 
         assert len(jobs.reserved) == 1
-        statuses = jobs.reserved.fetch('status')
-        assert all(s == 'reserved' for s in statuses)
+        statuses = jobs.reserved.fetch("status")
+        assert all(s == "reserved" for s in statuses)
 
     def test_errors_property(self, schema_any):
         """Test that errors property returns error jobs."""
@@ -259,7 +257,7 @@ class TestJobsStatusProperties:
         jobs.delete()
         jobs.refresh()
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         jobs.reserve(key)
         jobs.error(key, error_message="test")
 
@@ -272,7 +270,7 @@ class TestJobsStatusProperties:
         jobs.delete()
         jobs.refresh()
 
-        key = jobs.pending.fetch('KEY', limit=1)[0]
+        key = jobs.pending.fetch("KEY", limit=1)[0]
         jobs.ignore(key)
 
         assert len(jobs.ignored) == 1
@@ -290,15 +288,13 @@ class TestJobsProgress:
 
         progress = jobs.progress()
 
-        assert 'pending' in progress
-        assert 'reserved' in progress
-        assert 'success' in progress
-        assert 'error' in progress
-        assert 'ignore' in progress
-        assert 'total' in progress
-        assert progress['total'] == sum(
-            progress[k] for k in ['pending', 'reserved', 'success', 'error', 'ignore']
-        )
+        assert "pending" in progress
+        assert "reserved" in progress
+        assert "success" in progress
+        assert "error" in progress
+        assert "ignore" in progress
+        assert "total" in progress
+        assert progress["total"] == sum(progress[k] for k in ["pending", "reserved", "success", "error", "ignore"])
 
 
 class TestPopulateWithJobs:
@@ -329,7 +325,7 @@ class TestPopulateWithJobs:
 
         # Populate one job
         result = table.populate(reserve_jobs=True, max_calls=1)
-        assert result['success_count'] >= 0  # May be 0 if error
+        assert result["success_count"] >= 0  # May be 0 if error
 
     def test_populate_with_priority_filter(self, schema_any):
         """Test that populate respects priority filter."""
@@ -382,7 +378,7 @@ class TestConfiguration:
             jobs.delete()
             jobs.refresh()  # Should use default priority from config
 
-            priorities = jobs.pending.fetch('priority')
+            priorities = jobs.pending.fetch("priority")
             assert all(p == 3 for p in priorities)
         finally:
             dj.config.jobs.default_priority = original
@@ -396,9 +392,9 @@ class TestConfiguration:
             jobs.delete()
             jobs.refresh()
 
-            key = jobs.pending.fetch('KEY', limit=1)[0]
+            key = jobs.pending.fetch("KEY", limit=1)[0]
             jobs.reserve(key)
             jobs.complete(key)  # Should use config
 
-            status = (jobs & key).fetch1('status')
-            assert status == 'success'
+            status = (jobs & key).fetch1("status")
+            assert status == "success"

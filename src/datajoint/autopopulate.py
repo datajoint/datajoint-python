@@ -14,7 +14,6 @@ from tqdm import tqdm
 
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
-from .hash import key_hash
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -173,6 +172,7 @@ class AutoPopulate:
         """
         if self._jobs_table is None:
             from .jobs_v2 import JobsTable
+
             self._jobs_table = JobsTable(self.target)
         return self._jobs_table
 
@@ -443,6 +443,7 @@ class AutoPopulate:
             # Only log errors from inside make() - not collision errors
             if jobs is not None:
                 from .errors import DuplicateError
+
                 if isinstance(error, DuplicateError):
                     # Collision error - job reverts to pending or gets deleted
                     # This is not a real error, just coordination artifact

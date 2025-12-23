@@ -9,8 +9,7 @@ with FK-derived primary keys and rich status tracking.
 import logging
 import os
 import platform
-from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .errors import DataJointError, DuplicateError
 from .expression import QueryExpression
@@ -259,6 +258,7 @@ version=""      : varchar(255)    # Code version
         key_source = self._target.key_source
         if restrictions:
             from .expression import AndList
+
             key_source = key_source & AndList(restrictions)
 
         # Project to FK-derived attributes only
@@ -271,17 +271,8 @@ version=""      : varchar(255)    # Code version
 
         # Insert new jobs
         added = 0
-        now = datetime.now()
         for key in new_keys:
-            job = {
-                **key,
-                "status": "pending",
-                "priority": priority,
-                "created_time": now,
-                # Use SQL expression for scheduled_time to use server time
-            }
             try:
-                # Use raw SQL to set scheduled_time using server time
                 self._insert_job_with_delay(key, priority, delay)
                 added += 1
             except DuplicateError:
@@ -292,10 +283,7 @@ version=""      : varchar(255)    # Code version
         # Find pending jobs older than stale_timeout whose keys are not in key_source
         removed = 0
         if stale_timeout > 0:
-            stale_condition = (
-                f'status="pending" AND '
-                f'created_time < NOW() - INTERVAL {stale_timeout} SECOND'
-            )
+            stale_condition = f'status="pending" AND ' f"created_time < NOW() - INTERVAL {stale_timeout} SECOND"
             stale_jobs = (self & stale_condition).proj(*pk_attrs)
 
             # Check which stale jobs are no longer in key_source
@@ -317,14 +305,10 @@ version=""      : varchar(255)    # Code version
         """
         # Build column names and values
         pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
-        columns = pk_attrs + [
-            "status", "priority", "created_time", "scheduled_time",
-            "user", "host", "pid", "connection_id"
-        ]
+        columns = pk_attrs + ["status", "priority", "created_time", "scheduled_time", "user", "host", "pid", "connection_id"]
 
         # Build values
-        pk_values = [f"'{key[attr]}'" if isinstance(key[attr], str) else str(key[attr])
-                     for attr in pk_attrs]
+        pk_values = [f"'{key[attr]}'" if isinstance(key[attr], str) else str(key[attr]) for attr in pk_attrs]
         other_values = [
             "'pending'",
             str(priority),
@@ -360,9 +344,7 @@ version=""      : varchar(255)    # Code version
         # Build WHERE clause for the key
         pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
         key_conditions = " AND ".join(
-            f"`{attr}`='{key[attr]}'" if isinstance(key[attr], str)
-            else f"`{attr}`={key[attr]}"
-            for attr in pk_attrs
+            f"`{attr}`='{key[attr]}'" if isinstance(key[attr], str) else f"`{attr}`={key[attr]}" for attr in pk_attrs
         )
 
         # Attempt atomic update: pending -> reserved
@@ -403,8 +385,7 @@ version=""      : varchar(255)    # Code version
             # Update to success status
             duration_sql = f", duration={duration}" if duration is not None else ""
             key_conditions = " AND ".join(
-                f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str)
-                else f"`{attr}`={job_key[attr]}"
+                f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str) else f"`{attr}`={job_key[attr]}"
                 for attr in pk_attrs
             )
             sql = f"""
@@ -431,17 +412,13 @@ version=""      : varchar(255)    # Code version
 
         # Truncate error message if necessary
         if len(error_message) > ERROR_MESSAGE_LENGTH:
-            error_message = (
-                error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)]
-                + TRUNCATION_APPENDIX
-            )
+            error_message = error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
 
         pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
         job_key = {attr: key[attr] for attr in pk_attrs if attr in key}
 
         key_conditions = " AND ".join(
-            f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str)
-            else f"`{attr}`={job_key[attr]}"
+            f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str) else f"`{attr}`={job_key[attr]}"
             for attr in pk_attrs
         )
 
@@ -480,8 +457,7 @@ version=""      : varchar(255)    # Code version
         if job_key in self:
             # Update existing job to ignore
             key_conditions = " AND ".join(
-                f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str)
-                else f"`{attr}`={job_key[attr]}"
+                f"`{attr}`='{job_key[attr]}'" if isinstance(job_key[attr], str) else f"`{attr}`={job_key[attr]}"
                 for attr in pk_attrs
             )
             sql = f"""
@@ -497,15 +473,9 @@ version=""      : varchar(255)    # Code version
     def _insert_job_with_status(self, key: dict, status: str) -> None:
         """Insert a new job with the given status."""
         pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
-        columns = pk_attrs + [
-            "status", "priority", "created_time", "scheduled_time",
-            "user", "host", "pid", "connection_id"
-        ]
+        columns = pk_attrs + ["status", "priority", "created_time", "scheduled_time", "user", "host", "pid", "connection_id"]
 
-        pk_values = [
-            f"'{key[attr]}'" if isinstance(key[attr], str) else str(key[attr])
-            for attr in pk_attrs
-        ]
+        pk_values = [f"'{key[attr]}'" if isinstance(key[attr], str) else str(key[attr]) for attr in pk_attrs]
         other_values = [
             f"'{status}'",
             str(DEFAULT_PRIORITY),
@@ -567,7 +537,6 @@ version=""      : varchar(255)    # Code version
             query = query & f"priority <= {priority}"
 
         # Fetch with ordering
-        pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
         return query.fetch(
             "KEY",
             order_by=["priority ASC", "scheduled_time ASC"],
