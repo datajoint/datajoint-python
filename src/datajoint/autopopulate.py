@@ -5,7 +5,6 @@ import datetime
 import inspect
 import logging
 import multiprocessing as mp
-import random
 import signal
 import traceback
 
@@ -174,13 +173,10 @@ class AutoPopulate:
         suppress_errors=False,
         return_exception_objects=False,
         reserve_jobs=False,
-        order="original",
-        limit=None,
         max_calls=None,
         display_progress=False,
         processes=1,
         make_kwargs=None,
-        # New parameters for Autopopulate 2.0
         priority=None,
         refresh=True,
     ):
@@ -195,8 +191,6 @@ class AutoPopulate:
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
         :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
-        :param order: "original"|"reverse"|"random"  - the order of execution
-        :param limit: if not None, check at most this many keys
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
         :param processes: number of processes to use. Set to None to use all cores
@@ -220,10 +214,6 @@ class AutoPopulate:
                 "Cannot call populate on a restricted table. " "Instead, pass conditions to populate() as arguments."
             )
 
-        valid_order = ["original", "reverse", "random"]
-        if order not in valid_order:
-            raise DataJointError("The order argument must be one of %s" % str(valid_order))
-
         if reserve_jobs:
             # Define a signal handler for SIGTERM
             def handler(signum, frame):
@@ -237,25 +227,18 @@ class AutoPopulate:
 
         if reserve_jobs:
             # Use jobs table for coordinated processing
-            keys = self.jobs.fetch_pending(limit=limit, priority=priority)
+            keys = self.jobs.fetch_pending(limit=max_calls, priority=priority)
             if not keys and refresh:
                 logger.debug("No pending jobs found, refreshing jobs queue")
                 self.jobs.refresh(*restrictions)
-                keys = self.jobs.fetch_pending(limit=limit, priority=priority)
+                keys = self.jobs.fetch_pending(limit=max_calls, priority=priority)
         else:
             # Without job reservations: compute keys directly from key_source
             if keys is None:
                 todo = (self.key_source & AndList(restrictions)).proj()
-                keys = (todo - self).fetch("KEY", limit=limit)
-
-        if order == "reverse":
-            keys.reverse()
-        elif order == "random":
-            random.shuffle(keys)
+                keys = (todo - self).fetch("KEY", limit=max_calls)
 
         logger.debug("Found %d keys to populate" % len(keys))
-
-        keys = keys[:max_calls]
         nkeys = len(keys)
 
         if nkeys:
