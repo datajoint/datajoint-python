@@ -13,7 +13,7 @@ import deepdiff
 from tqdm import tqdm
 
 from .errors import DataJointError, LostConnectionError
-from .expression import AndList, QueryExpression
+from .expression import AndList
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -167,34 +167,6 @@ class AutoPopulate:
             self._jobs_table = JobsTable(self)
         return self._jobs_table
 
-    def _jobs_to_do(self, restrictions):
-        """
-        :return: the query yielding the keys to be computed (derived from self.key_source)
-        """
-        if self.restriction:
-            raise DataJointError(
-                "Cannot call populate on a restricted table. Instead, pass conditions to populate() as arguments."
-            )
-        todo = self.key_source
-
-        # key_source is a QueryExpression subclass -- trigger instantiation
-        if inspect.isclass(todo) and issubclass(todo, QueryExpression):
-            todo = todo()
-
-        if not isinstance(todo, QueryExpression):
-            raise DataJointError("Invalid key_source value")
-
-        try:
-            # check if target lacks any attributes from the primary key of key_source
-            raise DataJointError(
-                "The populate target lacks attribute %s "
-                "from the primary key of key_source"
-                % next(name for name in todo.heading.primary_key if name not in self.heading)
-            )
-        except StopIteration:
-            pass
-        return (todo & AndList(restrictions)).proj()
-
     def populate(
         self,
         *restrictions,
@@ -243,6 +215,11 @@ class AutoPopulate:
         if self.connection.in_transaction:
             raise DataJointError("Populate cannot be called during a transaction.")
 
+        if self.restriction:
+            raise DataJointError(
+                "Cannot call populate on a restricted table. " "Instead, pass conditions to populate() as arguments."
+            )
+
         valid_order = ["original", "reverse", "random"]
         if order not in valid_order:
             raise DataJointError("The order argument must be one of %s" % str(valid_order))
@@ -272,7 +249,8 @@ class AutoPopulate:
         else:
             # Legacy behavior: get keys from key_source
             if keys is None:
-                keys = (self._jobs_to_do(restrictions) - self).fetch("KEY", limit=limit)
+                todo = (self.key_source & AndList(restrictions)).proj()
+                keys = (todo - self).fetch("KEY", limit=limit)
 
         if order == "reverse":
             keys.reverse()
@@ -457,7 +435,7 @@ class AutoPopulate:
         Report the progress of populating the table.
         :return: (remaining, total) -- numbers of tuples to be populated
         """
-        todo = self._jobs_to_do(restrictions)
+        todo = (self.key_source & AndList(restrictions)).proj()
         total = len(todo)
         remaining = len(todo - self)
         if display:
