@@ -236,13 +236,12 @@ class AutoPopulate:
         success_list = []
 
         if reserve_jobs:
-            # New Autopopulate 2.0 logic: use jobs table
-            keys = self._get_pending_jobs(
-                restrictions=restrictions,
-                priority=priority,
-                limit=limit,
-                refresh=refresh,
-            )
+            # Use jobs table for coordinated processing
+            keys = self.jobs.fetch_pending(limit=limit, priority=priority)
+            if not keys and refresh:
+                logger.debug("No pending jobs found, refreshing jobs queue")
+                self.jobs.refresh(*restrictions)
+                keys = self.jobs.fetch_pending(limit=limit, priority=priority)
         else:
             # Without job reservations: compute keys directly from key_source
             if keys is None:
@@ -306,30 +305,6 @@ class AutoPopulate:
             "success_count": sum(success_list),
             "error_list": error_list,
         }
-
-    def _get_pending_jobs(self, restrictions, priority, limit, refresh):
-        """
-        Get pending jobs from the jobs table.
-
-        If no pending jobs are found and refresh=True, refreshes the jobs queue
-        and tries again.
-
-        :param restrictions: Restrictions to apply when refreshing
-        :param priority: Only get jobs at this priority or more urgent
-        :param limit: Maximum number of jobs to return
-        :param refresh: Whether to refresh if no pending jobs found
-        :return: List of key dicts
-        """
-        # First, try to get pending jobs
-        keys = self.jobs.fetch_pending(limit=limit, priority=priority)
-
-        # If no pending jobs and refresh is enabled, refresh and try again
-        if not keys and refresh:
-            logger.debug("No pending jobs found, refreshing jobs queue")
-            self.jobs.refresh(*restrictions)
-            keys = self.jobs.fetch_pending(limit=limit, priority=priority)
-
-        return keys
 
     def _populate1(self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None):
         """
