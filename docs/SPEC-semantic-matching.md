@@ -73,7 +73,7 @@ Lineage propagates through:
 
 **The `.join()` method** provides additional control via kwargs:
 - Defaults to semantic matching (same as `*`)
-- `semantic_check=False` bypasses the non-homologous namesake error (equivalent to `@` operator)
+- `semantic_check=False` bypasses the non-homologous namesake error
 
 **Non-homologous namesake cases**:
 - Both have lineage but different origins → error
@@ -81,6 +81,8 @@ Lineage propagates through:
 - One has lineage, other doesn't → error
 
 **Resolution**: Use `.proj()` to rename one of the colliding attributes.
+
+**Deprecated**: The `@` operator is deprecated. Use `.join(semantic_check=False)` instead.
 
 **Note**: A warning may be raised for joins on unindexed attributes (performance consideration).
 
@@ -294,7 +296,7 @@ Update these methods to preserve lineage:
 
 2. **Resolution guidance** in error messages:
    - Suggest specific projection syntax to resolve
-   - Mention permissive join `@` as escape hatch
+   - Mention `.join(semantic_check=False)` as escape hatch for advanced users
 
 ### Phase 6: Migration Utility
 
@@ -488,7 +490,28 @@ if not has_index(table1, attr) or not has_index(table2, attr):
     )
 ```
 
-### D6: Migration via Utility Function
+### D6: Deprecate the `@` Operator
+
+**Decision**: Deprecate the `@` (permissive join) operator.
+
+**Rationale**:
+- Having two join operators (`*` and `@`) with subtle differences adds confusion
+- The `.join(semantic_check=False)` method provides the same functionality
+- Reduces documentation burden and cognitive load
+- Simplifies the API surface
+
+**Migration**:
+```python
+# Old (deprecated)
+A @ B
+
+# New
+A.join(B, semantic_check=False)
+```
+
+The `@` operator will emit a deprecation warning and eventually be removed.
+
+### D7: Migration via Utility Function
 
 **Decision**: Provide a migration utility that computes the `~lineage` table from existing schema.
 
@@ -608,7 +631,8 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 | **D3**: Computed attributes | Lineage = `None` (breaks matching) |
 | **D4**: `dj.U` interaction | Does not affect lineage |
 | **D5**: Secondary attr restriction | Replaced by lineage rule - FK-inherited attrs have lineage, native secondary don't |
-| **D6**: Migration | Utility function + automatic fallback computation |
+| **D6**: `@` operator | Deprecated - use `.join(semantic_check=False)` |
+| **D7**: Migration | Utility function + automatic fallback computation |
 
 ### Compatibility
 
