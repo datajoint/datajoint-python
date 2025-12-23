@@ -134,6 +134,20 @@ For local filesystem storage:
 | `object_storage.access_key` | string | For cloud | Access key (can use secrets file) |
 | `object_storage.secret_key` | string | For cloud | Secret key (can use secrets file) |
 
+### Configuration Immutability
+
+**CRITICAL**: Once a project has been instantiated (i.e., `datajoint_store.json` has been created and the first object stored), the following settings MUST NOT be changed:
+
+- `object_storage.project_name`
+- `object_storage.protocol`
+- `object_storage.bucket`
+- `object_storage.location`
+- `object_storage.partition_pattern`
+
+Changing these settings after objects have been stored will result in **broken references**—existing paths stored in the database will no longer resolve to valid storage locations.
+
+DataJoint validates `project_name` against `datajoint_store.json` on connect, but administrators must ensure other settings remain consistent across all clients for the lifetime of the project.
+
 ### Environment Variables
 
 Settings can be overridden via environment variables:
@@ -210,9 +224,16 @@ s3://bucket/my_project/datajoint_store.json
 | `format_version` | string | Yes | Store format version for compatibility |
 | `datajoint_version` | string | Yes | DataJoint version that created the store |
 | `database_host` | string | No | Database server hostname (for bidirectional mapping) |
-| `database_name` | string | No | Database name (for bidirectional mapping) |
+| `database_name` | string | No | Database name on the server (for bidirectional mapping) |
 
-The optional `database_host` and `database_name` fields enable bidirectional mapping between object stores and databases. This is informational only - not enforced at runtime. Administrators can alternatively ensure unique `project_name` values across their namespace, and managed platforms may handle this mapping externally.
+The `database_name` field exists for DBMS platforms that support multiple databases on a single server (e.g., PostgreSQL, MySQL). The object storage configuration is **shared across all schemas comprising the pipeline**—it's a pipeline-level setting, not a per-schema setting.
+
+The optional `database_host` and `database_name` fields enable bidirectional mapping between object stores and databases:
+
+- **Forward**: Client settings → object store location
+- **Reverse**: Object store metadata → originating database
+
+This is informational only—not enforced at runtime. Administrators can alternatively ensure unique `project_name` values across their namespace, and managed platforms may handle this mapping externally.
 
 ### Store Initialization
 
@@ -362,19 +383,28 @@ For large hierarchical data like Zarr stores, computing certain metadata can be 
 
 By default, **no content hash is computed** to avoid performance overhead for large objects. Storage backend integrity is trusted.
 
-**Optional hashing** can be requested per-insert:
+**Explicit hash control** via insert kwarg:
 
 ```python
 # Default - no hash (fast)
 Recording.insert1({..., "raw_data": "/path/to/large.dat"})
 
-# Request hash computation
+# Explicit hash request - user specifies algorithm
 Recording.insert1({..., "raw_data": "/path/to/important.dat"}, hash="sha256")
+
+# Other supported algorithms
+Recording.insert1({..., "raw_data": "/path/to/data.bin"}, hash="md5")
+Recording.insert1({..., "raw_data": "/path/to/large.bin"}, hash="xxhash")  # xxh3, faster for large files
 ```
 
-Supported hash algorithms: `sha256`, `md5`, `xxhash` (xxh3, faster for large files)
+**Design principles:**
 
-**Staged inserts never compute hashes** - data is written directly to storage without a local copy to hash.
+- **Explicit over implicit**: No automatic hashing based on file size or other heuristics
+- **User controls the tradeoff**: User decides when integrity verification is worth the performance cost
+- **Files only**: Hash applies to files, not folders (folders use manifests for integrity)
+- **Staged inserts**: Hash is always `null` regardless of kwarg—data flows directly to storage without a local copy to hash
+
+Supported hash algorithms: `sha256`, `md5`, `xxhash` (xxh3, faster for large files)
 
 ### Folder Manifests
 
@@ -654,7 +684,7 @@ Remote URLs are detected by protocol prefix and handled via fsspec:
 2. Generate deterministic storage path with random token
 3. **Copy content to storage backend** via `fsspec`
 4. **If copy fails: abort insert** (no database operation attempted)
-5. Compute content hash (SHA-256)
+5. Compute content hash if requested (optional, default: no hash)
 6. Build JSON metadata structure
 7. Execute database INSERT
 
@@ -758,7 +788,7 @@ class StagedInsert:
 │ 4. User assigns object references to staged.rec         │
 ├─────────────────────────────────────────────────────────┤
 │ 5. On context exit (success):                           │
-│    - Compute metadata (size, hash, item_count)          │
+│    - Build metadata (size/item_count optional, no hash) │
 │    - Execute database INSERT                            │
 ├─────────────────────────────────────────────────────────┤
 │ 6. On context exit (exception):                         │
@@ -839,7 +869,7 @@ Since storage backends don't support distributed transactions with MySQL, DataJo
 │ 2. Copy file/folder to storage backend                  │
 │    └─ On failure: raise error, INSERT not attempted     │
 ├─────────────────────────────────────────────────────────┤
-│ 3. Compute hash and build JSON metadata                 │
+│ 3. Compute hash (if requested) and build JSON metadata  │
 ├─────────────────────────────────────────────────────────┤
 │ 4. Execute database INSERT                              │
 │    └─ On failure: orphaned file remains (acceptable)    │
@@ -871,19 +901,35 @@ Orphaned files (files in storage without corresponding database records) may acc
 
 ### Orphan Cleanup Procedure
 
-Orphan cleanup is a **separate maintenance operation** that must be performed during maintenance windows to avoid race conditions with concurrent inserts.
+Orphan cleanup is a **separate maintenance operation** provided via the `schema.object_storage` utility object.
 
 ```python
-# Maintenance utility methods
-schema.file_storage.find_orphaned()     # List files not referenced in DB
-schema.file_storage.cleanup_orphaned()  # Delete orphaned files
+# Maintenance utility methods (not a hidden table)
+schema.object_storage.find_orphaned(grace_period_minutes=30)  # List orphaned files
+schema.object_storage.cleanup_orphaned(dry_run=True)          # Delete orphaned files
+schema.object_storage.verify_integrity()                       # Check all objects exist
+schema.object_storage.stats()                                  # Storage usage statistics
 ```
 
+**Note**: `schema.object_storage` is a utility object, not a hidden table. Unlike `attach@store` which uses `~external_*` tables, the `object` type stores all metadata inline in JSON columns and has no hidden tables.
+
+**Grace period for in-flight inserts:**
+
+While random tokens prevent filename collisions, there's a race condition with in-flight inserts:
+
+1. Insert starts: file copied to storage with token `Ax7bQ2kM`
+2. Orphan cleanup runs: lists storage, queries DB for references
+3. File `Ax7bQ2kM` not yet in DB (INSERT not committed)
+4. Cleanup identifies it as orphan and deletes it
+5. Insert commits: DB now references deleted file!
+
+**Solution**: The `grace_period_minutes` parameter (default: 30) excludes files created within that window, assuming they are in-flight inserts.
+
 **Important considerations:**
-- Should be run during low-activity periods
-- Uses transactions or locking to avoid race conditions with concurrent inserts
-- Files recently uploaded (within a grace period) are excluded to handle in-flight inserts
-- Provides dry-run mode to preview deletions before execution
+- Grace period handles race conditions—cleanup is safe to run anytime
+- Running during low-activity periods reduces in-flight operations to reason about
+- `dry_run=True` previews deletions before execution
+- Compares storage contents against JSON metadata in table columns
 
 ## Fetch Behavior
 

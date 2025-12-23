@@ -136,6 +136,10 @@ class Heading:
         return [k for k, v in self.attributes.items() if v.is_blob]
 
     @property
+    def objects(self):
+        return [k for k, v in self.attributes.items() if v.is_object]
+
+    @property
     def non_blobs(self):
         return [
             k
