@@ -438,27 +438,19 @@ version=""      : varchar(255)    # Code version
 
     def _insert_job_with_status(self, key: dict, status: str) -> None:
         """Insert a new job with the given status."""
-        pk_attrs = [name for name, _ in self._get_fk_derived_primary_key()]
-        columns = pk_attrs + ["status", "priority", "created_time", "scheduled_time", "user", "host", "pid", "connection_id"]
-
-        pk_values = [f"'{key[attr]}'" if isinstance(key[attr], str) else str(key[attr]) for attr in pk_attrs]
-        other_values = [
-            f"'{status}'",
-            str(DEFAULT_PRIORITY),
-            "NOW(6)",
-            "NOW(6)",
-            f"'{self._user}'",
-            f"'{platform.node()}'",
-            str(os.getpid()),
-            str(self.connection.connection_id),
-        ]
-
-        sql = f"""
-            INSERT INTO {self.full_table_name}
-            ({', '.join(f'`{c}`' for c in columns)})
-            VALUES ({', '.join(pk_values + other_values)})
-        """
-        self.connection.query(sql)
+        now = datetime.now()
+        row = {
+            **key,
+            "status": status,
+            "priority": DEFAULT_PRIORITY,
+            "created_time": now,
+            "scheduled_time": now,
+            "user": self._user,
+            "host": platform.node(),
+            "pid": os.getpid(),
+            "connection_id": self.connection.connection_id,
+        }
+        self.insert1(row)
 
     def progress(self) -> dict:
         """
