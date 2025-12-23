@@ -4,78 +4,70 @@ site_name: DataJoint Documentation
 repo_url: https://github.com/datajoint/datajoint-python
 repo_name: datajoint/datajoint-python
 nav:
-  - DataJoint Python: index.md
-  - Quick Start Guide: quick-start.md
+  - Home: index.md
+  - Quick Start: quick-start.md
   - Concepts:
-    - Principles: concepts/principles.md
-    - Data Model: concepts/data-model.md
-    - Data Pipelines: concepts/data-pipelines.md
-    - Teamwork: concepts/teamwork.md
+    - concepts/index.md
     - Terminology: concepts/terminology.md
-  - System Administration:
-    - Database Administration: sysadmin/database-admin.md
-    - Bulk Storage Systems: sysadmin/bulk-storage.md
-    - External Store: sysadmin/external-store.md
-  - Client Configuration:
-    - Install: client/install.md
-    - Credentials: client/credentials.md
-    - Settings: client/settings.md
-    - File Stores: client/stores.md
+  - Getting Started:
+    - Installation: client/install.md
+    - Connection: client/credentials.md
+    - Configuration: client/settings.md
   - Schema Design:
-    - Schema Creation: design/schema.md
-    - Table Definition:
-      - Table Tiers: design/tables/tiers.md
-      - Declaration Syntax: design/tables/declare.md
-      - Primary Key: design/tables/primary.md
-      - Attributes: design/tables/attributes.md
-      - Lookup Tables: design/tables/lookup.md
-      - Manual Tables: design/tables/manual.md
-      - Blobs: design/tables/blobs.md
-      - Attachments: design/tables/attach.md
-      - Filepaths: design/tables/filepath.md
-      - Custom Datatypes: design/tables/customtype.md
-      - Dependencies: design/tables/dependencies.md
-      - Indexes: design/tables/indexes.md
-      - Master-Part Relationships: design/tables/master-part.md
-    - Schema Diagrams: design/diagrams.md
-    - Entity Normalization: design/normalization.md
-    - Data Integrity: design/integrity.md
-    - Schema Recall: design/recall.md
-    - Schema Drop: design/drop.md
-    - Schema Modification: design/alter.md
-  - Data Manipulations:
-    - manipulation/index.md
-    - Insert: manipulation/insert.md
-    - Delete: manipulation/delete.md
-    - Update: manipulation/update.md
-    - Transactions: manipulation/transactions.md
-  - Data Queries:
-    - Principles: query/principles.md
-    - Example Schema: query/example-schema.md
+    - Schemas: design/schema.md
+    - Table Tiers: design/tables/tiers.md
+    - Declaration: design/tables/declare.md
+    - Primary Key: design/tables/primary.md
+    - Attributes: design/tables/attributes.md
+    - Foreign Keys: design/tables/dependencies.md
+    - Indexes: design/tables/indexes.md
+    - Lookup Tables: design/tables/lookup.md
+    - Manual Tables: design/tables/manual.md
+    - Master-Part: design/tables/master-part.md
+    - Diagrams: design/diagrams.md
+    - Alter: design/alter.md
+    - Drop: design/drop.md
+  - Data Types:
+    - Blob: datatypes/blob.md
+    - Attach: datatypes/attach.md
+    - Filepath: datatypes/filepath.md
+    - Object: datatypes/object.md
+    - Adapted Types: datatypes/adapters.md
+  - Data Operations:
+    - operations/index.md
+    - Insert: operations/insert.md
+    - Delete: operations/delete.md
+    - Update: operations/update.md
+    - Transactions: operations/transactions.md
+    - Make Method: operations/make.md
+    - Populate: operations/populate.md
+    - Key Source: operations/key-source.md
+    - Distributed: operations/distributed.md
+  - Queries:
+    - query/principles.md
     - Fetch: query/fetch.md
-    - Iteration: query/iteration.md
     - Operators: query/operators.md
     - Restrict: query/restrict.md
-    - Projection: query/project.md
+    - Project: query/project.md
     - Join: query/join.md
     - Aggregation: query/aggregation.md
     - Union: query/union.md
     - Universal Sets: query/universals.md
-    - Query Caching: query/query-caching.md
-  - Computations:
-    - Make Method: compute/make.md
-    - Populate: compute/populate.md
-    - Key Source: compute/key-source.md
-    - Distributed Computing: compute/distributed.md
-  - Publish Data: publish-data.md
-  - Internals:
-    - SQL Transpilation: internal/transpilation.md
+    - Iteration: query/iteration.md
+    - Caching: query/query-caching.md
+  - Administration:
+    - Database: admin/database.md
+    - Storage Backends: admin/storage.md
+    - External Store: admin/external-store.md
   - Tutorials:
-      - JSON Datatype: tutorials/json.ipynb
-  - FAQ: faq.md
-  - Developer Guide: develop.md
-  - Citation: citation.md
-  - Changelog: changelog.md
+    - JSON Datatype: tutorials/json.ipynb
+  - Reference:
+    - FAQ: reference/faq.md
+    - SQL Transpilation: reference/transpilation.md
+    - Publishing Data: reference/publish-data.md
+    - Developer Guide: reference/develop.md
+    - Citation: reference/citation.md
+    - Changelog: changelog.md
   - API: api/ # defer to gen-files + literate-nav
 
 # ---------------------------- STANDARD -----------------------------
