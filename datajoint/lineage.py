@@ -8,11 +8,10 @@ This module provides:
 """
 
 import logging
-import re
 
-from .errors import DataJointError
 from .heading import Heading
 from .table import Table
+from .utils import parse_full_table_name
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -114,19 +113,6 @@ class LineageTable(Table):
         :param table_name: name of the table (without schema)
         """
         (self & dict(table_name=table_name)).delete_quick()
-
-
-def parse_full_table_name(full_name):
-    """
-    Parse a full table name like `schema`.`table` into (schema, table).
-
-    :param full_name: full table name in format `schema`.`table`
-    :return: tuple (schema, table)
-    """
-    match = re.match(r"`(\w+)`\.`(\w+)`", full_name)
-    if not match:
-        raise DataJointError(f"Invalid table name format: {full_name}")
-    return match.group(1), match.group(2)
 
 
 def compute_lineage_from_dependencies(connection, schema, table_name, attribute_name):

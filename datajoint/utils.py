@@ -50,7 +50,7 @@ def get_master(full_table_name: str) -> str:
     :return: Supposed master full table name or empty string if not a part table name.
     :rtype: str
     """
-    match = re.match(r"(?P<master>`\w+`.`\w+)__(?P<part>\w+)`", full_table_name)
+    match = re.match(r"(?P<master>`[^`]+`.`[^`]+)__(?P<part>[^`]+)`", full_table_name)
     return match["master"] + "`" if match else ""
 
 
@@ -149,3 +149,19 @@ def parse_sql(filepath):
                         statement = []
         if statement:
             yield " ".join(statement)
+
+
+def parse_full_table_name(full_name):
+    """
+    Parse a full table name like `schema`.`table` into (schema, table).
+
+    Handles special table name prefixes like ~ (hidden), # (lookup), etc.
+
+    :param full_name: full table name in format `schema`.`table`
+    :return: tuple (schema, table)
+    :raises DataJointError: if the format is invalid
+    """
+    match = re.match(r"`([^`]+)`\.`([^`]+)`", full_name)
+    if not match:
+        raise DataJointError(f"Invalid table name format: {full_name}")
+    return match.group(1), match.group(2)
