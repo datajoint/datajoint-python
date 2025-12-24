@@ -37,6 +37,18 @@ With semantic matching: `Student.id` and `Course.id` have different lineages (on
 
 Note: The current implementation already prevents joining on common *secondary* attributes (e.g., if both had a `name` attribute). The problem semantic matching solves is coincidental name collisions in *primary key* attributes.
 
+#### Example: Valid Join Currently Blocked
+
+Consider two tables:
+- `FavoriteCourse(student_id*, course_id)` - student's favorite course (course_id is secondary, with lineage to Course)
+- `DependentCourse(dep_course_id*, course_id)` - course dependencies (course_id is secondary, with lineage to Course)
+
+With current behavior: `FavoriteCourse * DependentCourse` is **rejected** because `course_id` is a secondary attribute in both tables.
+
+With semantic matching: Both `course_id` attributes share the same lineage (tracing to `Course.course_id`). They are **homologous namesakes**, so the join proceeds. The result answers: "all courses that are dependent on the student's favorite course."
+
+This shows semantic matching is not just about preventing bad joins—it also **enables valid joins** that the current implementation incorrectly blocks.
+
 ## Key Concepts
 
 ### Terminology
