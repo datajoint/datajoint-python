@@ -163,7 +163,7 @@ def assert_join_compatibility(expr1, expr2):
         # None lineages are never homologous (not even with each other)
         if lineage1 is None or lineage2 is None or lineage1 != lineage2:
             raise DataJointError(
-                f"Ambiguous attribute '{attr}' has no matching lineage. "
+                f"Mismatched attribute '{attr}' has no matching lineage. "
                 f"Use .proj() to rename it in one of the operands."
             )
 
