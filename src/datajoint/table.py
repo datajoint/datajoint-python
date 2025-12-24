@@ -16,6 +16,11 @@ import pandas
 
 from .condition import make_condition
 from .declare import alter, declare
+from .lineage import (
+    compute_lineage_from_dependencies,
+    delete_lineage_entries,
+    insert_lineage_entries,
+)
 from .errors import (
     AccessError,
     DataJointError,
@@ -114,6 +119,8 @@ class Table(QueryExpression):
             pass
         else:
             self._log("Declared " + self.full_table_name)
+            # Populate lineage entries for semantic matching
+            self._populate_lineage()
 
     def alter(self, prompt=True, context=None):
         """
@@ -147,6 +154,34 @@ class Table(QueryExpression):
                     if prompt:
                         logger.info("Table altered")
                     self._log("Altered " + self.full_table_name)
+
+    def _populate_lineage(self):
+        """
+        Populate lineage entries for this table in the ~lineage table.
+
+        Called after table declaration to enable semantic matching in joins.
+        """
+        # Force reload dependencies to include the newly declared table
+        self.connection.dependencies.load(force=True)
+
+        # Remove any leftover entries from previous declaration
+        delete_lineage_entries(self.connection, self.database, self.table_name)
+
+        # Compute lineage for each attribute and collect entries
+        lineage_entries = []
+        for attr_name in self.heading.names:
+            lineage = compute_lineage_from_dependencies(
+                self.connection,
+                self.full_table_name,
+                attr_name,
+                self.heading.primary_key,
+            )
+            if lineage:  # Only store attributes with lineage
+                lineage_entries.append((self.table_name, attr_name, lineage))
+
+        # Insert entries
+        if lineage_entries:
+            insert_lineage_entries(self.connection, self.database, lineage_entries)
 
     def from_clause(self):
         """
@@ -750,6 +785,8 @@ class Table(QueryExpression):
         if self.is_declared:
             query = "DROP TABLE %s" % self.full_table_name
             self.connection.query(query)
+            # Clean up lineage entries
+            delete_lineage_entries(self.connection, self.database, self.table_name)
             logger.info("Dropped table %s" % self.full_table_name)
             self._log(query[:255])
         else:

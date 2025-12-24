@@ -97,10 +97,13 @@ class Not:
 
 def assert_join_compatibility(expr1, expr2):
     """
-    Determine if expressions expr1 and expr2 are join-compatible.  To be join-compatible,
-    the matching attributes in the two expressions must be in the primary key of one or the
-    other expression.
-    Raises an exception if not compatible.
+    Check semantic compatibility of two expressions for joining.
+
+    Uses semantic matching: attributes are only matched when they share both
+    the same name AND the same lineage (origin).
+
+    Raises DataJointError if non-homologous namesakes are detected (same name
+    but different lineage).
 
     :param expr1: A QueryExpression object
     :param expr2: A QueryExpression object
@@ -110,14 +113,25 @@ def assert_join_compatibility(expr1, expr2):
     for rel in (expr1, expr2):
         if not isinstance(rel, (U, QueryExpression)):
             raise DataJointError("Object %r is not a QueryExpression and cannot be joined." % rel)
-    if not isinstance(expr1, U) and not isinstance(expr2, U):  # dj.U is always compatible
-        try:
+
+    # dj.U is always compatible - it contains all possible lineages
+    if isinstance(expr1, U) or isinstance(expr2, U):
+        return
+
+    # Find namesake attributes (same name in both expressions)
+    namesakes = set(expr1.heading.names) & set(expr2.heading.names)
+
+    for name in namesakes:
+        lineage1 = expr1.heading[name].lineage
+        lineage2 = expr2.heading[name].lineage
+
+        # Non-homologous namesakes: same name, different lineage
+        if lineage1 != lineage2:
             raise DataJointError(
-                "Cannot join query expressions on dependent attribute `%s`"
-                % next(r for r in set(expr1.heading.secondary_attributes).intersection(expr2.heading.secondary_attributes))
+                f"Cannot join on attribute `{name}`: different lineages "
+                f"({lineage1} vs {lineage2}). "
+                f"Use .proj() to rename one of the attributes."
             )
-        except StopIteration:
-            pass  # all ok
 
 
 def make_condition(query_expression, condition, columns):

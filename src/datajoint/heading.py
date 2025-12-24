@@ -7,6 +7,7 @@ import numpy as np
 
 from .attribute_adapter import get_adapter
 from .attribute_type import AttributeType
+from .lineage import get_all_lineages
 from .declare import (
     EXTERNAL_TYPES,
     NATIVE_TYPES,
@@ -73,6 +74,7 @@ default_attribute_properties = dict(  # these default values are set in computed
     attribute_expression=None,
     database=None,
     dtype=object,
+    lineage=None,  # Origin of attribute: "schema.table.attribute" or None for native secondary
 )
 
 
@@ -405,6 +407,11 @@ class Heading:
             if attr["adapter"]:
                 # restore adapted type name
                 attr["type"] = adapter_name
+
+        # Load lineage data from ~lineage table
+        lineages = get_all_lineages(conn, database, table_name)
+        for attr in attributes:
+            attr["lineage"] = lineages.get(attr["name"])
 
         self._attributes = dict(((q["name"], Attribute(**q)) for q in attributes))
 

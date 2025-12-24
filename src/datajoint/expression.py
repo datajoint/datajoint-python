@@ -275,30 +275,45 @@ class QueryExpression:
 
     def __matmul__(self, other):
         """
-        Permissive join of query expressions `self` and `other` ignoring compatibility check
-            e.g. ``q1 @ q2``.
+        The @ operator has been removed in DataJoint 2.0.
+        Use .join(other, semantic_check=False) for permissive joins.
         """
-        if inspect.isclass(other) and issubclass(other, QueryExpression):
-            other = other()  # instantiate
-        return self.join(other, semantic_check=False)
+        raise DataJointError(
+            "The @ operator has been removed in DataJoint 2.0. "
+            "Use .join(other, semantic_check=False) for permissive joins."
+        )
 
     def join(self, other, semantic_check=True, left=False):
         """
-        create the joined QueryExpression.
-        a * b  is short for A.join(B)
-        a @ b  is short for A.join(B, semantic_check=False)
-        Additionally, left=True will retain the rows of self, effectively performing a left join.
+        Create the joined QueryExpression.
+
+        Uses semantic matching: only attributes with the same name AND the same
+        lineage (homologous namesakes) are used for joining.
+
+        :param other: QueryExpression to join with
+        :param semantic_check: If True (default), raise error on non-homologous namesakes.
+            If False, bypass semantic check (use for legacy compatibility).
+        :param left: If True, perform a left join retaining all rows from self.
+
+        Examples:
+            a * b  is short for a.join(b)
+            a.join(b, semantic_check=False)  for permissive joins
         """
-        # trigger subqueries if joining on renamed attributes
+        # Handle U objects: redirect to U's restriction operation
         if isinstance(other, U):
-            return other * self
+            return other & self
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
         if not isinstance(other, QueryExpression):
             raise DataJointError("The argument of join must be a QueryExpression")
         if semantic_check:
             assert_join_compatibility(self, other)
-        join_attributes = set(n for n in self.heading.names if n in other.heading.names)
+        # Only join on homologous namesakes (same name AND same lineage)
+        join_attributes = set(
+            n
+            for n in self.heading.names
+            if n in other.heading.names and self.heading[n].lineage == other.heading[n].lineage
+        )
         # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
             (set(self.original_heading.names) & set(other.original_heading.names)) - join_attributes
@@ -735,9 +750,9 @@ class U:
     """
     dj.U objects are the universal sets representing all possible values of their attributes.
     dj.U objects cannot be queried on their own but are useful for forming some queries.
-    dj.U('attr1', ..., 'attrn') represents the universal set with the primary key attributes attr1 ... attrn.
-    The universal set is the set of all possible combinations of values of the attributes.
-    Without any attributes, dj.U() represents the set with one element that has no attributes.
+    dj.U() or dj.U('attr1', ..., 'attrn') represents the universal set with the primary key
+    attributes attr1 ... attrn. Without any attributes, dj.U() represents the set with one
+    element that has no attributes.
 
     Restriction:
 
@@ -747,11 +762,15 @@ class U:
 
     >>> dj.U('contrast', 'brightness') & stimulus
 
+    Empty U for distinct primary keys:
+
+    >>> dj.U() & expr
+
     Aggregation:
 
     In aggregation, dj.U is used for summary calculation over an entire set:
 
-    The following expression yields one element with one attribute `s` containing the total number of elements in
+    The following expression yields one element with one attribute `n` containing the total number of elements in
     query expression `expr`:
 
     >>> dj.U().aggr(expr, n='count(*)')
@@ -760,7 +779,7 @@ class U:
     query expression `expr`.
 
     >>> dj.U().aggr(expr, n='count(distinct attr)')
-    >>> dj.U().aggr(dj.U('attr').aggr(expr), 'n=count(*)')
+    >>> dj.U().aggr(dj.U('attr').aggr(expr), n='count(*)')
 
     The following expression yields one element and one attribute `s` containing the sum of values of attribute `attr`
     over entire result set of expression `expr`:
@@ -770,16 +789,13 @@ class U:
     The following expression yields the set of all unique combinations of attributes `attr1`, `attr2` and the number of
     their occurrences in the result set of query expression `expr`.
 
-    >>> dj.U(attr1,attr2).aggr(expr, n='count(*)')
+    >>> dj.U('attr1', 'attr2').aggr(expr, n='count(*)')
 
-    Joins:
+    Homology:
 
-    If expression `expr` has attributes 'attr1' and 'attr2', then expr * dj.U('attr1','attr2') yields the same result
-    as `expr` but `attr1` and `attr2` are promoted to the the primary key.  This is useful for producing a join on
-    non-primary key attributes.
-    For example, if `attr` is in both expr1 and expr2 but not in their primary keys, then expr1 * expr2 will throw
-    an error because in most cases, it does not make sense to join on non-primary key attributes and users must first
-    rename `attr` in one of the operands.  The expression dj.U('attr') * rel1 * rel2 overrides this constraint.
+    Since dj.U conceptually contains all possible lineages, its attributes are homologous to
+    any namesake attribute in other expressions. This makes dj.U always compatible for
+    semantic matching in joins and restrictions.
     """
 
     def __init__(self, *primary_key):
@@ -826,8 +842,22 @@ class U:
         return result
 
     def __mul__(self, other):
-        """shorthand for join"""
-        return self.join(other)
+        """
+        dj.U * table is deprecated in DataJoint 2.0.
+        Use dj.U & table instead.
+        """
+        raise DataJointError(
+            "dj.U(...) * table is deprecated in DataJoint 2.0. "
+            "Use dj.U(...) & table instead."
+        )
+
+    def __sub__(self, other):
+        """
+        dj.U - table produces an infinite set and is not supported.
+        """
+        raise DataJointError(
+            "dj.U(...) - table produces an infinite set and is not supported."
+        )
 
     def aggr(self, group, **named_attributes):
         """
