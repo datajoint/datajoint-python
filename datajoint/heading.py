@@ -433,6 +433,17 @@ class Heading:
                 # restore adapted type name
                 attr["type"] = adapter_name
 
+        # Load lineage information for semantic matching
+        try:
+            from .lineage import get_lineage_for_heading
+
+            lineage_map = get_lineage_for_heading(conn, database, table_name, None)
+            for attr in attributes:
+                attr["lineage"] = lineage_map.get(attr["name"])
+        except Exception as e:
+            # If lineage loading fails, continue without it (backward compatibility)
+            logger.debug(f"Could not load lineage for {database}.{table_name}: {e}")
+
         self._attributes = dict(((q["name"], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes

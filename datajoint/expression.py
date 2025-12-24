@@ -11,6 +11,7 @@ from .condition import (
     Top,
     assert_join_compatibility,
     extract_column_names,
+    get_homologous_namesakes,
     make_condition,
     translate_attribute,
 )
@@ -292,19 +293,22 @@ class QueryExpression:
 
     def __matmul__(self, other):
         """
-        Permissive join of query expressions `self` and `other` ignoring compatibility check
-            e.g. ``q1 @ q2``.
+        The @ operator has been removed. Use .join(semantic_check=False) instead.
         """
-        if inspect.isclass(other) and issubclass(other, QueryExpression):
-            other = other()  # instantiate
-        return self.join(other, semantic_check=False)
+        raise DataJointError(
+            "The @ operator has been removed in DataJoint 2.0. "
+            "Use .join(other, semantic_check=False) instead."
+        )
 
     def join(self, other, semantic_check=True, left=False):
         """
         create the joined QueryExpression.
         a * b  is short for A.join(B)
-        a @ b  is short for A.join(B, semantic_check=False)
+        a @ b  is short for A.join(B, semantic_check=False) -- DEPRECATED
         Additionally, left=True will retain the rows of self, effectively performing a left join.
+
+        With semantic matching (semantic_check=True), joins are performed only on
+        homologous namesakes (attributes with same name AND same lineage).
         """
         # trigger subqueries if joining on renamed attributes
         if isinstance(other, U):
@@ -315,7 +319,11 @@ class QueryExpression:
             raise DataJointError("The argument of join must be a QueryExpression")
         if semantic_check:
             assert_join_compatibility(self, other)
-        join_attributes = set(n for n in self.heading.names if n in other.heading.names)
+            # Use semantic matching: only join on homologous namesakes
+            join_attributes = get_homologous_namesakes(self, other)
+        else:
+            # Permissive mode: join on all namesakes regardless of lineage
+            join_attributes = set(n for n in self.heading.names if n in other.heading.names)
         # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
             (set(self.original_heading.names) & set(other.original_heading.names))

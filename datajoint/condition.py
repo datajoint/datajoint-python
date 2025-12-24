@@ -101,15 +101,45 @@ class Not:
         self.restriction = restriction
 
 
-def assert_join_compatibility(expr1, expr2):
+def get_homologous_namesakes(expr1, expr2):
     """
-    Determine if expressions expr1 and expr2 are join-compatible.  To be join-compatible,
-    the matching attributes in the two expressions must be in the primary key of one or the
-    other expression.
-    Raises an exception if not compatible.
+    Find attributes that are namesakes (same name) and homologous (same lineage).
 
     :param expr1: A QueryExpression object
     :param expr2: A QueryExpression object
+    :return: set of attribute names that are homologous namesakes
+    """
+    from .expression import U
+
+    if isinstance(expr1, U) or isinstance(expr2, U):
+        # For U, fall back to simple name matching
+        return set(expr1.heading.names) & set(expr2.heading.names)
+
+    namesakes = set(expr1.heading.names) & set(expr2.heading.names)
+    homologous = set()
+
+    for attr in namesakes:
+        lineage1 = expr1.heading.get_lineage(attr)
+        lineage2 = expr2.heading.get_lineage(attr)
+
+        # Homologous if both have lineage and lineages match
+        if lineage1 is not None and lineage2 is not None and lineage1 == lineage2:
+            homologous.add(attr)
+
+    return homologous
+
+
+def assert_join_compatibility(expr1, expr2):
+    """
+    Determine if expressions expr1 and expr2 are join-compatible using semantic matching.
+
+    For each namesake attribute (same name in both expressions):
+    - If they have the same lineage (homologous), they can be joined
+    - If they have different lineage (non-homologous), raise an error
+
+    :param expr1: A QueryExpression object
+    :param expr2: A QueryExpression object
+    :raises DataJointError: if non-homologous namesakes are found
     """
     from .expression import QueryExpression, U
 
@@ -118,21 +148,42 @@ def assert_join_compatibility(expr1, expr2):
             raise DataJointError(
                 "Object %r is not a QueryExpression and cannot be joined." % rel
             )
-    if not isinstance(expr1, U) and not isinstance(
-        expr2, U
-    ):  # dj.U is always compatible
-        try:
-            raise DataJointError(
-                "Cannot join query expressions on dependent attribute `%s`"
-                % next(
-                    r
-                    for r in set(expr1.heading.secondary_attributes).intersection(
-                        expr2.heading.secondary_attributes
-                    )
+
+    if isinstance(expr1, U) or isinstance(expr2, U):
+        return  # dj.U is always compatible
+
+    # Find namesake attributes (same name in both expressions)
+    namesakes = set(expr1.heading.names) & set(expr2.heading.names)
+
+    for attr in namesakes:
+        lineage1 = expr1.heading.get_lineage(attr)
+        lineage2 = expr2.heading.get_lineage(attr)
+
+        # Check if they are homologous (same lineage)
+        # None lineages are never homologous (not even with each other)
+        if lineage1 is None or lineage2 is None or lineage1 != lineage2:
+            # Non-homologous namesakes - error
+            if lineage1 is None and lineage2 is None:
+                msg = (
+                    f"Cannot join: attribute '{attr}' has no lineage in both operands "
+                    f"(native secondary attributes). Use .proj() to rename one."
                 )
-            )
-        except StopIteration:
-            pass  # all ok
+            elif lineage1 is None:
+                msg = (
+                    f"Cannot join: attribute '{attr}' has lineage '{lineage2}' in one operand "
+                    f"but no lineage in the other. Use .proj() to rename one."
+                )
+            elif lineage2 is None:
+                msg = (
+                    f"Cannot join: attribute '{attr}' has lineage '{lineage1}' in one operand "
+                    f"but no lineage in the other. Use .proj() to rename one."
+                )
+            else:
+                msg = (
+                    f"Cannot join: attribute '{attr}' has different lineages "
+                    f"('{lineage1}' vs '{lineage2}'). Use .proj() to rename one."
+                )
+            raise DataJointError(msg)
 
 
 def make_condition(query_expression, condition, columns):
