@@ -1,17 +1,18 @@
 import logging
+import warnings
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from tqdm import tqdm
 
-from . import errors, s3
 from .declare import EXTERNAL_TABLE_ROOT
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
 from .heading import Heading
 from .settings import config
+from .storage import StorageBackend
 from .table import FreeTable, Table
-from .utils import safe_copy, safe_write
+from .utils import safe_write
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -37,8 +38,6 @@ class ExternalTable(Table):
 
     def __init__(self, connection, store, database):
         self.store = store
-        self.spec = config.get_store_spec(store)
-        self._s3 = None
         self.database = database
         self._connection = connection
         self._heading = Heading(
@@ -52,9 +51,8 @@ class ExternalTable(Table):
         self._support = [self.full_table_name]
         if not self.is_declared:
             self.declare()
-        self._s3 = None
-        if self.spec["protocol"] == "file" and not Path(self.spec["location"]).is_dir():
-            raise FileNotFoundError("Inaccessible local directory %s" % self.spec["location"]) from None
+        # Initialize storage backend (validates configuration)
+        self.storage = StorageBackend(config.get_store_spec(store))
 
     @property
     def definition(self):
@@ -75,91 +73,78 @@ class ExternalTable(Table):
 
     @property
     def s3(self):
-        if self._s3 is None:
-            self._s3 = s3.Folder(**self.spec)
-        return self._s3
+        """Deprecated: Use storage property instead."""
+        warnings.warn(
+            "ExternalTable.s3 is deprecated. Use ExternalTable.storage instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # For backward compatibility, return a legacy s3.Folder if needed
+        from . import s3
+
+        if not hasattr(self, "_s3_legacy") or self._s3_legacy is None:
+            self._s3_legacy = s3.Folder(**self.storage.spec)
+        return self._s3_legacy
 
     # - low-level operations - private
 
     def _make_external_filepath(self, relative_filepath):
         """resolve the complete external path based on the relative path"""
-        # Strip root
-        if self.spec["protocol"] == "s3":
-            posix_path = PurePosixPath(PureWindowsPath(self.spec["location"]))
+        spec = self.storage.spec
+        # Strip root for S3 paths
+        if spec["protocol"] == "s3":
+            posix_path = PurePosixPath(PureWindowsPath(spec["location"]))
             location_path = (
                 Path(*posix_path.parts[1:])
-                if len(self.spec["location"]) > 0 and any(case in posix_path.parts[0] for case in ("\\", ":"))
+                if len(spec["location"]) > 0 and any(case in posix_path.parts[0] for case in ("\\", ":"))
                 else Path(posix_path)
             )
             return PurePosixPath(location_path, relative_filepath)
-        # Preserve root
-        elif self.spec["protocol"] == "file":
-            return PurePosixPath(Path(self.spec["location"]), relative_filepath)
+        # Preserve root for local filesystem
+        elif spec["protocol"] == "file":
+            return PurePosixPath(Path(spec["location"]), relative_filepath)
         else:
-            assert False
+            # For other protocols (gcs, azure, etc.), treat like S3
+            location = spec.get("location", "")
+            return PurePosixPath(location, relative_filepath) if location else PurePosixPath(relative_filepath)
 
     def _make_uuid_path(self, uuid, suffix=""):
         """create external path based on the uuid hash"""
         return self._make_external_filepath(
             PurePosixPath(
                 self.database,
-                "/".join(subfold(uuid.hex, self.spec["subfolding"])),
+                "/".join(subfold(uuid.hex, self.storage.spec["subfolding"])),
                 uuid.hex,
             ).with_suffix(suffix)
         )
 
     def _upload_file(self, local_path, external_path, metadata=None):
-        if self.spec["protocol"] == "s3":
-            self.s3.fput(local_path, external_path, metadata)
-        elif self.spec["protocol"] == "file":
-            safe_copy(local_path, external_path, overwrite=True)
-        else:
-            assert False
+        """Upload a file to external storage using fsspec backend."""
+        self.storage.put_file(local_path, external_path, metadata)
 
     def _download_file(self, external_path, download_path):
-        if self.spec["protocol"] == "s3":
-            self.s3.fget(external_path, download_path)
-        elif self.spec["protocol"] == "file":
-            safe_copy(external_path, download_path)
-        else:
-            assert False
+        """Download a file from external storage using fsspec backend."""
+        self.storage.get_file(external_path, download_path)
 
     def _upload_buffer(self, buffer, external_path):
-        if self.spec["protocol"] == "s3":
-            self.s3.put(external_path, buffer)
-        elif self.spec["protocol"] == "file":
-            safe_write(external_path, buffer)
-        else:
-            assert False
+        """Upload bytes to external storage using fsspec backend."""
+        self.storage.put_buffer(buffer, external_path)
 
     def _download_buffer(self, external_path):
-        if self.spec["protocol"] == "s3":
-            return self.s3.get(external_path)
-        if self.spec["protocol"] == "file":
-            try:
-                return Path(external_path).read_bytes()
-            except FileNotFoundError:
-                raise errors.MissingExternalFile(f"Missing external file {external_path}") from None
-        assert False
+        """Download bytes from external storage using fsspec backend."""
+        return self.storage.get_buffer(external_path)
 
     def _remove_external_file(self, external_path):
-        if self.spec["protocol"] == "s3":
-            self.s3.remove_object(external_path)
-        elif self.spec["protocol"] == "file":
-            try:
-                Path(external_path).unlink()
-            except FileNotFoundError:
-                pass
+        """Remove a file from external storage using fsspec backend."""
+        self.storage.remove(external_path)
 
     def exists(self, external_filepath):
         """
+        Check if an external file is accessible using fsspec backend.
+
         :return: True if the external file is accessible
         """
-        if self.spec["protocol"] == "s3":
-            return self.s3.exists(external_filepath)
-        if self.spec["protocol"] == "file":
-            return Path(external_filepath).is_file()
-        assert False
+        return self.storage.exists(external_filepath)
 
     # --- BLOBS ----
 
@@ -250,9 +235,9 @@ class ExternalTable(Table):
         """
         local_filepath = Path(local_filepath)
         try:
-            relative_filepath = str(local_filepath.relative_to(self.spec["stage"]).as_posix())
+            relative_filepath = str(local_filepath.relative_to(self.storage.spec["stage"]).as_posix())
         except ValueError:
-            raise DataJointError("The path {path} is not in stage {stage}".format(path=local_filepath.parent, **self.spec))
+            raise DataJointError(f"The path {local_filepath.parent} is not in stage {self.storage.spec['stage']}")
         uuid = uuid_from_buffer(init_string=relative_filepath)  # hash relative path, not contents
         contents_hash = uuid_from_file(local_filepath)
 
@@ -300,7 +285,7 @@ class ExternalTable(Table):
                 "filepath", "contents_hash", "size"
             )
             external_path = self._make_external_filepath(relative_filepath)
-            local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
+            local_filepath = Path(self.storage.spec["stage"]).absolute() / relative_filepath
 
             file_exists = Path(local_filepath).is_file() and (
                 not _need_checksum(local_filepath, size) or uuid_from_file(local_filepath) == contents_hash

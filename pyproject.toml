@@ -17,12 +17,14 @@ dependencies = [
   "networkx",
   "pydot",
   "minio>=7.0.0",
+  "fsspec>=2023.1.0",
   "matplotlib",
   "faker",
   "urllib3",
   "setuptools",
   "pydantic-settings>=2.0.0",
 ]
+
 requires-python = ">=3.10,<3.14"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
@@ -90,6 +92,9 @@ test = [
 ]
 
 [project.optional-dependencies]
+s3 = ["s3fs>=2023.1.0"]
+gcs = ["gcsfs>=2023.1.0"]
+azure = ["adlfs>=2023.1.0"]
 dev = [
   "pre-commit",
   "ruff",

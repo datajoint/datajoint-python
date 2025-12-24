@@ -4,9 +4,11 @@ import inspect
 import itertools
 import json
 import logging
+import mimetypes
 import platform
 import re
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +27,8 @@ from .errors import (
 from .expression import QueryExpression
 from .heading import Heading
 from .settings import config
+from .staged_insert import staged_insert1 as _staged_insert1
+from .storage import StorageBackend, build_object_path, verify_or_create_store_metadata
 from .utils import get_master, is_camel_case, user_choice
 from .version import __version__ as version
 
@@ -269,6 +273,179 @@ class Table(QueryExpression):
     def external(self):
         return self.connection.schemas[self.database].external
 
+    @property
+    def object_storage(self) -> StorageBackend | None:
+        """Get the default object storage backend for this table."""
+        return self.get_object_storage()
+
+    def get_object_storage(self, store_name: str | None = None) -> StorageBackend | None:
+        """
+        Get the object storage backend for a specific store.
+
+        Args:
+            store_name: Name of the store (None for default store)
+
+        Returns:
+            StorageBackend instance or None if not configured
+        """
+        cache_key = f"_object_storage_{store_name or 'default'}"
+        if not hasattr(self, cache_key):
+            try:
+                spec = config.get_object_store_spec(store_name)
+                backend = StorageBackend(spec)
+                # Verify/create store metadata on first use
+                verify_or_create_store_metadata(backend, spec)
+                setattr(self, cache_key, backend)
+            except DataJointError:
+                setattr(self, cache_key, None)
+        return getattr(self, cache_key)
+
+    def _process_object_value(self, name: str, value, row: dict, store_name: str | None = None) -> str:
+        """
+        Process an object attribute value for insert.
+
+        Args:
+            name: Attribute name
+            value: Input value (file path, folder path, or (ext, stream) tuple)
+            row: The full row dict (needed for primary key values)
+            store_name: Name of the object store (None for default store)
+
+        Returns:
+            JSON string for database storage
+        """
+        backend = self.get_object_storage(store_name)
+        if backend is None:
+            store_desc = f"'{store_name}'" if store_name else "default"
+            raise DataJointError(
+                f"Object storage ({store_desc}) is not configured. Set object_storage settings in datajoint.json "
+                "or DJ_OBJECT_STORAGE_* environment variables."
+            )
+
+        # Extract primary key values from row
+        primary_key = {k: row[k] for k in self.primary_key if k in row}
+        if not primary_key:
+            raise DataJointError("Primary key values must be provided before object attributes for insert.")
+
+        # Determine input type and extract extension
+        is_dir = False
+        ext = None
+        size = 0
+        source_path = None
+        stream = None
+
+        if isinstance(value, tuple) and len(value) == 2:
+            # Tuple of (ext, stream)
+            ext, stream = value
+            if hasattr(stream, "read"):
+                # Read stream to buffer for upload
+                content = stream.read()
+                size = len(content)
+            else:
+                raise DataJointError(f"Invalid stream object for attribute {name}")
+        elif isinstance(value, (str, Path)):
+            source_path = Path(value)
+            if not source_path.exists():
+                raise DataJointError(f"File or folder not found: {source_path}")
+            is_dir = source_path.is_dir()
+            if not is_dir:
+                ext = source_path.suffix or None
+                size = source_path.stat().st_size
+        else:
+            raise DataJointError(
+                f"Invalid value type for object attribute {name}. " "Expected file path, folder path, or (ext, stream) tuple."
+            )
+
+        # Get storage spec for path building
+        spec = config.get_object_store_spec(store_name)
+        partition_pattern = spec.get("partition_pattern")
+        token_length = spec.get("token_length", 8)
+        location = spec.get("location", "")
+
+        # Build storage path
+        relative_path, token = build_object_path(
+            schema=self.database,
+            table=self.class_name,
+            field=name,
+            primary_key=primary_key,
+            ext=ext,
+            partition_pattern=partition_pattern,
+            token_length=token_length,
+        )
+
+        # Prepend location if specified
+        full_storage_path = f"{location}/{relative_path}" if location else relative_path
+
+        # Upload content
+        manifest = None
+        if source_path:
+            if is_dir:
+                manifest = backend.put_folder(source_path, full_storage_path)
+                size = manifest["total_size"]
+            else:
+                backend.put_file(source_path, full_storage_path)
+        elif stream:
+            backend.put_buffer(content, full_storage_path)
+
+        # Build full URL for the object
+        url = self._build_object_url(spec, full_storage_path)
+
+        # Build JSON metadata
+        timestamp = datetime.now(timezone.utc).isoformat()
+        metadata = {
+            "path": full_storage_path,
+            "size": size,
+            "hash": None,  # Hash is optional, not computed by default
+            "ext": ext,
+            "is_dir": is_dir,
+            "timestamp": timestamp,
+        }
+
+        # Add URL and store name
+        if url:
+            metadata["url"] = url
+        if store_name:
+            metadata["store"] = store_name
+
+        # Add mime_type for files
+        if not is_dir and ext:
+            mime_type, _ = mimetypes.guess_type(f"file{ext}")
+            if mime_type:
+                metadata["mime_type"] = mime_type
+
+        # Add item_count for folders
+        if is_dir and manifest:
+            metadata["item_count"] = manifest["item_count"]
+
+        return json.dumps(metadata)
+
+    def _build_object_url(self, spec: dict, path: str) -> str | None:
+        """
+        Build a full URL for an object based on the storage spec.
+
+        Args:
+            spec: Storage configuration dict
+            path: Path within the storage
+
+        Returns:
+            Full URL string or None for local storage
+        """
+        protocol = spec.get("protocol", "")
+        if protocol == "s3":
+            bucket = spec.get("bucket", "")
+            return f"s3://{bucket}/{path}"
+        elif protocol == "gcs":
+            bucket = spec.get("bucket", "")
+            return f"gs://{bucket}/{path}"
+        elif protocol == "azure":
+            container = spec.get("container", "")
+            return f"az://{container}/{path}"
+        elif protocol == "file":
+            # For local storage, return file:// URL
+            location = spec.get("location", "")
+            full_path = f"{location}/{path}" if location else path
+            return f"file://{full_path}"
+        return None
+
     def update1(self, row):
         """
         ``update1`` updates one existing entry in the table.
@@ -319,6 +496,35 @@ class Table(QueryExpression):
             as one row.
         """
         self.insert((row,), **kwargs)
+
+    @property
+    def staged_insert1(self):
+        """
+        Context manager for staged insert with direct object storage writes.
+
+        Use this for large objects like Zarr arrays where copying from local storage
+        is inefficient. Allows writing directly to the destination storage before
+        finalizing the database insert.
+
+        Example:
+            with table.staged_insert1 as staged:
+                staged.rec['subject_id'] = 123
+                staged.rec['session_id'] = 45
+
+                # Create object storage directly
+                z = zarr.open(staged.store('raw_data', '.zarr'), mode='w', shape=(1000, 1000))
+                z[:] = data
+
+                # Assign to record
+                staged.rec['raw_data'] = z
+
+            # On successful exit: metadata computed, record inserted
+            # On exception: storage cleaned up, no record inserted
+
+        Yields:
+            StagedInsert: Context for setting record values and getting storage handles
+        """
+        return _staged_insert1(self)
 
     def insert(
         self,
@@ -713,7 +919,7 @@ class Table(QueryExpression):
         return definition
 
     # --- private helper functions ----
-    def __make_placeholder(self, name, value, ignore_extra_fields=False):
+    def __make_placeholder(self, name, value, ignore_extra_fields=False, row=None):
         """
         For a given attribute `name` with `value`, return its processed value or value placeholder
         as a string to be included in the query and the value, if any, to be submitted for
@@ -721,6 +927,8 @@ class Table(QueryExpression):
 
         :param name:  name of attribute to be inserted
         :param value: value of attribute to be inserted
+        :param ignore_extra_fields: if True, return None for unknown fields
+        :param row: the full row dict (needed for object attributes to extract primary key)
         """
         if ignore_extra_fields and name not in self.heading:
             return None
@@ -752,6 +960,13 @@ class Table(QueryExpression):
                     value = str.encode(attachment_path.name) + b"\0" + attachment_path.read_bytes()
             elif attr.is_filepath:
                 value = self.external[attr.store].upload_filepath(value).bytes
+            elif attr.is_object:
+                # Object type - upload to object storage and return JSON metadata
+                if row is None:
+                    raise DataJointError(
+                        f"Object attribute {name} requires full row context for insert. " "This is an internal error."
+                    )
+                value = self._process_object_value(name, value, row, store_name=attr.store)
             elif attr.numeric:
                 value = str(int(value) if isinstance(value, bool) else value)
             elif attr.json:
@@ -780,17 +995,23 @@ class Table(QueryExpression):
             elif set(field_list) != set(fields).intersection(self.heading.names):
                 raise DataJointError("Attempt to insert rows with different fields.")
 
+        # Convert row to dict for object attribute processing
+        row_dict = None
         if isinstance(row, np.void):  # np.array
             check_fields(row.dtype.fields)
+            row_dict = {name: row[name] for name in row.dtype.fields}
             attributes = [
-                self.__make_placeholder(name, row[name], ignore_extra_fields)
+                self.__make_placeholder(name, row[name], ignore_extra_fields, row=row_dict)
                 for name in self.heading
                 if name in row.dtype.fields
             ]
         elif isinstance(row, collections.abc.Mapping):  # dict-based
             check_fields(row)
+            row_dict = dict(row)
             attributes = [
-                self.__make_placeholder(name, row[name], ignore_extra_fields) for name in self.heading if name in row
+                self.__make_placeholder(name, row[name], ignore_extra_fields, row=row_dict)
+                for name in self.heading
+                if name in row
             ]
         else:  # positional
             try:
@@ -803,8 +1024,10 @@ class Table(QueryExpression):
             except TypeError:
                 raise DataJointError("Datatype %s cannot be inserted" % type(row))
             else:
+                row_dict = dict(zip(self.heading.names, row))
                 attributes = [
-                    self.__make_placeholder(name, value, ignore_extra_fields) for name, value in zip(self.heading, row)
+                    self.__make_placeholder(name, value, ignore_extra_fields, row=row_dict)
+                    for name, value in zip(self.heading, row)
                 ]
         if ignore_extra_fields:
             attributes = [a for a in attributes if a is not None]

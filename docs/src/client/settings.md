@@ -164,3 +164,57 @@ Configure external stores in the `stores` section. See [External Storage](../sys
     }
 }
 ```
+
+## Object Storage
+
+Configure object storage for the [`object` type](../design/tables/object.md) in the `object_storage` section. This provides managed file and folder storage with fsspec backend support.
+
+### Local Filesystem
+
+```json
+{
+    "object_storage": {
+        "project_name": "my_project",
+        "protocol": "file",
+        "location": "/data/my_project"
+    }
+}
+```
+
+### Amazon S3
+
+```json
+{
+    "object_storage": {
+        "project_name": "my_project",
+        "protocol": "s3",
+        "bucket": "my-bucket",
+        "location": "my_project",
+        "endpoint": "s3.amazonaws.com"
+    }
+}
+```
+
+### Object Storage Settings
+
+| Setting | Environment Variable | Required | Description |
+|---------|---------------------|----------|-------------|
+| `object_storage.project_name` | `DJ_OBJECT_STORAGE_PROJECT_NAME` | Yes | Unique project identifier |
+| `object_storage.protocol` | `DJ_OBJECT_STORAGE_PROTOCOL` | Yes | Backend: `file`, `s3`, `gcs`, `azure` |
+| `object_storage.location` | `DJ_OBJECT_STORAGE_LOCATION` | Yes | Base path or bucket prefix |
+| `object_storage.bucket` | `DJ_OBJECT_STORAGE_BUCKET` | For cloud | Bucket name |
+| `object_storage.endpoint` | `DJ_OBJECT_STORAGE_ENDPOINT` | For S3 | S3 endpoint URL |
+| `object_storage.partition_pattern` | `DJ_OBJECT_STORAGE_PARTITION_PATTERN` | No | Path pattern with `{attr}` placeholders |
+| `object_storage.token_length` | `DJ_OBJECT_STORAGE_TOKEN_LENGTH` | No | Random suffix length (default: 8) |
+| `object_storage.access_key` | — | For cloud | Access key (use secrets) |
+| `object_storage.secret_key` | — | For cloud | Secret key (use secrets) |
+
+### Object Storage Secrets
+
+Store cloud credentials in the secrets directory:
+
+```
+.secrets/
+├── object_storage.access_key
+└── object_storage.secret_key
+```

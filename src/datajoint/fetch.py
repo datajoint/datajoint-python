@@ -12,7 +12,9 @@ from datajoint.condition import Top
 
 from . import blob, hash
 from .errors import DataJointError
+from .objectref import ObjectRef
 from .settings import config
+from .storage import StorageBackend
 from .utils import safe_write
 
 
@@ -48,6 +50,17 @@ def _get(connection, attr, data, squeeze, download_path):
     """
     if data is None:
         return
+    if attr.is_object:
+        # Object type - return ObjectRef handle
+        json_data = json.loads(data) if isinstance(data, str) else data
+        # Get the correct backend based on store name in metadata
+        store_name = json_data.get("store")  # None for default store
+        try:
+            spec = config.get_object_store_spec(store_name)
+            backend = StorageBackend(spec)
+        except DataJointError:
+            backend = None
+        return ObjectRef.from_json(json_data, backend=backend)
     if attr.json:
         return json.loads(data)
 

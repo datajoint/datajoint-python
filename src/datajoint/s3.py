@@ -1,9 +1,19 @@
 """
-AWS S3 operations
+AWS S3 operations using minio client.
+
+.. deprecated:: 0.15.0
+    This module is deprecated. Use :mod:`datajoint.storage` with fsspec backend instead.
+    The minio-based S3 client will be removed in a future version.
+
+    Migration guide:
+    - Instead of importing from datajoint.s3, use datajoint.storage.StorageBackend
+    - StorageBackend provides a unified interface for all storage protocols
+    - See datajoint.storage module for details
 """
 
 import logging
 import uuid
+import warnings
 from io import BytesIO
 from pathlib import Path
 
@@ -17,7 +27,10 @@ logger = logging.getLogger(__name__.split(".")[0])
 
 class Folder:
     """
-    A Folder instance manipulates a flat folder of objects within an S3-compatible object store
+    A Folder instance manipulates a flat folder of objects within an S3-compatible object store.
+
+    .. deprecated:: 0.15.0
+        Use :class:`datajoint.storage.StorageBackend` instead.
     """
 
     def __init__(
@@ -31,6 +44,12 @@ class Folder:
         proxy_server=None,
         **_,
     ):
+        warnings.warn(
+            "datajoint.s3.Folder is deprecated and will be removed in a future version. "
+            "Use datajoint.storage.StorageBackend with fsspec instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         # from https://docs.min.io/docs/python-client-api-reference
         self.client = minio.Minio(
             endpoint,

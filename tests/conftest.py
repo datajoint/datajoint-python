@@ -21,7 +21,7 @@ from datajoint.errors import (
     DataJointError,
 )
 
-from . import schema, schema_advanced, schema_external, schema_simple
+from . import schema, schema_advanced, schema_external, schema_object, schema_simple
 from . import schema_uuid as schema_uuid_module
 from . import schema_type_aliases as schema_type_aliases_module
 
@@ -903,3 +903,67 @@ def channel(schema_any):
 @pytest.fixture
 def trash(schema_any):
     return schema.UberTrash()
+
+
+# Object storage fixtures
+
+
+@pytest.fixture
+def object_storage_config(tmpdir_factory):
+    """Create object storage configuration for testing."""
+    location = str(tmpdir_factory.mktemp("object_storage"))
+    return {
+        "project_name": "test_project",
+        "protocol": "file",
+        "location": location,
+        "token_length": 8,
+    }
+
+
+@pytest.fixture
+def mock_object_storage(object_storage_config, monkeypatch):
+    """Mock object storage configuration in datajoint config."""
+    # Store original config
+    original_object_storage = getattr(dj.config, "_object_storage", None)
+
+    # Create a mock ObjectStorageSettings-like object
+    class MockObjectStorageSettings:
+        def __init__(self, config):
+            self.project_name = config["project_name"]
+            self.protocol = config["protocol"]
+            self.location = config["location"]
+            self.token_length = config.get("token_length", 8)
+            self.partition_pattern = config.get("partition_pattern")
+            self.bucket = config.get("bucket")
+            self.endpoint = config.get("endpoint")
+            self.access_key = config.get("access_key")
+            self.secret_key = config.get("secret_key")
+            self.secure = config.get("secure", True)
+            self.container = config.get("container")
+
+    mock_settings = MockObjectStorageSettings(object_storage_config)
+
+    # Patch the object_storage attribute
+    monkeypatch.setattr(dj.config, "object_storage", mock_settings)
+
+    yield object_storage_config
+
+    # Restore original
+    if original_object_storage is not None:
+        monkeypatch.setattr(dj.config, "object_storage", original_object_storage)
+
+
+@pytest.fixture
+def schema_obj(connection_test, prefix, mock_object_storage):
+    """Schema for object type tests."""
+    schema = dj.Schema(
+        prefix + "_object",
+        context=schema_object.LOCALS_OBJECT,
+        connection=connection_test,
+    )
+    schema(schema_object.ObjectFile)
+    schema(schema_object.ObjectFolder)
+    schema(schema_object.ObjectMultiple)
+    schema(schema_object.ObjectWithOther)
+    yield schema
+    schema.drop()

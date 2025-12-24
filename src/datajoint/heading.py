@@ -32,6 +32,7 @@ default_attribute_properties = dict(  # these default values are set in computed
     is_blob=False,
     is_attachment=False,
     is_filepath=False,
+    is_object=False,
     is_external=False,
     is_hidden=False,
     adapter=None,
@@ -135,8 +136,16 @@ class Heading:
         return [k for k, v in self.attributes.items() if v.is_blob]
 
     @property
+    def objects(self):
+        return [k for k, v in self.attributes.items() if v.is_object]
+
+    @property
     def non_blobs(self):
-        return [k for k, v in self.attributes.items() if not (v.is_blob or v.is_attachment or v.is_filepath or v.json)]
+        return [
+            k
+            for k, v in self.attributes.items()
+            if not (v.is_blob or v.is_attachment or v.is_filepath or v.is_object or v.json)
+        ]
 
     @property
     def new_attributes(self):
@@ -262,6 +271,7 @@ class Heading:
                 json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
                 is_attachment=False,
                 is_filepath=False,
+                is_object=False,
                 adapter=None,
                 store=None,
                 is_external=False,
@@ -321,15 +331,23 @@ class Heading:
                         {env} = TRUE or upgrade datajoint.
                         """.format(env=FILEPATH_FEATURE_SWITCH)
                     )
+                # Extract store name for external types and object types with named stores
+                store = None
+                if category in EXTERNAL_TYPES:
+                    store = attr["type"].split("@")[1]
+                elif category == "OBJECT" and "@" in attr["type"]:
+                    store = attr["type"].split("@")[1]
+
                 attr.update(
                     unsupported=False,
                     is_attachment=category in ("INTERNAL_ATTACH", "EXTERNAL_ATTACH"),
                     is_filepath=category == "FILEPATH",
+                    is_object=category == "OBJECT",
                     # INTERNAL_BLOB is not a custom type but is included for completeness
                     is_blob=category in ("INTERNAL_BLOB", "EXTERNAL_BLOB"),
                     uuid=category == "UUID",
                     is_external=category in EXTERNAL_TYPES,
-                    store=(attr["type"].split("@")[1] if category in EXTERNAL_TYPES else None),
+                    store=store,
                 )
 
             if attr["in_key"] and any(
@@ -337,10 +355,13 @@ class Heading:
                     attr["is_blob"],
                     attr["is_attachment"],
                     attr["is_filepath"],
+                    attr["is_object"],
                     attr["json"],
                 )
             ):
-                raise DataJointError("Json, Blob, attachment, or filepath attributes are not allowed in the primary key")
+                raise DataJointError(
+                    "Json, Blob, attachment, filepath, or object attributes " "are not allowed in the primary key"
+                )
 
             if attr["string"] and attr["default"] is not None and attr["default"] not in sql_literals:
                 attr["default"] = '"%s"' % attr["default"]
