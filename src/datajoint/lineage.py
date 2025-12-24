@@ -100,14 +100,12 @@ def insert_lineage_entries(connection, database, entries):
 
     ensure_lineage_table(connection, database)
 
-    # Use INSERT ... ON DUPLICATE KEY UPDATE to handle re-declarations
     for table_name, attribute_name, lineage in entries:
         connection.query(
             f"""
             INSERT INTO `{database}`.`{LINEAGE_TABLE_NAME}`
             (table_name, attribute_name, lineage)
             VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE lineage = VALUES(lineage)
             """,
             args=(table_name, attribute_name, lineage),
         )
