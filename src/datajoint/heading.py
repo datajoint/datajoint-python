@@ -359,6 +359,13 @@ class Heading:
                         {env} = TRUE or upgrade datajoint.
                         """.format(env=FILEPATH_FEATURE_SWITCH)
                     )
+                # Extract store name for external types and object types with named stores
+                store = None
+                if category in EXTERNAL_TYPES:
+                    store = attr["type"].split("@")[1]
+                elif category == "OBJECT" and "@" in attr["type"]:
+                    store = attr["type"].split("@")[1]
+
                 attr.update(
                     unsupported=False,
                     is_attachment=category in ("INTERNAL_ATTACH", "EXTERNAL_ATTACH"),
@@ -368,7 +375,7 @@ class Heading:
                     is_blob=category in ("INTERNAL_BLOB", "EXTERNAL_BLOB"),
                     uuid=category == "UUID",
                     is_external=category in EXTERNAL_TYPES,
-                    store=(attr["type"].split("@")[1] if category in EXTERNAL_TYPES else None),
+                    store=store,
                 )
 
             if attr["in_key"] and any(

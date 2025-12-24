@@ -274,18 +274,32 @@ class Table(QueryExpression):
 
     @property
     def object_storage(self) -> StorageBackend | None:
-        """Get the object storage backend for this table."""
-        if not hasattr(self, "_object_storage"):
-            try:
-                spec = config.get_object_storage_spec()
-                self._object_storage = StorageBackend(spec)
-                # Verify/create store metadata on first use
-                verify_or_create_store_metadata(self._object_storage, spec)
-            except DataJointError:
-                self._object_storage = None
-        return self._object_storage
+        """Get the default object storage backend for this table."""
+        return self.get_object_storage()
 
-    def _process_object_value(self, name: str, value, row: dict) -> str:
+    def get_object_storage(self, store_name: str | None = None) -> StorageBackend | None:
+        """
+        Get the object storage backend for a specific store.
+
+        Args:
+            store_name: Name of the store (None for default store)
+
+        Returns:
+            StorageBackend instance or None if not configured
+        """
+        cache_key = f"_object_storage_{store_name or 'default'}"
+        if not hasattr(self, cache_key):
+            try:
+                spec = config.get_object_store_spec(store_name)
+                backend = StorageBackend(spec)
+                # Verify/create store metadata on first use
+                verify_or_create_store_metadata(backend, spec)
+                setattr(self, cache_key, backend)
+            except DataJointError:
+                setattr(self, cache_key, None)
+        return getattr(self, cache_key)
+
+    def _process_object_value(self, name: str, value, row: dict, store_name: str | None = None) -> str:
         """
         Process an object attribute value for insert.
 
@@ -293,13 +307,16 @@ class Table(QueryExpression):
             name: Attribute name
             value: Input value (file path, folder path, or (ext, stream) tuple)
             row: The full row dict (needed for primary key values)
+            store_name: Name of the object store (None for default store)
 
         Returns:
             JSON string for database storage
         """
-        if self.object_storage is None:
+        backend = self.get_object_storage(store_name)
+        if backend is None:
+            store_desc = f"'{store_name}'" if store_name else "default"
             raise DataJointError(
-                "Object storage is not configured. Set object_storage settings in datajoint.json "
+                f"Object storage ({store_desc}) is not configured. Set object_storage settings in datajoint.json "
                 "or DJ_OBJECT_STORAGE_* environment variables."
             )
 
@@ -338,7 +355,7 @@ class Table(QueryExpression):
             )
 
         # Get storage spec for path building
-        spec = config.get_object_storage_spec()
+        spec = config.get_object_store_spec(store_name)
         partition_pattern = spec.get("partition_pattern")
         token_length = spec.get("token_length", 8)
         location = spec.get("location", "")
@@ -361,23 +378,32 @@ class Table(QueryExpression):
         manifest = None
         if source_path:
             if is_dir:
-                manifest = self.object_storage.put_folder(source_path, full_storage_path)
+                manifest = backend.put_folder(source_path, full_storage_path)
                 size = manifest["total_size"]
             else:
-                self.object_storage.put_file(source_path, full_storage_path)
+                backend.put_file(source_path, full_storage_path)
         elif stream:
-            self.object_storage.put_buffer(content, full_storage_path)
+            backend.put_buffer(content, full_storage_path)
+
+        # Build full URL for the object
+        url = self._build_object_url(spec, full_storage_path)
 
         # Build JSON metadata
         timestamp = datetime.now(timezone.utc).isoformat()
         metadata = {
-            "path": relative_path,
+            "path": full_storage_path,
             "size": size,
             "hash": None,  # Hash is optional, not computed by default
             "ext": ext,
             "is_dir": is_dir,
             "timestamp": timestamp,
         }
+
+        # Add URL and store name
+        if url:
+            metadata["url"] = url
+        if store_name:
+            metadata["store"] = store_name
 
         # Add mime_type for files
         if not is_dir and ext:
@@ -390,6 +416,34 @@ class Table(QueryExpression):
             metadata["item_count"] = manifest["item_count"]
 
         return json.dumps(metadata)
+
+    def _build_object_url(self, spec: dict, path: str) -> str | None:
+        """
+        Build a full URL for an object based on the storage spec.
+
+        Args:
+            spec: Storage configuration dict
+            path: Path within the storage
+
+        Returns:
+            Full URL string or None for local storage
+        """
+        protocol = spec.get("protocol", "")
+        if protocol == "s3":
+            bucket = spec.get("bucket", "")
+            return f"s3://{bucket}/{path}"
+        elif protocol == "gcs":
+            bucket = spec.get("bucket", "")
+            return f"gs://{bucket}/{path}"
+        elif protocol == "azure":
+            container = spec.get("container", "")
+            return f"az://{container}/{path}"
+        elif protocol == "file":
+            # For local storage, return file:// URL
+            location = spec.get("location", "")
+            full_path = f"{location}/{path}" if location else path
+            return f"file://{full_path}"
+        return None
 
     def update1(self, row):
         """
@@ -915,7 +969,7 @@ class Table(QueryExpression):
                     raise DataJointError(
                         f"Object attribute {name} requires full row context for insert. " "This is an internal error."
                     )
-                value = self._process_object_value(name, value, row)
+                value = self._process_object_value(name, value, row, store_name=attr.store)
             elif attr.numeric:
                 value = str(int(value) if isinstance(value, bool) else value)
             elif attr.json:

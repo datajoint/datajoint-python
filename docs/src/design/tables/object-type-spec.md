@@ -50,18 +50,41 @@ This is fundamentally different from **external references**, where DataJoint me
 
 ## Storage Architecture
 
-### Single Storage Backend Per Pipeline
+### Default and Named Stores
 
-Each DataJoint pipeline has **one** associated storage backend configured in `datajoint.json`. DataJoint fully controls the path structure within this backend.
+Each DataJoint pipeline has a **default storage backend** plus optional **named stores**, all configured in `datajoint.json`. DataJoint fully controls the path structure within each store.
 
-**Why single backend?** The object store is a logical extension of the schema—its integrity must be verifiable as a unit. With a single backend:
-- Schema completeness can be verified with one listing operation
-- Orphan detection is straightforward
-- Migration requires only config changes, not mass URL updates in the database
+```python
+@schema
+class Recording(dj.Manual):
+    definition = """
+    subject_id : int
+    session_id : int
+    ---
+    raw_data : object              # uses default store
+    published : object@public      # uses 'public' named store
+    """
+```
+
+**All stores follow OAS principles:**
+- DataJoint owns the lifecycle (insert/delete/fetch as a unit)
+- Same deterministic path structure (`project/schema/Table/objects/...`)
+- Same access control alignment with database
+- Each store has its own `datajoint_store.json` metadata file
+
+**Why support multiple stores?**
+- Different access policies (private vs public buckets)
+- Different storage tiers (hot vs cold storage)
+- Organizational requirements (data sovereignty, compliance)
+
+**Why require explicit store configuration?**
+- All stores must be registered for OAS semantics
+- Credential management aligns with database access control (platform-managed)
+- Orphan cleanup operates per-store with full knowledge of configured stores
 
 ### Access Control Patterns
 
-The deterministic path structure (`project/schema/Table/objects/pk=val/...`) enables **prefix-based access control policies** on the storage backend.
+The deterministic path structure (`project/schema/Table/objects/pk=val/...`) enables **prefix-based access control policies** on each storage backend.
 
 **Supported access control levels:**
 
@@ -72,21 +95,23 @@ The deterministic path structure (`project/schema/Table/objects/pk=val/...`) ena
 | Table-level | IAM/bucket policy | `my-bucket/my_project/schema/SensitiveTable/*` |
 | Row-level | Per-object ACL or signed URLs | Future enhancement |
 
-**Example: Private and public data in one bucket**
-
-Rather than using separate buckets, use prefix-based policies:
+**Example: Private and public data in separate stores**
 
 ```
-s3://my-bucket/my_project/
-├── internal_schema/           ← restricted IAM policy
-│   └── ProcessingResults/
-│       └── objects/...
-└── publications/              ← public bucket policy
+# Default store (private)
+s3://internal-bucket/my_project/
+└── lab_schema/
+    └── ProcessingResults/
+        └── objects/...
+
+# Named 'public' store
+s3://public-bucket/my_project/
+└── lab_schema/
     └── PublishedDatasets/
         └── objects/...
 ```
 
-This achieves the same access separation as multiple buckets while maintaining schema integrity in a single backend.
+Alternatively, use prefix-based policies within a single bucket if preferred.
 
 **Row-level access control** (access to objects for specific primary key values) is not directly supported by object store policies. Future versions may address this via DataJoint-generated signed URLs that project database permissions onto object access.
 
@@ -155,6 +180,42 @@ For local filesystem storage:
     "object_storage.partition_pattern": "{subject_id}/{session_id}"
 }
 ```
+
+### Named Stores
+
+Additional stores can be defined using the `object_storage.stores.<name>` prefix:
+
+```json
+{
+    "object_storage.project_name": "my_project",
+    "object_storage.protocol": "s3",
+    "object_storage.bucket": "internal-bucket",
+    "object_storage.location": "my_project",
+
+    "object_storage.stores.public.protocol": "s3",
+    "object_storage.stores.public.bucket": "public-bucket",
+    "object_storage.stores.public.location": "my_project"
+}
+```
+
+Named stores inherit `project_name` from the default configuration but can override all other settings. Use named stores with the `object@store_name` syntax:
+
+```python
+@schema
+class Dataset(dj.Manual):
+    definition = """
+    dataset_id : int
+    ---
+    internal_data : object           # default store (internal-bucket)
+    published_data : object@public   # public store (public-bucket)
+    """
+```
+
+Each named store:
+- Must be explicitly configured (no ad-hoc URLs)
+- Has its own `datajoint_store.json` metadata file
+- Follows the same OAS lifecycle semantics as the default store
+- Credentials are managed at the platform level, aligned with database access control
 
 ### Settings Schema
 
@@ -320,20 +381,24 @@ class Recording(dj.Manual):
     subject_id : int
     session_id : int
     ---
-    raw_data : object          # managed file storage
-    processed : object         # another object attribute
+    raw_data : object          # uses default store
+    processed : object         # another object attribute (default store)
+    published : object@public  # uses named 'public' store
     """
 ```
 
-Note: No `@store` suffix needed - storage is determined by pipeline configuration.
+- `object` — uses the default storage backend
+- `object@store_name` — uses a named store (must be configured in settings)
 
 ## Database Storage
 
 The `object` type is stored as a `JSON` column in MySQL containing:
 
-**File example:**
+**File in default store:**
 ```json
 {
+    "store": null,
+    "url": "s3://my-bucket/my_project/my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
     "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
     "size": 12345,
     "hash": null,
@@ -344,10 +409,12 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 }
 ```
 
-**File with optional hash:**
+**File in named store:**
 ```json
 {
-    "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
+    "store": "public",
+    "url": "s3://public-bucket/my_project/my_schema/Dataset/objects/dataset_id=1/published_data_Bx8cD3kM.dat",
+    "path": "my_schema/Dataset/objects/dataset_id=1/published_data_Bx8cD3kM.dat",
     "size": 12345,
     "hash": "sha256:abcdef1234...",
     "ext": ".dat",
@@ -360,6 +427,8 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 **Folder example:**
 ```json
 {
+    "store": null,
+    "url": "s3://my-bucket/my_project/my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_pL9nR4wE",
     "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_pL9nR4wE",
     "size": 567890,
     "hash": null,
@@ -373,6 +442,8 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 **Zarr example (large dataset, metadata fields omitted for performance):**
 ```json
 {
+    "store": null,
+    "url": "s3://my-bucket/my_project/my_schema/Recording/objects/subject_id=123/session_id=45/neural_data_kM3nP2qR.zarr",
     "path": "my_schema/Recording/objects/subject_id=123/session_id=45/neural_data_kM3nP2qR.zarr",
     "size": null,
     "hash": null,
@@ -386,7 +457,9 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `path` | string | Yes | Full path/key within storage backend (includes token) |
+| `store` | string/null | Yes | Store name (e.g., `"public"`), or `null` for default store |
+| `url` | string | Yes | Full URL including protocol and bucket (e.g., `s3://bucket/path`) |
+| `path` | string | Yes | Relative path within store (excludes protocol/bucket, includes token) |
 | `size` | integer/null | No | Total size in bytes (sum for folders), or null if not computed. See [Performance Considerations](#performance-considerations). |
 | `hash` | string/null | Yes | Content hash with algorithm prefix, or null (default) |
 | `ext` | string/null | Yes | File extension as tooling hint (e.g., `.dat`, `.zarr`) or null. See [Extension Field](#extension-field). |
@@ -394,6 +467,11 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 | `timestamp` | string | Yes | ISO 8601 upload timestamp |
 | `mime_type` | string | No | MIME type (files only, auto-detected from extension) |
 | `item_count` | integer | No | Number of files (folders only), or null if not computed. See [Performance Considerations](#performance-considerations). |
+
+**Why both `url` and `path`?**
+- `url`: Self-describing, enables cross-validation, robust to config changes
+- `path`: Enables store name re-derivation at migration time, consistent structure across stores
+- At migration, the store name can be derived by matching `url` against configured stores
 
 ### Extension Field
 
@@ -937,17 +1015,35 @@ Orphaned files (files in storage without corresponding database records) may acc
 
 ### Orphan Cleanup Procedure
 
-Orphan cleanup is a **separate maintenance operation** provided via the `schema.object_storage` utility object.
+Orphan cleanup is a **separate maintenance operation** provided via the `schema.object_storage` utility object. Cleanup operates **per-store**, iterating through all configured stores.
 
 ```python
 # Maintenance utility methods (not a hidden table)
-schema.object_storage.find_orphaned(grace_period_minutes=30)  # List orphaned files
+schema.object_storage.find_orphaned(grace_period_minutes=30)  # List orphaned files (all stores)
+schema.object_storage.find_orphaned(store="public")           # List orphaned files (specific store)
 schema.object_storage.cleanup_orphaned(dry_run=True)          # Delete orphaned files
 schema.object_storage.verify_integrity()                       # Check all objects exist
 schema.object_storage.stats()                                  # Storage usage statistics
 ```
 
 **Note**: `schema.object_storage` is a utility object, not a hidden table. Unlike `attach@store` which uses `~external_*` tables, the `object` type stores all metadata inline in JSON columns and has no hidden tables.
+
+**Efficient listing for Zarr and large stores:**
+
+For stores with Zarr arrays (potentially millions of chunk objects), cleanup uses **delimiter-based listing** to enumerate only root object names, not individual chunks:
+
+```python
+# S3 API with delimiter - lists "directories" only
+response = s3.list_objects_v2(
+    Bucket=bucket,
+    Prefix='project/schema/Table/objects/',
+    Delimiter='/'
+)
+# Returns: ['neural_data_kM3nP2qR.zarr/', 'raw_data_Ax7bQ2kM.dat']
+# NOT millions of individual chunk keys
+```
+
+Orphan deletion uses recursive delete to remove entire Zarr stores efficiently.
 
 **Grace period for in-flight inserts:**
 
@@ -962,8 +1058,9 @@ While random tokens prevent filename collisions, there's a race condition with i
 **Solution**: The `grace_period_minutes` parameter (default: 30) excludes files created within that window, assuming they are in-flight inserts.
 
 **Important considerations:**
+- Cleanup enumerates all configured stores (default + named)
+- Uses delimiter-based listing for efficiency with Zarr stores
 - Grace period handles race conditions—cleanup is safe to run anytime
-- Running during low-activity periods reduces in-flight operations to reason about
 - `dry_run=True` previews deletions before execution
 - Compares storage contents against JSON metadata in table columns
 
