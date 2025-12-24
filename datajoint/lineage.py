@@ -224,26 +224,21 @@ def compute_all_lineage_for_table(connection, schema, table_name):
     :param table_name: table name
     :return: dict mapping attribute_name -> lineage (or None)
     """
-    # Get all attributes for this table
-    result = connection.query(
-        """
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = %s AND table_name = %s
-        ORDER BY ordinal_position
-        """,
-        args=(schema, table_name),
+    # Get all attributes using Heading
+    heading = Heading(
+        table_info=dict(
+            conn=connection,
+            database=schema,
+            table_name=table_name,
+            context=None,
+        )
     )
-    attributes = [row[0] for row in result]
 
     # Compute lineage for each attribute
-    lineage_map = {}
-    for attr in attributes:
-        lineage_map[attr] = compute_lineage_from_dependencies(
-            connection, schema, table_name, attr
-        )
-
-    return lineage_map
+    return {
+        attr: compute_lineage_from_dependencies(connection, schema, table_name, attr)
+        for attr in heading.names
+    }
 
 
 def migrate_schema_lineage(connection, schema):
