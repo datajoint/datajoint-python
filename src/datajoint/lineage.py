@@ -12,6 +12,8 @@ Only attributes WITH lineage are stored in the ~lineage table:
 
 import logging
 
+from .errors import MissingTableError
+
 logger = logging.getLogger(__name__.split(".")[0])
 
 LINEAGE_TABLE_NAME = "~lineage"
@@ -48,8 +50,8 @@ def get_lineage(connection, database, table_name, attribute_name):
         )
         row = result.fetchone()
         return row[0] if row else None
-    except Exception:
-        # Table doesn't exist yet
+    except MissingTableError:
+        # ~lineage table doesn't exist yet
         return None
 
 
@@ -69,8 +71,8 @@ def get_all_lineages(connection, database, table_name):
             args=(table_name,),
         )
         return {row[0]: row[1] for row in result}
-    except Exception:
-        # Table doesn't exist yet
+    except MissingTableError:
+        # ~lineage table doesn't exist yet
         return {}
 
 
@@ -84,8 +86,8 @@ def delete_lineage_entries(connection, database, table_name):
             """,
             args=(table_name,),
         )
-    except Exception:
-        # Table doesn't exist yet - nothing to delete
+    except MissingTableError:
+        # ~lineage table doesn't exist yet - nothing to delete
         pass
 
 
