@@ -260,10 +260,10 @@ These methods are **mutually exclusive**:
 
 ```python
 def get_lineage(schema, table, attribute):
-    if lineage_table_exists(schema):
+    try:
         # Returns lineage string if entry exists, None otherwise
         return query_lineage_table(schema, table, attribute)
-    else:
+    except TableDoesNotExist:
         return compute_from_dependencies(schema, table, attribute)
 ```
 

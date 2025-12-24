@@ -31,18 +31,6 @@ def ensure_lineage_table(connection, database):
     )
 
 
-def lineage_table_exists(connection, database):
-    """Check if the ~lineage table exists in the schema."""
-    result = connection.query(
-        """
-        SELECT COUNT(*) FROM information_schema.tables
-        WHERE table_schema = %s AND table_name = %s
-        """,
-        args=(database, LINEAGE_TABLE_NAME),
-    )
-    return result.fetchone()[0] > 0
-
-
 def get_lineage(connection, database, table_name, attribute_name):
     """
     Get lineage for an attribute from the ~lineage table.
@@ -50,18 +38,19 @@ def get_lineage(connection, database, table_name, attribute_name):
     Returns the lineage string if found, None otherwise (indicating no lineage
     or attribute is a native secondary).
     """
-    if not lineage_table_exists(connection, database):
+    try:
+        result = connection.query(
+            f"""
+            SELECT lineage FROM `{database}`.`{LINEAGE_TABLE_NAME}`
+            WHERE table_name = %s AND attribute_name = %s
+            """,
+            args=(table_name, attribute_name),
+        )
+        row = result.fetchone()
+        return row[0] if row else None
+    except Exception:
+        # Table doesn't exist yet
         return None
-
-    result = connection.query(
-        f"""
-        SELECT lineage FROM `{database}`.`{LINEAGE_TABLE_NAME}`
-        WHERE table_name = %s AND attribute_name = %s
-        """,
-        args=(table_name, attribute_name),
-    )
-    row = result.fetchone()
-    return row[0] if row else None
 
 
 def get_all_lineages(connection, database, table_name):
@@ -71,31 +60,33 @@ def get_all_lineages(connection, database, table_name):
     Returns a dict mapping attribute_name -> lineage.
     Attributes not in the dict have no lineage (native secondary).
     """
-    if not lineage_table_exists(connection, database):
+    try:
+        result = connection.query(
+            f"""
+            SELECT attribute_name, lineage FROM `{database}`.`{LINEAGE_TABLE_NAME}`
+            WHERE table_name = %s
+            """,
+            args=(table_name,),
+        )
+        return {row[0]: row[1] for row in result}
+    except Exception:
+        # Table doesn't exist yet
         return {}
-
-    result = connection.query(
-        f"""
-        SELECT attribute_name, lineage FROM `{database}`.`{LINEAGE_TABLE_NAME}`
-        WHERE table_name = %s
-        """,
-        args=(table_name,),
-    )
-    return {row[0]: row[1] for row in result}
 
 
 def delete_lineage_entries(connection, database, table_name):
     """Delete all lineage entries for a table."""
-    if not lineage_table_exists(connection, database):
-        return
-
-    connection.query(
-        f"""
-        DELETE FROM `{database}`.`{LINEAGE_TABLE_NAME}`
-        WHERE table_name = %s
-        """,
-        args=(table_name,),
-    )
+    try:
+        connection.query(
+            f"""
+            DELETE FROM `{database}`.`{LINEAGE_TABLE_NAME}`
+            WHERE table_name = %s
+            """,
+            args=(table_name,),
+        )
+    except Exception:
+        # Table doesn't exist yet - nothing to delete
+        pass
 
 
 def insert_lineage_entries(connection, database, entries):
