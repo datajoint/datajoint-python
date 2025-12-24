@@ -25,15 +25,17 @@ DataJoint 2.0 introduces **semantic matching** where two attributes are matched 
 
 This prevents accidental joins on attributes that happen to share the same name but represent different entities.
 
-#### Example: Name Collision
+#### Example: Primary Key Name Collision
 
 Consider two tables:
-- `Student(student_id, name)` - where `name` is the student's name
-- `Course(course_id, name)` - where `name` is the course title
+- `Student(id, name)` - where `id` is the student's primary key
+- `Course(id, instructor)` - where `id` is the course's primary key
 
-With current behavior: `Student * Course` would attempt to join on `name`, producing meaningless results or an error.
+With current behavior: `Student * Course` joins on `id`, producing meaningless results where student IDs are matched with course IDs.
 
-With semantic matching: The `name` attributes have different lineages (one originates in Student, the other in Course), so they would **not** be matched. Instead, the join would be a Cartesian product, or more likely, an error would be raised about incompatible namesake attributes.
+With semantic matching: `Student.id` and `Course.id` have different lineages (one originates in Student, the other in Course). They are **non-homologous namesakes**, so an error is raised rather than performing an incorrect join.
+
+Note: The current implementation already prevents joining on common *secondary* attributes (e.g., if both had a `name` attribute). The problem semantic matching solves is coincidental name collisions in *primary key* attributes.
 
 ## Key Concepts
 
