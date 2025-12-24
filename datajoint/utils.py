@@ -50,7 +50,7 @@ def get_master(full_table_name: str) -> str:
     :return: Supposed master full table name or empty string if not a part table name.
     :rtype: str
     """
-    match = re.match(r"(?P<master>`[^`]+`.`[^`]+)__(?P<part>[^`]+)`", full_table_name)
+    match = re.match(r"(?P<master>`[^`]+`.`[#~]?\w+)__(?P<part>\w+)`", full_table_name)
     return match["master"] + "`" if match else ""
 
 
