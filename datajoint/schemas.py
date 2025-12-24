@@ -9,9 +9,8 @@ import warnings
 from .connection import conn
 from .errors import AccessError, DataJointError
 from .external import ExternalMapping
-from .heading import Heading
+from .heading import Heading, LineageTable, compute_schema_lineage
 from .jobs import JobTable
-from .lineage import LineageTable, compute_schema_lineage
 from .settings import config
 from .table import FreeTable, Log, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
