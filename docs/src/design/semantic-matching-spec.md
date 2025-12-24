@@ -63,20 +63,20 @@ Consider two tables:
 Lineage identifies the **origin** of an attribute - where it was first defined. It is represented as a string in the format:
 
 ```
-`schema_name`.`table_name`.`attribute_name`
+schema_name.table_name.attribute_name
 ```
 
 #### Lineage Assignment Rules
 
 1. **Native primary key attributes** have lineage:
    ```
-   lineage = "`this_schema`.`this_table`.`attr_name`"
+   lineage = "this_schema.this_table.attr_name"
    ```
    The table where they are originally defined.
 
 2. **Attributes inherited via foreign key** retain their origin lineage:
    ```
-   lineage = "`parent_schema`.`parent_table`.`attr_name`"
+   lineage = "parent_schema.parent_table.attr_name"
    ```
    Traced to the original definition through the FK chain.
 
@@ -234,7 +234,7 @@ def compute_lineage(table, attribute):
 
     # Not inherited - check if primary key
     if attribute in table.primary_key:
-        return f"`{schema}`.`{table}`.`{attribute}`"
+        return f"{schema}.{table}.{attribute}"
 
     # Native secondary - no lineage
     return None
@@ -261,7 +261,7 @@ Add `lineage` field to the `Attribute` namedtuple:
 ```python
 default_attribute_properties = dict(
     # ... existing fields ...
-    lineage=None,  # NEW: Origin of attribute, e.g. "`schema`.`table`.`attr`"
+    lineage=None,  # NEW: Origin of attribute, e.g. "schema.table.attr"
 )
 ```
 
@@ -365,7 +365,7 @@ def declare_table(table_class, context):
             # Native primary key: this table is the origin
             lineage_entries.append((
                 table_name, attr.name,
-                f"`{schema}`.`{table_name}`.`{attr.name}`"
+                f"{schema}.{table_name}.{attr.name}"
             ))
         else:
             # Native secondary: no lineage
@@ -422,7 +422,7 @@ Union requires all namesake attributes to have matching lineage (enforced via `a
 
 ```
 DataJointError: Cannot join on attribute `id`: different lineages
-(`university`.`Student`.`id` vs `university`.`Course`.`id`).
+(university.Student.id vs university.Course.id).
 Use .proj() to rename one of the attributes.
 ```
 
@@ -544,7 +544,7 @@ Query cache keys should include lineage information to prevent cache collisions 
 For schemas spanning multiple databases, lineage format may need to include database identifier:
 
 ```
-`database`.`schema`.`table`.`attribute`
+database.schema.table.attribute
 ```
 
 ### Lineage Visualization
@@ -564,11 +564,11 @@ Response(session_id*, trial_num*, response_time)
 ```
 
 Lineages:
-- `Session.session_id` → `"university"."Session"."session_id"`
-- `Trial.session_id` → `"university"."Session"."session_id"` (inherited)
-- `Trial.trial_num` → `"university"."Trial"."trial_num"` (native PK)
-- `Response.session_id` → `"university"."Session"."session_id"` (inherited)
-- `Response.trial_num` → `"university"."Trial"."trial_num"` (inherited)
+- `Session.session_id` → `university.Session.session_id`
+- `Trial.session_id` → `university.Session.session_id` (inherited)
+- `Trial.trial_num` → `university.Trial.trial_num` (native PK)
+- `Response.session_id` → `university.Session.session_id` (inherited)
+- `Response.trial_num` → `university.Trial.trial_num` (inherited)
 
 ### Example 2: Secondary FK
 
@@ -579,9 +579,9 @@ Enrollment(student_id*, course_id)
 ```
 
 Lineages:
-- `Course.course_id` → `"university"."Course"."course_id"`
-- `Enrollment.student_id` → `"university"."Enrollment"."student_id"` (native PK)
-- `Enrollment.course_id` → `"university"."Course"."course_id"` (inherited via FK)
+- `Course.course_id` → `university.Course.course_id`
+- `Enrollment.student_id` → `university.Enrollment.student_id` (native PK)
+- `Enrollment.course_id` → `university.Course.course_id` (inherited via FK)
 
 ### Example 3: Aliased FK
 
@@ -593,9 +593,9 @@ Marriage(husband*, wife*, date)
 ```
 
 Lineages:
-- `Person.person_id` → `"family"."Person"."person_id"`
-- `Marriage.husband` → `"family"."Person"."person_id"` (aliased FK)
-- `Marriage.wife` → `"family"."Person"."person_id"` (aliased FK)
+- `Person.person_id` → `family.Person.person_id`
+- `Marriage.husband` → `family.Person.person_id` (aliased FK)
+- `Marriage.wife` → `family.Person.person_id` (aliased FK)
 
 Note: `husband` and `wife` have the **same lineage** even though different names.
 
@@ -607,7 +607,7 @@ Course(id*, title)  -- id is native PK
 ```
 
 Lineages:
-- `Student.id` → `"university"."Student"."id"`
-- `Course.id` → `"university"."Course"."id"`
+- `Student.id` → `university.Student.id`
+- `Course.id` → `university.Course.id`
 
 `Student * Course` → **Error**: non-homologous namesakes (`id` has different lineages)
