@@ -106,7 +106,7 @@ Note: `A - B` is the negated form of restriction (equivalent to `A & ~B`), not a
 
 **Resolution**: Use `.proj()` to rename one of the colliding attributes.
 
-**Deprecated**: The `@` operator is deprecated. Use `.join(semantic_check=False)` instead.
+**Removed**: The `@` operator is removed. Use `.join(semantic_check=False)` instead.
 
 **Note**: A warning may be raised for joins on unindexed attributes (performance consideration).
 
@@ -588,9 +588,9 @@ if not has_index(table1, attr) or not has_index(table2, attr):
     )
 ```
 
-### D6: Deprecate the `@` Operator
+### D6: Remove the `@` Operator
 
-**Decision**: Deprecate the `@` (permissive join) operator.
+**Decision**: Remove the `@` (permissive join) operator.
 
 **Rationale**:
 - Having two join operators (`*` and `@`) with subtle differences adds confusion
@@ -600,14 +600,14 @@ if not has_index(table1, attr) or not has_index(table2, attr):
 
 **Migration**:
 ```python
-# Old (deprecated)
-A @ B
+# Old (removed)
+A @ B  # raises error
 
 # New
 A.join(B, semantic_check=False)
 ```
 
-The `@` operator will emit a deprecation warning and eventually be removed.
+The `@` operator raises an error immediately, directing users to the new syntax. Since `@` was not widely used, a gradual deprecation period is unnecessary.
 
 ### D7: Migration via Utility Function
 
@@ -752,7 +752,7 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 | **D3**: Computed attributes | Lineage = `None` (breaks matching) |
 | **D4**: `dj.U` interaction | Does not affect lineage |
 | **D5**: Secondary attr restriction | Replaced by lineage rule - FK-inherited attrs have lineage, native secondary don't |
-| **D6**: `@` operator | Deprecated - use `.join(semantic_check=False)` |
+| **D6**: `@` operator | Removed - raises error directing to `.join(semantic_check=False)` |
 | **D7**: Migration | Utility function + automatic fallback computation |
 | **D8**: PK formation | Functional dependency analysis; left operand wins ties; non-commutative |
 | **D9**: Aggregation | B must contain A's entire PK; result PK = PK(A); applies to `keep_all_rows=True` too |
