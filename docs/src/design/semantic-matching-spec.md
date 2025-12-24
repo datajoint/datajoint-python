@@ -306,7 +306,7 @@ def assert_join_compatibility(expr1, expr2):
 
     Raises DataJointError if non-homologous namesakes are detected.
     """
-    if isinstance(expr1, U) or isinstance(expr2, U):
+    if isinstance(expr1, U):
         return  # U is always compatible
 
     # Find namesake attributes (same name in both)
@@ -320,7 +320,8 @@ def assert_join_compatibility(expr1, expr2):
             raise DataJointError(
                 f"Cannot join on attribute `{name}`: "
                 f"different lineages ({lineage1} vs {lineage2}). "
-                f"Use .proj() to rename one of the attributes."
+                f"Use .proj() to rename one of the attributes or "
+                f".join(semantic_check=False) to force a natural join."
             )
 ```
 
@@ -415,7 +416,7 @@ For existing schemas without `~lineage` tables:
 ```python
 def migrate_schema_lineage(schema):
     """Populate ~lineage table for all tables in schema."""
-    create_lineage_table_if_not_exists(schema)
+    create_lineage_table(schema)
 
     for table in schema.list_tables():
         populate_lineage_from_dependencies(schema, table)
@@ -452,7 +453,7 @@ Union requires all namesake attributes to have matching lineage (enforced via `a
 ```
 DataJointError: Cannot join on attribute `id`: different lineages
 (university.student.id vs university.course.id).
-Use .proj() to rename one of the attributes.
+Use .proj() to rename one of the attributes or .join(semantic_check=False) to force a natural join.
 ```
 
 ### Deprecated `@` Operator

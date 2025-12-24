@@ -20,7 +20,12 @@ LINEAGE_TABLE_NAME = "~lineage"
 
 
 def create_lineage_table(connection, database):
-    """Create the ~lineage table if it doesn't exist."""
+    """
+    Create the ~lineage table if it doesn't exist.
+
+    :param connection: database connection
+    :param database: schema/database name
+    """
     connection.query(
         f"""
         CREATE TABLE IF NOT EXISTS `{database}`.`{LINEAGE_TABLE_NAME}` (
@@ -37,8 +42,11 @@ def get_lineage(connection, database, table_name, attribute_name):
     """
     Get lineage for an attribute from the ~lineage table.
 
-    Returns the lineage string if found, None otherwise (indicating no lineage
-    or attribute is a native secondary).
+    :param connection: database connection
+    :param database: schema/database name
+    :param table_name: name of the table
+    :param attribute_name: name of the attribute
+    :return: lineage string if found, None otherwise (no lineage or native secondary)
     """
     try:
         result = connection.query(
@@ -59,8 +67,10 @@ def get_all_lineages(connection, database, table_name):
     """
     Get all lineage entries for a table.
 
-    Returns a dict mapping attribute_name -> lineage.
-    Attributes not in the dict have no lineage (native secondary).
+    :param connection: database connection
+    :param database: schema/database name
+    :param table_name: name of the table
+    :return: dict mapping attribute_name -> lineage (attributes not in dict have no lineage)
     """
     try:
         result = connection.query(
@@ -77,7 +87,13 @@ def get_all_lineages(connection, database, table_name):
 
 
 def delete_lineage_entries(connection, database, table_name):
-    """Delete all lineage entries for a table."""
+    """
+    Delete all lineage entries for a table.
+
+    :param connection: database connection
+    :param database: schema/database name
+    :param table_name: name of the table
+    """
     try:
         connection.query(
             f"""
@@ -95,6 +111,8 @@ def insert_lineage_entries(connection, database, entries):
     """
     Insert lineage entries for a table.
 
+    :param connection: database connection
+    :param database: schema/database name
     :param entries: list of (table_name, attribute_name, lineage) tuples
     """
     if not entries:
