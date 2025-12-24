@@ -150,7 +150,7 @@ For `A.aggr(B, ...)`, semantic matching applies with an additional constraint.
 
 This ensures that each B tuple belongs to exactly one A entity, so aggregation groups are non-overlapping. If B is missing any part of A's primary key, a B tuple could match multiple A tuples and be counted in multiple aggregates.
 
-**Left join aggregation**: The same constraint applies when using `A.aggr(B, ..., left=True)`. The left join allows A tuples with no matching B tuples to appear in the result (with NULL aggregates), but the grouping constraint remains: B must contain A's complete primary key.
+**Keep all rows**: The same constraint applies when using `A.aggr(B, ..., keep_all_rows=True)`. This keeps all A tuples in the result even if they have no matching B tuples (with NULL aggregates), but the grouping constraint remains: B must contain A's complete primary key.
 
 **Example**:
 ```python
@@ -694,7 +694,7 @@ WHERE c.contype = 'f'
 
 **Rationale**: This ensures non-overlapping aggregation groups. Each B tuple belongs to exactly one A entity, preventing double-counting.
 
-**Left join**: The same constraint applies for `A.aggr(B, ..., left=True)`. A tuples with no matching B tuples appear with NULL aggregates, but the grouping constraint remains.
+**Keep all rows**: The same constraint applies for `A.aggr(B, ..., keep_all_rows=True)`. A tuples with no matching B tuples appear with NULL aggregates, but the grouping constraint remains.
 
 ## Testing Strategy
 
@@ -741,7 +741,7 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 | **D6**: `@` operator | Deprecated - use `.join(semantic_check=False)` |
 | **D7**: Migration | Utility function + automatic fallback computation |
 | **D8**: PK formation | Functional dependency analysis; left operand wins ties; non-commutative |
-| **D9**: Aggregation | B must contain A's entire PK; result PK = PK(A); applies to left join too |
+| **D9**: Aggregation | B must contain A's entire PK; result PK = PK(A); applies to `keep_all_rows=True` too |
 
 ### Compatibility
 
