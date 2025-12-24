@@ -17,21 +17,18 @@ logger = logging.getLogger(__name__.split(".")[0])
 LINEAGE_TABLE_NAME = "~lineage"
 
 
-def _lineage_table_sql(database):
-    """Generate SQL to create the ~lineage table."""
-    return f"""
+def ensure_lineage_table(connection, database):
+    """Create the ~lineage table if it doesn't exist."""
+    connection.query(
+        f"""
         CREATE TABLE IF NOT EXISTS `{database}`.`{LINEAGE_TABLE_NAME}` (
             table_name VARCHAR(64) NOT NULL,
             attribute_name VARCHAR(64) NOT NULL,
             lineage VARCHAR(255) NOT NULL,
             PRIMARY KEY (table_name, attribute_name)
         ) ENGINE=InnoDB
-    """
-
-
-def ensure_lineage_table(connection, database):
-    """Create the ~lineage table if it doesn't exist."""
-    connection.query(_lineage_table_sql(database))
+        """
+    )
 
 
 def lineage_table_exists(connection, database):
