@@ -198,6 +198,7 @@ For DataJoint-managed schemas:
 
 - Lineage is stored explicitly in a hidden table (`~lineage`) per schema
 - Populated at table declaration time by copying from parent tables
+- Only attributes WITH lineage are stored (native secondary attributes have no entry)
 - Fast O(1) lookup at query time
 - Authoritative source when present
 
@@ -206,10 +207,14 @@ For DataJoint-managed schemas:
 CREATE TABLE `schema_name`.`~lineage` (
     table_name VARCHAR(64) NOT NULL,
     attribute_name VARCHAR(64) NOT NULL,
-    lineage VARCHAR(255),  -- NULL for native secondary attrs
+    lineage VARCHAR(255) NOT NULL,
     PRIMARY KEY (table_name, attribute_name)
 );
 ```
+
+**Lifecycle**:
+- On table creation: delete any existing entries for that table, then insert new entries
+- On table drop: delete all entries for that table
 
 #### Method 2: Dependency Graph Traversal
 
@@ -247,6 +252,7 @@ These methods are **mutually exclusive**:
 ```python
 def get_lineage(schema, table, attribute):
     if lineage_table_exists(schema):
+        # Returns lineage string if entry exists, None otherwise
         return query_lineage_table(schema, table, attribute)
     else:
         return compute_from_dependencies(schema, table, attribute)
@@ -352,6 +358,9 @@ When a table is declared, populate the `~lineage` table:
 def declare_table(table_class, context):
     # ... parse definition ...
 
+    # Remove any leftover entries from previous declaration
+    delete_lineage_entries(schema, table_name)
+
     lineage_entries = []
 
     for attr in definition.attributes:
@@ -360,19 +369,30 @@ def declare_table(table_class, context):
             parent_lineage = get_lineage(
                 attr.fk_schema, attr.fk_table, attr.fk_attribute
             )
-            lineage_entries.append((table_name, attr.name, parent_lineage))
+            if parent_lineage:  # Only store if parent has lineage
+                lineage_entries.append((table_name, attr.name, parent_lineage))
         elif attr.in_key:
             # Native primary key: this table is the origin
             lineage_entries.append((
                 table_name, attr.name,
                 f"{schema}.{table_name}.{attr.name}"
             ))
-        else:
-            # Native secondary: no lineage
-            lineage_entries.append((table_name, attr.name, None))
+        # Native secondary attributes: no entry (no lineage)
 
     # Insert into ~lineage table
     insert_lineage_entries(schema, lineage_entries)
+```
+
+### At Table Drop Time
+
+When a table is dropped, remove its lineage entries:
+
+```python
+def drop_table(table_class):
+    # ... drop the table ...
+
+    # Clean up lineage entries
+    delete_lineage_entries(schema, table_name)
 ```
 
 ### Migration for Existing Tables
