@@ -33,6 +33,8 @@ class LineageTable(Table):
     lineage         : varchar(200)  # "schema.table.attribute"
     """
 
+    table_name = "~lineage"
+
     def __init__(self, connection, database):
         self.database = database
         self._connection = connection
@@ -48,10 +50,6 @@ class LineageTable(Table):
 
         if not self.is_declared:
             self.declare()
-
-    @property
-    def table_name(self):
-        return "~lineage"
 
     def delete(self):
         """Bypass interactive prompts and dependencies."""
