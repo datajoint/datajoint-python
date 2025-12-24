@@ -279,8 +279,7 @@ class QueryExpression:
         Use .join(other, semantic_check=False) for permissive joins.
         """
         raise DataJointError(
-            "The @ operator has been removed in DataJoint 2.0. "
-            "Use .join(other, semantic_check=False) for permissive joins."
+            "The @ operator has been removed in DataJoint 2.0. " "Use .join(other, semantic_check=False) for permissive joins."
         )
 
     def join(self, other, semantic_check=True, left=False):
@@ -299,9 +298,9 @@ class QueryExpression:
             a * b  is short for a.join(b)
             a.join(b, semantic_check=False)  for permissive joins
         """
-        # Handle U objects: redirect to U's restriction operation
+        # U joins are deprecated - raise error directing to use & instead
         if isinstance(other, U):
-            return other & self
+            raise DataJointError("dj.U(...) * table is deprecated in DataJoint 2.0. " "Use dj.U(...) & table instead.")
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
         if not isinstance(other, QueryExpression):
@@ -310,9 +309,7 @@ class QueryExpression:
             assert_join_compatibility(self, other)
         # Only join on homologous namesakes (same name AND same lineage)
         join_attributes = set(
-            n
-            for n in self.heading.names
-            if n in other.heading.names and self.heading[n].lineage == other.heading[n].lineage
+            n for n in self.heading.names if n in other.heading.names and self.heading[n].lineage == other.heading[n].lineage
         )
         # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
@@ -846,18 +843,13 @@ class U:
         dj.U * table is deprecated in DataJoint 2.0.
         Use dj.U & table instead.
         """
-        raise DataJointError(
-            "dj.U(...) * table is deprecated in DataJoint 2.0. "
-            "Use dj.U(...) & table instead."
-        )
+        raise DataJointError("dj.U(...) * table is deprecated in DataJoint 2.0. " "Use dj.U(...) & table instead.")
 
     def __sub__(self, other):
         """
         dj.U - table produces an infinite set and is not supported.
         """
-        raise DataJointError(
-            "dj.U(...) - table produces an infinite set and is not supported."
-        )
+        raise DataJointError("dj.U(...) - table produces an infinite set and is not supported.")
 
     def aggr(self, group, **named_attributes):
         """

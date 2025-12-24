@@ -157,17 +157,12 @@ def compute_lineage_from_dependencies(connection, full_table_name, attribute_nam
         attr_map = props.get("attr_map", {})
         if attribute_name in attr_map:
             parent_attr = attr_map[attribute_name]
-            parent_parts = parent_table.replace("`", "").split(".")
-            parent_db = parent_parts[0]
-            parent_tbl = parent_parts[1]
 
             # Get parent's primary key
             parent_pk = connection.dependencies.nodes.get(parent_table, {}).get("primary_key", set())
 
             # Recursively trace to origin
-            return compute_lineage_from_dependencies(
-                connection, parent_table, parent_attr, list(parent_pk)
-            )
+            return compute_lineage_from_dependencies(connection, parent_table, parent_attr, list(parent_pk))
 
     # Not inherited - check if primary key
     if attribute_name in primary_key:
