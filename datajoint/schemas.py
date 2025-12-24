@@ -11,7 +11,7 @@ from .errors import AccessError, DataJointError
 from .external import ExternalMapping
 from .heading import Heading
 from .jobs import JobTable
-from .lineage import LineageTable, migrate_schema_lineage
+from .lineage import LineageTable, compute_schema_lineage
 from .settings import config
 from .table import FreeTable, Log, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
@@ -417,15 +417,14 @@ class Schema:
             self._lineage = LineageTable(self.connection, self.database)
         return self._lineage
 
-    def migrate_lineage(self):
+    def compute_lineage(self):
         """
         Compute and populate the ~lineage table for this schema.
 
         Analyzes foreign key relationships to determine attribute origins.
-        Use this to migrate an existing schema to support semantic matching.
         """
         self._assert_exists()
-        migrate_schema_lineage(self.connection, self.database)
+        compute_schema_lineage(self.connection, self.database)
 
     @property
     def code(self):

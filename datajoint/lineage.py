@@ -241,9 +241,9 @@ def compute_all_lineage_for_table(connection, schema, table_name):
     }
 
 
-def migrate_schema_lineage(connection, schema):
+def compute_schema_lineage(connection, schema):
     """
-    Compute and populate the ~lineage table for an existing schema.
+    Compute and populate the ~lineage table for a schema.
 
     Analyzes foreign key relationships to determine attribute origins.
 
@@ -283,7 +283,7 @@ def migrate_schema_lineage(connection, schema):
             if lineage is not None:
                 lineage_table.store_lineage(table_name, attr_name, lineage)
 
-    logger.info(f"Migrated lineage for schema `{schema_name}`: {len(tables)} tables")
+    logger.info(f"Computed lineage for schema `{schema_name}`: {len(tables)} tables")
 
 
 def get_lineage_for_heading(connection, schema, table_name, heading):
