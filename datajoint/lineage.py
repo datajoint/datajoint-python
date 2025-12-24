@@ -125,6 +125,86 @@ class LineageTable(Table):
         (self & dict(table_name=table_name)).delete_quick()
 
 
+def populate_table_lineage(connection, schema, table_name, heading):
+    """
+    Populate lineage for a newly declared table.
+
+    Called at table declaration time to store lineage for all attributes:
+    - Native PK attributes: lineage = "schema.table.attribute"
+    - FK attributes: copy lineage from parent's lineage table
+    - Native secondary attributes: no entry (no lineage)
+
+    :param connection: database connection
+    :param schema: schema name
+    :param table_name: table name (without schema prefix)
+    :param heading: Heading object for the declared table
+    """
+    # Get or create the lineage table
+    lineage_table = LineageTable(connection, schema)
+
+    # Load FK info from dependencies
+    connection.dependencies.load(force=True)
+    full_table_name = f"`{schema}`.`{table_name}`"
+
+    # Build map of FK attributes -> (parent_schema, parent_table, parent_attr)
+    fk_sources = {}
+    if full_table_name in connection.dependencies:
+        for parent, props in connection.dependencies.parents(full_table_name).items():
+            # Skip alias nodes
+            if parent.isdigit():
+                continue
+            attr_map = props.get("attr_map", {})
+            parent_schema, parent_table = parse_full_table_name(parent)
+            for child_attr, parent_attr in attr_map.items():
+                fk_sources[child_attr] = (parent_schema, parent_table, parent_attr)
+
+    # Store lineage for each attribute
+    for attr_name in heading.names:
+        if attr_name in fk_sources:
+            # FK attribute - copy lineage from parent's lineage table
+            parent_schema, parent_table, parent_attr = fk_sources[attr_name]
+            parent_lineage = _get_parent_lineage(
+                connection, parent_schema, parent_table, parent_attr
+            )
+            if parent_lineage:
+                lineage_table.store_lineage(table_name, attr_name, parent_lineage)
+        elif attr_name in heading.primary_key:
+            # Native PK attribute - lineage to self
+            lineage = f"{schema}.{table_name}.{attr_name}"
+            lineage_table.store_lineage(table_name, attr_name, lineage)
+        # Native secondary attributes: no entry needed
+
+
+def _get_parent_lineage(connection, parent_schema, parent_table, parent_attr):
+    """
+    Get lineage for a parent attribute from its lineage table.
+
+    :param connection: database connection
+    :param parent_schema: parent schema name
+    :param parent_table: parent table name
+    :param parent_attr: parent attribute name
+    :return: lineage string or None
+    """
+    # Check if parent schema has a lineage table
+    lineage_table_exists = (
+        connection.query(
+            """
+        SELECT COUNT(*) FROM information_schema.tables
+        WHERE table_schema = %s AND table_name = '~lineage'
+        """,
+            args=(parent_schema,),
+        ).fetchone()[0]
+        > 0
+    )
+
+    if lineage_table_exists:
+        parent_lineage_table = LineageTable(connection, parent_schema)
+        return parent_lineage_table.get_lineage(parent_table, parent_attr)
+    else:
+        # Parent schema has no lineage table - attribute has no tracked lineage
+        return None
+
+
 # =============================================================================
 # Dependency Graph Method (fallback for non-DataJoint schemas)
 # =============================================================================

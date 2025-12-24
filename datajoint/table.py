@@ -119,6 +119,17 @@ class Table(QueryExpression):
             pass
         else:
             self._log("Declared " + self.full_table_name)
+            # Populate lineage table for semantic matching
+            from .lineage import populate_table_lineage
+
+            try:
+                populate_table_lineage(
+                    self.connection, self.database, self.table_name, self.heading
+                )
+            except Exception as e:
+                logger.debug(
+                    f"Could not populate lineage for {self.full_table_name}: {e}"
+                )
 
     def alter(self, prompt=True, context=None):
         """
