@@ -1,10 +1,15 @@
 """
 Lineage tracking for semantic matching in joins.
 
-This module provides:
-- LineageTable: hidden table (~lineage) for storing attribute lineage
-- Functions to compute lineage from the FK graph (fallback)
-- Migration utilities for existing schemas
+This module provides two separate methods for determining attribute lineage:
+
+1. **Lineage tables** (~lineage): Used by DataJoint-managed schemas.
+   Lineage is stored explicitly and copied from parent tables at declaration time.
+
+2. **Dependency graph**: Fallback for non-DataJoint schemas without lineage tables.
+   Lineage is computed by traversing foreign key relationships.
+
+These two methods are mutually exclusive and should not be mixed.
 """
 
 import logging
@@ -14,6 +19,11 @@ from .table import Table
 from .utils import parse_full_table_name
 
 logger = logging.getLogger(__name__.split(".")[0])
+
+
+# =============================================================================
+# Lineage Table Method (for DataJoint-managed schemas)
+# =============================================================================
 
 
 class LineageTable(Table):
@@ -115,12 +125,19 @@ class LineageTable(Table):
         (self & dict(table_name=table_name)).delete_quick()
 
 
-def compute_lineage_from_dependencies(connection, schema, table_name, attribute_name):
-    """
-    Compute lineage by traversing the FK graph.
+# =============================================================================
+# Dependency Graph Method (fallback for non-DataJoint schemas)
+# =============================================================================
 
-    Uses connection.dependencies which loads FK info from INFORMATION_SCHEMA.
-    This is the fallback when the ~lineage table doesn't exist.
+
+def _compute_lineage_from_graph(connection, schema, table_name, attribute_name):
+    """
+    Compute lineage for a single attribute by traversing the FK dependency graph.
+
+    This is a FALLBACK method for schemas that don't have ~lineage tables.
+    It does NOT use lineage tables - it computes lineage purely from FK relationships.
+
+    Note: Results may be incomplete if referenced schemas are not loaded.
 
     :param connection: database connection
     :param schema: schema name
@@ -134,10 +151,16 @@ def compute_lineage_from_dependencies(connection, schema, table_name, attribute_
 
     # Check if the table exists in the dependency graph
     if full_table_name not in connection.dependencies:
-        # Table not in graph - compute lineage based on primary key status
-        # We need to query the database to check if this is a PK attribute
-        pk_attrs = _get_primary_key_attrs(connection, schema, table_name)
-        if attribute_name in pk_attrs:
+        # Table not in graph - get PK info from Heading
+        heading = Heading(
+            table_info=dict(
+                conn=connection,
+                database=schema,
+                table_name=table_name,
+                context=None,
+            )
+        )
+        if attribute_name in heading.primary_key:
             return f"{schema}.{table_name}.{attribute_name}"
         else:
             return None
@@ -161,7 +184,7 @@ def compute_lineage_from_dependencies(connection, schema, table_name, attribute_
                         )
                         break
             parent_schema, parent_table = parse_full_table_name(parent)
-            return compute_lineage_from_dependencies(
+            return _compute_lineage_from_graph(
                 connection, parent_schema, parent_table, parent_attr
             )
 
@@ -177,31 +200,14 @@ def compute_lineage_from_dependencies(connection, schema, table_name, attribute_
         return None
 
 
-def _get_primary_key_attrs(connection, schema, table_name):
+def _compute_all_lineage_from_graph(connection, schema, table_name):
     """
-    Get the primary key attributes for a table by querying the database.
+    Compute lineage for all attributes in a table using the FK dependency graph.
 
-    :param connection: database connection
-    :param schema: schema name
-    :param table_name: table name
-    :return: set of primary key attribute names
-    """
-    result = connection.query(
-        """
-        SELECT column_name
-        FROM information_schema.key_column_usage
-        WHERE table_schema = %s
-          AND table_name = %s
-          AND constraint_name = 'PRIMARY'
-        """,
-        args=(schema, table_name),
-    )
-    return {row[0] for row in result}
+    This is a FALLBACK method for schemas that don't have ~lineage tables.
+    It does NOT use lineage tables - it computes lineage purely from FK relationships.
 
-
-def compute_all_lineage_for_table(connection, schema, table_name):
-    """
-    Compute lineage for all attributes in a table.
+    Note: Results may be incomplete if referenced schemas are not loaded.
 
     :param connection: database connection
     :param schema: schema name
@@ -218,18 +224,61 @@ def compute_all_lineage_for_table(connection, schema, table_name):
         )
     )
 
-    # Compute lineage for each attribute
+    # Compute lineage for each attribute from the dependency graph
     return {
-        attr: compute_lineage_from_dependencies(connection, schema, table_name, attr)
+        attr: _compute_lineage_from_graph(connection, schema, table_name, attr)
         for attr in heading.names
     }
 
 
+# =============================================================================
+# Public API
+# =============================================================================
+
+
+def get_lineage_for_heading(connection, schema, table_name):
+    """
+    Get lineage information for all attributes in a table.
+
+    Uses one of two methods (mutually exclusive):
+    - If ~lineage table exists: load from lineage table
+    - Otherwise: compute from FK dependency graph (fallback)
+
+    :param connection: database connection
+    :param schema: schema name
+    :param table_name: table name
+    :return: dict mapping attribute_name -> lineage (or None)
+    """
+    # Check if ~lineage table exists
+    lineage_table_exists = (
+        connection.query(
+            """
+        SELECT COUNT(*) FROM information_schema.tables
+        WHERE table_schema = %s AND table_name = '~lineage'
+        """,
+            args=(schema,),
+        ).fetchone()[0]
+        > 0
+    )
+
+    if lineage_table_exists:
+        # Load from ~lineage table
+        lineage_table = LineageTable(connection, schema)
+        return lineage_table.get_table_lineage(table_name)
+    else:
+        # Compute from FK graph (fallback for non-DataJoint schemas)
+        return _compute_all_lineage_from_graph(connection, schema, table_name)
+
+
 def compute_schema_lineage(connection, schema):
     """
-    Compute and populate the ~lineage table for a schema.
+    Compute and populate the ~lineage table for a schema using the dependency graph.
 
-    Analyzes foreign key relationships to determine attribute origins.
+    This is a migration/initialization utility that analyzes FK relationships
+    to determine attribute origins and stores them in the ~lineage table.
+
+    After this is run, the schema will use lineage tables instead of the
+    dependency graph for lineage lookups.
 
     :param connection: database connection
     :param schema: schema object or schema name
@@ -262,42 +311,11 @@ def compute_schema_lineage(connection, schema):
 
     # Compute and store lineage for each table
     for table_name in tables:
-        lineage_map = compute_all_lineage_for_table(connection, schema_name, table_name)
+        lineage_map = _compute_all_lineage_from_graph(
+            connection, schema_name, table_name
+        )
         for attr_name, lineage in lineage_map.items():
             if lineage is not None:
                 lineage_table.store_lineage(table_name, attr_name, lineage)
 
     logger.info(f"Computed lineage for schema `{schema_name}`: {len(tables)} tables")
-
-
-def get_lineage_for_heading(connection, schema, table_name, heading):
-    """
-    Get lineage information for all attributes in a heading.
-
-    First tries to load from ~lineage table, falls back to FK graph computation.
-
-    :param connection: database connection
-    :param schema: schema name
-    :param table_name: table name
-    :param heading: Heading object to populate
-    :return: dict mapping attribute_name -> lineage (or None)
-    """
-    # Check if ~lineage table exists
-    lineage_table_exists = (
-        connection.query(
-            """
-        SELECT COUNT(*) FROM information_schema.tables
-        WHERE table_schema = %s AND table_name = '~lineage'
-        """,
-            args=(schema,),
-        ).fetchone()[0]
-        > 0
-    )
-
-    if lineage_table_exists:
-        # Load from ~lineage table
-        lineage_table = LineageTable(connection, schema)
-        return lineage_table.get_table_lineage(table_name)
-    else:
-        # Compute from FK graph
-        return compute_all_lineage_for_table(connection, schema, table_name)
