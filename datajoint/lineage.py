@@ -22,8 +22,15 @@ class LineageTable(Table):
     Hidden table for storing attribute lineage information.
 
     Each row maps (table_name, attribute_name) -> lineage string.
-    Lineage is "schema.table.attribute" tracing the attribute to its origin,
-    or NULL for native secondary attributes (which have no lineage).
+    Only attributes with lineage are stored; absence means no lineage.
+    """
+
+    definition = """
+    # Attribute lineage tracking for semantic matching
+    table_name      : varchar(64)   # name of the table
+    attribute_name  : varchar(64)   # name of the attribute
+    ---
+    lineage         : varchar(200)  # "schema.table.attribute"
     """
 
     def __init__(self, connection, database):
@@ -43,16 +50,6 @@ class LineageTable(Table):
             self.declare()
 
     @property
-    def definition(self):
-        return """
-        # Attribute lineage tracking for semantic matching
-        table_name      : varchar(64)   # name of the table
-        attribute_name  : varchar(64)   # name of the attribute
-        ---
-        lineage         : varchar(200)  # "schema.table.attribute" or empty for no lineage
-        """
-
-    @property
     def table_name(self):
         return "~lineage"
 
@@ -66,20 +63,26 @@ class LineageTable(Table):
 
     def store_lineage(self, table_name, attribute_name, lineage):
         """
-        Store lineage for an attribute.
+        Store lineage for an attribute. Only stores if lineage is not None.
 
         :param table_name: name of the table (without schema)
         :param attribute_name: name of the attribute
         :param lineage: lineage string "schema.table.attribute" or None
         """
-        self.insert1(
-            dict(
-                table_name=table_name,
-                attribute_name=attribute_name,
-                lineage=lineage or "",  # Store None as empty string
-            ),
-            replace=True,
-        )
+        if lineage is None:
+            # No lineage - delete any existing entry
+            (
+                self & dict(table_name=table_name, attribute_name=attribute_name)
+            ).delete_quick()
+        else:
+            self.insert1(
+                dict(
+                    table_name=table_name,
+                    attribute_name=attribute_name,
+                    lineage=lineage,
+                ),
+                replace=True,
+            )
 
     def get_lineage(self, table_name, attribute_name):
         """
@@ -87,27 +90,24 @@ class LineageTable(Table):
 
         :param table_name: name of the table (without schema)
         :param attribute_name: name of the attribute
-        :return: lineage string or None
+        :return: lineage string or None if no lineage
         """
         result = (
             self & dict(table_name=table_name, attribute_name=attribute_name)
         ).fetch("lineage")
-        if len(result) == 0:
-            return None
-        lineage = result[0]
-        return lineage if lineage else None  # Convert empty string back to None
+        return result[0] if len(result) else None
 
     def get_table_lineage(self, table_name):
         """
         Get lineage for all attributes in a table.
 
         :param table_name: name of the table (without schema)
-        :return: dict mapping attribute_name -> lineage (or None)
+        :return: dict mapping attribute_name -> lineage (only attributes with lineage)
         """
         result = (self & dict(table_name=table_name)).fetch("attribute_name", "lineage")
         if len(result[0]) == 0:
             return {}
-        return {attr: (lin if lin else None) for attr, lin in zip(result[0], result[1])}
+        return dict(zip(result[0], result[1]))
 
     def delete_table_lineage(self, table_name):
         """
@@ -285,7 +285,8 @@ def migrate_schema_lineage(connection, schema):
     for table_name in tables:
         lineage_map = compute_all_lineage_for_table(connection, schema_name, table_name)
         for attr_name, lineage in lineage_map.items():
-            lineage_table.store_lineage(table_name, attr_name, lineage)
+            if lineage is not None:
+                lineage_table.store_lineage(table_name, attr_name, lineage)
 
     logger.info(f"Migrated lineage for schema `{schema_name}`: {len(tables)} tables")
 
