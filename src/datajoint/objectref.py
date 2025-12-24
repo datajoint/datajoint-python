@@ -34,7 +34,9 @@ class ObjectRef:
     from the storage backend.
 
     Attributes:
-        path: Full path/key within storage backend (includes token)
+        path: Relative path within the store (includes token)
+        url: Full URI to the object (e.g., 's3://bucket/path/to/object.dat')
+        store: Store name (None for default store)
         size: Total size in bytes (sum for folders), or None if not computed.
             For large hierarchical data like Zarr stores, size computation can
             be expensive and is optional.
@@ -53,6 +55,8 @@ class ObjectRef:
     ext: str | None
     is_dir: bool
     timestamp: datetime
+    url: str | None = None
+    store: str | None = None
     mime_type: str | None = None
     item_count: int | None = None
     _backend: StorageBackend | None = None
@@ -80,6 +84,8 @@ class ObjectRef:
 
         return cls(
             path=data["path"],
+            url=data.get("url"),
+            store=data.get("store"),
             size=data["size"],
             hash=data.get("hash"),
             ext=data.get("ext"),
@@ -105,6 +111,10 @@ class ObjectRef:
             "is_dir": self.is_dir,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
         }
+        if self.url:
+            data["url"] = self.url
+        if self.store:
+            data["store"] = self.store
         if self.mime_type:
             data["mime_type"] = self.mime_type
         if self.item_count is not None:
@@ -121,7 +131,9 @@ class ObjectRef:
 
         Returns:
             Dict containing the object metadata:
-                - path: Storage path
+                - path: Relative storage path within the store
+                - url: Full URI (e.g., 's3://bucket/path') (optional)
+                - store: Store name (optional, None for default store)
                 - size: File/folder size in bytes (or None)
                 - hash: Content hash (or None)
                 - ext: File extension (or None)
@@ -152,12 +164,15 @@ class ObjectRef:
         return self._backend.fs
 
     @property
-    def store(self) -> fsspec.FSMap:
+    def fsmap(self) -> fsspec.FSMap:
         """
         Return FSMap suitable for Zarr/xarray.
 
         This provides a dict-like interface to the storage location,
         compatible with zarr.open() and xarray.open_zarr().
+
+        Example:
+            >>> z = zarr.open(obj_ref.fsmap, mode='r')
         """
         self._ensure_backend()
         full_path = self._backend._full_path(self.path)

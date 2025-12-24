@@ -215,6 +215,9 @@ class ObjectStorageSettings(BaseSettings):
     partition_pattern: str | None = Field(default=None, description="Path pattern with {attribute} placeholders")
     token_length: int = Field(default=8, ge=4, le=16, description="Random suffix length for filenames")
 
+    # Named stores configuration (object_storage.stores.<name>.*)
+    stores: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Named object stores")
+
 
 class Config(BaseSettings):
     """
@@ -432,6 +435,88 @@ class Config(BaseSettings):
 
         return spec
 
+    def get_object_store_spec(self, store_name: str | None = None) -> dict[str, Any]:
+        """
+        Get validated configuration for a specific object store.
+
+        Args:
+            store_name: Name of the store (None for default store)
+
+        Returns:
+            Object store configuration dict
+
+        Raises:
+            DataJointError: If store is not configured or has invalid config
+        """
+        if store_name is None:
+            # Return default store spec
+            return self.get_object_storage_spec()
+
+        os_settings = self.object_storage
+
+        # Check if named store exists
+        if store_name not in os_settings.stores:
+            raise DataJointError(
+                f"Object store '{store_name}' is not configured. "
+                f"Add object_storage.stores.{store_name}.* settings to datajoint.json"
+            )
+
+        store_config = os_settings.stores[store_name]
+        protocol = store_config.get("protocol", "").lower()
+
+        supported_protocols = ("file", "s3", "gcs", "azure")
+        if protocol not in supported_protocols:
+            raise DataJointError(
+                f"Invalid protocol for store '{store_name}': {protocol}. "
+                f'Supported protocols: {", ".join(supported_protocols)}'
+            )
+
+        # Use project_name from default config if not specified in store
+        project_name = store_config.get("project_name") or os_settings.project_name
+        if not project_name:
+            raise DataJointError(
+                f"project_name is required for object store '{store_name}'. "
+                "Set object_storage.project_name or object_storage.stores.{store_name}.project_name"
+            )
+
+        # Build spec dict
+        spec = {
+            "project_name": project_name,
+            "protocol": protocol,
+            "location": store_config.get("location", ""),
+            "partition_pattern": store_config.get("partition_pattern") or os_settings.partition_pattern,
+            "token_length": store_config.get("token_length") or os_settings.token_length,
+            "store_name": store_name,
+        }
+
+        # Add protocol-specific settings
+        if protocol == "s3":
+            endpoint = store_config.get("endpoint")
+            bucket = store_config.get("bucket")
+            if not endpoint or not bucket:
+                raise DataJointError(f"endpoint and bucket are required for S3 store '{store_name}'")
+            spec.update(
+                {
+                    "endpoint": endpoint,
+                    "bucket": bucket,
+                    "access_key": store_config.get("access_key"),
+                    "secret_key": store_config.get("secret_key"),
+                    "secure": store_config.get("secure", True),
+                }
+            )
+        elif protocol == "gcs":
+            bucket = store_config.get("bucket")
+            if not bucket:
+                raise DataJointError(f"bucket is required for GCS store '{store_name}'")
+            spec["bucket"] = bucket
+        elif protocol == "azure":
+            container = store_config.get("container")
+            if not container:
+                raise DataJointError(f"container is required for Azure store '{store_name}'")
+            spec["container"] = container
+
+        return spec
+
     def load(self, filename: str | Path) -> None:
         """
         Load settings from a JSON file.
@@ -464,6 +549,13 @@ class Config(BaseSettings):
                     group_obj = getattr(self, group)
                     if hasattr(group_obj, attr):
                         setattr(group_obj, attr, value)
+            elif len(parts) == 4:
+                # Handle object_storage.stores.<name>.<attr> pattern
+                group, subgroup, store_name, attr = parts
+                if group == "object_storage" and subgroup == "stores":
+                    if store_name not in self.object_storage.stores:
+                        self.object_storage.stores[store_name] = {}
+                    self.object_storage.stores[store_name][attr] = value
 
     def _load_secrets(self, secrets_dir: Path) -> None:
         """Load secrets from a secrets directory."""

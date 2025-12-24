@@ -65,7 +65,7 @@ TYPE_PATTERN = {
         INTERNAL_ATTACH=r"attach$",
         EXTERNAL_ATTACH=r"attach@(?P<store>[a-z][\-\w]*)$",
         FILEPATH=r"filepath@(?P<store>[a-z][\-\w]*)$",
-        OBJECT=r"object$",  # managed object storage (files/folders)
+        OBJECT=r"object(@(?P<store>[a-z][\-\w]*))?$",  # managed object storage (files/folders)
         UUID=r"uuid$",
         ADAPTED=r"<.+>$",
     ).items()
@@ -469,6 +469,9 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         match["type"] = "LONGBLOB"
     elif category == "OBJECT":
         # Object type stores metadata as JSON - no foreign key to external table
+        # Extract store name if present (object@store_name syntax)
+        if "@" in match["type"]:
+            match["store"] = match["type"].split("@", 1)[1]
         match["type"] = "JSON"
     elif category in EXTERNAL_TYPES:
         if category == "FILEPATH" and not _support_filepath_types():
