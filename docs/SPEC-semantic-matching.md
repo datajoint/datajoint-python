@@ -110,6 +110,42 @@ Note: `A - B` is the negated form of restriction (equivalent to `A & ~B`), not a
 
 **Note**: A warning may be raised for joins on unindexed attributes (performance consideration).
 
+### Universal Set `dj.U`
+
+`dj.U(attr1, ..., attrn)` represents the universal set of all possible values for the specified attributes. It has special semantics:
+
+**Homology**: Attributes of `dj.U` are considered **homologous to any namesake attribute**. This is a special case where lineage matching is bypassed.
+
+**Valid operations**:
+
+| Expression | Meaning | Result PK |
+|------------|---------|-----------|
+| `dj.U('a', 'b') & A` | Promote a, b to PK | {a, b} |
+| `dj.U('a', 'b').aggr(A, ...)` | Aggregate A grouped by a, b | {a, b} |
+
+**Constraint**: The attributes (a, b) must exist in the operand (A). Their lineage is transferred to the result.
+
+**Invalid operations**:
+
+| Expression | Reason |
+|------------|--------|
+| `dj.U('a', 'b') - A` | Would produce infinite set (all values NOT in A) |
+| `dj.U('a', 'b') * A` | Deprecated — use `dj.U('a', 'b') & A` instead |
+
+**Deprecation**: Join on `dj.U` (using `*`) is deprecated. It was previously used only for PK manipulation, which is now done via restriction (`&`).
+
+**Example**:
+```python
+# Group sessions by subject, counting sessions per subject
+dj.U('subject_id').aggr(Session, n="count(*)")
+# Result: (subject_id) -> n
+# subject_id lineage comes from Session.subject_id
+
+# Promote subject_id to PK (removing session_id from PK)
+dj.U('subject_id') & Session
+# Result PK: {subject_id}
+```
+
 ### Primary Key Formation in Joins
 
 The primary key of `A * B` is determined by functional dependency analysis, not simple union.
@@ -710,6 +746,22 @@ WHERE c.contype = 'f'
 
 **Keep all rows**: The same constraint applies for `A.aggr(B, ..., keep_all_rows=True)`. A tuples with no matching B tuples appear with NULL aggregates, but the grouping constraint remains.
 
+### D10: Universal Set `dj.U` Semantics
+
+**Decision**: `dj.U` attributes are homologous to any namesake. Deprecate join (`*`) on `dj.U`.
+
+**Homology rule**: Attributes of `dj.U` bypass lineage checking — they match any namesake attribute.
+
+**Valid operations**:
+- `dj.U('a', 'b') & A` — promotes a, b to PK; lineage transferred from A
+- `dj.U('a', 'b').aggr(A, ...)` — aggregates A grouped by a, b
+
+**Invalid operations**:
+- `dj.U('a', 'b') - A` — produces infinite set (error)
+- `dj.U('a', 'b') * A` — deprecated, use `&` instead
+
+**Rationale**: Join on `dj.U` was only used for PK manipulation. Restriction (`&`) is clearer for this purpose.
+
 ## Testing Strategy
 
 1. **Unit tests** for lineage propagation through all query operations
@@ -756,6 +808,7 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 | **D7**: Migration | Utility function + automatic fallback computation |
 | **D8**: PK formation | Functional dependency analysis; left operand wins ties; non-commutative |
 | **D9**: Aggregation | B must contain A's entire PK; result PK = PK(A); applies to `keep_all_rows=True` too |
+| **D10**: `dj.U` semantics | Homologous to any namesake; deprecate `*`, use `&` for PK promotion |
 
 ### Compatibility
 
