@@ -11,6 +11,7 @@ from .errors import AccessError, DataJointError
 from .external import ExternalMapping
 from .heading import Heading
 from .jobs import JobTable
+from .lineage import LineageTable, migrate_schema_lineage
 from .settings import config
 from .table import FreeTable, Log, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
@@ -71,6 +72,7 @@ class Schema:
         self.create_schema = create_schema
         self.create_tables = create_tables
         self._jobs = None
+        self._lineage = None
         self.external = ExternalMapping(self)
         self.add_objects = add_objects
         self.declare_list = []
@@ -400,6 +402,30 @@ class Schema:
         if self._jobs is None:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
+
+    @property
+    def lineage(self):
+        """
+        schema.lineage provides a view of the lineage tracking table for the schema.
+
+        The lineage table stores attribute origin information for semantic matching in joins.
+
+        :return: lineage table
+        """
+        self._assert_exists()
+        if self._lineage is None:
+            self._lineage = LineageTable(self.connection, self.database)
+        return self._lineage
+
+    def migrate_lineage(self):
+        """
+        Compute and populate the ~lineage table for this schema.
+
+        Analyzes foreign key relationships to determine attribute origins.
+        Use this to migrate an existing schema to support semantic matching.
+        """
+        self._assert_exists()
+        migrate_schema_lineage(self.connection, self.database)
 
     @property
     def code(self):

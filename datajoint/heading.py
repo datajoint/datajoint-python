@@ -41,6 +41,7 @@ default_attribute_properties = (
         attribute_expression=None,
         database=None,
         dtype=object,
+        lineage=None,  # "schema.table.attribute" string tracing attribute origin, or None
     )
 )
 
@@ -153,6 +154,15 @@ class Heading:
         return [
             k for k, v in self.attributes.items() if v.attribute_expression is not None
         ]
+
+    def get_lineage(self, name):
+        """
+        Get the lineage of an attribute.
+
+        :param name: attribute name
+        :return: lineage string "schema.table.attribute" or None
+        """
+        return self.attributes[name].lineage
 
     def __getitem__(self, name):
         """shortcut to the attribute"""
