@@ -66,6 +66,12 @@ Lineage identifies the **origin** of an attribute - where it was first defined. 
 schema_name.table_name.attribute_name
 ```
 
+**Note**: `table_name` refers to the actual database table name, not the Python class name. DataJoint converts class names (CamelCase) to table names (snake_case) with tier prefixes:
+- `Session` → `session` (manual table)
+- `#SessionType` → `#session_type` (lookup table)
+- `_ProcessingTask` → `_processing_task` (imported table)
+- `__ProcessedData` → `__processed_data` (computed table)
+
 #### Lineage Assignment Rules
 
 1. **Native primary key attributes** have lineage:
@@ -160,7 +166,7 @@ The error message directs users to the explicit `.join()` method.
 
 ## Universal Set `dj.U`
 
-`dj.U(attr1, ..., attrn)` represents the universal set of all possible values and lineages.
+`dj.U()` or `dj.U('attr1', 'attr2', ...)` represents the universal set of all possible values and lineages.
 
 ### Homology with `dj.U`
 
@@ -174,6 +180,9 @@ dj.U('a', 'b') & A
 
 # Aggregation: groups by a, b
 dj.U('a', 'b').aggr(A, count='count(*)')
+
+# Empty U for distinct primary keys
+dj.U() & A
 ```
 
 ### Invalid Operations
@@ -442,7 +451,7 @@ Union requires all namesake attributes to have matching lineage (enforced via `a
 
 ```
 DataJointError: Cannot join on attribute `id`: different lineages
-(university.Student.id vs university.Course.id).
+(university.student.id vs university.course.id).
 Use .proj() to rename one of the attributes.
 ```
 
@@ -559,75 +568,69 @@ Ensure existing well-designed schemas continue to work without modification.
 
 Query cache keys should include lineage information to prevent cache collisions between semantically different queries.
 
-### Cross-Database Lineage
-
-For schemas spanning multiple databases, lineage format may need to include database identifier:
-
-```
-database.schema.table.attribute
-```
-
 ### Lineage Visualization
 
-Extend ERD diagrams to show lineage relationships, helping users understand attribute origins.
+Extend DataJoint diagrams to show lineage relationships, helping users understand attribute origins.
 
 ## Appendix: Lineage Examples
+
+These examples show Python class names with their corresponding database table names (in lineage strings).
 
 ### Example 1: Simple FK Chain
 
 ```
-Session(session_id*, date)
+Session(session_id*, date)           # table: session
     ↓ FK
-Trial(session_id*, trial_num*, stimulus)
+Trial(session_id*, trial_num*, stimulus)    # table: trial
     ↓ FK
-Response(session_id*, trial_num*, response_time)
+Response(session_id*, trial_num*, response_time)  # table: __response (computed)
 ```
 
-Lineages:
-- `Session.session_id` → `university.Session.session_id`
-- `Trial.session_id` → `university.Session.session_id` (inherited)
-- `Trial.trial_num` → `university.Trial.trial_num` (native PK)
-- `Response.session_id` → `university.Session.session_id` (inherited)
-- `Response.trial_num` → `university.Trial.trial_num` (inherited)
+Lineages (using database table names):
+- `Session.session_id` → `university.session.session_id`
+- `Trial.session_id` → `university.session.session_id` (inherited)
+- `Trial.trial_num` → `university.trial.trial_num` (native PK)
+- `Response.session_id` → `university.session.session_id` (inherited)
+- `Response.trial_num` → `university.trial.trial_num` (inherited)
 
 ### Example 2: Secondary FK
 
 ```
-Course(course_id*, title)
+Course(course_id*, title)            # table: course
     ↓ FK (secondary)
-Enrollment(student_id*, course_id)
+Enrollment(student_id*, course_id)   # table: enrollment
 ```
 
 Lineages:
-- `Course.course_id` → `university.Course.course_id`
-- `Enrollment.student_id` → `university.Enrollment.student_id` (native PK)
-- `Enrollment.course_id` → `university.Course.course_id` (inherited via FK)
+- `Course.course_id` → `university.course.course_id`
+- `Enrollment.student_id` → `university.enrollment.student_id` (native PK)
+- `Enrollment.course_id` → `university.course.course_id` (inherited via FK)
 
 ### Example 3: Aliased FK
 
 ```
-Person(person_id*, name)
+Person(person_id*, name)             # table: person
     ↓ FK (aliased)
-Marriage(husband*, wife*, date)
+Marriage(husband*, wife*, date)      # table: __marriage (computed)
     where husband -> Person, wife -> Person
 ```
 
 Lineages:
-- `Person.person_id` → `family.Person.person_id`
-- `Marriage.husband` → `family.Person.person_id` (aliased FK)
-- `Marriage.wife` → `family.Person.person_id` (aliased FK)
+- `Person.person_id` → `family.person.person_id`
+- `Marriage.husband` → `family.person.person_id` (aliased FK)
+- `Marriage.wife` → `family.person.person_id` (aliased FK)
 
 Note: `husband` and `wife` have the **same lineage** even though different names.
 
 ### Example 4: Non-Homologous Namesakes
 
 ```
-Student(id*, name)  -- id is native PK
-Course(id*, title)  -- id is native PK
+Student(id*, name)  -- id is native PK, table: student
+Course(id*, title)  -- id is native PK, table: course
 ```
 
 Lineages:
-- `Student.id` → `university.Student.id`
-- `Course.id` → `university.Course.id`
+- `Student.id` → `university.student.id`
+- `Course.id` → `university.course.id`
 
 `Student * Course` → **Error**: non-homologous namesakes (`id` has different lineages)
