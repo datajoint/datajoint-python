@@ -323,7 +323,9 @@ class QueryExpression:
             join_attributes = get_homologous_namesakes(self, other)
         else:
             # Permissive mode: join on all namesakes regardless of lineage
-            join_attributes = set(n for n in self.heading.names if n in other.heading.names)
+            join_attributes = set(
+                n for n in self.heading.names if n in other.heading.names
+            )
         # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
             (set(self.original_heading.names) & set(other.original_heading.names))

@@ -104,15 +104,10 @@ class LineageTable(Table):
         :param table_name: name of the table (without schema)
         :return: dict mapping attribute_name -> lineage (or None)
         """
-        result = (self & dict(table_name=table_name)).fetch(
-            "attribute_name", "lineage"
-        )
+        result = (self & dict(table_name=table_name)).fetch("attribute_name", "lineage")
         if len(result[0]) == 0:
             return {}
-        return {
-            attr: (lin if lin else None)
-            for attr, lin in zip(result[0], result[1])
-        }
+        return {attr: (lin if lin else None) for attr, lin in zip(result[0], result[1])}
 
     def delete_table_lineage(self, table_name):
         """
@@ -172,10 +167,14 @@ def compute_lineage_from_dependencies(connection, schema, table_name, attribute_
             # Handle alias nodes (numeric string nodes in the graph)
             if parent.isdigit():
                 # Find the actual parent by traversing through alias
-                for grandparent, gprops in connection.dependencies.parents(parent).items():
+                for grandparent, gprops in connection.dependencies.parents(
+                    parent
+                ).items():
                     if not grandparent.isdigit():
                         parent = grandparent
-                        parent_attr = gprops.get("attr_map", {}).get(attribute_name, parent_attr)
+                        parent_attr = gprops.get("attr_map", {}).get(
+                            attribute_name, parent_attr
+                        )
                         break
             parent_schema, parent_table = parse_full_table_name(parent)
             return compute_lineage_from_dependencies(
@@ -304,13 +303,16 @@ def get_lineage_for_heading(connection, schema, table_name, heading):
     :return: dict mapping attribute_name -> lineage (or None)
     """
     # Check if ~lineage table exists
-    lineage_table_exists = connection.query(
-        """
+    lineage_table_exists = (
+        connection.query(
+            """
         SELECT COUNT(*) FROM information_schema.tables
         WHERE table_schema = %s AND table_name = '~lineage'
         """,
-        args=(schema,),
-    ).fetchone()[0] > 0
+            args=(schema,),
+        ).fetchone()[0]
+        > 0
+    )
 
     if lineage_table_exists:
         # Load from ~lineage table

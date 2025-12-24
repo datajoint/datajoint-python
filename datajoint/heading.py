@@ -17,32 +17,30 @@ from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_t
 
 logger = logging.getLogger(__name__.split(".")[0])
 
-default_attribute_properties = (
-    dict(  # these default values are set in computed attributes
-        name=None,
-        type="expression",
-        in_key=False,
-        nullable=False,
-        default=None,
-        comment="calculated attribute",
-        autoincrement=False,
-        numeric=None,
-        string=None,
-        uuid=False,
-        json=None,
-        is_blob=False,
-        is_attachment=False,
-        is_filepath=False,
-        is_external=False,
-        is_hidden=False,
-        adapter=None,
-        store=None,
-        unsupported=False,
-        attribute_expression=None,
-        database=None,
-        dtype=object,
-        lineage=None,  # "schema.table.attribute" string tracing attribute origin, or None
-    )
+default_attribute_properties = dict(  # these default values are set in computed attributes
+    name=None,
+    type="expression",
+    in_key=False,
+    nullable=False,
+    default=None,
+    comment="calculated attribute",
+    autoincrement=False,
+    numeric=None,
+    string=None,
+    uuid=False,
+    json=None,
+    is_blob=False,
+    is_attachment=False,
+    is_filepath=False,
+    is_external=False,
+    is_hidden=False,
+    adapter=None,
+    store=None,
+    unsupported=False,
+    attribute_expression=None,
+    database=None,
+    dtype=object,
+    lineage=None,  # "schema.table.attribute" string tracing attribute origin, or None
 )
 
 

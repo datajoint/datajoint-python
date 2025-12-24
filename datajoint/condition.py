@@ -162,28 +162,10 @@ def assert_join_compatibility(expr1, expr2):
         # Check if they are homologous (same lineage)
         # None lineages are never homologous (not even with each other)
         if lineage1 is None or lineage2 is None or lineage1 != lineage2:
-            # Non-homologous namesakes - error
-            if lineage1 is None and lineage2 is None:
-                msg = (
-                    f"Cannot join: attribute '{attr}' has no lineage in both operands "
-                    f"(native secondary attributes). Use .proj() to rename one."
-                )
-            elif lineage1 is None:
-                msg = (
-                    f"Cannot join: attribute '{attr}' has lineage '{lineage2}' in one operand "
-                    f"but no lineage in the other. Use .proj() to rename one."
-                )
-            elif lineage2 is None:
-                msg = (
-                    f"Cannot join: attribute '{attr}' has lineage '{lineage1}' in one operand "
-                    f"but no lineage in the other. Use .proj() to rename one."
-                )
-            else:
-                msg = (
-                    f"Cannot join: attribute '{attr}' has different lineages "
-                    f"('{lineage1}' vs '{lineage2}'). Use .proj() to rename one."
-                )
-            raise DataJointError(msg)
+            raise DataJointError(
+                f"Ambiguous attribute '{attr}' has no matching lineage. "
+                f"Use .proj() to rename it in one of the operands."
+            )
 
 
 def make_condition(query_expression, condition, columns):
