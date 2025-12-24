@@ -115,7 +115,7 @@ def assert_join_compatibility(expr1, expr2):
             raise DataJointError("Object %r is not a QueryExpression and cannot be joined." % rel)
 
     # dj.U is always compatible - it contains all possible lineages
-    if isinstance(expr1, U) or isinstance(expr2, U):
+    if isinstance(expr1, U):
         return
 
     # Find namesake attributes (same name in both expressions)
@@ -130,7 +130,8 @@ def assert_join_compatibility(expr1, expr2):
             raise DataJointError(
                 f"Cannot join on attribute `{name}`: different lineages "
                 f"({lineage1} vs {lineage2}). "
-                f"Use .proj() to rename one of the attributes."
+                f"Use .proj() to rename one of the attributes or "
+                f".join(semantic_check=False) to force a natural join."
             )
 
 

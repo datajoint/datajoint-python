@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__.split(".")[0])
 LINEAGE_TABLE_NAME = "~lineage"
 
 
-def ensure_lineage_table(connection, database):
+def create_lineage_table(connection, database):
     """Create the ~lineage table if it doesn't exist."""
     connection.query(
         f"""
@@ -100,7 +100,7 @@ def insert_lineage_entries(connection, database, entries):
     if not entries:
         return
 
-    ensure_lineage_table(connection, database)
+    create_lineage_table(connection, database)
 
     for table_name, attribute_name, lineage in entries:
         connection.query(
