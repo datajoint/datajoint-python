@@ -112,9 +112,9 @@ Note: `A - B` is the negated form of restriction (equivalent to `A & ~B`), not a
 
 ### Universal Set `dj.U`
 
-`dj.U(attr1, ..., attrn)` represents the universal set of all possible values for the specified attributes. It has special semantics:
+`dj.U(attr1, ..., attrn)` represents the universal set of all possible values and lineages for the specified attributes.
 
-**Homology**: Attributes of `dj.U` are considered **homologous to any namesake attribute**. This is a special case where lineage matching is bypassed.
+**Homology**: Since `dj.U` contains all possible lineages, its attributes are **homologous to any namesake attribute**. This is not bypassing the lineage check—it's a natural consequence of `dj.U` being the universal set.
 
 **Valid operations**:
 
@@ -748,9 +748,9 @@ WHERE c.contype = 'f'
 
 ### D10: Universal Set `dj.U` Semantics
 
-**Decision**: `dj.U` attributes are homologous to any namesake. Deprecate join (`*`) on `dj.U`.
+**Decision**: `dj.U` represents all possible values and lineages. Deprecate join (`*`) on `dj.U`.
 
-**Homology rule**: Attributes of `dj.U` bypass lineage checking — they match any namesake attribute.
+**Homology rule**: Since `dj.U` contains all lineages, its attributes are homologous to any namesake.
 
 **Valid operations**:
 - `dj.U('a', 'b') & A` — promotes a, b to PK; lineage transferred from A
@@ -808,7 +808,7 @@ Semantic matching is a significant change to DataJoint's join semantics that imp
 | **D7**: Migration | Utility function + automatic fallback computation |
 | **D8**: PK formation | Functional dependency analysis; left operand wins ties; non-commutative |
 | **D9**: Aggregation | B must contain A's entire PK; result PK = PK(A); applies to `keep_all_rows=True` too |
-| **D10**: `dj.U` semantics | Homologous to any namesake; deprecate `*`, use `&` for PK promotion |
+| **D10**: `dj.U` semantics | Universal set contains all lineages; deprecate `*`, use `&` for PK promotion |
 
 ### Compatibility
 
