@@ -1,21 +1,15 @@
-import itertools
 import json
 import numbers
-import uuid
+import uuid as uuid_module
 from functools import partial
-from pathlib import Path
 
 import numpy as np
 import pandas
 
 from datajoint.condition import Top
 
-from . import hash
 from .errors import DataJointError
-from .objectref import ObjectRef
 from .settings import config
-from .storage import StorageBackend
-from .utils import safe_write
 
 
 class key:
@@ -39,79 +33,51 @@ def to_dicts(recarray):
 
 def _get(connection, attr, data, squeeze, download_path):
     """
-    This function is called for every attribute
+    Retrieve and decode attribute data from the database.
+
+    In the simplified type system:
+    - Native types pass through unchanged
+    - JSON types are parsed
+    - UUID types are converted from bytes
+    - Blob types return raw bytes (unless an adapter handles them)
+    - Adapters (AttributeTypes) handle all custom encoding/decoding
 
     :param connection: a dj.Connection object
-    :param attr: attribute name from the table's heading
-    :param data: literal value fetched from the table
-    :param squeeze: if True squeeze blobs
-    :param download_path: for fetches that download data, e.g. attachments
-    :return: unpacked data
+    :param attr: attribute from the table's heading
+    :param data: raw value fetched from the database
+    :param squeeze: if True squeeze blobs (legacy, unused)
+    :param download_path: for fetches that download data (legacy, unused in simplified model)
+    :return: decoded data
     """
     if data is None:
-        return
-    if attr.is_object:
-        # Object type - return ObjectRef handle
-        json_data = json.loads(data) if isinstance(data, str) else data
-        # Get the correct backend based on store name in metadata
-        store_name = json_data.get("store")  # None for default store
-        try:
-            spec = config.get_object_store_spec(store_name)
-            backend = StorageBackend(spec)
-        except DataJointError:
-            backend = None
-        return ObjectRef.from_json(json_data, backend=backend)
+        return None
+
+    # JSON type - parse and optionally decode via adapter
     if attr.json:
-        return json.loads(data)
-
-    extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
-
-    # apply custom attribute type decoder if present
-    def adapt(x):
-        return attr.adapter.decode(x, key=None) if attr.adapter else x
-
-    if attr.is_filepath:
-        return adapt(extern.download_filepath(uuid.UUID(bytes=data))[0])
-    if attr.is_attachment:
-        # Steps:
-        # 1. get the attachment filename
-        # 2. check if the file already exists at download_path, verify checksum
-        # 3. if exists and checksum passes then return the local filepath
-        # 4. Otherwise, download the remote file and return the new filepath
-        _uuid = uuid.UUID(bytes=data) if attr.is_external else None
-        attachment_name = extern.get_attachment_name(_uuid) if attr.is_external else data.split(b"\0", 1)[0].decode()
-        local_filepath = Path(download_path) / attachment_name
-        if local_filepath.is_file():
-            attachment_checksum = _uuid if attr.is_external else hash.uuid_from_buffer(data)
-            if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + "\0"):
-                return adapt(str(local_filepath))  # checksum passed, no need to download again
-            # generate the next available alias filename
-            for n in itertools.count():
-                f = local_filepath.parent / (local_filepath.stem + "_%04x" % n + local_filepath.suffix)
-                if not f.is_file():
-                    local_filepath = f
-                    break
-                if attachment_checksum == hash.uuid_from_file(f, init_string=attachment_name + "\0"):
-                    return adapt(str(f))  # checksum passed, no need to download again
-        # Save attachment
-        if attr.is_external:
-            extern.download_attachment(_uuid, attachment_name, local_filepath)
-        else:
-            # write from buffer
-            safe_write(local_filepath, data.split(b"\0", 1)[1])
-        return adapt(str(local_filepath))  # download file from remote store
-
-    if attr.uuid:
-        return adapt(uuid.UUID(bytes=data))
-    elif attr.is_blob:
-        blob_data = extern.get(uuid.UUID(bytes=data)) if attr.is_external else data
-        # Adapters (like <djblob>) handle deserialization in decode()
-        # Without adapter, blob columns return raw bytes (no deserialization)
+        parsed = json.loads(data)
         if attr.adapter:
-            return attr.adapter.decode(blob_data, key=None)
-        return blob_data  # raw bytes
-    else:
-        return adapt(data)
+            return attr.adapter.decode(parsed, key=None)
+        return parsed
+
+    # UUID type - convert bytes to UUID object
+    if attr.uuid:
+        result = uuid_module.UUID(bytes=data)
+        if attr.adapter:
+            return attr.adapter.decode(result, key=None)
+        return result
+
+    # Blob type - return raw bytes or decode via adapter
+    if attr.is_blob:
+        if attr.adapter:
+            return attr.adapter.decode(data, key=None)
+        return data  # raw bytes
+
+    # Other types with adapter
+    if attr.adapter:
+        return attr.adapter.decode(data, key=None)
+
+    # Native types - pass through unchanged
+    return data
 
 
 class Fetch:

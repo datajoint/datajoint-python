@@ -11,13 +11,13 @@ import pyparsing as pp
 
 from .attribute_adapter import get_adapter
 from .condition import translate_attribute
-from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_types
+from .errors import DataJointError
 from .settings import config
 
-UUID_DATA_TYPE = "binary(16)"
-
-# Type aliases for numeric types
-SQL_TYPE_ALIASES = {
+# Core DataJoint type aliases - scientist-friendly names mapped to native SQL types
+# These types can be used without angle brackets in table definitions
+CORE_TYPE_ALIASES = {
+    # Numeric types
     "FLOAT32": "float",
     "FLOAT64": "double",
     "INT64": "bigint",
@@ -29,18 +29,22 @@ SQL_TYPE_ALIASES = {
     "INT8": "tinyint",
     "UINT8": "tinyint unsigned",
     "BOOL": "tinyint",
+    # UUID type
+    "UUID": "binary(16)",
 }
+
 MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {
     "CURRENT_TIMESTAMP",
     "NULL",
 }  # SQL literals to be used without quotes (case insensitive)
-EXTERNAL_TABLE_ROOT = "~external"
 
+# Type patterns for declaration parsing
+# Two categories: core type aliases and native passthrough types
 TYPE_PATTERN = {
     k: re.compile(v, re.I)
     for k, v in dict(
-        # Type aliases must come before INTEGER and FLOAT patterns to avoid prefix matching
+        # Core DataJoint type aliases (scientist-friendly names)
         FLOAT32=r"float32$",
         FLOAT64=r"float64$",
         INT64=r"int64$",
@@ -51,8 +55,9 @@ TYPE_PATTERN = {
         UINT16=r"uint16$",
         INT8=r"int8$",
         UINT8=r"uint8$",
-        BOOL=r"bool$",  # aliased to tinyint
-        # Native MySQL types
+        BOOL=r"bool$",
+        UUID=r"uuid$",
+        # Native SQL types (passthrough)
         INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
@@ -60,42 +65,19 @@ TYPE_PATTERN = {
         JSON=r"json$",
         ENUM=r"enum\s*\(.+\)$",
         TEMPORAL=r"(date|datetime|time|timestamp|year)(\s*\(.+\))?$",
-        INTERNAL_BLOB=r"(tiny|small|medium|long|)blob$",
-        EXTERNAL_BLOB=r"blob@(?P<store>[a-z][\-\w]*)$",
-        INTERNAL_ATTACH=r"attach$",
-        EXTERNAL_ATTACH=r"attach@(?P<store>[a-z][\-\w]*)$",
-        FILEPATH=r"filepath@(?P<store>[a-z][\-\w]*)$",
-        OBJECT=r"object(@(?P<store>[a-z][\-\w]*))?$",  # managed object storage (files/folders)
-        UUID=r"uuid$",
+        BLOB=r"(tiny|small|medium|long|)blob$",
+        # AttributeTypes use angle brackets
         ADAPTED=r"<.+>$",
     ).items()
 }
 
-# custom types are stored in attribute comment
-SPECIAL_TYPES = {
-    "UUID",
-    "INTERNAL_ATTACH",
-    "EXTERNAL_ATTACH",
-    "EXTERNAL_BLOB",
-    "FILEPATH",
-    "OBJECT",
-    "ADAPTED",
-} | set(SQL_TYPE_ALIASES)
-NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
-EXTERNAL_TYPES = {
-    "EXTERNAL_ATTACH",
-    "EXTERNAL_BLOB",
-    "FILEPATH",
-}  # data referenced by a UUID in external tables
-# Blob and attachment types cannot have SQL default values (other than NULL)
-BINARY_TYPES = {
-    "EXTERNAL_ATTACH",
-    "INTERNAL_ATTACH",
-    "EXTERNAL_BLOB",
-    "INTERNAL_BLOB",
-}
+# Types that require special handling (stored in attribute comment for reconstruction)
+SPECIAL_TYPES = {"ADAPTED"} | set(CORE_TYPE_ALIASES)
 
-assert set().union(SPECIAL_TYPES, EXTERNAL_TYPES, BINARY_TYPES) <= set(TYPE_PATTERN)
+# Native SQL types that pass through without modification
+NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
+
+assert SPECIAL_TYPES <= set(TYPE_PATTERN)
 
 
 def match_type(attribute_type):
@@ -459,50 +441,32 @@ def compile_index(line, index_sql):
 
 def substitute_special_type(match, category, foreign_key_sql, context):
     """
+    Substitute special types with their native SQL equivalents.
+
+    Special types are:
+    - Core type aliases (float32 → float, uuid → binary(16), etc.)
+    - ADAPTED types (AttributeTypes in angle brackets)
+
     :param match: dict containing with keys "type" and "comment" -- will be modified in place
     :param category: attribute type category from TYPE_PATTERN
     :param foreign_key_sql: list of foreign key declarations to add to
     :param context: context for looking up user-defined attribute_type adapters
     """
-    if category == "UUID":
-        match["type"] = UUID_DATA_TYPE
-    elif category == "INTERNAL_ATTACH":
-        match["type"] = "LONGBLOB"
-    elif category == "OBJECT":
-        # Object type stores metadata as JSON - no foreign key to external table
-        # Extract store name if present (object@store_name syntax)
-        if "@" in match["type"]:
-            match["store"] = match["type"].split("@", 1)[1]
-        match["type"] = "JSON"
-    elif category in EXTERNAL_TYPES:
-        if category == "FILEPATH" and not _support_filepath_types():
-            raise DataJointError(
-                """
-            The filepath data type is disabled until complete validation.
-            To turn it on as experimental feature, set the environment variable
-            {env} = TRUE or upgrade datajoint.
-            """.format(env=FILEPATH_FEATURE_SWITCH)
-            )
-        match["store"] = match["type"].split("@", 1)[1]
-        match["type"] = UUID_DATA_TYPE
-        foreign_key_sql.append(
-            "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
-            "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match)
-        )
-    elif category == "ADAPTED":
+    if category == "ADAPTED":
+        # AttributeType - resolve to underlying dtype
         attr_type, store_name = get_adapter(context, match["type"])
-        # Store the store parameter if present
         if store_name is not None:
             match["store"] = store_name
         match["type"] = attr_type.dtype
+        # Recursively resolve if dtype is also a special type
         category = match_type(match["type"])
         if category in SPECIAL_TYPES:
-            # recursive redefinition from user-defined datatypes.
             substitute_special_type(match, category, foreign_key_sql, context)
-    elif category in SQL_TYPE_ALIASES:
-        match["type"] = SQL_TYPE_ALIASES[category]
+    elif category in CORE_TYPE_ALIASES:
+        # Core type alias - substitute with native SQL type
+        match["type"] = CORE_TYPE_ALIASES[category]
     else:
-        assert False, "Unknown special type"
+        assert False, f"Unknown special type: {category}"
 
 
 def compile_attribute(line, in_key, foreign_key_sql, context):
@@ -513,7 +477,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     :param in_key: set to True if attribute is in primary key set
     :param foreign_key_sql: the list of foreign key declarations to add to
     :param context: context in which to look up user-defined attribute type adapterss
-    :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
+    :returns: (name, sql, store) -- attribute name, sql code for its declaration, and optional store name
     """
     try:
         match = attribute_parser.parseString(line + "#", parseAll=True)
@@ -550,13 +514,10 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         match["comment"] = ":{type}:{comment}".format(**match)  # insert custom type into comment
         substitute_special_type(match, category, foreign_key_sql, context)
 
-    if category in BINARY_TYPES and match["default"] not in {
-        "DEFAULT NULL",
-        "NOT NULL",
-    }:
-        raise DataJointError(
-            "The default value for blob or attachment attributes can only be NULL in:\n{line}".format(line=line)
-        )
+    # Check for invalid default values on blob types (after type substitution)
+    final_category = match_type(match["type"])
+    if final_category == "BLOB" and match["default"] not in {"DEFAULT NULL", "NOT NULL"}:
+        raise DataJointError("The default value for blob attributes can only be NULL in:\n{line}".format(line=line))
 
     sql = ("`{name}` {type} {default}" + (' COMMENT "{comment}"' if match["comment"] else "")).format(**match)
     return match["name"], sql, match.get("store")

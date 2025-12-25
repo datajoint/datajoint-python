@@ -98,8 +98,9 @@ class StagedInsert:
             raise DataJointError(f"Attribute '{field}' not found in table heading")
 
         attr = self._table.heading[field]
-        if not attr.is_object:
-            raise DataJointError(f"Attribute '{field}' is not an object type")
+        # Check if this is an object AttributeType (has adapter with "object" in type_name)
+        if not (attr.adapter and hasattr(attr.adapter, "type_name") and "object" in attr.adapter.type_name):
+            raise DataJointError(f"Attribute '{field}' is not an <object> type")
 
         # Extract primary key from rec
         primary_key = {k: self._rec[k] for k in self._table.primary_key if k in self._rec}

@@ -8,13 +8,11 @@ import numpy as np
 from .attribute_adapter import get_adapter
 from .attribute_type import AttributeType
 from .declare import (
-    EXTERNAL_TYPES,
-    NATIVE_TYPES,
+    CORE_TYPE_ALIASES,
     SPECIAL_TYPES,
     TYPE_PATTERN,
-    UUID_DATA_TYPE,
 )
-from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_types
+from .errors import DataJointError
 
 
 class _MissingType(AttributeType):
@@ -62,10 +60,6 @@ default_attribute_properties = dict(  # these default values are set in computed
     uuid=False,
     json=None,
     is_blob=False,
-    is_attachment=False,
-    is_filepath=False,
-    is_object=False,
-    is_external=False,
     is_hidden=False,
     adapter=None,
     store=None,
@@ -88,11 +82,13 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
     @property
     def sql_type(self):
         """:return: datatype (as string) in database. In most cases, it is the same as self.type"""
-        return UUID_DATA_TYPE if self.uuid else self.type
+        # UUID is now a core type alias - already resolved to binary(16)
+        return self.type
 
     @property
     def sql_comment(self):
         """:return: full comment for the SQL declaration. Includes custom type specification"""
+        # UUID info is stored in the comment for reconstruction
         return (":uuid:" if self.uuid else "") + self.comment
 
     @property
@@ -168,16 +164,9 @@ class Heading:
         return [k for k, v in self.attributes.items() if v.is_blob]
 
     @property
-    def objects(self):
-        return [k for k, v in self.attributes.items() if v.is_object]
-
-    @property
     def non_blobs(self):
-        return [
-            k
-            for k, v in self.attributes.items()
-            if not (v.is_blob or v.is_attachment or v.is_filepath or v.is_object or v.json)
-        ]
+        """Attributes that are not blobs or JSON (used for simple column handling)."""
+        return [k for k, v in self.attributes.items() if not (v.is_blob or v.json)]
 
     @property
     def new_attributes(self):
@@ -298,15 +287,11 @@ class Heading:
                 autoincrement=bool(re.search(r"auto_increment", attr["Extra"], flags=re.I)),
                 numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "INTEGER", "FLOAT")),
                 string=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("ENUM", "TEMPORAL", "STRING")),
-                is_blob=bool(TYPE_PATTERN["INTERNAL_BLOB"].match(attr["type"])),
+                is_blob=bool(TYPE_PATTERN["BLOB"].match(attr["type"])),
                 uuid=False,
                 json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
-                is_attachment=False,
-                is_filepath=False,
-                is_object=False,
                 adapter=None,
                 store=None,
-                is_external=False,
                 attribute_expression=None,
                 is_hidden=attr["name"].startswith("_"),
             )
@@ -316,26 +301,34 @@ class Heading:
             attr["unsupported"] = not any((attr["is_blob"], attr["numeric"], attr["numeric"]))
             attr.pop("Extra")
 
-            # process custom DataJoint types
+            # process custom DataJoint types stored in comment
             special = re.match(r":(?P<type>[^:]+):(?P<comment>.*)", attr["comment"])
             if special:
                 special = special.groupdict()
                 attr.update(special)
-            # process custom attribute types (adapted types)
+
+            # process AttributeTypes (adapted types in angle brackets)
             if special and TYPE_PATTERN["ADAPTED"].match(attr["type"]):
                 assert context is not None, "Declaration context is not set"
                 adapter_name = special["type"]
                 try:
-                    attr.update(adapter=get_adapter(context, adapter_name))
+                    adapter_result = get_adapter(context, adapter_name)
+                    # get_adapter returns (adapter, store_name) tuple
+                    if isinstance(adapter_result, tuple):
+                        attr["adapter"], attr["store"] = adapter_result
+                    else:
+                        attr["adapter"] = adapter_result
                 except DataJointError:
                     # if no adapter, then delay the error until the first invocation
-                    attr.update(adapter=_MissingType(adapter_name))
+                    attr["adapter"] = _MissingType(adapter_name)
                 else:
-                    attr.update(type=attr["adapter"].dtype)
+                    attr["type"] = attr["adapter"].dtype
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):
                         raise DataJointError(f"Invalid dtype '{attr['type']}' in attribute type <{adapter_name}>.")
-                    special = not any(TYPE_PATTERN[c].match(attr["type"]) for c in NATIVE_TYPES)
+                    # Update is_blob based on resolved dtype
+                    attr["is_blob"] = bool(TYPE_PATTERN["BLOB"].match(attr["type"]))
 
+            # Handle core type aliases (uuid, float32, etc.)
             if special:
                 try:
                     category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(attr["type"]))
@@ -350,46 +343,18 @@ class Heading:
                                 url=url, **attr
                             )
                         )
-                    raise DataJointError("Unknown attribute type `{type}`".format(**attr))
-                if category == "FILEPATH" and not _support_filepath_types():
-                    raise DataJointError(
-                        """
-                        The filepath data type is disabled until complete validation.
-                        To turn it on as experimental feature, set the environment variable
-                        {env} = TRUE or upgrade datajoint.
-                        """.format(env=FILEPATH_FEATURE_SWITCH)
-                    )
-                # Extract store name for external types and object types with named stores
-                store = None
-                if category in EXTERNAL_TYPES:
-                    store = attr["type"].split("@")[1]
-                elif category == "OBJECT" and "@" in attr["type"]:
-                    store = attr["type"].split("@")[1]
+                    # Not a special type - that's fine, could be native passthrough
+                    category = None
 
-                attr.update(
-                    unsupported=False,
-                    is_attachment=category in ("INTERNAL_ATTACH", "EXTERNAL_ATTACH"),
-                    is_filepath=category == "FILEPATH",
-                    is_object=category == "OBJECT",
-                    # INTERNAL_BLOB is not a custom type but is included for completeness
-                    is_blob=category in ("INTERNAL_BLOB", "EXTERNAL_BLOB"),
-                    uuid=category == "UUID",
-                    is_external=category in EXTERNAL_TYPES,
-                    store=store,
-                )
+                if category == "UUID":
+                    attr["uuid"] = True
+                elif category in CORE_TYPE_ALIASES:
+                    # Core type alias - already resolved in DB
+                    pass
 
-            if attr["in_key"] and any(
-                (
-                    attr["is_blob"],
-                    attr["is_attachment"],
-                    attr["is_filepath"],
-                    attr["is_object"],
-                    attr["json"],
-                )
-            ):
-                raise DataJointError(
-                    "Json, Blob, attachment, filepath, or object attributes " "are not allowed in the primary key"
-                )
+            # Check primary key constraints
+            if attr["in_key"] and (attr["is_blob"] or attr["json"]):
+                raise DataJointError("Blob or JSON attributes are not allowed in the primary key")
 
             if attr["string"] and attr["default"] is not None and attr["default"] not in sql_literals:
                 attr["default"] = '"%s"' % attr["default"]
@@ -410,7 +375,7 @@ class Heading:
                     attr["dtype"] = numeric_types[(t, is_unsigned)]
 
             if attr["adapter"]:
-                # restore adapted type name
+                # restore adapted type name for display
                 attr["type"] = adapter_name
 
         self._attributes = dict(((q["name"], Attribute(**q)) for q in attributes))

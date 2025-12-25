@@ -924,56 +924,49 @@ class Table(QueryExpression):
         as a string to be included in the query and the value, if any, to be submitted for
         processing by mysql API.
 
+        In the simplified type system:
+        - Adapters (AttributeTypes) handle all custom encoding
+        - UUID values are converted to bytes
+        - JSON values are serialized
+        - Blob values pass through as bytes
+        - Numeric values are stringified
+
         :param name:  name of attribute to be inserted
         :param value: value of attribute to be inserted
         :param ignore_extra_fields: if True, return None for unknown fields
-        :param row: the full row dict (needed for object attributes to extract primary key)
+        :param row: the full row dict (unused in simplified model)
         """
         if ignore_extra_fields and name not in self.heading:
             return None
         attr = self.heading[name]
+
+        # Apply adapter encoding first (if present)
         if attr.adapter:
-            # Custom attribute type: validate and encode
             attr.adapter.validate(value)
             value = attr.adapter.encode(value, key=None)
+
+        # Handle NULL values
         if value is None or (attr.numeric and (value == "" or np.isnan(float(value)))):
-            # set default value
             placeholder, value = "DEFAULT", None
-        else:  # not NULL
+        else:
             placeholder = "%s"
+            # UUID - convert to bytes
             if attr.uuid:
                 if not isinstance(value, uuid.UUID):
                     try:
                         value = uuid.UUID(value)
                     except (AttributeError, ValueError):
-                        raise DataJointError("badly formed UUID value {v} for attribute `{n}`".format(v=value, n=name))
+                        raise DataJointError(f"badly formed UUID value {value} for attribute `{name}`")
                 value = value.bytes
-            elif attr.is_blob:
-                # Adapters (like <djblob>) handle serialization in encode()
-                # Without adapter, blob columns store raw bytes (no serialization)
-                if attr.is_external:
-                    value = self.external[attr.store].put(value).bytes
-            elif attr.is_attachment:
-                attachment_path = Path(value)
-                if attr.is_external:
-                    # value is hash of contents
-                    value = self.external[attr.store].upload_attachment(attachment_path).bytes
-                else:
-                    # value is filename + contents
-                    value = str.encode(attachment_path.name) + b"\0" + attachment_path.read_bytes()
-            elif attr.is_filepath:
-                value = self.external[attr.store].upload_filepath(value).bytes
-            elif attr.is_object:
-                # Object type - upload to object storage and return JSON metadata
-                if row is None:
-                    raise DataJointError(
-                        f"Object attribute {name} requires full row context for insert. " "This is an internal error."
-                    )
-                value = self._process_object_value(name, value, row, store_name=attr.store)
-            elif attr.numeric:
-                value = str(int(value) if isinstance(value, bool) else value)
+            # JSON - serialize to string
             elif attr.json:
                 value = json.dumps(value)
+            # Numeric - convert to string
+            elif attr.numeric:
+                value = str(int(value) if isinstance(value, bool) else value)
+            # Blob - pass through as bytes (adapters handle serialization)
+            # elif attr.is_blob: pass through unchanged
+
         return name, placeholder, value
 
     def __make_row_to_insert(self, row, field_list, ignore_extra_fields):
