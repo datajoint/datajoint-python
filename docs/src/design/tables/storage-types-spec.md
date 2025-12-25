@@ -5,8 +5,16 @@
 This document defines a layered storage architecture:
 
 1. **MySQL types**: `longblob`, `varchar`, `int`, etc.
-2. **Core DataJoint types**: `object`, `content` (and their `@store` variants)
+2. **Core DataJoint types**: `object`, `content`, `filepath` (and their `@store` variants)
 3. **AttributeTypes**: `<djblob>`, `<xblob>`, `<attach>`, etc. (built on top of core types)
+
+### Three OAS Storage Regions
+
+| Region | Path Pattern | Addressing | Use Case |
+|--------|--------------|------------|----------|
+| Object | `{schema}/{table}/{pk}/` | Primary key | Large objects, Zarr, HDF5 |
+| Content | `_content/{hash}` | Content hash | Deduplicated blobs/files |
+| Filepath | `_files/{user-path}` | User-defined | User-organized files |
 
 ## Core Types
 
@@ -44,11 +52,14 @@ class Analysis(dj.Computed):
 
 ```
 store_root/
-├── {schema}/{table}/{pk}/     # object storage (path-addressed)
+├── {schema}/{table}/{pk}/     # object storage (path-addressed by PK)
 │   └── {attribute}/
 │
-└── _content/                   # content storage (content-addressed)
-    └── {hash[:2]}/{hash[2:4]}/{hash}/
+├── _content/                   # content storage (content-addressed)
+│   └── {hash[:2]}/{hash[2:4]}/{hash}
+│
+└── _files/                     # filepath storage (user-addressed)
+    └── {user-defined-path}
 ```
 
 #### Content Type Behavior
@@ -94,6 +105,92 @@ The `content` type stores a `char(64)` hash in the database:
 -- content column
 features CHAR(64) NOT NULL  -- SHA256 hex hash
 ```
+
+### `filepath` / `filepath@store` - User-Addressed Storage
+
+**Upgraded from legacy.** User-defined path organization with ObjectRef access:
+
+- **User controls paths**: relative path specified by user (not derived from PK or hash)
+- Stored in `_files/{user-path}` within the store
+- Returns `ObjectRef` for lazy access (no automatic copying)
+- Stores checksum in database for verification
+- Supports files and folders (like `object`)
+
+```python
+class RawData(dj.Manual):
+    definition = """
+    session_id : int
+    ---
+    recording : filepath@raw      # user specifies path
+    """
+
+# Insert - user provides relative path
+table.insert1({
+    'session_id': 1,
+    'recording': 'experiment_001/session_001/data.nwb'
+})
+
+# Fetch - returns ObjectRef (lazy, no copy)
+row = (table & 'session_id=1').fetch1()
+ref = row['recording']           # ObjectRef
+ref.download('/local/path')      # explicit download
+ref.open()                       # fsspec streaming access
+```
+
+#### Filepath Type Behavior
+
+```python
+# Core type behavior
+class FilepathType:
+    """Core user-addressed storage type."""
+
+    def store(self, user_path: str, store_backend) -> dict:
+        """
+        Register filepath, return metadata.
+        File must already exist at _files/{user_path} in store.
+        """
+        full_path = f"_files/{user_path}"
+        if not store_backend.exists(full_path):
+            raise FileNotFoundError(f"File not found: {full_path}")
+
+        # Compute checksum for verification
+        checksum = store_backend.checksum(full_path)
+        size = store_backend.size(full_path)
+
+        return {
+            'path': user_path,
+            'checksum': checksum,
+            'size': size
+        }
+
+    def retrieve(self, metadata: dict, store_backend) -> ObjectRef:
+        """Return ObjectRef for lazy access."""
+        return ObjectRef(
+            path=f"_files/{metadata['path']}",
+            store=store_backend,
+            checksum=metadata.get('checksum')  # for verification
+        )
+```
+
+#### Database Column
+
+The `filepath` type stores JSON metadata:
+
+```sql
+-- filepath column
+recording JSON NOT NULL
+-- Contains: {"path": "...", "checksum": "...", "size": ...}
+```
+
+#### Key Differences from Legacy `filepath@store`
+
+| Feature | Legacy | New |
+|---------|--------|-----|
+| Access | Copy to local stage | ObjectRef (lazy) |
+| Copying | Automatic | Explicit via `ref.download()` |
+| Streaming | No | Yes via `ref.open()` |
+| Folders | No | Yes |
+| Interface | Returns local path | Returns ObjectRef |
 
 ## Parameterized AttributeTypes
 
@@ -235,31 +332,32 @@ class Attachments(dj.Manual):
 ## Type Layering Summary
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     AttributeTypes                          │
-│  <djblob>   <xblob>   <attach>   <xattach>   <custom>      │
-├─────────────────────────────────────────────────────────────┤
-│                    Core DataJoint Types                     │
-│     longblob        content        object                   │
-│                   content@store   object@store              │
-├─────────────────────────────────────────────────────────────┤
-│                      MySQL Types                            │
-│  LONGBLOB    CHAR(64)    JSON    VARCHAR    INT    etc.    │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                        AttributeTypes                              │
+│  <djblob>   <xblob>   <attach>   <xattach>   <custom>             │
+├───────────────────────────────────────────────────────────────────┤
+│                     Core DataJoint Types                           │
+│   longblob     content      object       filepath                  │
+│              content@s    object@s     filepath@s                  │
+├───────────────────────────────────────────────────────────────────┤
+│                        MySQL Types                                 │
+│   LONGBLOB     CHAR(64)      JSON       JSON      VARCHAR   etc.  │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ## Storage Comparison
 
-| AttributeType | Core Type | Storage Location | Dedup | Returns |
-|---------------|-----------|------------------|-------|---------|
+| Type | Core Type | Storage Location | Dedup | Returns |
+|------|-----------|------------------|-------|---------|
 | `<djblob>` | `longblob` | Database | No | Python object |
-| `<xblob>` | `content` | `_content/{hash}/` | Yes | Python object |
-| `<xblob@store>` | `content@store` | `_content/{hash}/` | Yes | Python object |
+| `<xblob>` | `content` | `_content/{hash}` | Yes | Python object |
+| `<xblob@s>` | `content@s` | `_content/{hash}` | Yes | Python object |
 | `<attach>` | `longblob` | Database | No | Local file path |
-| `<xattach>` | `content` | `_content/{hash}/` | Yes | Local file path |
-| `<xattach@store>` | `content@store` | `_content/{hash}/` | Yes | Local file path |
-| — | `object` | `{schema}/{table}/{pk}/` | No | ObjectRef |
-| — | `object@store` | `{schema}/{table}/{pk}/` | No | ObjectRef |
+| `<xattach>` | `content` | `_content/{hash}` | Yes | Local file path |
+| `<xattach@s>` | `content@s` | `_content/{hash}` | Yes | Local file path |
+| `object` | — | `{schema}/{table}/{pk}/` | No | ObjectRef |
+| `object@s` | — | `{schema}/{table}/{pk}/` | No | ObjectRef |
+| `filepath@s` | — | `_files/{user-path}` | No | ObjectRef |
 
 ## Reference Counting for Content Type
 
@@ -306,33 +404,37 @@ def garbage_collect(project):
         (ContentRegistry() & {'content_hash': content_hash}).delete()
 ```
 
-## Content vs Object: When to Use Each
+## Core Type Comparison
 
-| Feature | `content` | `object` |
-|---------|-----------|----------|
-| Addressing | Content hash (SHA256) | Path (from primary key) |
-| Deduplication | Yes | No |
-| Structure | Single blob only | Files, folders, Zarr, HDF5 |
-| Access | Transparent (returns bytes) | Lazy (returns ObjectRef) |
-| GC | Reference counted | Deleted with row |
-| Use case | Serialized data, file attachments | Large/complex objects, streaming |
+| Feature | `object` | `content` | `filepath` |
+|---------|----------|-----------|------------|
+| Addressing | Primary key | Content hash | User-defined path |
+| Path control | DataJoint | DataJoint | User |
+| Deduplication | No | Yes | No |
+| Structure | Files, folders, Zarr | Single blob only | Files, folders |
+| Access | ObjectRef (lazy) | Transparent (bytes) | ObjectRef (lazy) |
+| GC | Deleted with row | Reference counted | Deleted with row |
+| Checksum | Optional | Implicit (is the hash) | Stored in DB |
 
-**Rule of thumb:**
-- Need deduplication or storing serialized Python objects? → `content` via `<xblob>`
-- Need folders, Zarr, HDF5, or streaming access? → `object`
+**When to use each:**
+- **`object`**: Large/complex objects where DataJoint controls organization (Zarr, HDF5)
+- **`content`**: Deduplicated serialized data or file attachments via `<xblob>`, `<xattach>`
+- **`filepath`**: User-managed file organization, external data sources
 
 ## Key Design Decisions
 
-1. **Layered architecture**: Core types (`content`, `object`) separate from AttributeTypes
-2. **Content type**: Single-blob, content-addressed, deduplicated storage
-3. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
-4. **Naming convention**:
+1. **Layered architecture**: Core types (`object`, `content`, `filepath`) separate from AttributeTypes
+2. **Three OAS regions**: object (PK-addressed), content (hash-addressed), filepath (user-addressed)
+3. **Content type**: Single-blob, content-addressed, deduplicated storage
+4. **Filepath upgrade**: Returns ObjectRef (lazy) instead of copying files
+5. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
+6. **Naming convention**:
    - `<djblob>` = internal serialized (database)
    - `<xblob>` = external serialized (content-addressed)
    - `<attach>` = internal file (single file)
    - `<xattach>` = external file (single file)
-5. **Transparent access**: AttributeTypes return Python objects or file paths, not references
-6. **Lazy access for objects**: Only `object`/`object@store` returns ObjectRef
+7. **Transparent access**: AttributeTypes return Python objects or file paths
+8. **Lazy access**: `object`, `object@store`, and `filepath@store` return ObjectRef
 
 ## Migration from Legacy Types
 
@@ -342,7 +444,7 @@ def garbage_collect(project):
 | `blob@store` | `<xblob@store>` |
 | `attach` | `<attach>` |
 | `attach@store` | `<xattach@store>` |
-| `filepath@store` | Deprecated (use `object@store` or `<xattach@store>`) |
+| `filepath@store` (copy-based) | `filepath@store` (ObjectRef-based, upgraded) |
 
 ### Migration from Legacy `~external_*` Stores
 
@@ -404,5 +506,5 @@ def migrate_external_store(schema, store_name):
 
 1. Should `content` without `@store` use a default store, or require explicit store?
 2. Should we support `<xblob>` without `@store` syntax (implying default store)?
-3. Should `filepath@store` be kept for backward compat or fully deprecated?
+3. Should `filepath` without `@store` be supported (using default store)?
 4. How long should the backward compatibility layer support legacy `~external_*` format?
