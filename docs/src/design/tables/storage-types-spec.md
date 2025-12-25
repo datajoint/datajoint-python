@@ -2,100 +2,56 @@
 
 ## Overview
 
-This document proposes a redesign of DataJoint's storage types (`blob`, `attach`, `filepath`, `object`) as a coherent system built on the `AttributeType` base class.
+This document proposes a redesign of DataJoint's storage types as AttributeTypes, with clear separation between:
 
-## Current State Analysis
+1. **Object-Augmented Schemas (OAS)** - New paradigm with managed stores, integrity constraints, and prescribed organization
+2. **Legacy External Storage** - Content-addressed blob/attach storage with deduplication
+3. **Internal Blob Types** - AttributeTypes that serialize into database blob columns
 
-### Existing Types
+## Type Categories
 
-| Type | DB Column | Storage | Semantics |
-|------|-----------|---------|-----------|
-| `longblob` | LONGBLOB | Internal | Raw bytes |
-| `blob@store` | binary(16) | External | Raw bytes via UUID |
-| `attach` | LONGBLOB | Internal | `filename\0contents` |
-| `attach@store` | binary(16) | External | File via UUID |
-| `filepath@store` | binary(16) | External | Path-addressed file reference |
-| `object` | JSON | External | Managed file/folder with ObjectRef |
+### 1. Object-Augmented Schemas (`object`, `object@store`)
 
-### Problems with Current Design
+**Already implemented.** A distinct system where stores are treated as part of the database:
 
-1. **Scattered implementation**: Logic split across `declare.py`, `table.py`, `fetch.py`, `external.py`
-2. **Inconsistent patterns**: Some types use AttributeType, others are hardcoded
-3. **Implicit behaviors**: `longblob` previously auto-serialized, now raw
-4. **Overlapping semantics**: `blob@store` vs `attach@store` unclear
-5. **No internal object type**: `object` always requires external store
-
-## Proposed Architecture
-
-### Core Concepts
-
-1. **Storage Location** (orthogonal to type):
-   - **Internal**: Data stored directly in database column
-   - **External**: Data stored in external storage, UUID reference in database
-
-2. **Content Model** (what the type represents):
-   - **Binary**: Raw bytes (no interpretation)
-   - **Serialized**: Python objects encoded via DJ blob format
-   - **File**: Single file with filename metadata
-   - **Folder**: Directory structure
-   - **Reference**: Pointer to externally-managed file (path-addressed)
-
-3. **AttributeType** handles encoding/decoding between Python values and stored representation
-
-### Type Hierarchy
-
-```
-                    AttributeType (base)
-                          │
-        ┌─────────────────┼─────────────────┐
-        │                 │                 │
-   BinaryType        SerializedType     FileSystemType
-   (passthrough)     (pack/unpack)           │
-        │                 │           ┌──────┴──────┐
-        │                 │           │             │
-    longblob          <djblob>    <attach>    <filepath>
-    longblob@store    <djblob@store>  <attach@store>  filepath@store
-```
-
-### Proposed Types
-
-#### 1. Raw Binary (`longblob`, `blob`, etc.)
-
-**Not an AttributeType** - these are primitive MySQL types.
-
-- Store/return raw bytes without transformation
-- `@store` variant stores externally with content-addressed UUID
-- No encoding/decoding needed
+- Robust integrity constraints
+- Prescribed path organization (derived from primary key)
+- Multiple store support via config
+- Returns `ObjectRef` for lazy access
+- Supports direct writes (Zarr, HDF5) via fsspec
 
 ```python
 # Table definition
-class RawData(dj.Manual):
+class Analysis(dj.Computed):
     definition = """
-    id : int
+    -> Recording
     ---
-    data : longblob          # raw bytes in DB
-    large_data : blob@store  # raw bytes externally
+    results : object@main      # stored in 'main' OAS store
     """
 
 # Usage
-table.insert1({'id': 1, 'data': b'raw bytes', 'large_data': b'large raw bytes'})
-row = (table & 'id=1').fetch1()
-assert row['data'] == b'raw bytes'  # bytes returned
+row = (Analysis & key).fetch1()
+ref = row['results']           # ObjectRef handle (lazy)
+ref.download('/local/path')    # explicit download
+data = ref.open()              # fsspec access
 ```
 
-#### 2. Serialized Objects (`<djblob>`)
+**This type is NOT part of the AttributeType redesign** - it has its own implementation path.
 
-**AttributeType** with DJ blob serialization.
+---
+
+### 2. Serialized Blobs (`<djblob>`)
+
+**Already implemented.** AttributeType for Python object serialization.
 
 - Input: Any Python object (arrays, dicts, lists, etc.)
 - Output: Same Python object reconstructed
-- Storage: DJ blob format (mYm/dj0 protocol)
+- Storage: DJ blob format (mYm/dj0 protocol) in LONGBLOB column
 
 ```python
-@dj.register_type
 class DJBlobType(AttributeType):
     type_name = "djblob"
-    dtype = "longblob"  # or "longblob@store" for external
+    dtype = "longblob"
 
     def encode(self, value, *, key=None) -> bytes:
         return blob.pack(value, compress=True)
@@ -104,260 +60,279 @@ class DJBlobType(AttributeType):
         return blob.unpack(stored)
 ```
 
-```python
-# Table definition
-class ProcessedData(dj.Manual):
-    definition = """
-    id : int
-    ---
-    result : <djblob>           # serialized in DB
-    large_result : <djblob@store>  # serialized externally
-    """
+---
 
-# Usage
-table.insert1({'id': 1, 'result': {'array': np.array([1,2,3]), 'meta': 'info'}})
-row = (table & 'id=1').fetch1()
-assert row['result']['meta'] == 'info'  # Python dict returned
-```
+### 3. File Attachments (`<attach>`) - TO IMPLEMENT
 
-#### 3. File Attachments (`<attach>`)
-
-**AttributeType** for file storage with filename preservation.
+AttributeType for serializing files into internal blob columns.
 
 - Input: File path (string or Path)
-- Output: Local file path after download
-- Storage: File contents with filename metadata
+- Output: Local file path after extraction
+- Storage: `filename\0contents` in LONGBLOB column
 
 ```python
 @dj.register_type
 class AttachType(AttributeType):
     type_name = "attach"
-    dtype = "longblob"  # or "longblob@store" for external
+    dtype = "longblob"
 
-    # For internal storage
     def encode(self, filepath, *, key=None) -> bytes:
         path = Path(filepath)
         return path.name.encode() + b"\0" + path.read_bytes()
 
     def decode(self, stored, *, key=None) -> str:
         filename, contents = stored.split(b"\0", 1)
-        # Download to configured path, return local filepath
+        download_path = Path(dj.config['download_path']) / filename
+        download_path.parent.mkdir(parents=True, exist_ok=True)
+        download_path.write_bytes(contents)
+        return str(download_path)
+```
+
+**Usage:**
+```python
+class Configs(dj.Manual):
+    definition = """
+    config_id : int
+    ---
+    config_file : <attach>    # file serialized into DB
+    """
+
+# Insert
+table.insert1({'config_id': 1, 'config_file': '/path/to/config.yaml'})
+
+# Fetch - file extracted to download_path
+row = (table & 'config_id=1').fetch1()
+local_path = row['config_file']  # '/downloads/config.yaml'
+```
+
+---
+
+### 4. External Content-Addressed Storage (`<djblob@store>`, `<attach@store>`) - TO DESIGN
+
+These types store content externally with deduplication via content hashing.
+
+#### Design Option A: Leverage OAS Stores
+
+Store content-addressed blobs within OAS stores under a reserved folder:
+
+```
+store_root/
+├── _external/           # Reserved for content-addressed storage
+│   ├── blobs/           # For <djblob@store>
+│   │   └── ab/cd/abcd1234...  # Path derived from content hash
+│   └── attach/          # For <attach@store>
+│       └── ef/gh/efgh5678.../filename.ext
+└── schema_name/         # Normal OAS paths
+    └── table_name/
+        └── pk_value/
+```
+
+**Advantages:**
+- Reuses OAS infrastructure (fsspec, store config)
+- DataJoint fully controls paths
+- Deduplication via content hash
+- No separate `~external_*` tracking tables needed
+
+**Implementation:**
+
+```python
+class ContentAddressedType(AttributeType):
+    """Base class for content-addressed external storage."""
+
+    subfolder: str  # 'blobs' or 'attach'
+
+    def _content_hash(self, data: bytes) -> str:
+        """Compute content hash for deduplication."""
+        return hashlib.sha256(data).hexdigest()
+
+    def _store_path(self, content_hash: str) -> str:
+        """Generate path within _external folder."""
+        return f"_external/{self.subfolder}/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
+
+
+@dj.register_type
+class DJBlobExternalType(ContentAddressedType):
+    type_name = "djblob"  # Same name, different dtype triggers external
+    dtype = "varchar(64)"  # Store content hash as string
+    subfolder = "blobs"
+
+    def encode(self, value, *, key=None, store=None) -> str:
+        data = blob.pack(value, compress=True)
+        content_hash = self._content_hash(data)
+        path = self._store_path(content_hash)
+        # Upload to store if not exists (deduplication)
+        store.put_if_absent(path, data)
+        return content_hash
+
+    def decode(self, content_hash, *, key=None, store=None) -> Any:
+        path = self._store_path(content_hash)
+        data = store.get(path)
+        return blob.unpack(data)
+
+
+@dj.register_type
+class AttachExternalType(ContentAddressedType):
+    type_name = "attach"
+    dtype = "varchar(64)"
+    subfolder = "attach"
+
+    def encode(self, filepath, *, key=None, store=None) -> str:
+        path = Path(filepath)
+        # Hash includes filename for uniqueness
+        data = path.name.encode() + b"\0" + path.read_bytes()
+        content_hash = self._content_hash(data)
+        store_path = self._store_path(content_hash) + "/" + path.name
+        store.put_if_absent(store_path, path.read_bytes())
+        return content_hash
+
+    def decode(self, content_hash, *, key=None, store=None) -> str:
+        # List files in hash folder to get filename
         ...
 ```
 
-**Key difference from blob**: Preserves original filename, returns file path not bytes.
+#### Design Option B: Separate Tracking Tables (Current Approach)
 
-```python
-# Table definition
-class Attachments(dj.Manual):
-    definition = """
-    id : int
-    ---
-    config_file : <attach>           # small file in DB
-    data_file : <attach@store>       # large file externally
-    """
+Keep `~external_{store}` tables for tracking:
 
-# Usage
-table.insert1({'id': 1, 'config_file': '/path/to/config.yaml'})
-row = (table & 'id=1').fetch1()
-# row['config_file'] == '/downloads/config.yaml'  # local path
+```sql
+-- ~external_main
+hash           : binary(16)  # UUID from content hash
+---
+size           : bigint
+attachment_name: varchar(255)  # for attach only
+timestamp      : timestamp
 ```
 
-#### 4. Filepath References (`<filepath>`)
+**Disadvantages:**
+- Separate infrastructure from OAS
+- Additional table maintenance
+- More complex cleanup/garbage collection
 
-**AttributeType** for tracking externally-managed files.
+#### Recommendation
 
-- Input: File path in staging area
-- Output: Local file path after sync
-- Storage: Path-addressed (UUID = hash of relative path, not contents)
-- Tracks `contents_hash` separately for verification
+**Option A (OAS integration)** is cleaner:
+- Single storage paradigm
+- Simpler mental model
+- Content hash stored directly in column (no UUID indirection)
+- Deduplication at storage level
+
+---
+
+### 5. Reference Tracking (`<ref@store>`) - TO DESIGN
+
+Repurpose `filepath@store` as a general reference type, borrowing from ObjRef:
+
+**Current `filepath@store` limitations:**
+- Path-addressed (hash of path, not contents)
+- Requires staging area
+- Archaic copy-to/copy-from model
+
+**Proposed `<ref@store>`:**
+- Track references to external resources
+- Support multiple reference types (file path, URL, object key)
+- Borrow lazy access patterns from ObjRef
+- Optional content verification
 
 ```python
 @dj.register_type
-class FilepathType(AttributeType):
-    type_name = "filepath"
-    dtype = "binary(16)"  # Always external (UUID reference)
-    requires_store = True  # Must specify @store
-
-    def encode(self, filepath, *, key=None) -> bytes:
-        # Compute UUID from relative path
-        # Track contents_hash separately
-        ...
-
-    def decode(self, uuid_bytes, *, key=None) -> str:
-        # Sync file from remote to local stage
-        # Verify contents_hash
-        # Return local path
-        ...
-```
-
-**Key difference from attach**:
-- Path-addressed (same path = same UUID, even if contents change)
-- Designed for managed file workflows where files may be updated
-- Always external (no internal variant)
-
-```python
-# Table definition
-class ManagedFiles(dj.Manual):
-    definition = """
-    id : int
-    ---
-    data_path : <filepath@store>
-    """
-
-# Usage - file must be in configured stage directory
-table.insert1({'id': 1, 'data_path': '/stage/experiment_001/data.h5'})
-row = (table & 'id=1').fetch1()
-# row['data_path'] == '/local_stage/experiment_001/data.h5'
-```
-
-#### 5. Managed Objects (`<object>`)
-
-**AttributeType** for managed file/folder storage with lazy access.
-
-- Input: File path, folder path, or ObjectRef
-- Output: ObjectRef handle (lazy - no automatic download)
-- Storage: JSON metadata column
-- Supports direct writes (Zarr, HDF5) via fsspec
-
-```python
-@dj.register_type
-class ObjectType(AttributeType):
-    type_name = "object"
+class RefType(AttributeType):
+    type_name = "ref"
     dtype = "json"
-    requires_store = True  # Must specify @store
 
-    def encode(self, value, *, key=None) -> str:
-        # Upload file/folder to object storage
-        # Return JSON metadata
-        ...
+    def encode(self, value, *, key=None, store=None) -> str:
+        if isinstance(value, str):
+            # Treat as path/URL
+            return json.dumps({
+                'type': 'path',
+                'path': value,
+                'store': store.name,
+                'content_hash': self._compute_hash(value) if verify else None
+            })
+        elif isinstance(value, RefSpec):
+            return json.dumps(value.to_dict())
 
-    def decode(self, json_str, *, key=None) -> ObjectRef:
-        # Return ObjectRef handle (no download)
-        ...
+    def decode(self, json_str, *, key=None, store=None) -> Ref:
+        data = json.loads(json_str)
+        return Ref(data, store=store)
+
+
+class Ref:
+    """Reference handle (similar to ObjectRef)."""
+
+    def __init__(self, data, store):
+        self.path = data['path']
+        self.store = store
+        self._content_hash = data.get('content_hash')
+
+    def download(self, local_path):
+        """Download referenced file."""
+        self.store.download(self.path, local_path)
+        if self._content_hash:
+            self._verify(local_path)
+
+    def open(self, mode='rb'):
+        """Open via fsspec (lazy)."""
+        return self.store.open(self.path, mode)
 ```
 
+**Usage:**
 ```python
-# Table definition
-class LargeData(dj.Manual):
+class ExternalData(dj.Manual):
     definition = """
-    id : int
+    data_id : int
     ---
-    zarr_data : <object@store>
+    source : <ref@archive>    # reference to external file
     """
 
-# Usage
-table.insert1({'id': 1, 'zarr_data': '/path/to/data.zarr'})
-row = (table & 'id=1').fetch1()
-ref = row['zarr_data']  # ObjectRef handle
-ref.download('/local/path')  # Explicit download
-# Or direct access via fsspec
+# Insert - just tracks the reference
+table.insert1({'data_id': 1, 'source': '/archive/experiment_001/data.h5'})
+
+# Fetch - returns Ref handle
+row = (table & 'data_id=1').fetch1()
+ref = row['source']
+ref.download('/local/data.h5')  # explicit download
 ```
 
-### Storage Location Modifier (`@store`)
+---
 
-The `@store` suffix is orthogonal to the type and specifies external storage:
+## Summary of Types
 
-| Type | Without @store | With @store |
-|------|---------------|-------------|
-| `longblob` | Raw bytes in DB | Raw bytes in external store |
-| `<djblob>` | Serialized in DB | Serialized in external store |
-| `<attach>` | File in DB | File in external store |
-| `<filepath>` | N/A (error) | Path reference in external store |
-| `<object>` | N/A (error) | Object in external store |
+| Type | Storage | Column | Input | Output | Dedup |
+|------|---------|--------|-------|--------|-------|
+| `object@store` | OAS store | JSON | path/ref | ObjectRef | By path |
+| `<djblob>` | Internal | LONGBLOB | any | any | No |
+| `<djblob@store>` | OAS `_external/` | varchar(64) | any | any | By content |
+| `<attach>` | Internal | LONGBLOB | path | path | No |
+| `<attach@store>` | OAS `_external/` | varchar(64) | path | path | By content |
+| `<ref@store>` | OAS store | JSON | path/ref | Ref | No (tracks) |
 
-Implementation:
-- `@store` changes the underlying `dtype` to `binary(16)` (UUID)
-- Creates FK relationship to `~external_{store}` tracking table
-- AttributeType's `encode()`/`decode()` work with the external table transparently
+## Open Questions
 
-### Extended AttributeType Interface
+1. **Store syntax**: Should external AttributeTypes use `<djblob@store>` or detect externality from dtype?
 
-For types that interact with the filesystem, we extend the base interface:
+2. **Backward compatibility**: How to handle existing `blob@store` and `attach@store` columns with `~external_*` tables?
 
-```python
-class FileSystemType(AttributeType):
-    """Base for types that work with file paths."""
+3. **Deduplication scope**: Per-store or global across stores?
 
-    # Standard interface
-    def encode(self, value, *, key=None) -> bytes | str:
-        """Convert input (path or value) to stored representation."""
-        ...
+4. **Ref vs filepath**: Deprecate `filepath@store` entirely or keep as alias?
 
-    def decode(self, stored, *, key=None) -> str:
-        """Convert stored representation to local file path."""
-        ...
+5. **Content hash format**: SHA256 hex (64 chars) or shorter hash?
 
-    # Extended interface for external storage
-    def upload(self, filepath: Path, external: ExternalTable) -> uuid.UUID:
-        """Upload file to external storage, return UUID."""
-        ...
+## Implementation Phases
 
-    def download(self, uuid: uuid.UUID, external: ExternalTable,
-                 download_path: Path) -> Path:
-        """Download from external storage to local path."""
-        ...
-```
+### Phase 1: `<attach>` Internal
+- Implement AttachType for internal blob storage
+- Deprecate bare `attach` keyword (still works, warns)
 
-### Configuration
+### Phase 2: Content-Addressed External
+- Implement ContentAddressedType base
+- Add `<djblob@store>` and `<attach@store>`
+- Store in OAS `_external/` folder
 
-```python
-# datajoint config
-dj.config['stores'] = {
-    'main': {
-        'protocol': 's3',
-        'endpoint': 's3.amazonaws.com',
-        'bucket': 'my-bucket',
-        'location': 'datajoint/',
-    },
-    'archive': {
-        'protocol': 'file',
-        'location': '/mnt/archive/',
-    }
-}
+### Phase 3: Reference Type
+- Implement `<ref@store>` with Ref handle
+- Deprecate `filepath@store`
 
-dj.config['download_path'] = '/tmp/dj_downloads'  # For attach
-dj.config['stage'] = '/data/stage'  # For filepath
-```
-
-## Migration Path
-
-### Phase 1: Current State (Done)
-- `<djblob>` AttributeType implemented
-- `longblob` returns raw bytes
-- Legacy `AttributeAdapter` wrapped for backward compat
-
-### Phase 2: Attach as AttributeType
-- Implement `<attach>` and `<attach@store>` as AttributeType
-- Deprecate bare `attach` type (still works, emits warning)
-- Move logic from table.py/fetch.py to AttachType class
-
-### Phase 3: Filepath as AttributeType
-- Implement `<filepath@store>` as AttributeType
-- Deprecate `filepath@store` syntax (redirect to `<filepath@store>`)
-
-### Phase 4: Object Type Refinement
-- Already implemented as separate system
-- Ensure consistent with AttributeType patterns
-- Consider `<object@store>` syntax
-
-### Phase 5: Cleanup
-- Remove scattered type handling from table.py, fetch.py
-- Consolidate external storage logic
-- Update documentation
-
-## Summary
-
-| Type | Input | Output | Internal | External | Use Case |
-|------|-------|--------|----------|----------|----------|
-| `longblob` | bytes | bytes | ✓ | ✓ | Raw binary data |
-| `<djblob>` | any | any | ✓ | ✓ | Python objects, arrays |
-| `<attach>` | path | path | ✓ | ✓ | Files with filename |
-| `<filepath>` | path | path | ✗ | ✓ | Managed file workflows |
-| `<object>` | path/ref | ObjectRef | ✗ | ✓ | Large files, Zarr, HDF5 |
-
-This design:
-1. Makes all custom types consistent AttributeTypes
-2. Separates storage location (`@store`) from encoding behavior
-3. Provides clear semantics for each type
-4. Enables gradual migration from current implementation
+### Phase 4: Migration Tools
+- Tools to migrate `~external_*` data to new format
+- Backward compat layer for reading old format
