@@ -463,290 +463,35 @@ def resolve_dtype(
     return dtype, chain, store_name
 
 
+def get_adapter(context: dict | None, adapter_name: str) -> tuple[AttributeType, str | None]:
+    """
+    Get an attribute type by name.
+
+    This is a compatibility function used by heading and declare modules.
+
+    Args:
+        context: Ignored (legacy parameter, kept for API compatibility).
+        adapter_name: The type name, with or without angle brackets.
+                      May include store parameter (e.g., "<xblob@cold>").
+
+    Returns:
+        Tuple of (AttributeType instance, store_name or None).
+
+    Raises:
+        DataJointError: If the type is not found.
+    """
+    type_name, store_name = parse_type_spec(adapter_name)
+
+    if is_type_registered(type_name):
+        return get_type(type_name), store_name
+
+    raise DataJointError(f"Attribute type <{type_name}> is not registered. " "Use @dj.register_type to register custom types.")
+
+
 # =============================================================================
-# Built-in Attribute Types
+# Auto-register built-in types
 # =============================================================================
 
-
-class DJBlobType(AttributeType):
-    """
-    Built-in type for DataJoint's native serialization format.
-
-    This type handles serialization of arbitrary Python objects (including NumPy arrays,
-    dictionaries, lists, etc.) using DataJoint's binary blob format. The format includes:
-
-    - Protocol headers (``mYm`` for MATLAB-compatible, ``dj0`` for Python-native)
-    - Optional compression (zlib)
-    - Support for NumPy arrays, datetime objects, UUIDs, and nested structures
-
-    The ``<djblob>`` type is the explicit way to specify DataJoint's serialization.
-    It stores data in a MySQL ``LONGBLOB`` column.
-
-    Example:
-        @schema
-        class ProcessedData(dj.Manual):
-            definition = '''
-            data_id : int
-            ---
-            results : <djblob>      # Serialized Python objects
-            raw_bytes : longblob    # Raw bytes (no serialization)
-            '''
-
-    Note:
-        Plain ``longblob`` columns store and return raw bytes without serialization.
-        Use ``<djblob>`` when you need automatic serialization of Python objects.
-        Existing schemas using implicit blob serialization should migrate to ``<djblob>``
-        using ``dj.migrate.migrate_blob_columns()``.
-    """
-
-    type_name = "djblob"
-    dtype = "longblob"
-
-    def encode(self, value: Any, *, key: dict | None = None) -> bytes:
-        """
-        Serialize a Python object to DataJoint's blob format.
-
-        Args:
-            value: Any serializable Python object (dict, list, numpy array, etc.)
-            key: Primary key values (unused for blob serialization).
-
-        Returns:
-            Serialized bytes with protocol header and optional compression.
-        """
-        from . import blob
-
-        return blob.pack(value, compress=True)
-
-    def decode(self, stored: bytes, *, key: dict | None = None) -> Any:
-        """
-        Deserialize DataJoint blob format back to a Python object.
-
-        Args:
-            stored: Serialized blob bytes.
-            key: Primary key values (unused for blob serialization).
-
-        Returns:
-            The deserialized Python object.
-        """
-        from . import blob
-
-        return blob.unpack(stored, squeeze=False)
-
-
-class DJBlobExternalType(AttributeType):
-    """
-    Built-in type for externally-stored DataJoint blobs.
-
-    Similar to ``<djblob>`` but stores data in external blob storage instead
-    of inline in the database. Useful for large objects.
-
-    The store name is specified when defining the column type.
-
-    Example:
-        @schema
-        class LargeData(dj.Manual):
-            definition = '''
-            data_id : int
-            ---
-            large_array : blob@mystore  # External storage with auto-serialization
-            '''
-    """
-
-    # Note: This type isn't directly usable via <djblob_external> syntax
-    # It's used internally when blob@store syntax is detected
-    type_name = "djblob_external"
-    dtype = "blob@store"  # Placeholder - actual store is determined at declaration time
-
-    def encode(self, value: Any, *, key: dict | None = None) -> bytes:
-        """Serialize a Python object to DataJoint's blob format."""
-        from . import blob
-
-        return blob.pack(value, compress=True)
-
-    def decode(self, stored: bytes, *, key: dict | None = None) -> Any:
-        """Deserialize DataJoint blob format back to a Python object."""
-        from . import blob
-
-        return blob.unpack(stored, squeeze=False)
-
-
-class ContentType(AttributeType):
-    """
-    Built-in type for content-addressed storage with deduplication.
-
-    The ``<content>`` type stores data using content-addressed storage. Data is
-    identified by its SHA256 hash and stored in a hierarchical directory structure.
-    Duplicate content is automatically deduplicated - storing the same bytes twice
-    will only create one copy in storage.
-
-    The database column stores JSON metadata including the content hash, store name,
-    and size. The actual content is stored in external storage.
-
-    This type is primarily used as a building block for other types like ``<xblob>``
-    and ``<xattach>``, but can also be used directly for raw binary content.
-
-    Example:
-        @schema
-        class RawContent(dj.Manual):
-            definition = '''
-            content_id : int
-            ---
-            data : <content@mystore>   # Content-addressed storage
-            '''
-
-        # Insert raw bytes
-        table.insert1({'content_id': 1, 'data': b'raw binary content'})
-
-        # Fetch returns the original bytes
-        data = (table & 'content_id=1').fetch1('data')
-        assert data == b'raw binary content'
-
-    Storage Structure:
-        Content is stored at: ``_content/{hash[:2]}/{hash[2:4]}/{hash}``
-        This hierarchical structure prevents too many files in a single directory.
-
-    Note:
-        The store parameter is required for ``<content>`` unless a default store
-        is configured. Use ``<content@store_name>`` syntax to specify the store.
-    """
-
-    type_name = "content"
-    dtype = "json"
-
-    def encode(self, value: bytes, *, key: dict | None = None, store_name: str | None = None) -> dict:
-        """
-        Store content and return metadata.
-
-        Computes the SHA256 hash of the content and stores it using content-addressed
-        storage. If content with the same hash already exists, it is not re-uploaded
-        (deduplication).
-
-        Args:
-            value: Raw bytes to store.
-            key: Primary key values (unused for content storage).
-            store_name: Store to use. If None, uses default store from config.
-
-        Returns:
-            Metadata dict with keys: hash, store, size
-
-        Raises:
-            TypeError: If value is not bytes.
-        """
-        if not isinstance(value, bytes):
-            raise TypeError(f"<content> type expects bytes, got {type(value).__name__}")
-
-        from .content_registry import put_content
-
-        return put_content(value, store_name=store_name)
-
-    def decode(self, stored: dict, *, key: dict | None = None) -> bytes:
-        """
-        Retrieve content by its hash.
-
-        Args:
-            stored: Metadata dict with 'hash' and optionally 'store' keys.
-            key: Primary key values (unused for content retrieval).
-
-        Returns:
-            The original bytes.
-
-        Raises:
-            MissingExternalFile: If content is not found.
-            DataJointError: If hash verification fails.
-        """
-        from .content_registry import get_content
-
-        content_hash = stored["hash"]
-        store_name = stored.get("store")
-        return get_content(content_hash, store_name=store_name)
-
-    def validate(self, value: Any) -> None:
-        """Validate that value is bytes."""
-        if not isinstance(value, bytes):
-            raise TypeError(f"<content> type expects bytes, got {type(value).__name__}")
-
-
-class XBlobType(AttributeType):
-    """
-    Built-in type for externally-stored serialized blobs with deduplication.
-
-    The ``<xblob>`` type combines DataJoint's blob serialization with content-addressed
-    storage. Objects are serialized using the djblob format, then stored externally
-    using content-addressed storage for automatic deduplication.
-
-    This type is ideal for large objects (NumPy arrays, pandas DataFrames, etc.)
-    that may be duplicated across multiple rows.
-
-    Example:
-        @schema
-        class LargeArrays(dj.Manual):
-            definition = '''
-            array_id : int
-            ---
-            data : <xblob@mystore>   # External serialized blob with deduplication
-            '''
-
-        # Insert NumPy array
-        import numpy as np
-        table.insert1({'array_id': 1, 'data': np.random.rand(1000, 1000)})
-
-        # Fetch returns the original array
-        data = (table & 'array_id=1').fetch1('data')
-
-    Note:
-        - For internal storage (in database), use ``<djblob>``
-        - For external storage without serialization, use ``<content>``
-        - The store parameter is required unless a default store is configured
-    """
-
-    type_name = "xblob"
-    dtype = "<content>"  # Composition: uses ContentType for storage
-
-    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
-        """
-        Serialize a Python object to bytes.
-
-        The object is serialized using DataJoint's blob format. The resulting
-        bytes are then passed to the underlying ``<content>`` type for storage.
-
-        Args:
-            value: Any serializable Python object.
-            key: Primary key values (unused).
-            store_name: Store parameter (passed through to content storage).
-
-        Returns:
-            Serialized bytes (will be stored by ContentType).
-        """
-        from . import blob
-
-        return blob.pack(value, compress=True)
-
-    def decode(self, stored: bytes, *, key: dict | None = None) -> Any:
-        """
-        Deserialize bytes back to a Python object.
-
-        Args:
-            stored: Serialized bytes retrieved from content storage.
-            key: Primary key values (unused).
-
-        Returns:
-            The deserialized Python object.
-        """
-        from . import blob
-
-        return blob.unpack(stored, squeeze=False)
-
-
-def _register_builtin_types() -> None:
-    """
-    Register DataJoint's built-in attribute types.
-
-    Called automatically during module initialization.
-    """
-    register_type(DJBlobType)
-    register_type(ContentType)
-    register_type(XBlobType)
-
-
-# Register built-in types when module is loaded
-_register_builtin_types()
+# Import builtin_types module to register built-in types (DJBlobType, ContentType, etc.)
+# This import has a side effect: it registers the types via @register_type decorators
+from . import builtin_types as _builtin_types  # noqa: F401, E402
