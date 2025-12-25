@@ -35,10 +35,11 @@ class Analysis(dj.Computed):
 **New core type.** Content-addressed storage with deduplication:
 
 - **Single blob only**: stores a single file or serialized object (not folders)
+- **Per-project scope**: content is shared across all schemas in a project (not per-schema)
 - Path derived from content hash: `_content/{hash[:2]}/{hash[2:4]}/{hash}`
-- Many-to-one: multiple rows can reference same content
+- Many-to-one: multiple rows (even across schemas) can reference same content
 - Reference counted for garbage collection
-- Deduplication: identical content stored once
+- Deduplication: identical content stored once across the entire project
 - For folders/complex objects, use `object` type instead
 
 ```
@@ -262,12 +263,17 @@ class Attachments(dj.Manual):
 
 ## Reference Counting for Content Type
 
-The `ContentRegistry` table tracks content-addressed objects:
+The `ContentRegistry` is a **project-level** table that tracks content-addressed objects
+across all schemas. This differs from the legacy `~external_*` tables which were per-schema.
 
 ```python
 class ContentRegistry:
+    """
+    Project-level content registry.
+    Stored in a designated database (e.g., `{project}_content`).
+    """
     definition = """
-    # Content-addressed object registry
+    # Content-addressed object registry (project-wide)
     content_hash : char(64)          # SHA256 hex
     ---
     store        : varchar(64)       # Store name
@@ -276,21 +282,22 @@ class ContentRegistry:
     """
 ```
 
-Garbage collection finds orphaned content:
+Garbage collection scans **all schemas** in the project:
 
 ```python
-def garbage_collect(schema):
-    """Remove content not referenced by any table."""
+def garbage_collect(project):
+    """Remove content not referenced by any table in any schema."""
     # Get all registered hashes
     registered = set(ContentRegistry().fetch('content_hash', 'store'))
 
-    # Get all referenced hashes from tables with content-type columns
+    # Get all referenced hashes from ALL schemas in the project
     referenced = set()
-    for table in schema.tables:
-        for attr in table.heading.attributes:
-            if attr.type in ('content', 'content@...'):
-                hashes = table.fetch(attr.name)
-                referenced.update((h, attr.store) for h in hashes)
+    for schema in project.schemas:
+        for table in schema.tables:
+            for attr in table.heading.attributes:
+                if attr.type in ('content', 'content@...'):
+                    hashes = table.fetch(attr.name)
+                    referenced.update((h, attr.store) for h in hashes)
 
     # Delete orphaned content
     for content_hash, store in (registered - referenced):
@@ -337,8 +344,65 @@ def garbage_collect(schema):
 | `attach@store` | `<xattach@store>` |
 | `filepath@store` | Deprecated (use `object@store` or `<xattach@store>`) |
 
+### Migration from Legacy `~external_*` Stores
+
+Legacy external storage used per-schema `~external_{store}` tables. Migration to the new
+per-project `ContentRegistry` requires:
+
+```python
+def migrate_external_store(schema, store_name):
+    """
+    Migrate legacy ~external_{store} to new ContentRegistry.
+
+    1. Read all entries from ~external_{store}
+    2. For each entry:
+       - Fetch content from legacy location
+       - Compute SHA256 hash
+       - Copy to _content/{hash}/ if not exists
+       - Update table column from UUID to hash
+       - Register in ContentRegistry
+    3. After all schemas migrated, drop ~external_{store} tables
+    """
+    external_table = schema.external[store_name]
+
+    for entry in external_table.fetch(as_dict=True):
+        legacy_uuid = entry['hash']
+
+        # Fetch content from legacy location
+        content = external_table.get(legacy_uuid)
+
+        # Compute new content hash
+        content_hash = hashlib.sha256(content).hexdigest()
+
+        # Store in new location if not exists
+        new_path = f"_content/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
+        store = get_store(store_name)
+        if not store.exists(new_path):
+            store.put(new_path, content)
+
+        # Register in project-wide ContentRegistry
+        ContentRegistry().insert1({
+            'content_hash': content_hash,
+            'store': store_name,
+            'size': len(content)
+        }, skip_duplicates=True)
+
+        # Update referencing tables (UUID -> hash)
+        # ... update all tables that reference this UUID ...
+
+    # After migration complete for all schemas:
+    # DROP TABLE `{schema}`.`~external_{store}`
+```
+
+**Migration considerations:**
+- Legacy UUIDs were based on content hash but stored as `binary(16)`
+- New system uses `char(64)` SHA256 hex strings
+- Migration can be done incrementally per schema
+- Backward compatibility layer can read both formats during transition
+
 ## Open Questions
 
 1. Should `content` without `@store` use a default store, or require explicit store?
 2. Should we support `<xblob>` without `@store` syntax (implying default store)?
 3. Should `filepath@store` be kept for backward compat or fully deprecated?
+4. How long should the backward compatibility layer support legacy `~external_*` format?
