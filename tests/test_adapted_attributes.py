@@ -1,10 +1,9 @@
 """
 Tests for adapted/custom attribute types.
 
-These tests use the legacy AttributeAdapter API for backward compatibility testing.
+These tests verify the AttributeType system for custom data types.
 """
 
-import warnings
 from itertools import zip_longest
 
 import networkx as nx
@@ -15,9 +14,6 @@ import datajoint as dj
 from . import schema_adapted
 from .schema_adapted import Connectivity, Layout
 
-# Filter deprecation warnings from legacy AttributeAdapter usage in these tests
-pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
-
 
 @pytest.fixture
 def schema_name(prefix):
@@ -25,30 +21,16 @@ def schema_name(prefix):
 
 
 @pytest.fixture
-def adapted_graph_instance():
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        yield schema_adapted.GraphAdapter()
-
-
-@pytest.fixture
 def schema_ad(
     connection_test,
-    adapted_graph_instance,
     enable_filepath_feature,
     s3_creds,
     tmpdir,
     schema_name,
 ):
     dj.config["stores"] = {"repo-s3": dict(s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir))}
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        layout_adapter = schema_adapted.LayoutToFilepath()
-    context = {
-        **schema_adapted.LOCALS_ADAPTED,
-        "graph": adapted_graph_instance,
-        "layout_to_filepath": layout_adapter,
-    }
+    # Types are registered globally via @dj.register_type decorator in schema_adapted
+    context = {**schema_adapted.LOCALS_ADAPTED}
     schema = dj.schema(schema_name, context=context, connection=connection_test)
     schema(schema_adapted.Connectivity)
     schema(schema_adapted.Layout)
@@ -66,9 +48,10 @@ def local_schema(schema_ad, schema_name):
 
 
 @pytest.fixture
-def schema_virtual_module(schema_ad, adapted_graph_instance, schema_name):
+def schema_virtual_module(schema_ad, schema_name):
     """Fixture for testing virtual modules"""
-    schema_virtual_module = dj.VirtualModule("virtual_module", schema_name, add_objects={"graph": adapted_graph_instance})
+    # Types are registered globally, no need to add_objects for adapters
+    schema_virtual_module = dj.VirtualModule("virtual_module", schema_name)
     return schema_virtual_module
 
 

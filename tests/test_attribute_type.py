@@ -340,12 +340,6 @@ class TestExportsAndAPI:
         assert hasattr(dj, "register_type")
         assert hasattr(dj, "list_types")
 
-    def test_attribute_adapter_deprecated(self):
-        """Test that AttributeAdapter is still available but deprecated."""
-        assert hasattr(dj, "AttributeAdapter")
-        # AttributeAdapter should be a subclass of AttributeType
-        assert issubclass(dj.AttributeAdapter, dj.AttributeType)
-
 
 class TestDJBlobType:
     """Tests for the built-in DJBlobType."""
@@ -405,7 +399,6 @@ class TestDJBlobType:
         With the new design:
         - Plain longblob columns store/return raw bytes (no serialization)
         - <djblob> handles pack/unpack in encode/decode
-        - Legacy AttributeAdapter handles pack/unpack internally for backward compat
         """
         blob_type = get_type("djblob")
 

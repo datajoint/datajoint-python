@@ -7,39 +7,41 @@ import networkx as nx
 import datajoint as dj
 
 
-class GraphAdapter(dj.AttributeAdapter):
-    attribute_type = "longblob"  # this is how the attribute will be declared
+@dj.register_type
+class GraphType(dj.AttributeType):
+    """Custom type for storing NetworkX graphs as edge lists."""
 
-    @staticmethod
-    def get(obj):
-        # convert edge list into a graph
-        return nx.Graph(obj)
+    type_name = "graph"
+    dtype = "longblob"
 
-    @staticmethod
-    def put(obj):
-        # convert graph object into an edge list
+    def encode(self, obj, *, key=None):
+        """Convert graph object into an edge list."""
         assert isinstance(obj, nx.Graph)
         return list(obj.edges)
 
+    def decode(self, stored, *, key=None):
+        """Convert edge list into a graph."""
+        return nx.Graph(stored)
 
-class LayoutToFilepath(dj.AttributeAdapter):
-    """
-    An adapted data type that saves a graph layout into fixed filepath
-    """
 
-    attribute_type = "filepath@repo-s3"
+@dj.register_type
+class LayoutToFilepathType(dj.AttributeType):
+    """Custom type that saves a graph layout to a filepath."""
 
-    @staticmethod
-    def get(path):
-        with open(path, "r") as f:
-            return json.load(f)
+    type_name = "layout_to_filepath"
+    dtype = "filepath@repo-s3"
 
-    @staticmethod
-    def put(layout):
+    def encode(self, layout, *, key=None):
+        """Save layout to file and return path."""
         path = Path(dj.config["stores"]["repo-s3"]["stage"], "layout.json")
         with open(str(path), "w") as f:
             json.dump(layout, f)
         return path
+
+    def decode(self, path, *, key=None):
+        """Load layout from file."""
+        with open(path, "r") as f:
+            return json.load(f)
 
 
 class Connectivity(dj.Manual):
