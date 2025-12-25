@@ -164,6 +164,32 @@ A.join(B, semantic_check=False)  # Explicit bypass
 
 The error message directs users to the explicit `.join()` method.
 
+### The `.restrict()` Method
+
+The `.restrict()` method provides additional control for restrictions:
+
+```python
+# Default: semantic checking enabled (same as &)
+result = A.restrict(B)
+
+# Bypass semantic check for legacy compatibility
+result = A.restrict(B, semantic_check=False)
+```
+
+### Removal of `^` Operator
+
+The `^` operator (permissive restriction) is **removed** in DataJoint 2.0:
+
+```python
+# Old (deprecated):
+A ^ B  # Raises DataJointError with migration guidance
+
+# New:
+A.restrict(B, semantic_check=False)  # Explicit bypass
+```
+
+The error message directs users to the explicit `.restrict()` method.
+
 ## Universal Set `dj.U`
 
 `dj.U()` or `dj.U('attr1', 'attr2', ...)` represents the universal set of all possible values and lineages.
@@ -482,6 +508,13 @@ DataJointError: The @ operator has been removed in DataJoint 2.0.
 Use .join(other, semantic_check=False) for permissive joins.
 ```
 
+### Deprecated `^` Operator
+
+```
+DataJointError: The ^ operator has been removed in DataJoint 2.0.
+Use .restrict(other, semantic_check=False) for permissive restrictions.
+```
+
 ### Deprecated `dj.U * table`
 
 ```
@@ -562,7 +595,16 @@ Ensure existing well-designed schemas continue to work without modification.
    table1.join(table2, semantic_check=False)
    ```
 
-3. **Replace `dj.U * table`**:
+3. **Replace `^` operator**:
+   ```python
+   # Old
+   table1 ^ table2
+
+   # New
+   table1.restrict(table2, semantic_check=False)
+   ```
+
+4. **Replace `dj.U * table`**:
    ```python
    # Old
    dj.U('attr') * table
@@ -571,7 +613,7 @@ Ensure existing well-designed schemas continue to work without modification.
    dj.U('attr') & table
    ```
 
-4. **Resolve namesake conflicts**:
+5. **Resolve namesake conflicts**:
    ```python
    # If error on Student * Course (both have 'id')
    Student * Course.proj(course_id='id')

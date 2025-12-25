@@ -152,9 +152,10 @@ class QueryExpression:
         result._heading = self.heading.make_subquery_heading()
         return result
 
-    def restrict(self, restriction):
+    def restrict(self, restriction, semantic_check=True):
         """
         Produces a new expression with the new restriction applied.
+
         rel.restrict(restriction)  is equivalent to  rel & restriction.
         rel.restrict(Not(restriction))  is equivalent to  rel - restriction
         The primary key of the result is unaffected.
@@ -195,7 +196,9 @@ class QueryExpression:
         ultimately call restrict()
 
         :param restriction: a sequence or an array (treated as OR list), another QueryExpression, an SQL condition
-        string, or an AndList.
+            string, or an AndList.
+        :param semantic_check: if True (default), check that namesake attributes have the same lineage.
+            If False, bypass semantic check (use for legacy compatibility or intentional cross-lineage restriction).
         """
         attributes = set()
         if isinstance(restriction, Top):
@@ -204,6 +207,12 @@ class QueryExpression:
             )  # make subquery to avoid overwriting existing Top
             result._top = restriction
             return result
+        # Wrap in PromiscuousOperand if semantic check is disabled
+        if not semantic_check:
+            if isinstance(restriction, Not):
+                restriction = Not(PromiscuousOperand(restriction.restriction))
+            else:
+                restriction = PromiscuousOperand(restriction)
         new_condition = make_condition(self, restriction, attributes)
         if new_condition is True:
             return self  # restriction has no effect, return the same object
@@ -241,13 +250,13 @@ class QueryExpression:
 
     def __xor__(self, restriction):
         """
-        Permissive restriction operator ignoring compatibility check  e.g. ``q1 ^ q2``.
+        The ^ operator (permissive restriction) has been removed in DataJoint 2.0.
+        Use .restrict(other, semantic_check=False) instead.
         """
-        if inspect.isclass(restriction) and issubclass(restriction, QueryExpression):
-            restriction = restriction()
-        if isinstance(restriction, Not):
-            return self.restrict(Not(PromiscuousOperand(restriction.restriction)))
-        return self.restrict(PromiscuousOperand(restriction))
+        raise DataJointError(
+            "The ^ operator has been removed in DataJoint 2.0. "
+            "Use .restrict(other, semantic_check=False) for permissive restrictions."
+        )
 
     def __sub__(self, restriction):
         """
