@@ -341,6 +341,32 @@ The following attributes from the right operand's primary key are not determined
 the left operand: ['z']. Use an inner join or restructure the query.
 ```
 
+### Aggregation Exception
+
+`A.aggr(B, keep_all_rows=True)` uses a left join internally but has the **opposite requirement**: **B → A** (the group expression B must have all of A's primary key attributes).
+
+This apparent contradiction is resolved by the `GROUP BY` clause:
+
+1. Aggregation requires B → A so that B can be grouped by A's primary key
+2. The intermediate left join `A LEFT JOIN B` would have an invalid PK under the normal left join rules (B → A case gives PK(B))
+3. However, aggregation's `GROUP BY PK(A)` clause **resets** the primary key to PK(A)
+4. The final result has PK(A), which consists entirely of non-NULL values from A
+
+**Example:**
+```
+Session: session_id*, date
+Trial: session_id*, trial_num*, response_time    (references Session)
+
+# Aggregation with keep_all_rows=True
+Session.aggr(Trial, keep_all_rows=True, avg_rt='avg(response_time)')
+
+# Internally: Session LEFT JOIN Trial (B → A, would normally be invalid)
+# But GROUP BY session_id resets PK to {session_id}
+# Result: All sessions, with avg_rt=NULL for sessions without trials
+```
+
+The left join constraint validation is bypassed internally for aggregation because the `GROUP BY` clause guarantees a valid primary key in the final result.
+
 ## Universal Set `dj.U`
 
 `dj.U()` or `dj.U('attr1', 'attr2', ...)` represents the universal set of all possible values and lineages.

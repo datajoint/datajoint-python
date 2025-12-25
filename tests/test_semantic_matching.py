@@ -754,3 +754,63 @@ class TestLeftJoinConstraint:
 
         # PK should be {x, z} (B's PK)
         assert set(result.primary_key) == {"x", "z"}
+
+
+class TestAggregationWithKeepAllRows:
+    """
+    Test that aggregation with keep_all_rows=True works correctly.
+
+    Aggregation uses a left join internally but has the opposite requirement (B → A)
+    compared to direct left joins (which require A → B). This is valid because the
+    GROUP BY clause resets the PK to PK(A).
+    """
+
+    def test_aggregation_keep_all_rows_works_with_b_determines_a(self, schema_pk_rules):
+        """
+        Aggregation with keep_all_rows=True should work when B → A.
+
+        A: x*               PK(A) = {x}
+        B: x*, y*           PK(B) = {x, y}
+
+        B → A? x in PK(B) → Yes (aggregation requirement met)
+
+        The internal left join would normally fail (B → A, not A → B), but
+        aggregation bypasses this because GROUP BY resets PK to {x}.
+        """
+        TableX = schema_pk_rules["TableX"]
+        TableXY = schema_pk_rules["TableXY"]
+
+        # This should work - aggregation with keep_all_rows=True
+        result = TableX.aggr(TableXY, keep_all_rows=True, count="count(*)")
+
+        # PK should be PK(A) = {x} (reset by GROUP BY)
+        assert set(result.primary_key) == {"x"}
+
+    def test_aggregation_keep_all_rows_produces_correct_pk(self, schema_pk_rules):
+        """
+        Aggregation result should always have PK(A), regardless of functional dependencies.
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableXZwithY = schema_pk_rules["TableXZwithY"]
+
+        # TableXY (A): PK = {x, y}
+        # TableXZwithY (B): PK = {x, z}, y is secondary
+        # B → A (y secondary in B), so left join would use PK(B) = {x, z}
+        # But aggregation resets to PK(A) = {x, y}
+        result = TableXY.aggr(TableXZwithY, keep_all_rows=True, count="count(*)")
+
+        # PK should be PK(A) = {x, y}
+        assert set(result.primary_key) == {"x", "y"}
+
+    def test_aggregation_without_keep_all_rows_also_works(self, schema_pk_rules):
+        """
+        Normal aggregation (keep_all_rows=False) should continue to work.
+        """
+        TableX = schema_pk_rules["TableX"]
+        TableXY = schema_pk_rules["TableXY"]
+
+        # Normal aggregation (inner join behavior)
+        result = TableX.aggr(TableXY, count="count(*)")
+
+        # PK should be PK(A) = {x}
+        assert set(result.primary_key) == {"x"}

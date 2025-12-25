@@ -282,7 +282,7 @@ class QueryExpression:
             "The @ operator has been removed in DataJoint 2.0. " "Use .join(other, semantic_check=False) for permissive joins."
         )
 
-    def join(self, other, semantic_check=True, left=False):
+    def join(self, other, semantic_check=True, left=False, _aggregation=False):
         """
         Create the joined QueryExpression.
 
@@ -293,6 +293,7 @@ class QueryExpression:
         :param semantic_check: If True (default), raise error on non-homologous namesakes.
             If False, bypass semantic check (use for legacy compatibility).
         :param left: If True, perform a left join retaining all rows from self.
+        :param _aggregation: Internal flag to bypass left join validation for aggregation.
 
         Examples:
             a * b  is short for a.join(b)
@@ -336,10 +337,10 @@ class QueryExpression:
         result._connection = self.connection
         result._support = self.support + other.support
         result._left = self._left + [left] + other._left
-        result._heading = self.heading.join(other.heading, left=left)
+        result._heading = self.heading.join(other.heading, left=left, _aggregation=_aggregation)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
-        result._original_heading = self.original_heading.join(other.original_heading, left=left)
+        result._original_heading = self.original_heading.join(other.original_heading, left=left, _aggregation=_aggregation)
         assert len(result.support) == len(result._left) + 1
         return result
 
@@ -683,7 +684,8 @@ class Aggregation(QueryExpression):
 
         if keep_all_rows and len(group.support) > 1 or group.heading.new_attributes:
             group = group.make_subquery()  # subquery if left joining a join
-        join = arg.join(group, left=keep_all_rows)  # reuse the join logic
+        # Pass _aggregation=True to bypass left join validation (aggregation resets PK via GROUP BY)
+        join = arg.join(group, left=keep_all_rows, _aggregation=True)
         result = cls()
         result._connection = join.connection
         result._heading = join.heading.set_primary_key(arg.primary_key)  # use left operand's primary key

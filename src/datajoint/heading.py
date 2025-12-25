@@ -468,7 +468,7 @@ class Heading:
         )
         return Heading(chain(copy_attrs, compute_attrs))
 
-    def join(self, other, left=False):
+    def join(self, other, left=False, _aggregation=False):
         """
         Join two headings into a new one.
 
@@ -486,11 +486,16 @@ class Heading:
         - If B → A or Neither, the PK would include B's attributes, which could be NULL
         - Only when A → B does PK(A) uniquely identify all result rows
 
+        Exception: Aggregation (A.aggr(B, keep_all_rows=True)) uses a left join internally
+        but requires B → A instead. This is valid because the GROUP BY clause resets the
+        primary key to PK(A), which consists of non-NULL values from the left operand.
+
         It assumes that self and other are headings that share no common dependent attributes.
 
         :param other: The other heading to join with
-        :param left: If True, this is a left join (requires A → B)
-        :raises DataJointError: If left=True and A does not determine B
+        :param left: If True, this is a left join (requires A → B unless _aggregation=True)
+        :param _aggregation: If True, skip left join validation (used by Aggregation.create)
+        :raises DataJointError: If left=True and A does not determine B (unless _aggregation)
         """
         from .errors import DataJointError
 
@@ -502,8 +507,8 @@ class Heading:
             name in other.primary_key or name in other.secondary_attributes for name in self.primary_key
         )
 
-        # For left joins, require A → B
-        if left and not self_determines_other:
+        # For left joins, require A → B (unless this is an aggregation context)
+        if left and not _aggregation and not self_determines_other:
             missing = [
                 name for name in other.primary_key if name not in self.primary_key and name not in self.secondary_attributes
             ]
