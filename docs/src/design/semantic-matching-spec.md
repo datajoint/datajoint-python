@@ -164,6 +164,144 @@ A.join(B, semantic_check=False)  # Explicit bypass
 
 The error message directs users to the explicit `.join()` method.
 
+## Primary Key Rules in Relational Operators
+
+In DataJoint, the result of each query operator produces a valid **entity set** with a well-defined **entity type** and **primary key**. This section specifies how the primary key is determined for each relational operator.
+
+### General Principle
+
+The primary key of a query result identifies unique entities in that result. For most operators, the primary key is preserved from the left operand. For joins, the primary key depends on the functional dependencies between the operands.
+
+### Notation
+
+In the examples below, `*` marks primary key attributes:
+- `A(x*, y*, z)` means A has primary key `{x, y}` and secondary attribute `z`
+- `A → B` means "A determines B" (defined below)
+
+### Rules by Operator
+
+| Operator | Primary Key Rule |
+|----------|------------------|
+| `A & B` (restriction) | PK(A) — preserved from left operand |
+| `A - B` (anti-restriction) | PK(A) — preserved from left operand |
+| `A.proj(...)` (projection) | PK(A) — preserved from left operand |
+| `A.aggr(B, ...)` (aggregation) | PK(A) — preserved from left operand |
+| `A * B` (join) | Depends on functional dependencies (see below) |
+
+### Join Primary Key Rule
+
+The join operator requires special handling because it combines two entity sets. The primary key of `A * B` depends on the **functional dependency relationship** between the operands.
+
+#### Definitions
+
+**A determines B** (written `A → B`): Every attribute in PK(B) is either already in PK(A) or is a secondary attribute in A.
+
+```
+A → B  iff  ∀b ∈ PK(B): b ∈ PK(A) OR b ∈ secondary(A)
+```
+
+Intuitively, `A → B` means that knowing A's primary key is sufficient to determine B's primary key through functional dependencies.
+
+**B determines A** (written `B → A`): Every attribute in PK(A) is either already in PK(B) or is a secondary attribute in B.
+
+```
+B → A  iff  ∀a ∈ PK(A): a ∈ PK(B) OR a ∈ secondary(B)
+```
+
+#### Join Primary Key Algorithm
+
+For `A * B`:
+
+| Condition | PK(A * B) | Attribute Order |
+|-----------|-----------|-----------------|
+| A → B | PK(A) | A's attributes first |
+| B → A (and not A → B) | PK(B) | B's attributes first |
+| Neither | PK(A) ∪ PK(B) | PK(A) first, then PK(B) − PK(A) |
+
+When both `A → B` and `B → A` hold, the left operand takes precedence (use PK(A)).
+
+#### Examples
+
+**Example 1: B → A**
+```
+A: x*, y*
+B: x*, z*, y    (y is secondary in B, so z → y)
+```
+- A → B? PK(B) = {x, z}. Is z in PK(A) or secondary in A? No (z not in A). **No.**
+- B → A? PK(A) = {x, y}. Is y in PK(B) or secondary in B? Yes (secondary). **Yes.**
+- Result: **PK(A * B) = {x, z}** with B's attributes first.
+
+**Example 2: Both directions (bijection-like)**
+```
+A: x*, y*, z    (z is secondary in A)
+B: y*, z*, x    (x is secondary in B)
+```
+- A → B? PK(B) = {y, z}. Is z in PK(A) or secondary in A? Yes (secondary). **Yes.**
+- B → A? PK(A) = {x, y}. Is x in PK(B) or secondary in B? Yes (secondary). **Yes.**
+- Both hold, prefer left operand: **PK(A * B) = {x, y}** with A's attributes first.
+
+**Example 3: Neither direction**
+```
+A: x*, y*
+B: z*, x    (x is secondary in B)
+```
+- A → B? PK(B) = {z}. Is z in PK(A) or secondary in A? No. **No.**
+- B → A? PK(A) = {x, y}. Is y in PK(B) or secondary in B? No (y not in B). **No.**
+- Result: **PK(A * B) = {x, y, z}** (union) with A's attributes first.
+
+**Example 4: A → B (subordinate relationship)**
+```
+Session: session_id*
+Trial: session_id*, trial_num*    (references Session)
+```
+- A → B? PK(Trial) = {session_id, trial_num}. Is trial_num in PK(Session) or secondary? No. **No.**
+- B → A? PK(Session) = {session_id}. Is session_id in PK(Trial)? Yes. **Yes.**
+- Result: **PK(Session * Trial) = {session_id, trial_num}** with Trial's attributes first.
+
+### Design Tradeoff: Predictability vs. Minimality
+
+The join primary key rule prioritizes **predictability** over **minimality**. In some cases, the resulting primary key may not be minimal (i.e., it may contain functionally redundant attributes).
+
+**Example of non-minimal result:**
+```
+A: x*, y*
+B: z*, x    (x is secondary in B, so z → x)
+```
+
+The mathematically minimal primary key for `A * B` would be `{y, z}` because:
+- `z → x` (from B's structure)
+- `{y, z} → {x, y, z}` (z gives us x, and we have y)
+
+However, `{y, z}` is problematic:
+- It is **not the primary key of either operand** (A has `{x, y}`, B has `{z}`)
+- It is **not the union** of the primary keys
+- It represents a **novel entity type** that doesn't correspond to A, B, or their natural pairing
+
+This creates confusion: what kind of entity does `{y, z}` identify?
+
+**The simplified rule produces `{x, y, z}`** (the union), which:
+- Is immediately recognizable as "one A entity paired with one B entity"
+- Contains A's full primary key and B's full primary key
+- May have redundancy (`x` is determined by `z`) but is semantically clear
+
+**Rationale:** Users can always project away redundant attributes if they need the minimal key. But starting with a predictable, interpretable primary key reduces confusion and errors.
+
+### Attribute Ordering
+
+The primary key attributes always appear **first** in the result's attribute list, followed by secondary attributes. When `B → A` (and not `A → B`), the join is conceptually reordered as `B * A` to maintain this invariant:
+
+- If PK = PK(A): A's attributes appear first
+- If PK = PK(B): B's attributes appear first
+- If PK = PK(A) ∪ PK(B): PK(A) attributes first, then PK(B) − PK(A), then secondaries
+
+### Non-Commutativity
+
+With these rules, join is **not commutative** in terms of:
+1. **Primary key selection**: `A * B` may have a different PK than `B * A` when one direction determines but not the other
+2. **Attribute ordering**: The left operand's attributes appear first (unless B → A)
+
+The **result set** (the actual rows returned) remains the same regardless of order, but the **schema** (primary key and attribute order) may differ.
+
 ## Universal Set `dj.U`
 
 `dj.U()` or `dj.U('attr1', 'attr2', ...)` represents the universal set of all possible values and lineages.
@@ -536,6 +674,14 @@ Use .proj() to rename one of the attributes or .join(semantic_check=False) in a 
    - `A.aggr(B)` raises error when B is missing PK attributes
    - `A.aggr(B)` raises error when PK attributes have different lineage
    - `dj.U('a', 'b').aggr(B)` works when B has `a` and `b` attributes
+
+6. **Join primary key determination**:
+   - `A * B` where `A → B`: result has PK(A)
+   - `A * B` where `B → A` (not `A → B`): result has PK(B), B's attributes first
+   - `A * B` where both `A → B` and `B → A`: result has PK(A) (left preference)
+   - `A * B` where neither direction: result has PK(A) ∪ PK(B)
+   - Verify attribute ordering matches primary key source
+   - Verify non-commutativity: `A * B` vs `B * A` may differ in PK and order
 
 ### Integration Tests
 
