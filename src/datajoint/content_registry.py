@@ -65,8 +65,7 @@ def get_store_backend(store_name: str | None = None) -> StorageBackend:
         store_name = config.object_storage.default_store
         if store_name is None:
             raise DataJointError(
-                "No default store configured. Set object_storage.default_store "
-                "or specify a store name explicitly."
+                "No default store configured. Set object_storage.default_store " "or specify a store name explicitly."
             )
 
     spec = config.get_object_store_spec(store_name)
@@ -129,10 +128,7 @@ def get_content(content_hash: str, store_name: str | None = None) -> bytes:
     # Verify hash (optional but recommended for integrity)
     actual_hash = compute_content_hash(data)
     if actual_hash != content_hash:
-        raise DataJointError(
-            f"Content hash mismatch: expected {content_hash[:16]}..., "
-            f"got {actual_hash[:16]}..."
-        )
+        raise DataJointError(f"Content hash mismatch: expected {content_hash[:16]}..., " f"got {actual_hash[:16]}...")
 
     return data
 
