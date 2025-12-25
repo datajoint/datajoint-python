@@ -136,7 +136,7 @@ Semantic matching applies to all binary operations that match attributes:
 | `A * B` | Join | Matches on homologous namesakes |
 | `A & B` | Restriction | Matches on homologous namesakes |
 | `A - B` | Anti-restriction | Matches on homologous namesakes |
-| `A.aggr(B, ...)` | Aggregation | Matches on homologous namesakes |
+| `A.aggr(B, ...)` | Aggregation | Requires functional dependency (see below) |
 
 ### The `.join()` Method
 
@@ -438,8 +438,27 @@ def proj(self, *attributes, **named_attributes):
 
 ### Aggregation (`aggr`)
 
-Aggregation creates a new expression with:
-- Group attributes retain their lineage from the group operand
+In `A.aggr(B, ...)`, entries from B are grouped by A's primary key and aggregate functions are computed.
+
+**Functional Dependency Requirement**: Every entry in B must match exactly one entry in A. This requires:
+
+1. **B must have all of A's primary key attributes**: If A's primary key is `(a, b)`, then B must contain attributes named `a` and `b`.
+
+2. **Primary key attributes must be homologous**: The namesake attributes in B must have the same lineage as in A. This ensures they represent the same entity.
+
+```python
+# Valid: Session.aggr(Trial, ...) where Trial has session_id from Session
+Session.aggr(Trial, n='count(*)')  # OK - Trial.session_id traces to Session.session_id
+
+# Invalid: Missing primary key attribute
+Session.aggr(Stimulus, n='count(*)')  # Error if Stimulus lacks session_id
+
+# Invalid: Non-homologous primary key
+TableA.aggr(TableB, n='count(*)')  # Error if TableB.id has different lineage than TableA.id
+```
+
+**Result lineage**:
+- Group attributes retain their lineage from the grouping expression (A)
 - Aggregated attributes have `lineage=None` (they are computations)
 
 ### Union (`+`)
@@ -470,6 +489,22 @@ DataJointError: dj.U(...) * table is deprecated in DataJoint 2.0.
 Use dj.U(...) & table instead.
 ```
 
+### Aggregation Missing Primary Key
+
+```
+DataJointError: Aggregation requires functional dependency: `group` must have all primary key
+attributes of the grouping expression. Missing: {'session_id'}.
+Use .proj() to add the missing attributes or verify the schema design.
+```
+
+### Aggregation Non-Homologous Primary Key
+
+```
+DataJointError: Aggregation requires homologous primary key attributes.
+Attribute `id` has different lineages: university.student.id (grouping) vs university.course.id (group).
+Use .proj() to rename one of the attributes or .join(semantic_check=False) in a manual aggregation.
+```
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -495,6 +530,12 @@ Use dj.U(...) & table instead.
    - `dj.U.aggr(table, ...)` works
    - `dj.U - table` raises error
    - `dj.U * table` raises deprecation error
+
+5. **Aggregation functional dependency**:
+   - `A.aggr(B)` works when B has all of A's PK attributes with same lineage
+   - `A.aggr(B)` raises error when B is missing PK attributes
+   - `A.aggr(B)` raises error when PK attributes have different lineage
+   - `dj.U('a', 'b').aggr(B)` works when B has `a` and `b` attributes
 
 ### Integration Tests
 

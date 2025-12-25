@@ -464,13 +464,20 @@ class QueryExpression:
 
     def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
         """
-        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
-        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+        Aggregate `group` over the primary key of `self`.
 
-        :param group:  The query expression to be aggregated.
-        :param keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.
-        :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
-        :return: The derived query expression
+        In A.aggr(B, ...), groups entries from B by the primary key of A and computes
+        aggregate functions. Requires functional dependency: every entry in B must match
+        exactly one entry in A. This means B must have all of A's primary key attributes
+        as homologous namesakes (same name AND same lineage).
+
+        :param group: the query expression to aggregate (B in A.aggr(B))
+        :param attributes: attributes from self to include in the result
+        :param keep_all_rows: True=keep all rows from self (left join). False=keep only matching rows.
+        :param named_attributes: aggregation computations, e.g., count='count(*)', avg_val='avg(value)'
+        :return: query expression with self's primary key and the computed aggregations
+        :raises DataJointError: if group is missing primary key attributes from self,
+            or if namesake primary key attributes have different lineages
         """
         if Ellipsis in attributes:
             # expand ellipsis to include only attributes from the left table
@@ -631,9 +638,47 @@ class Aggregation(QueryExpression):
 
     @classmethod
     def create(cls, arg, group, keep_all_rows=False):
+        """
+        Create an aggregation expression.
+
+        For A.aggr(B, ...), ensures functional dependency: every entry in B must match
+        exactly one entry in A. This requires B to have all of A's primary key attributes
+        as homologous namesakes (same name AND same lineage).
+
+        :param arg: the grouping expression (A in A.aggr(B))
+        :param group: the expression to aggregate (B in A.aggr(B))
+        :param keep_all_rows: if True, keep all rows from arg (left join behavior)
+        :raises DataJointError: if group is missing any primary key attributes from arg,
+            or if namesake attributes have different lineages
+        """
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()  # instantiate if a class
         assert isinstance(group, QueryExpression)
+
+        # Check functional dependency: group must have all of arg's primary key attributes
+        missing_pk = set(arg.primary_key) - set(group.heading.names)
+        if missing_pk:
+            raise DataJointError(
+                f"Aggregation requires functional dependency: `group` must have all primary key "
+                f"attributes of the grouping expression. Missing: {missing_pk}. "
+                f"Use .proj() to add the missing attributes or verify the schema design."
+            )
+
+        # Check that primary key attributes are homologous (same lineage)
+        # This is done for QueryExpression args; U is always compatible
+        if not isinstance(arg, U):
+            for attr_name in arg.primary_key:
+                arg_lineage = arg.heading[attr_name].lineage
+                group_lineage = group.heading[attr_name].lineage
+                if arg_lineage != group_lineage:
+                    raise DataJointError(
+                        f"Aggregation requires homologous primary key attributes. "
+                        f"Attribute `{attr_name}` has different lineages: "
+                        f"{arg_lineage} (grouping) vs {group_lineage} (group). "
+                        f"Use .proj() to rename one of the attributes or "
+                        f".join(semantic_check=False) in a manual aggregation."
+                    )
+
         if keep_all_rows and len(group.support) > 1 or group.heading.new_attributes:
             group = group.make_subquery()  # subquery if left joining a join
         join = arg.join(group, left=keep_all_rows)  # reuse the join logic
@@ -853,12 +898,17 @@ class U:
 
     def aggr(self, group, **named_attributes):
         """
-        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
-        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+        Aggregate `group` over the attributes of this universal set.
 
-        :param group:  The query expression to be aggregated.
-        :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
-        :return: The derived query expression
+        In dj.U('attr1', 'attr2').aggr(B, ...), groups entries from B by attr1 and attr2
+        and computes aggregate functions. Requires B to have all specified attributes.
+        Since dj.U is homologous to any namesake attribute, lineage compatibility is
+        always satisfied.
+
+        :param group: the query expression to aggregate
+        :param named_attributes: aggregation computations, e.g., count='count(*)', avg_val='avg(value)'
+        :return: query expression with U's attributes as primary key and the computed aggregations
+        :raises DataJointError: if group is missing any of U's primary key attributes
         """
         if named_attributes.get("keep_all_rows", False):
             raise DataJointError("Cannot set keep_all_rows=True when aggregating on a universal set.")
