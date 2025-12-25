@@ -1,6 +1,12 @@
 """
-Exception classes for the DataJoint library
+Exception classes for the DataJoint library.
+
+This module defines the exception hierarchy used throughout DataJoint. All DataJoint
+exceptions inherit from DataJointError, which provides a suggest() method for adding
+context to errors.
 """
+
+from __future__ import annotations
 
 import os
 

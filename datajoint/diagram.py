@@ -1,3 +1,13 @@
+"""
+Entity relationship diagram module for DataJoint.
+
+This module provides the Diagram class for visualizing the relationships between
+tables in a DataJoint schema. Diagrams display tables and foreign key dependencies
+as directed graphs using matplotlib and graphviz.
+"""
+
+from __future__ import annotations
+
 import functools
 import inspect
 import io

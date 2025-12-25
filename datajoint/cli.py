@@ -1,3 +1,13 @@
+"""
+Command-line interface for DataJoint.
+
+This module provides the console interface for DataJoint Python, allowing users
+to start an interactive REPL session with DataJoint pre-configured and optional
+schema modules loaded.
+"""
+
+from __future__ import annotations
+
 import argparse
 from code import interact
 from collections import ChainMap
@@ -5,7 +15,7 @@ from collections import ChainMap
 import datajoint as dj
 
 
-def cli(args: list = None):
+def cli(args: list[str] | None = None) -> None:
     """
     Console interface for DataJoint Python
 

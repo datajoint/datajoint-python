@@ -1,3 +1,11 @@
+"""
+Version information for DataJoint.
+
+This module contains the package version, which is auto-managed by GitHub Actions.
+"""
+
+from __future__ import annotations
+
 # version bump auto managed by Github Actions:
 # label_prs.yaml(prep), release.yaml(bump), post_release.yaml(edit)
 # manually set this version will be eventually overwritten by the above actions

@@ -1,3 +1,13 @@
+"""
+Dependency graph module for tracking relationships between tables.
+
+This module provides classes and functions for managing the dependency graph
+of DataJoint tables. It handles topological sorting, parent/child relationships,
+and ensures proper ordering for cascading operations like delete.
+"""
+
+from __future__ import annotations
+
 import itertools
 import re
 from collections import defaultdict

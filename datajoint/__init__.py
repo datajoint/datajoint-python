@@ -15,6 +15,8 @@ Please cite:
   - http://dx.doi.org/10.1101/031658
 """
 
+from __future__ import annotations
+
 __author__ = "DataJoint Contributors"
 __date__ = "November 7, 2020"
 __all__ = [

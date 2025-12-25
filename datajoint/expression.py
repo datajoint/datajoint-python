@@ -1,8 +1,24 @@
+"""
+Query expression module for building and executing SQL SELECT statements.
+
+This module implements the core query operators (restrict, join, proj, aggr, union)
+that allow users to derive new entity sets from existing tables. QueryExpression
+objects generate SQL SELECT statements and form the foundation of DataJoint's
+query interface.
+"""
+
+from __future__ import annotations
+
 import copy
 import inspect
 import logging
 import re
 from itertools import count
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .connection import Connection
+    from .heading import Heading
 
 from .condition import (
     AndList,
@@ -60,48 +76,82 @@ class QueryExpression:
     _distinct = False
 
     @property
-    def connection(self):
-        """a dj.Connection object"""
+    def connection(self) -> Connection:
+        """
+        Get the database connection for this query expression.
+
+        :return: a dj.Connection object
+        """
         assert self._connection is not None
         return self._connection
 
     @property
-    def support(self):
-        """A list of table names or subqueries to from the FROM clause"""
+    def support(self) -> list[str | QueryExpression]:
+        """
+        Get the list of tables or subqueries forming the FROM clause.
+
+        :return: A list of table names or subqueries for the FROM clause
+        """
         assert self._support is not None
         return self._support
 
     @property
-    def heading(self):
-        """a dj.Heading object, reflects the effects of the projection operator .proj"""
+    def heading(self) -> Heading:
+        """
+        Get the heading reflecting the effects of projection.
+
+        :return: a dj.Heading object reflecting the effects of the projection operator .proj
+        """
         return self._heading
 
     @property
-    def original_heading(self):
-        """a dj.Heading object reflecting the attributes before projection"""
+    def original_heading(self) -> Heading:
+        """
+        Get the heading before any projection was applied.
+
+        :return: a dj.Heading object reflecting the attributes before projection
+        """
         return self._original_heading or self.heading
 
     @property
-    def restriction(self):
-        """a AndList object of restrictions applied to input to produce the result"""
+    def restriction(self) -> AndList:
+        """
+        Get the list of restrictions applied to this expression.
+
+        :return: an AndList object of restrictions applied to input to produce the result
+        """
         if self._restriction is None:
             self._restriction = AndList()
         return self._restriction
 
     @property
-    def restriction_attributes(self):
-        """the set of attribute names invoked in the WHERE clause"""
+    def restriction_attributes(self) -> set[str]:
+        """
+        Get the attribute names used in the WHERE clause.
+
+        :return: the set of attribute names invoked in the WHERE clause
+        """
         if self._restriction_attributes is None:
             self._restriction_attributes = set()
         return self._restriction_attributes
 
     @property
-    def primary_key(self):
+    def primary_key(self) -> list[str]:
+        """
+        Get the primary key attributes.
+
+        :return: list of primary key attribute names
+        """
         return self.heading.primary_key
 
     _subquery_alias_count = count()  # count for alias names used in the FROM clause
 
-    def from_clause(self):
+    def from_clause(self) -> str:
+        """
+        Generate the FROM clause for the SQL SELECT statement.
+
+        :return: SQL FROM clause string
+        """
         support = (
             (
                 "(" + src.make_sql() + ") as `$%x`" % next(self._subquery_alias_count)
@@ -117,7 +167,12 @@ class QueryExpression:
             )
         return clause
 
-    def where_clause(self):
+    def where_clause(self) -> str:
+        """
+        Generate the WHERE clause for the SQL SELECT statement.
+
+        :return: SQL WHERE clause string (empty if no restrictions)
+        """
         return (
             ""
             if not self.restriction
@@ -139,11 +194,12 @@ class QueryExpression:
 
         return clause
 
-    def make_sql(self, fields=None):
+    def make_sql(self, fields: list[str] | None = None) -> str:
         """
         Make the SQL SELECT statement.
 
-        :param fields: used to explicitly set the select attributes
+        :param fields: used to explicitly set the select attributes. If None, uses heading.names.
+        :return: SQL SELECT statement string
         """
         return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
@@ -154,8 +210,12 @@ class QueryExpression:
         )
 
     # --------- query operators -----------
-    def make_subquery(self):
-        """create a new SELECT statement where self is the FROM clause"""
+    def make_subquery(self) -> QueryExpression:
+        """
+        Create a new SELECT statement where self is the FROM clause.
+
+        :return: new QueryExpression with self as its source
+        """
         result = QueryExpression()
         result._connection = self.connection
         result._support = [self]
@@ -245,20 +305,30 @@ class QueryExpression:
         result.restriction_attributes.update(attributes)
         return result
 
-    def restrict_in_place(self, restriction):
+    def restrict_in_place(self, restriction: Any) -> None:
+        """
+        Apply restriction to self in place (mutates self).
+
+        :param restriction: restriction to apply
+        """
         self.__dict__.update(self.restrict(restriction).__dict__)
 
-    def __and__(self, restriction):
+    def __and__(self, restriction: Any) -> QueryExpression:
         """
         Restriction operator e.g. ``q1 & q2``.
+
+        :param restriction: restriction to apply
         :return: a restricted copy of the input argument
         See QueryExpression.restrict for more detail.
         """
         return self.restrict(restriction)
 
-    def __xor__(self, restriction):
+    def __xor__(self, restriction: Any) -> QueryExpression:
         """
-        Permissive restriction operator ignoring compatibility check  e.g. ``q1 ^ q2``.
+        Permissive restriction operator ignoring compatibility check e.g. ``q1 ^ q2``.
+
+        :param restriction: restriction to apply without compatibility checking
+        :return: restricted QueryExpression
         """
         if inspect.isclass(restriction) and issubclass(restriction, QueryExpression):
             restriction = restriction()
@@ -266,40 +336,58 @@ class QueryExpression:
             return self.restrict(Not(PromiscuousOperand(restriction.restriction)))
         return self.restrict(PromiscuousOperand(restriction))
 
-    def __sub__(self, restriction):
+    def __sub__(self, restriction: Any) -> QueryExpression:
         """
         Inverted restriction e.g. ``q1 - q2``.
+
+        :param restriction: restriction to invert and apply
         :return: a restricted copy of the input argument
         See QueryExpression.restrict for more detail.
         """
         return self.restrict(Not(restriction))
 
-    def __neg__(self):
+    def __neg__(self) -> QueryExpression | Not:
         """
         Convert between restriction and inverted restriction e.g. ``-q1``.
-        :return: target restriction
+
+        :return: target restriction (Not wrapper if not already inverted)
         See QueryExpression.restrict for more detail.
         """
         if isinstance(self, Not):
             return self.restriction
         return Not(self)
 
-    def __mul__(self, other):
+    def __mul__(
+        self, other: QueryExpression | type[QueryExpression]
+    ) -> QueryExpression:
         """
-        join of query expressions `self` and `other` e.g. ``q1 * q2``.
+        Join of query expressions `self` and `other` e.g. ``q1 * q2``.
+
+        :param other: QueryExpression to join with
+        :return: joined QueryExpression
         """
         return self.join(other)
 
-    def __matmul__(self, other):
+    def __matmul__(
+        self, other: QueryExpression | type[QueryExpression]
+    ) -> QueryExpression:
         """
         Permissive join of query expressions `self` and `other` ignoring compatibility check
-            e.g. ``q1 @ q2``.
+        e.g. ``q1 @ q2``.
+
+        :param other: QueryExpression to join with
+        :return: joined QueryExpression
         """
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
         return self.join(other, semantic_check=False)
 
-    def join(self, other, semantic_check=True, left=False):
+    def join(
+        self,
+        other: QueryExpression | type[QueryExpression],
+        semantic_check: bool = True,
+        left: bool = False,
+    ) -> QueryExpression:
         """
         create the joined QueryExpression.
         a * b  is short for A.join(B)
@@ -349,11 +437,18 @@ class QueryExpression:
         assert len(result.support) == len(result._left) + 1
         return result
 
-    def __add__(self, other):
-        """union e.g. ``q1 + q2``."""
+    def __add__(
+        self, other: QueryExpression | type[QueryExpression]
+    ) -> QueryExpression:
+        """
+        Union of query expressions e.g. ``q1 + q2``.
+
+        :param other: QueryExpression to union with
+        :return: Union QueryExpression
+        """
         return Union.create(self, other)
 
-    def proj(self, *attributes, **named_attributes):
+    def proj(self, *attributes: str, **named_attributes: str) -> QueryExpression:
         """
         Projection operator.
 
@@ -514,7 +609,13 @@ class QueryExpression:
         )
         return result
 
-    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
+    def aggr(
+        self,
+        group: QueryExpression,
+        *attributes: str,
+        keep_all_rows: bool = False,
+        **named_attributes: str,
+    ) -> QueryExpression:
         """
         Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
         has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
@@ -544,29 +645,29 @@ class QueryExpression:
     def fetch(self):
         return Fetch(self)
 
-    def head(self, limit=25, **fetch_kwargs):
+    def head(self, limit: int = 25, **fetch_kwargs: Any) -> Any:
         """
-        shortcut to fetch the first few entries from query expression.
+        Shortcut to fetch the first few entries from query expression.
         Equivalent to fetch(order_by="KEY", limit=25)
 
-        :param limit:  number of entries
+        :param limit: number of entries
         :param fetch_kwargs: kwargs for fetch
         :return: query result
         """
         return self.fetch(order_by="KEY", limit=limit, **fetch_kwargs)
 
-    def tail(self, limit=25, **fetch_kwargs):
+    def tail(self, limit: int = 25, **fetch_kwargs: Any) -> Any:
         """
-        shortcut to fetch the last few entries from query expression.
+        Shortcut to fetch the last few entries from query expression.
         Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]
 
-        :param limit:  number of entries
+        :param limit: number of entries
         :param fetch_kwargs: kwargs for fetch
         :return: query result
         """
         return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         result = self.make_subquery() if self._top else copy.copy(self)
         return result.connection.query(
@@ -585,8 +686,10 @@ class QueryExpression:
             )
         ).fetchone()[0]
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         """
+        Check if the result is not empty.
+
         :return: True if the result is not empty. Equivalent to len(self) > 0 but often
             faster e.g. ``bool(q1)``.
         """
@@ -598,28 +701,28 @@ class QueryExpression:
             ).fetchone()[0]
         )
 
-    def __contains__(self, item):
+    def __contains__(self, item: Any) -> bool:
         """
-        returns True if the restriction in item matches any entries in self
-            e.g. ``restriction in q1``.
+        Check if a restriction matches any entries in self e.g. ``restriction in q1``.
 
         :param item: any restriction
+        :return: True if the restriction matches any entries
         (item in query_expression) is equivalent to bool(query_expression & item) but may be
         executed more efficiently.
         """
         return bool(self & item)  # May be optimized e.g. using an EXISTS query
 
-    def __iter__(self):
+    def __iter__(self) -> QueryExpression:
         """
-        returns an iterator-compatible QueryExpression object e.g. ``iter(q1)``.
+        Return an iterator-compatible QueryExpression object e.g. ``iter(q1)``.
 
-        :param self: iterator-compatible QueryExpression object
+        :return: iterator-compatible QueryExpression object
         """
         self._iter_only_key = all(v.in_key for v in self.heading.attributes.values())
         self._iter_keys = self.fetch("KEY")
         return self
 
-    def __next__(self):
+    def __next__(self) -> dict[str, Any]:
         """
         returns the next record on an iterator-compatible QueryExpression object
             e.g. ``next(q1)``.
@@ -649,22 +752,22 @@ class QueryExpression:
                     # -- move on to next entry.
                     return next(self)
 
-    def cursor(self, as_dict=False):
+    def cursor(self, as_dict: bool = False) -> Any:
         """
-        See expression.fetch() for input description.
+        Execute the query and return a database cursor.
+
+        :param as_dict: if True, return results as dictionaries
         :return: query cursor
         """
         sql = self.make_sql()
         logger.debug(sql)
         return self.connection.query(sql, as_dict=as_dict)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
-        returns the string representation of a QueryExpression object e.g. ``str(q1)``.
+        Return the string representation of a QueryExpression object e.g. ``str(q1)``.
 
-        :param self: A query expression
-        :type self: :class:`QueryExpression`
-        :rtype: str
+        :return: string representation (preview if not in debug mode)
         """
         return (
             super().__repr__()
@@ -672,12 +775,22 @@ class QueryExpression:
             else self.preview()
         )
 
-    def preview(self, limit=None, width=None):
-        """:return: a string of preview of the contents of the query."""
+    def preview(self, limit: int | None = None, width: int | None = None) -> str:
+        """
+        Generate a preview string of the query contents.
+
+        :param limit: maximum number of rows to display
+        :param width: maximum column width
+        :return: a string preview of the contents of the query
+        """
         return preview(self, limit, width)
 
-    def _repr_html_(self):
-        """:return: HTML to display table in Jupyter notebook."""
+    def _repr_html_(self) -> str:
+        """
+        Generate HTML representation for Jupyter notebook display.
+
+        :return: HTML to display table in Jupyter notebook
+        """
         return repr_html(self)
 
 

@@ -1,7 +1,12 @@
 """
-This module hosts functions to convert DataJoint table definitions into mysql table definitions, and to
-declare the corresponding mysql tables.
+Table declaration module for DataJoint.
+
+This module hosts functions to convert DataJoint table definitions into MySQL table
+definitions, and to declare the corresponding MySQL tables. It parses definition strings
+and generates DDL statements for creating and altering tables.
 """
+
+from __future__ import annotations
 
 import logging
 import re

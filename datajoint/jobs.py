@@ -1,3 +1,13 @@
+"""
+Job management module for DataJoint auto-population.
+
+This module provides the JobTable class for reserving and tracking auto-population
+jobs. It manages job states (reserved, error, ignore) and enables distributed
+population across multiple processes.
+"""
+
+from __future__ import annotations
+
 import os
 import platform
 

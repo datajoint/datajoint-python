@@ -1,3 +1,16 @@
+"""
+Attribute adapter module for user-defined types.
+
+This module provides the AttributeAdapter base class for creating custom attribute
+types in DataJoint. Adapters allow transparent conversion between Python objects
+and database-storable values.
+
+Note: This module is deprecated. Use datajoint.AttributeType instead for new
+custom types.
+"""
+
+from __future__ import annotations
+
 import re
 
 from .errors import DataJointError, _support_adapted_types

@@ -1,3 +1,13 @@
+"""
+Administrative utilities for DataJoint database management.
+
+This module provides functions for administrative tasks such as setting passwords
+and managing database connections. These operations typically require appropriate
+database privileges.
+"""
+
+from __future__ import annotations
+
 import logging
 from getpass import getpass
 

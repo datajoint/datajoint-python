@@ -1,4 +1,13 @@
-"""This module defines class dj.AutoPopulate"""
+"""
+AutoPopulate mixin for automated table population.
+
+This module defines the AutoPopulate class, a mixin that adds the populate() method
+to Table classes. Auto-populated tables must define a key_source property and a make()
+callback method. The populate system handles job management, error tracking, and
+parallel execution.
+"""
+
+from __future__ import annotations
 
 import contextlib
 import datetime
@@ -15,8 +24,6 @@ from tqdm import tqdm
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
 from .hash import key_hash
-
-# noinspection PyExceptionInherit,PyCallingNonCallable
 
 logger = logging.getLogger(__name__.split(".")[0])
 

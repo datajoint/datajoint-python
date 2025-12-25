@@ -1,3 +1,13 @@
+"""
+Logging configuration for DataJoint.
+
+This module configures the logging system for DataJoint, including log level
+configuration via environment variables and custom exception handling to ensure
+uncaught exceptions are properly logged.
+"""
+
+from __future__ import annotations
+
 import logging
 import os
 import sys

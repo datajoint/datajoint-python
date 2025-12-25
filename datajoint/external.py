@@ -1,3 +1,14 @@
+"""
+External storage module for managing data stored outside the database.
+
+This module provides the ExternalTable class and ExternalMapping for handling
+data stored in external locations (file systems, S3, etc.). External storage
+allows large blobs, files, and attachments to be stored efficiently outside
+the main database tables.
+"""
+
+from __future__ import annotations
+
 import logging
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath

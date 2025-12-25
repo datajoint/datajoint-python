@@ -1,6 +1,12 @@
 """
-Hosts the table tiers, user tables should be derived from.
+User table classes for DataJoint schema definitions.
+
+This module hosts the table tier classes (Manual, Lookup, Imported, Computed, Part)
+that user tables should be derived from. Each tier class defines the naming conventions
+and behavioral characteristics of tables in a DataJoint schema.
 """
+
+from __future__ import annotations
 
 import re
 

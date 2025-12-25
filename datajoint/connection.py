@@ -1,7 +1,12 @@
 """
-This module contains the Connection class that manages the connection to the database, and
-the ``conn`` function that provides access to a persistent connection in datajoint.
+Database connection module for DataJoint.
+
+This module contains the Connection class that manages the connection to the database,
+and the ``conn`` function that provides access to a persistent connection in datajoint.
+It handles connection pooling, transaction management, query execution, and query caching.
 """
+
+from __future__ import annotations
 
 import logging
 import pathlib

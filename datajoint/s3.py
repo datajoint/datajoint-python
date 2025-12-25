@@ -1,6 +1,12 @@
 """
-AWS S3 operations
+AWS S3 operations for DataJoint external storage.
+
+This module provides the Folder class for manipulating objects within an S3-compatible
+object store. It handles file upload, download, and management operations for
+external blob storage.
 """
+
+from __future__ import annotations
 
 import logging
 import uuid

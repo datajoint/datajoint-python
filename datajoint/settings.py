@@ -1,6 +1,12 @@
 """
-Settings for DataJoint
+Settings and configuration management for DataJoint.
+
+This module provides the Config class and global config instance for managing
+DataJoint settings. Configuration can be loaded from files (local or global),
+environment variables, or set programmatically.
 """
+
+from __future__ import annotations
 
 import collections
 import json

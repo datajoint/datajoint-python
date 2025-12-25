@@ -1,3 +1,13 @@
+"""
+Schema management module for DataJoint.
+
+This module provides the Schema class for managing database schemas and binding
+table classes to their databases. It handles schema creation, table declaration,
+and provides utilities for virtual modules and schema listing.
+"""
+
+from __future__ import annotations
+
 import collections
 import inspect
 import itertools

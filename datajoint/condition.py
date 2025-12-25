@@ -1,4 +1,12 @@
-"""methods for generating SQL WHERE clauses from datajoint restriction conditions"""
+"""
+SQL condition generation module for DataJoint.
+
+This module provides methods for generating SQL WHERE clauses from DataJoint
+restriction conditions. It handles translation of various Python objects
+(dicts, lists, query expressions) into valid SQL conditions.
+"""
+
+from __future__ import annotations
 
 import collections
 import datetime
@@ -8,7 +16,6 @@ import json
 import re
 import uuid
 from dataclasses import dataclass
-from typing import List, Union
 
 import numpy
 import pandas
@@ -72,8 +79,8 @@ class Top:
     In SQL, this corresponds to ORDER BY ... LIMIT ... OFFSET
     """
 
-    limit: Union[int, None] = 1
-    order_by: Union[str, List[str]] = "KEY"
+    limit: int | None = 1
+    order_by: str | list[str] = "KEY"
     offset: int = 0
 
     def __post_init__(self):

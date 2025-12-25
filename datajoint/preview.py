@@ -1,4 +1,12 @@
-"""methods for generating previews of query expression results in python command line and Jupyter"""
+"""
+Preview module for query expression results.
+
+This module provides methods for generating previews of query expression results
+in Python command line and Jupyter notebooks. It handles formatting tabular data
+for display with configurable width and row limits.
+"""
+
+from __future__ import annotations
 
 from .settings import config
 

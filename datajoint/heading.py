@@ -1,3 +1,14 @@
+"""
+Heading module for managing table attribute metadata.
+
+This module provides the Heading and Attribute classes for representing and
+manipulating table column metadata. A Heading contains information about all
+attributes (columns) of a table, including their types, constraints, and
+properties.
+"""
+
+from __future__ import annotations
+
 import logging
 import re
 from collections import defaultdict, namedtuple

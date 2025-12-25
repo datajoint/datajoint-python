@@ -1,9 +1,21 @@
+"""
+Fetch module for retrieving data from DataJoint query expressions.
+
+This module provides the Fetch and Fetch1 classes for fetching query results
+from the database. It handles unpacking of blobs, external storage retrieval,
+and conversion to various output formats (numpy arrays, dictionaries, pandas
+DataFrames).
+"""
+
+from __future__ import annotations
+
 import itertools
 import json
 import numbers
 import uuid
 from functools import partial
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Iterator
 
 import numpy as np
 import pandas
@@ -15,6 +27,10 @@ from .errors import DataJointError
 from .settings import config
 from .utils import safe_write
 
+if TYPE_CHECKING:
+    from .expression import QueryExpression
+    from .heading import Attribute
+
 
 class key:
     """
@@ -25,22 +41,42 @@ class key:
     pass
 
 
-def is_key(attr):
+def is_key(attr: Any) -> bool:
+    """
+    Check if an attribute represents the primary key.
+
+    :param attr: attribute to check
+    :return: True if attr is the key class or the string "KEY"
+    """
     return attr is key or attr == "KEY"
 
 
-def to_dicts(recarray):
-    """convert record array to a dictionaries"""
+def to_dicts(recarray: np.recarray) -> Iterator[dict[str, Any]]:
+    """
+    Convert a numpy record array to dictionaries.
+
+    :param recarray: numpy record array
+    :yield: dictionary for each record
+    """
     for rec in recarray:
         yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
-def _get(connection, attr, data, squeeze, download_path):
+def _get(
+    connection: Any,
+    attr: Attribute,
+    data: Any,
+    squeeze: bool,
+    download_path: str | Path,
+) -> Any:
     """
-    This function is called for every attribute
+    Unpack a single attribute value fetched from the database.
+
+    This function is called for every attribute to handle special types
+    like blobs, attachments, and external storage.
 
     :param connection: a dj.Connection object
-    :param attr: attribute name from the table's heading
+    :param attr: attribute metadata from the table's heading
     :param data: literal value fetched from the table
     :param squeeze: if True squeeze blobs
     :param download_path: for fetches that download data, e.g. attachments
@@ -126,20 +162,20 @@ class Fetch:
     :param expression: the QueryExpression object to fetch from.
     """
 
-    def __init__(self, expression):
+    def __init__(self, expression: QueryExpression) -> None:
         self._expression = expression
 
     def __call__(
         self,
-        *attrs,
-        offset=None,
-        limit=None,
-        order_by=None,
-        format=None,
-        as_dict=None,
-        squeeze=False,
-        download_path=".",
-    ):
+        *attrs: str,
+        offset: int | None = None,
+        limit: int | None = None,
+        order_by: str | list[str] | None = None,
+        format: str | None = None,
+        as_dict: bool | None = None,
+        squeeze: bool = False,
+        download_path: str | Path = ".",
+    ) -> np.ndarray | list[dict[str, Any]] | pandas.DataFrame | list | Any:
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and
         unpacks blob attributes.
@@ -281,10 +317,15 @@ class Fetch1:
     :param expression: a query expression to fetch from.
     """
 
-    def __init__(self, expression):
+    def __init__(self, expression: QueryExpression) -> None:
         self._expression = expression
 
-    def __call__(self, *attrs, squeeze=False, download_path="."):
+    def __call__(
+        self,
+        *attrs: str,
+        squeeze: bool = False,
+        download_path: str | Path = ".",
+    ) -> dict[str, Any] | tuple | Any:
         """
         Fetches the result of a query expression that yields one entry.
 

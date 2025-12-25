@@ -1,7 +1,12 @@
 """
-(De)serialization methods for basic datatypes and numpy.ndarrays with provisions for mutual
-compatibility with Matlab-based serialization implemented by mYm.
+Blob serialization module for DataJoint.
+
+This module provides (de)serialization methods for basic datatypes and numpy.ndarrays
+with provisions for mutual compatibility with Matlab-based serialization implemented
+by mYm. It handles packing data for storage in blob columns and unpacking on retrieval.
 """
+
+from __future__ import annotations
 
 import collections
 import datetime

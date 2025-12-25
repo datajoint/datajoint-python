@@ -1,3 +1,14 @@
+"""
+Table module for DataJoint table operations.
+
+This module implements the Table class, which represents a table in a database schema.
+It provides methods for inserting, updating, and deleting data, as well as table
+declaration and schema operations. Table inherits query functionality from
+QueryExpression.
+"""
+
+from __future__ import annotations
+
 import collections
 import csv
 import inspect
@@ -8,7 +19,7 @@ import platform
 import re
 import uuid
 from pathlib import Path
-from typing import Union
+from typing import Any
 
 import numpy as np
 import pandas
@@ -74,20 +85,27 @@ class Table(QueryExpression):
     declaration_context = None
 
     @property
-    def table_name(self):
+    def table_name(self) -> str | None:
+        """Get the table name in the database."""
         return self._table_name
 
     @property
-    def class_name(self):
+    def class_name(self) -> str:
+        """Get the Python class name for this table."""
         return self.__class__.__name__
 
     @property
-    def definition(self):
+    def definition(self) -> str:
+        """
+        Get the table definition string.
+
+        Subclasses must override this property.
+        """
         raise NotImplementedError(
             "Subclasses of Table must implement the `definition` property"
         )
 
-    def declare(self, context=None):
+    def declare(self, context: dict[str, Any] | None = None) -> None:
         """
         Declare the table in the schema based on self.definition.
 
@@ -120,9 +138,12 @@ class Table(QueryExpression):
         else:
             self._log("Declared " + self.full_table_name)
 
-    def alter(self, prompt=True, context=None):
+    def alter(self, prompt: bool = True, context: dict[str, Any] | None = None) -> None:
         """
-        Alter the table definition from self.definition
+        Alter the table definition from self.definition.
+
+        :param prompt: if True, prompt user for confirmation before altering
+        :param context: the context for foreign key resolution. If None, uses caller's context.
         """
         if self.connection.in_transaction:
             raise DataJointError(
@@ -160,22 +181,33 @@ class Table(QueryExpression):
                         logger.info("Table altered")
                     self._log("Altered " + self.full_table_name)
 
-    def from_clause(self):
+    def from_clause(self) -> str:
         """
+        Get the FROM clause for SQL SELECT statements.
+
         :return: the FROM clause of SQL SELECT statements.
         """
         return self.full_table_name
 
-    def get_select_fields(self, select_fields=None):
+    def get_select_fields(self, select_fields: list[str] | None = None) -> str:
         """
+        Get the selected attributes for SQL SELECT statements.
+
+        :param select_fields: list of field names to select, or None for all
         :return: the selected attributes from the SQL SELECT statement.
         """
         return (
             "*" if select_fields is None else self.heading.project(select_fields).as_sql
         )
 
-    def parents(self, primary=None, as_objects=False, foreign_key_info=False):
+    def parents(
+        self,
+        primary: bool | None = None,
+        as_objects: bool = False,
+        foreign_key_info: bool = False,
+    ) -> list[str] | list[Table] | list[tuple[str, dict]] | list[tuple[Table, dict]]:
         """
+        Get the parent tables that this table references via foreign keys.
 
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, return foreign keys including at least one
@@ -196,8 +228,15 @@ class Table(QueryExpression):
             nodes = [name for name, props in nodes]
         return nodes
 
-    def children(self, primary=None, as_objects=False, foreign_key_info=False):
+    def children(
+        self,
+        primary: bool | None = None,
+        as_objects: bool = False,
+        foreign_key_info: bool = False,
+    ) -> list[str] | list[Table] | list[tuple[str, dict]] | list[tuple[Table, dict]]:
         """
+        Get the child tables that reference this table via foreign keys.
+
         :param primary: if None, then all children are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, return foreign keys including at least one
             secondary attribute.
@@ -217,8 +256,10 @@ class Table(QueryExpression):
             nodes = [name for name, props in nodes]
         return nodes
 
-    def descendants(self, as_objects=False):
+    def descendants(self, as_objects: bool = False) -> list[str] | list[Table]:
         """
+        Get all tables that depend on this table (directly or indirectly).
+
         :param as_objects: False - a list of table names; True - a list of table objects.
         :return: list of tables descendants in topological order.
         """
@@ -228,8 +269,10 @@ class Table(QueryExpression):
             if not node.isdigit()
         ]
 
-    def ancestors(self, as_objects=False):
+    def ancestors(self, as_objects: bool = False) -> list[str] | list[Table]:
         """
+        Get all tables that this table depends on (directly or indirectly).
+
         :param as_objects: False - a list of table names; True - a list of table objects.
         :return: list of tables ancestors in topological order.
         """
@@ -239,11 +282,12 @@ class Table(QueryExpression):
             if not node.isdigit()
         ]
 
-    def parts(self, as_objects=False):
+    def parts(self, as_objects: bool = False) -> list[str] | list[Table]:
         """
-        return part tables either as entries in a dict with foreign key information or a list of objects
+        Get the part tables associated with this master table.
 
-        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
+        :param as_objects: if False (default), return table names. If True, return table objects.
+        :return: list of part table names or table objects.
         """
         self.connection.dependencies.load(force=False)
         nodes = [
@@ -339,23 +383,30 @@ class Table(QueryExpression):
         )
         self.connection.query(query, args=list(r[2] for r in row if r[2] is not None))
 
-    def insert1(self, row, **kwargs):
+    def insert1(self, row: dict[str, Any] | tuple | np.record, **kwargs: Any) -> None:
         """
         Insert one data record into the table. For ``kwargs``, see ``insert()``.
 
         :param row: a numpy record, a dict-like object, or an ordered sequence to be inserted
             as one row.
+        :param kwargs: additional arguments passed to insert()
         """
         self.insert((row,), **kwargs)
 
     def insert(
         self,
-        rows,
-        replace=False,
-        skip_duplicates=False,
-        ignore_extra_fields=False,
-        allow_direct_insert=None,
-    ):
+        rows: (
+            list[dict[str, Any]]
+            | pandas.DataFrame
+            | Path
+            | QueryExpression
+            | type[QueryExpression]
+        ),
+        replace: bool = False,
+        skip_duplicates: bool = False,
+        ignore_extra_fields: bool = False,
+        allow_direct_insert: bool | None = None,
+    ) -> None:
         """
         Insert a collection of rows.
 
@@ -467,10 +518,14 @@ class Table(QueryExpression):
                     "To ignore duplicate entries in insert, set skip_duplicates=True"
                 )
 
-    def delete_quick(self, get_count=False):
+    def delete_quick(self, get_count: bool = False) -> int | None:
         """
-        Deletes the table without cascading and without user prompt.
+        Delete the table contents without cascading and without user prompt.
+
         If this table has populated dependent tables, this will fail.
+
+        :param get_count: if True, return the number of deleted rows
+        :return: number of deleted rows if get_count is True, otherwise None
         """
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
         self.connection.query(query)
@@ -485,7 +540,7 @@ class Table(QueryExpression):
     def delete(
         self,
         transaction: bool = True,
-        safemode: Union[bool, None] = None,
+        safemode: bool | None = None,
         force_parts: bool = False,
         force_masters: bool = False,
     ) -> int:
@@ -667,9 +722,9 @@ class Table(QueryExpression):
                     logger.warning("Delete cancelled")
         return delete_count
 
-    def drop_quick(self):
+    def drop_quick(self) -> None:
         """
-        Drops the table without cascading to dependent tables and without user prompt.
+        Drop the table without cascading to dependent tables and without user prompt.
         """
         if self.is_declared:
             query = "DROP TABLE %s" % self.full_table_name

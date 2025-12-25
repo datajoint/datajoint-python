@@ -1,4 +1,12 @@
-"""General-purpose utilities"""
+"""
+General-purpose utilities for DataJoint.
+
+This module provides utility functions and classes used throughout DataJoint,
+including string manipulation helpers for CamelCase conversion, user interaction
+prompts, and file operations.
+"""
+
+from __future__ import annotations
 
 import re
 import shutil
