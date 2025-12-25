@@ -242,6 +242,32 @@ def register_type(cls: type[AttributeType]) -> type[AttributeType]:
     return cls
 
 
+def parse_type_spec(spec: str) -> tuple[str, str | None]:
+    """
+    Parse a type specification into type name and optional store parameter.
+
+    Handles formats like:
+    - "<xblob>" -> ("xblob", None)
+    - "<xblob@cold>" -> ("xblob", "cold")
+    - "xblob@cold" -> ("xblob", "cold")
+    - "xblob" -> ("xblob", None)
+
+    Args:
+        spec: Type specification string, with or without angle brackets.
+
+    Returns:
+        Tuple of (type_name, store_name). store_name is None if not specified.
+    """
+    # Strip angle brackets
+    spec = spec.strip("<>").strip()
+
+    if "@" in spec:
+        type_name, store_name = spec.split("@", 1)
+        return type_name.strip(), store_name.strip()
+
+    return spec, None
+
+
 def unregister_type(name: str) -> None:
     """
     Remove a type from the registry.
@@ -269,6 +295,7 @@ def get_type(name: str) -> AttributeType:
 
     Args:
         name: The type name, with or without angle brackets.
+              Store parameters (e.g., "<xblob@cold>") are stripped.
 
     Returns:
         The registered AttributeType instance.
@@ -276,20 +303,22 @@ def get_type(name: str) -> AttributeType:
     Raises:
         DataJointError: If the type is not found.
     """
-    name = name.strip("<>")
+    # Strip angle brackets and store parameter
+    type_name, _ = parse_type_spec(name)
 
     # Check explicit registry first
-    if name in _type_registry:
-        return _type_registry[name]
+    if type_name in _type_registry:
+        return _type_registry[type_name]
 
     # Lazy-load entry points
     _load_entry_points()
 
-    if name in _type_registry:
-        return _type_registry[name]
+    if type_name in _type_registry:
+        return _type_registry[type_name]
 
     raise DataJointError(
-        f"Unknown attribute type: <{name}>. " f"Ensure the type is registered via @dj.register_type or installed as a package."
+        f"Unknown attribute type: <{type_name}>. "
+        f"Ensure the type is registered via @dj.register_type or installed as a package."
     )
 
 
@@ -309,16 +338,16 @@ def is_type_registered(name: str) -> bool:
     Check if a type name is registered.
 
     Args:
-        name: The type name to check.
+        name: The type name to check (store parameters are ignored).
 
     Returns:
         True if the type is registered.
     """
-    name = name.strip("<>")
-    if name in _type_registry:
+    type_name, _ = parse_type_spec(name)
+    if type_name in _type_registry:
         return True
     _load_entry_points()
-    return name in _type_registry
+    return type_name in _type_registry
 
 
 def _load_entry_points() -> None:
@@ -368,23 +397,37 @@ def _load_entry_points() -> None:
             logger.warning(f"Failed to load attribute type '{ep.name}' from {ep.value}: {e}")
 
 
-def resolve_dtype(dtype: str, seen: set[str] | None = None) -> tuple[str, list[AttributeType]]:
+def resolve_dtype(
+    dtype: str, seen: set[str] | None = None, store_name: str | None = None
+) -> tuple[str, list[AttributeType], str | None]:
     """
     Resolve a dtype string, following type chains.
 
     If dtype references another custom type (e.g., "<other_type>"), recursively
-    resolves to find the ultimate storage type.
+    resolves to find the ultimate storage type. Store parameters are propagated
+    through the chain.
 
     Args:
-        dtype: The dtype string to resolve.
+        dtype: The dtype string to resolve (e.g., "<xblob>", "<xblob@cold>", "longblob").
         seen: Set of already-seen type names (for cycle detection).
+        store_name: Store name from outer type specification (propagated inward).
 
     Returns:
-        Tuple of (final_storage_type, list_of_types_in_chain).
+        Tuple of (final_storage_type, list_of_types_in_chain, resolved_store_name).
         The chain is ordered from outermost to innermost type.
 
     Raises:
         DataJointError: If a circular type reference is detected.
+
+    Examples:
+        >>> resolve_dtype("<xblob>")
+        ("json", [XBlobType, ContentType], None)
+
+        >>> resolve_dtype("<xblob@cold>")
+        ("json", [XBlobType, ContentType], "cold")
+
+        >>> resolve_dtype("longblob")
+        ("longblob", [], None)
     """
     if seen is None:
         seen = set()
@@ -393,7 +436,10 @@ def resolve_dtype(dtype: str, seen: set[str] | None = None) -> tuple[str, list[A
 
     # Check if dtype is a custom type reference
     if dtype.startswith("<") and dtype.endswith(">"):
-        type_name = dtype[1:-1]
+        type_name, dtype_store = parse_type_spec(dtype)
+
+        # Store from this level overrides inherited store
+        effective_store = dtype_store if dtype_store is not None else store_name
 
         if type_name in seen:
             raise DataJointError(f"Circular type reference detected: <{type_name}>")
@@ -402,13 +448,19 @@ def resolve_dtype(dtype: str, seen: set[str] | None = None) -> tuple[str, list[A
         attr_type = get_type(type_name)
         chain.append(attr_type)
 
-        # Recursively resolve the inner dtype
-        inner_dtype, inner_chain = resolve_dtype(attr_type.dtype, seen)
+        # Recursively resolve the inner dtype, propagating store
+        inner_dtype, inner_chain, resolved_store = resolve_dtype(attr_type.dtype, seen, effective_store)
         chain.extend(inner_chain)
-        return inner_dtype, chain
+        return inner_dtype, chain, resolved_store
 
-    # Not a custom type - return as-is
-    return dtype, chain
+    # Not a custom type - check if it has a store suffix (e.g., "blob@store")
+    if "@" in dtype:
+        base_type, dtype_store = dtype.split("@", 1)
+        effective_store = dtype_store if dtype_store else store_name
+        return base_type, chain, effective_store
+
+    # Plain type - return as-is with propagated store
+    return dtype, chain, store_name
 
 
 # =============================================================================

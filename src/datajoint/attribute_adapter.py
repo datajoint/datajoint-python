@@ -12,7 +12,7 @@ import re
 import warnings
 from typing import Any
 
-from .attribute_type import AttributeType, get_type, is_type_registered
+from .attribute_type import AttributeType, get_type, is_type_registered, parse_type_spec
 from .errors import DataJointError
 
 # Pattern to detect blob types for internal pack/unpack
@@ -154,7 +154,7 @@ class AttributeAdapter(AttributeType):
         raise NotImplementedError(f"{self.__class__.__name__} must implement get() or migrate to decode()")
 
 
-def get_adapter(context: dict | None, adapter_name: str) -> AttributeType:
+def get_adapter(context: dict | None, adapter_name: str) -> tuple[AttributeType, str | None]:
     """
     Get an attribute type/adapter by name.
 
@@ -165,47 +165,49 @@ def get_adapter(context: dict | None, adapter_name: str) -> AttributeType:
     Args:
         context: Schema context dictionary (for legacy adapters).
         adapter_name: The adapter/type name, with or without angle brackets.
+                      May include store parameter (e.g., "<xblob@cold>").
 
     Returns:
-        The AttributeType instance.
+        Tuple of (AttributeType instance, store_name or None).
 
     Raises:
         DataJointError: If the adapter is not found or invalid.
     """
-    adapter_name = adapter_name.lstrip("<").rstrip(">")
+    # Parse type name and optional store parameter
+    type_name, store_name = parse_type_spec(adapter_name)
 
     # First, check the global type registry (new system)
-    if is_type_registered(adapter_name):
-        return get_type(adapter_name)
+    if is_type_registered(type_name):
+        return get_type(type_name), store_name
 
     # Fall back to context-based lookup (legacy system)
     if context is None:
         raise DataJointError(
-            f"Attribute type <{adapter_name}> is not registered. " "Use @dj.register_type to register custom types."
+            f"Attribute type <{type_name}> is not registered. " "Use @dj.register_type to register custom types."
         )
 
     try:
-        adapter = context[adapter_name]
+        adapter = context[type_name]
     except KeyError:
         raise DataJointError(
-            f"Attribute type <{adapter_name}> is not defined. "
+            f"Attribute type <{type_name}> is not defined. "
             "Register it with @dj.register_type or include it in the schema context."
         )
 
     # Validate it's an AttributeType (or legacy AttributeAdapter)
     if not isinstance(adapter, AttributeType):
         raise DataJointError(
-            f"Attribute adapter '{adapter_name}' must be an instance of "
+            f"Attribute adapter '{type_name}' must be an instance of "
             "datajoint.AttributeType (or legacy datajoint.AttributeAdapter)"
         )
 
     # For legacy adapters from context, store the name they were looked up by
     if isinstance(adapter, AttributeAdapter):
-        adapter._type_name = adapter_name
+        adapter._type_name = type_name
 
     # Validate the dtype/attribute_type
     dtype = adapter.dtype
     if not isinstance(dtype, str) or not re.match(r"^\w", dtype):
-        raise DataJointError(f"Invalid dtype '{dtype}' in attribute type <{adapter_name}>")
+        raise DataJointError(f"Invalid dtype '{dtype}' in attribute type <{type_name}>")
 
-    return adapter
+    return adapter, store_name

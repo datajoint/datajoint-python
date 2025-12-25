@@ -489,7 +489,10 @@ def substitute_special_type(match, category, foreign_key_sql, context):
             "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match)
         )
     elif category == "ADAPTED":
-        attr_type = get_adapter(context, match["type"])
+        attr_type, store_name = get_adapter(context, match["type"])
+        # Store the store parameter if present
+        if store_name is not None:
+            match["store"] = store_name
         match["type"] = attr_type.dtype
         category = match_type(match["type"])
         if category in SPECIAL_TYPES:
