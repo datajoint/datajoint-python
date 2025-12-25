@@ -1,26 +1,42 @@
+"""
+Administrative utilities for managing database connections.
+
+This module provides functions for viewing and terminating database connections
+through the MySQL processlist interface.
+"""
+
+from __future__ import annotations
+
 import logging
 
 import pymysql
 
-from .connection import conn
+from .connection import Connection, conn
 
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def kill(restriction=None, connection=None, order_by=None):
+def kill(
+    restriction: str | None = None,
+    connection: Connection | None = None,
+    order_by: str | list[str] | None = None,
+) -> None:
     """
-    view and kill database connections.
+    View and interactively kill database connections.
 
-    :param restriction: restriction to be applied to processlist
-    :param connection: a datajoint.Connection object. Default calls datajoint.conn()
-    :param order_by: order by a single attribute or the list of attributes. defaults to 'id'.
+    Displays active database connections matching the optional restriction and
+    prompts the user to select connections to terminate.
 
-    Restrictions are specified as strings and can involve any of the attributes of
-    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+    Args:
+        restriction: SQL WHERE clause condition to filter the processlist.
+            Can reference any column from information_schema.processlist:
+            ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+        connection: A datajoint.Connection object. If None, uses datajoint.conn().
+        order_by: Column name(s) to sort results by. Defaults to 'id'.
 
     Examples:
-        dj.kill('HOST LIKE "%compute%"') lists only connections from hosts containing "compute".
-        dj.kill('TIME > 600') lists only connections in their current state for more than 10 minutes
+        >>> dj.kill('HOST LIKE "%compute%"')  # connections from hosts containing "compute"
+        >>> dj.kill('TIME > 600')  # connections idle for more than 10 minutes
     """
 
     if connection is None:
@@ -59,18 +75,28 @@ def kill(restriction=None, connection=None, order_by=None):
                     logger.warn("Process not found")
 
 
-def kill_quick(restriction=None, connection=None):
+def kill_quick(
+    restriction: str | None = None,
+    connection: Connection | None = None,
+) -> int:
     """
-    Kill database connections without prompting. Returns number of terminated connections.
+    Kill database connections without prompting.
 
-    :param restriction: restriction to be applied to processlist
-    :param connection: a datajoint.Connection object. Default calls datajoint.conn()
+    Terminates all database connections matching the optional restriction
+    without user confirmation.
 
-    Restrictions are specified as strings and can involve any of the attributes of
-    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+    Args:
+        restriction: SQL WHERE clause condition to filter the processlist.
+            Can reference any column from information_schema.processlist:
+            ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+        connection: A datajoint.Connection object. If None, uses datajoint.conn().
+
+    Returns:
+        Number of connections terminated.
 
     Examples:
-        dj.kill('HOST LIKE "%compute%"') terminates connections from hosts containing "compute".
+        >>> dj.kill_quick('HOST LIKE "%compute%"')  # kill connections from "compute" hosts
+        >>> dj.kill_quick('TIME > 600')  # kill connections idle for more than 10 minutes
     """
     if connection is None:
         connection = conn()

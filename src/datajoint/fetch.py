@@ -1,9 +1,19 @@
+"""
+Data fetching utilities for DataJoint query expressions.
+
+This module provides the Fetch and Fetch1 classes that handle retrieving
+data from the database, unpacking blobs, and downloading external files.
+"""
+
+from __future__ import annotations
+
 import itertools
 import json
 import numbers
 import uuid
 from functools import partial
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas
@@ -17,36 +27,69 @@ from .settings import config
 from .storage import StorageBackend
 from .utils import safe_write
 
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterator
+
+    from .connection import Connection
+    from .expression import QueryExpression
+    from .heading import Attribute
+
 
 class key:
     """
-    object that allows requesting the primary key as an argument in expression.fetch()
-    The string "KEY" can be used instead of the class key
+    Sentinel object for requesting primary key in expression.fetch().
+
+    The string "KEY" can be used interchangeably with this class.
+
+    Example:
+        >>> table.fetch('attribute', dj.key)  # fetch attribute values and keys
+        >>> table.fetch('KEY')  # equivalent using string
     """
 
     pass
 
 
-def is_key(attr):
+def is_key(attr: Any) -> bool:
+    """Check if an attribute reference represents the primary key."""
     return attr is key or attr == "KEY"
 
 
-def to_dicts(recarray):
-    """convert record array to a dictionaries"""
+def to_dicts(recarray: np.ndarray) -> Generator[dict, None, None]:
+    """
+    Convert a numpy record array to a generator of dictionaries.
+
+    Args:
+        recarray: A numpy structured/record array.
+
+    Yields:
+        Dictionary for each row with field names as keys.
+    """
     for rec in recarray:
         yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
-def _get(connection, attr, data, squeeze, download_path):
+def _get(
+    connection: Connection,
+    attr: Attribute,
+    data: Any,
+    squeeze: bool,
+    download_path: str | Path,
+) -> Any:
     """
-    This function is called for every attribute
+    Process and unpack a single attribute value from the database.
 
-    :param connection: a dj.Connection object
-    :param attr: attribute name from the table's heading
-    :param data: literal value fetched from the table
-    :param squeeze: if True squeeze blobs
-    :param download_path: for fetches that download data, e.g. attachments
-    :return: unpacked data
+    Handles special attribute types including blobs, attachments, external storage,
+    UUIDs, JSON, and object references.
+
+    Args:
+        connection: The database connection for accessing external stores.
+        attr: Attribute metadata from the table's heading.
+        data: Raw value fetched from the database.
+        squeeze: If True, remove extra dimensions from blob arrays.
+        download_path: Directory for downloading attachments.
+
+    Returns:
+        The unpacked/processed attribute value.
     """
     if data is None:
         return
@@ -114,43 +157,53 @@ def _get(connection, attr, data, squeeze, download_path):
 
 class Fetch:
     """
-    A fetch object that handles retrieving elements from the table expression.
+    Handler for retrieving multiple rows from a query expression.
 
-    :param expression: the QueryExpression object to fetch from.
+    Provides flexible data retrieval with support for various output formats,
+    attribute selection, ordering, and pagination.
+
+    Args:
+        expression: The QueryExpression to fetch data from.
     """
 
-    def __init__(self, expression):
+    def __init__(self, expression: QueryExpression) -> None:
         self._expression = expression
 
     def __call__(
         self,
-        *attrs,
-        offset=None,
-        limit=None,
-        order_by=None,
-        format=None,
-        as_dict=None,
-        squeeze=False,
-        download_path=".",
-    ):
+        *attrs: str,
+        offset: int | None = None,
+        limit: int | None = None,
+        order_by: str | list[str] | None = None,
+        format: str | None = None,
+        as_dict: bool | None = None,
+        squeeze: bool = False,
+        download_path: str | Path = ".",
+    ) -> np.ndarray | list[dict] | pandas.DataFrame | list | tuple:
         """
-        Fetches the expression results from the database into an np.array or list of dictionaries and
-        unpacks blob attributes.
+        Fetch results from the database into various output formats.
 
-        :param attrs: zero or more attributes to fetch. If not provided, the call will return all attributes of this
-                        table. If provided, returns tuples with an entry for each attribute.
-        :param offset: the number of tuples to skip in the returned result
-        :param limit: the maximum number of tuples to return
-        :param order_by: a single attribute or the list of attributes to order the results. No ordering should be assumed
-                        if order_by=None. To reverse the order, add DESC to the attribute name or names: e.g. ("age DESC",
-                        "frequency") To order by primary key, use "KEY" or "KEY DESC"
-        :param format: Effective when as_dict=None and when attrs is empty None: default from config['fetch_format'] or
-                        'array' if not configured "array": use numpy.key_array "frame": output pandas.DataFrame. .
-        :param as_dict: returns a list of dictionaries instead of a record array. Defaults to False for .fetch() and to
-                        True for .fetch('KEY')
-        :param squeeze:  if True, remove extra dimensions from arrays
-        :param download_path: for fetches that download data, e.g. attachments
-        :return: the contents of the table in the form of a structured numpy.array or a dict list
+        Args:
+            *attrs: Attribute names to fetch. If empty, fetches all attributes.
+                Use "KEY" or dj.key to include primary key values.
+            offset: Number of rows to skip before returning results.
+            limit: Maximum number of rows to return.
+            order_by: Attribute(s) for sorting. Use "KEY" for primary key ordering,
+                append " DESC" for descending order (e.g., "timestamp DESC").
+            format: Output format when fetching all attributes:
+                - None: Use config['fetch_format'] default
+                - "array": Return numpy structured array
+                - "frame": Return pandas DataFrame
+            as_dict: If True, return list of dictionaries. Defaults to True for
+                "KEY" fetches, False otherwise.
+            squeeze: If True, remove extra dimensions from blob arrays.
+            download_path: Directory for downloading attachments.
+
+        Returns:
+            Data in the requested format:
+            - Single attr: array of values
+            - Multiple attrs: tuple of arrays
+            - No attrs: structured array, DataFrame, or list of dicts
         """
         if offset or order_by or limit:
             self._expression = self._expression.restrict(
@@ -251,30 +304,44 @@ class Fetch:
 
 class Fetch1:
     """
-    Fetch object for fetching the result of a query yielding one row.
+    Handler for fetching exactly one row from a query expression.
 
-    :param expression: a query expression to fetch from.
+    Raises an error if the query returns zero or more than one row.
+
+    Args:
+        expression: The QueryExpression to fetch from.
     """
 
-    def __init__(self, expression):
+    def __init__(self, expression: QueryExpression) -> None:
         self._expression = expression
 
-    def __call__(self, *attrs, squeeze=False, download_path="."):
+    def __call__(
+        self,
+        *attrs: str,
+        squeeze: bool = False,
+        download_path: str | Path = ".",
+    ) -> dict | Any | tuple:
         """
-        Fetches the result of a query expression that yields one entry.
+        Fetch exactly one row from the query expression.
 
-        If no attributes are specified, returns the result as a dict.
-        If attributes are specified returns the corresponding results as a tuple.
+        Args:
+            *attrs: Attribute names to fetch. If empty, returns all attributes
+                as a dictionary. If specified, returns values as a tuple.
+            squeeze: If True, remove extra dimensions from blob arrays.
+            download_path: Directory for downloading attachments.
+
+        Returns:
+            - No attrs: Dictionary with all attribute values
+            - One attr: Single value
+            - Multiple attrs: Tuple of values
+
+        Raises:
+            DataJointError: If the query returns zero or more than one row.
 
         Examples:
-        d = rel.fetch1()   # as a dictionary
-        a, b = rel.fetch1('a', 'b')   # as a tuple
-
-        :params *attrs: attributes to return when expanding into a tuple.
-                 If attrs is empty, the return result is a dict
-        :param squeeze:  When true, remove extra dimensions from arrays in attributes
-        :param download_path: for fetches that download data, e.g. attachments
-        :return: the one tuple in the table in the form of a dict
+            >>> d = rel.fetch1()  # returns dict
+            >>> a, b = rel.fetch1('a', 'b')  # returns tuple
+            >>> val = rel.fetch1('value')  # returns single value
         """
         heading = self._expression.heading
 

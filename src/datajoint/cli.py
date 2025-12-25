@@ -1,16 +1,41 @@
+"""
+Command-line interface for DataJoint Python.
+
+This module provides a console interface for interacting with DataJoint databases,
+allowing users to connect to servers and work with virtual modules from the command line.
+
+Usage:
+    datajoint [-u USER] [-p PASSWORD] [-h HOST] [-s SCHEMA:MODULE ...]
+
+Example:
+    datajoint -u root -h localhost -s mydb:experiment mydb:subject
+"""
+
+from __future__ import annotations
+
 import argparse
 from code import interact
 from collections import ChainMap
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 import datajoint as dj
 
 
-def cli(args: list = None):
+def cli(args: Sequence[str] | None = None) -> None:
     """
-    Console interface for DataJoint Python
+    Console interface for DataJoint Python.
 
-    :param args: List of arguments to be passed in, defaults to reading stdin
-    :type args: list, optional
+    Launches an interactive Python shell with DataJoint configured and optional
+    virtual modules loaded for database schemas.
+
+    Args:
+        args: List of command-line arguments. If None, reads from sys.argv.
+
+    Raises:
+        SystemExit: Always raised when the interactive session ends.
     """
     parser = argparse.ArgumentParser(
         prog="datajoint",

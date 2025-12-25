@@ -1,8 +1,19 @@
+"""
+Query expression classes for building DataJoint queries.
+
+This module provides the QueryExpression class and related classes (Aggregation, Union, U)
+for constructing SQL queries through a Pythonic interface. Query expressions support
+restriction, projection, joining, aggregation, and union operations.
+"""
+
+from __future__ import annotations
+
 import copy
 import inspect
 import logging
 import re
 from itertools import count
+from typing import TYPE_CHECKING, Any
 
 from .condition import (
     AndList,
@@ -19,6 +30,12 @@ from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
 from .settings import config
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from .connection import Connection
+    from .heading import Heading
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -60,48 +77,50 @@ class QueryExpression:
     _distinct = False
 
     @property
-    def connection(self):
-        """a dj.Connection object"""
+    def connection(self) -> Connection:
+        """The database connection for this expression."""
         assert self._connection is not None
         return self._connection
 
     @property
-    def support(self):
-        """A list of table names or subqueries to from the FROM clause"""
+    def support(self) -> list:
+        """List of table names or subqueries forming the FROM clause."""
         assert self._support is not None
         return self._support
 
     @property
-    def heading(self):
-        """a dj.Heading object, reflects the effects of the projection operator .proj"""
+    def heading(self) -> Heading:
+        """The Heading object reflecting projection effects."""
         return self._heading
 
     @property
-    def original_heading(self):
-        """a dj.Heading object reflecting the attributes before projection"""
+    def original_heading(self) -> Heading:
+        """The Heading object before any projection was applied."""
         return self._original_heading or self.heading
 
     @property
-    def restriction(self):
-        """a AndList object of restrictions applied to input to produce the result"""
+    def restriction(self) -> AndList:
+        """AndList of restrictions applied to produce the result."""
         if self._restriction is None:
             self._restriction = AndList()
         return self._restriction
 
     @property
-    def restriction_attributes(self):
-        """the set of attribute names invoked in the WHERE clause"""
+    def restriction_attributes(self) -> set[str]:
+        """Set of attribute names used in the WHERE clause."""
         if self._restriction_attributes is None:
             self._restriction_attributes = set()
         return self._restriction_attributes
 
     @property
-    def primary_key(self):
+    def primary_key(self) -> list[str]:
+        """List of primary key attribute names."""
         return self.heading.primary_key
 
     _subquery_alias_count = count()  # count for alias names used in the FROM clause
 
-    def from_clause(self):
+    def from_clause(self) -> str:
+        """Generate the FROM clause for the SQL query."""
         support = (
             (
                 "(" + src.make_sql() + ") as `$%x`" % next(self._subquery_alias_count)
@@ -115,10 +134,12 @@ class QueryExpression:
             clause += " NATURAL{left} JOIN {clause}".format(left=" LEFT" if left else "", clause=s)
         return clause
 
-    def where_clause(self):
+    def where_clause(self) -> str:
+        """Generate the WHERE clause for the SQL query."""
         return "" if not self.restriction else " WHERE (%s)" % ")AND(".join(str(s) for s in self.restriction)
 
-    def sorting_clauses(self):
+    def sorting_clauses(self) -> str:
+        """Generate ORDER BY and LIMIT clauses for the SQL query."""
         if not self._top:
             return ""
         clause = ", ".join(_wrap_attributes(_flatten_attribute_list(self.primary_key, self._top.order_by)))
@@ -129,11 +150,15 @@ class QueryExpression:
 
         return clause
 
-    def make_sql(self, fields=None):
+    def make_sql(self, fields: list[str] | None = None) -> str:
         """
-        Make the SQL SELECT statement.
+        Generate the complete SQL SELECT statement.
 
-        :param fields: used to explicitly set the select attributes
+        Args:
+            fields: Attribute names to select. If None, uses heading names.
+
+        Returns:
+            The complete SQL SELECT query string.
         """
         return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
@@ -144,8 +169,13 @@ class QueryExpression:
         )
 
     # --------- query operators -----------
-    def make_subquery(self):
-        """create a new SELECT statement where self is the FROM clause"""
+    def make_subquery(self) -> QueryExpression:
+        """
+        Create a new query expression with this expression as a subquery.
+
+        Returns:
+            A new QueryExpression with self in the FROM clause.
+        """
         result = QueryExpression()
         result._connection = self.connection
         result._support = [self]
@@ -520,8 +550,8 @@ class QueryExpression:
         """
         return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
 
-    def __len__(self):
-        """:return: number of elements in the result set e.g. ``len(q1)``."""
+    def __len__(self) -> int:
+        """Return the number of rows in the result set."""
         result = self.make_subquery() if self._top else copy.copy(self)
         return result.connection.query(
             "SELECT {select_} FROM {from_}{where}".format(
@@ -537,46 +567,42 @@ class QueryExpression:
             )
         ).fetchone()[0]
 
-    def __bool__(self):
-        """
-        :return: True if the result is not empty. Equivalent to len(self) > 0 but often
-            faster e.g. ``bool(q1)``.
-        """
+    def __bool__(self) -> bool:
+        """Return True if the result set is not empty."""
         return bool(
             self.connection.query(
                 "SELECT EXISTS(SELECT 1 FROM {from_}{where})".format(from_=self.from_clause(), where=self.where_clause())
             ).fetchone()[0]
         )
 
-    def __contains__(self, item):
+    def __contains__(self, item: Any) -> bool:
         """
-        returns True if the restriction in item matches any entries in self
-            e.g. ``restriction in q1``.
+        Check if any entries match the given restriction.
 
-        :param item: any restriction
-        (item in query_expression) is equivalent to bool(query_expression & item) but may be
-        executed more efficiently.
+        Args:
+            item: Any valid restriction.
+
+        Returns:
+            True if at least one entry matches the restriction.
         """
         return bool(self & item)  # May be optimized e.g. using an EXISTS query
 
-    def __iter__(self):
-        """
-        returns an iterator-compatible QueryExpression object e.g. ``iter(q1)``.
-
-        :param self: iterator-compatible QueryExpression object
-        """
+    def __iter__(self) -> QueryExpression:
+        """Return an iterator over the query results."""
         self._iter_only_key = all(v.in_key for v in self.heading.attributes.values())
         self._iter_keys = self.fetch("KEY")
         return self
 
-    def __next__(self):
+    def __next__(self) -> dict:
         """
-        returns the next record on an iterator-compatible QueryExpression object
-            e.g. ``next(q1)``.
+        Return the next record from the iterator.
 
-        :param self: A query expression
-        :type self: :class:`QueryExpression`
-        :rtype: dict
+        Returns:
+            Dictionary containing the next row's attribute values.
+
+        Raises:
+            TypeError: If __iter__ was not called first.
+            StopIteration: When no more rows are available.
         """
         try:
             key = self._iter_keys.pop(0)
@@ -596,31 +622,39 @@ class QueryExpression:
                     # -- move on to next entry.
                     return next(self)
 
-    def cursor(self, as_dict=False):
+    def cursor(self, as_dict: bool = False) -> Any:
         """
-        See expression.fetch() for input description.
-        :return: query cursor
+        Execute the query and return a database cursor.
+
+        Args:
+            as_dict: If True, return rows as dictionaries.
+
+        Returns:
+            A database cursor object.
         """
         sql = self.make_sql()
         logger.debug(sql)
         return self.connection.query(sql, as_dict=as_dict)
 
-    def __repr__(self):
-        """
-        returns the string representation of a QueryExpression object e.g. ``str(q1)``.
-
-        :param self: A query expression
-        :type self: :class:`QueryExpression`
-        :rtype: str
-        """
+    def __repr__(self) -> str:
+        """Return string representation of the query expression."""
         return super().__repr__() if config["loglevel"].lower() == "debug" else self.preview()
 
-    def preview(self, limit=None, width=None):
-        """:return: a string of preview of the contents of the query."""
+    def preview(self, limit: int | None = None, width: int | None = None) -> str:
+        """
+        Return a formatted preview of the query results.
+
+        Args:
+            limit: Maximum number of rows to show.
+            width: Maximum display width.
+
+        Returns:
+            Formatted string representation of query results.
+        """
         return preview(self, limit, width)
 
-    def _repr_html_(self):
-        """:return: HTML to display table in Jupyter notebook."""
+    def _repr_html_(self) -> str:
+        """Return HTML representation for Jupyter notebook display."""
         return repr_html(self)
 
 
@@ -919,11 +953,18 @@ class U:
     aggregate = aggr  # alias for aggr
 
 
-def _flatten_attribute_list(primary_key, attrs):
+def _flatten_attribute_list(
+    primary_key: list[str], attrs: list[str]
+) -> Iterator[str]:
     """
-    :param primary_key: list of attributes in primary key
-    :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
-    :return: generator of attributes where "KEY" is replaced with its component attributes
+    Expand "KEY" placeholders in attribute lists to actual primary key attributes.
+
+    Args:
+        primary_key: List of primary key attribute names.
+        attrs: List of attribute names, which may include "KEY", "KEY DESC", or "KEY ASC".
+
+    Yields:
+        Attribute names with "KEY" expanded to primary key components.
     """
     for a in attrs:
         if re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a):
@@ -936,6 +977,15 @@ def _flatten_attribute_list(primary_key, attrs):
             yield a
 
 
-def _wrap_attributes(attr):
+def _wrap_attributes(attr: Iterator[str]) -> Iterator[str]:
+    """
+    Wrap attribute names in SQL backquotes for safe identifier usage.
+
+    Args:
+        attr: Iterator of attribute names/expressions.
+
+    Yields:
+        Attribute expressions with identifiers wrapped in backquotes.
+    """
     for entry in attr:  # wrap attribute names in backquotes
         yield re.sub(r"\b((?!asc|desc)\w+)\b", r"`\1`", entry, flags=re.IGNORECASE)

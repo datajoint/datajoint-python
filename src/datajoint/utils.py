@@ -1,28 +1,55 @@
-"""General-purpose utilities"""
+"""
+General-purpose utilities for DataJoint.
+
+This module provides helper functions for common operations including
+naming conventions, file operations, and SQL parsing.
+"""
+
+from __future__ import annotations
 
 import re
 import shutil
+from collections.abc import Callable, Generator
 from pathlib import Path
+from typing import Any
 
 from .errors import DataJointError
 
 
 class ClassProperty:
-    def __init__(self, f):
+    """
+    Descriptor for defining class-level properties.
+
+    Similar to @property but works on the class itself rather than instances.
+    """
+
+    def __init__(self, f: Callable) -> None:
         self.f = f
 
-    def __get__(self, obj, owner):
+    def __get__(self, obj: Any, owner: type) -> Any:
         return self.f(owner)
 
 
-def user_choice(prompt, choices=("yes", "no"), default=None):
+def user_choice(
+    prompt: str,
+    choices: tuple[str, ...] = ("yes", "no"),
+    default: str | None = None,
+) -> str:
     """
-    Prompts the user for confirmation.  The default value, if any, is capitalized.
+    Prompt the user to select from a list of choices.
 
-    :param prompt: Information to display to the user.
-    :param choices: an iterable of possible choices.
-    :param default: default choice
-    :return: the user's choice
+    The default value, if any, is displayed capitalized.
+
+    Args:
+        prompt: Message to display to the user.
+        choices: Tuple of valid response options.
+        default: Default choice if user presses Enter without input.
+
+    Returns:
+        The user's selected choice (lowercase).
+
+    Raises:
+        AssertionError: If default is not None and not in choices.
     """
     assert default is None or default in choices
     choice_list = ", ".join((choice.title() if choice == default else choice for choice in choices))
@@ -52,46 +79,62 @@ def get_master(full_table_name: str) -> str:
     return match["master"] + "`" if match else ""
 
 
-def is_camel_case(s):
+def is_camel_case(s: str) -> bool:
     """
     Check if a string is in CamelCase notation.
 
-    :param s: string to check
-    :returns: True if the string is in CamelCase notation, False otherwise
-    Example:
-    >>> is_camel_case("TableName")  # returns True
-    >>> is_camel_case("table_name")  # returns False
+    Args:
+        s: The string to check.
+
+    Returns:
+        True if the string matches CamelCase pattern (starts with uppercase,
+        contains only alphanumeric characters).
+
+    Examples:
+        >>> is_camel_case("TableName")  # True
+        >>> is_camel_case("table_name")  # False
     """
     return bool(re.match(r"^[A-Z][A-Za-z0-9]*$", s))
 
 
-def to_camel_case(s):
+def to_camel_case(s: str) -> str:
     """
-    Convert names with under score (_) separation into camel case names.
+    Convert underscore-separated names to CamelCase.
 
-    :param s: string in under_score notation
-    :returns: string in CamelCase notation
+    Args:
+        s: String in underscore_notation.
+
+    Returns:
+        String in CamelCase notation.
+
     Example:
-    >>> to_camel_case("table_name")  # returns "TableName"
+        >>> to_camel_case("table_name")  # "TableName"
     """
 
-    def to_upper(match):
+    def to_upper(match: re.Match) -> str:
         return match.group(0)[-1].upper()
 
     return re.sub(r"(^|[_\W])+[a-zA-Z]", to_upper, s)
 
 
-def from_camel_case(s):
+def from_camel_case(s: str) -> str:
     """
-    Convert names in camel case into underscore (_) separated names
+    Convert CamelCase names to underscore-separated lowercase.
 
-    :param s: string in CamelCase notation
-    :returns: string in under_score notation
+    Args:
+        s: String in CamelCase notation.
+
+    Returns:
+        String in underscore_notation.
+
+    Raises:
+        DataJointError: If the input is not valid CamelCase.
+
     Example:
-    >>> from_camel_case("TableName") # yields "table_name"
+        >>> from_camel_case("TableName")  # "table_name"
     """
 
-    def convert(match):
+    def convert(match: re.Match) -> str:
         return ("_" if match.groups()[0] else "") + match.group(0).lower()
 
     if not is_camel_case(s):
@@ -99,12 +142,16 @@ def from_camel_case(s):
     return re.sub(r"(\B[A-Z])|(\b[A-Z])", convert, s)
 
 
-def safe_write(filepath, blob):
+def safe_write(filepath: str | Path, blob: bytes) -> None:
     """
-    A two-step write.
+    Write binary data to a file atomically using a two-step process.
 
-    :param filename: full path
-    :param blob: binary data
+    Creates a temporary file first, then renames it to the target path.
+    This prevents partial writes from corrupting the file.
+
+    Args:
+        filepath: Destination file path.
+        blob: Binary data to write.
     """
     filepath = Path(filepath)
     if not filepath.is_file():
@@ -114,9 +161,21 @@ def safe_write(filepath, blob):
         temp_file.rename(filepath)
 
 
-def safe_copy(src, dest, overwrite=False):
+def safe_copy(
+    src: str | Path,
+    dest: str | Path,
+    overwrite: bool = False,
+) -> None:
     """
-    Copy the contents of src file into dest file as a two-step process. Skip if dest exists already
+    Copy a file atomically using a two-step process.
+
+    Creates a temporary file first, then renames it. Skips if destination
+    exists (unless overwrite=True) or if src and dest are the same file.
+
+    Args:
+        src: Source file path.
+        dest: Destination file path.
+        overwrite: If True, overwrite existing destination file.
     """
     src, dest = Path(src), Path(dest)
     if not (dest.exists() and src.samefile(dest)) and (overwrite or not dest.is_file()):
@@ -126,12 +185,20 @@ def safe_copy(src, dest, overwrite=False):
         temp_file.rename(dest)
 
 
-def parse_sql(filepath):
+def parse_sql(filepath: str | Path) -> Generator[str, None, None]:
     """
-    yield SQL statements from an SQL file
+    Parse SQL statements from a file.
+
+    Handles custom delimiters and skips SQL comments.
+
+    Args:
+        filepath: Path to the SQL file.
+
+    Yields:
+        Individual SQL statements as strings.
     """
     delimiter = ";"
-    statement = []
+    statement: list[str] = []
     with Path(filepath).open("rt") as f:
         for line in f:
             line = line.strip()
