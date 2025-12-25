@@ -220,12 +220,22 @@ class Part(UserTable):
     def table_name(cls):
         return None if cls.master is None else cls.master.table_name + "__" + from_camel_case(cls.__name__)
 
-    def delete(self, force=False):
+    def delete(self, force=False, **kwargs):
         """
-        unless force is True, prohibits direct deletes from parts.
+        Delete contents of a Part table.
+
+        Unless force is True, prohibits direct deletes from parts.
+
+        Args:
+            force: If True, allow direct deletion from this Part table.
+            **kwargs: Additional keyword arguments passed to Table.delete(),
+                such as transaction, safemode, and force_masters.
+
+        Raises:
+            DataJointError: If force is False (default).
         """
         if force:
-            super().delete(force_parts=True)
+            super().delete(force_parts=True, **kwargs)
         else:
             raise DataJointError("Cannot delete from a Part directly. Delete from master instead")
 
