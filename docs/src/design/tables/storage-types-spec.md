@@ -2,152 +2,107 @@
 
 ## Overview
 
-This document proposes a unified storage architecture where all external storage uses the Object-Augmented Schema (OAS) paradigm, with a special content-addressable region for deduplicated objects.
+This document defines a layered storage architecture:
 
-## Architecture
+1. **MySQL types**: `longblob`, `varchar`, `int`, etc.
+2. **Core DataJoint types**: `object`, `content` (and their `@store` variants)
+3. **AttributeTypes**: `<djblob>`, `<xblob>`, `<attach>`, etc. (built on top of core types)
 
-### Two Storage Modes within OAS
+## Core Types
 
-```
-store_root/
-├── {schema}/{table}/{pk}/           # Path-addressed (regular OAS)
-│   └── {attribute}/                 # Derived from primary key
-│       └── ...                      # Files, folders, Zarr, etc.
-│
-└── _content/                        # Content-addressed (deduplicated)
-    └── {hash[:2]}/{hash[2:4]}/
-        └── {hash}/                  # Full SHA256 hash
-            └── ...                  # Object contents
-```
+### `object` / `object@store` - Path-Addressed Storage
 
-### 1. Path-Addressed Objects (`object@store`)
+**Already implemented.** OAS (Object-Augmented Schema) storage:
 
-**Already implemented.** Regular OAS behavior:
-- Path derived from primary key
+- Path derived from primary key: `{schema}/{table}/{pk}/{attribute}/`
 - One-to-one relationship with table row
 - Deleted when row is deleted
 - Returns `ObjectRef` for lazy access
+- Supports direct writes (Zarr, HDF5) via fsspec
 
 ```python
 class Analysis(dj.Computed):
     definition = """
     -> Recording
     ---
-    results : object@main
+    results : object          # default store
+    archive : object@cold     # specific store
     """
 ```
 
-### 2. Content-Addressed Objects (`<djblob@store>`, `<attach@store>`)
+### `content` / `content@store` - Content-Addressed Storage
 
-**New.** Stored in `_content/` region with deduplication:
-- Path derived from content hash (SHA256)
-- Many-to-one: multiple rows can reference same object
+**New core type.** Content-addressed storage with deduplication:
+
+- Path derived from content hash: `_content/{hash[:2]}/{hash[2:4]}/{hash}/`
+- Many-to-one: multiple rows can reference same content
 - Reference counted for garbage collection
-- **Transparent access**: Returns same type as internal variant (Python object or file path)
+- Deduplication: identical content stored once
 
-```python
-class ProcessedData(dj.Computed):
-    definition = """
-    -> RawData
-    ---
-    features : <djblob@main>     # Returns Python object (fetched transparently)
-    source_file : <attach@main>  # Returns local file path (downloaded transparently)
-    """
+```
+store_root/
+├── {schema}/{table}/{pk}/     # object storage (path-addressed)
+│   └── {attribute}/
+│
+└── _content/                   # content storage (content-addressed)
+    └── {hash[:2]}/{hash[2:4]}/{hash}/
 ```
 
-## Content-Addressed Storage Design
+#### Content Type Behavior
 
-### Storage Path
-
-```python
-def content_path(content_hash: str) -> str:
-    """Generate path for content-addressed object."""
-    return f"_content/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
-
-# Example: hash "a1b2c3d4..." -> "_content/a1/b2/a1b2c3d4..."
-```
-
-### Reference Registry
-
-A schema-level table tracks content-addressed objects for reference counting:
+The `content` core type:
+- Accepts `bytes` on insert
+- Computes SHA256 hash of the content
+- Stores in `_content/{hash}/` if not already present (deduplication)
+- Returns `bytes` on fetch (transparent retrieval)
+- Registers in `ContentRegistry` for GC tracking
 
 ```python
-class ContentRegistry:
-    """
-    Tracks content-addressed objects for garbage collection.
-    One per schema, created automatically when content-addressed types are used.
-    """
-    definition = """
-    # Content-addressed object registry
-    content_hash : char(64)          # SHA256 hex
-    ---
-    store        : varchar(64)       # Store name
-    size         : bigint unsigned   # Object size in bytes
-    created      : timestamp DEFAULT CURRENT_TIMESTAMP
-    """
+# Core type behavior (built-in, not an AttributeType)
+class ContentType:
+    """Core content-addressed storage type."""
+
+    def store(self, data: bytes, store_backend) -> str:
+        """Store content, return hash."""
+        content_hash = hashlib.sha256(data).hexdigest()
+        path = f"_content/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
+
+        if not store_backend.exists(path):
+            store_backend.put(path, data)
+            ContentRegistry().insert1({
+                'content_hash': content_hash,
+                'store': store_backend.name,
+                'size': len(data)
+            })
+
+        return content_hash
+
+    def retrieve(self, content_hash: str, store_backend) -> bytes:
+        """Retrieve content by hash."""
+        path = f"_content/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
+        return store_backend.get(path)
 ```
 
-### Reference Counting
+#### Database Column
 
-Reference counting is implicit via database queries:
+The `content` type stores a `char(64)` hash in the database:
 
-```python
-def find_orphans(schema) -> list[tuple[str, str]]:
-    """Find content hashes not referenced by any table."""
-
-    # Get all registered hashes
-    registered = set(ContentRegistry().fetch('content_hash', 'store'))
-
-    # Get all referenced hashes from tables
-    referenced = set()
-    for table in schema.tables:
-        for attr in table.heading.attributes:
-            if attr.is_content_addressed:
-                hashes = table.fetch(attr.name)
-                referenced.update((h, attr.store) for h in hashes)
-
-    return registered - referenced
-
-def garbage_collect(schema):
-    """Remove orphaned content-addressed objects."""
-    for content_hash, store in find_orphans(schema):
-        # Delete from storage
-        store_backend = get_store(store)
-        store_backend.delete(content_path(content_hash))
-        # Delete from registry
-        (ContentRegistry() & {'content_hash': content_hash}).delete()
+```sql
+-- content column
+features CHAR(64) NOT NULL  -- SHA256 hex hash
 ```
 
-### Transparent Access for Content-Addressed Objects
-
-Content-addressed objects return the same types as their internal counterparts:
-
-```python
-row = (ProcessedData & key).fetch1()
-
-# <djblob@store> returns Python object (like <djblob>)
-features = row['features']         # dict, array, etc. - fetched and deserialized
-
-# <attach@store> returns local file path (like <attach>)
-local_path = row['source_file']    # '/downloads/data.csv' - downloaded automatically
-
-# Only object@store returns ObjectRef for explicit lazy access
-ref = row['results']               # ObjectRef - user controls when to download
-```
-
-This makes external storage transparent - users work with Python objects and file paths,
-not storage references. The `@store` suffix only affects where data is stored, not how
-it's accessed.
-
-## AttributeType Implementations
+## AttributeTypes (Built on Core Types)
 
 ### `<djblob>` - Internal Serialized Blob
+
+Serialized Python object stored in database.
 
 ```python
 @dj.register_type
 class DJBlobType(AttributeType):
     type_name = "djblob"
-    dtype = "longblob"
+    dtype = "longblob"  # MySQL type
 
     def encode(self, value, *, key=None) -> bytes:
         from . import blob
@@ -158,41 +113,41 @@ class DJBlobType(AttributeType):
         return blob.unpack(stored)
 ```
 
-### `<djblob@store>` - External Serialized Blob (Content-Addressed)
+### `<xblob>` / `<xblob@store>` - External Serialized Blob
+
+Serialized Python object stored in content-addressed storage.
 
 ```python
 @dj.register_type
-class DJBlobExternalType(AttributeType):
-    type_name = "djblob"
-    dtype = "char(64)"  # Content hash stored in column
-    is_content_addressed = True
+class XBlobType(AttributeType):
+    type_name = "xblob"
+    dtype = "content"  # Core type - uses default store
+    # dtype = "content@store" for specific store
 
-    def encode(self, value, *, key=None, store=None) -> str:
+    def encode(self, value, *, key=None) -> bytes:
         from . import blob
-        data = blob.pack(value, compress=True)
-        content_hash = hashlib.sha256(data).hexdigest()
+        return blob.pack(value, compress=True)
 
-        # Upload if not exists (deduplication)
-        path = content_path(content_hash)
-        if not store.exists(path):
-            store.put(path, data)
-            ContentRegistry().insert1({
-                'content_hash': content_hash,
-                'store': store.name,
-                'size': len(data)
-            })
-
-        return content_hash
-
-    def decode(self, content_hash, *, key=None, store=None) -> Any:
-        # Fetch and deserialize - transparent to user
+    def decode(self, stored, *, key=None) -> Any:
         from . import blob
-        path = content_path(content_hash)
-        data = store.get(path)
-        return blob.unpack(data)
+        return blob.unpack(stored)
+```
+
+Usage:
+```python
+class ProcessedData(dj.Computed):
+    definition = """
+    -> RawData
+    ---
+    small_result : <djblob>        # internal (in database)
+    large_result : <xblob>         # external (default store)
+    archive_result : <xblob@cold>  # external (specific store)
+    """
 ```
 
 ### `<attach>` - Internal File Attachment
+
+File stored in database with filename preserved.
 
 ```python
 @dj.register_type
@@ -213,107 +168,134 @@ class AttachType(AttributeType):
         return str(download_path)
 ```
 
-### `<attach@store>` - External File Attachment (Content-Addressed)
+### `<xattach>` / `<xattach@store>` - External File Attachment
+
+File stored in content-addressed storage with filename preserved.
 
 ```python
 @dj.register_type
-class AttachExternalType(AttributeType):
-    type_name = "attach"
-    dtype = "char(64)"  # Content hash stored in column
-    is_content_addressed = True
+class XAttachType(AttributeType):
+    type_name = "xattach"
+    dtype = "content"  # Core type
 
-    def encode(self, filepath, *, key=None, store=None) -> str:
+    def encode(self, filepath, *, key=None) -> bytes:
         path = Path(filepath)
-        data = path.read_bytes()
-        # Hash includes filename for uniqueness
-        content_hash = hashlib.sha256(
-            path.name.encode() + b"\0" + data
-        ).hexdigest()
+        # Include filename in stored data
+        return path.name.encode() + b"\0" + path.read_bytes()
 
-        # Store with original filename preserved
-        obj_path = content_path(content_hash)
-        if not store.exists(obj_path):
-            store.put(f"{obj_path}/{path.name}", data)
-            ContentRegistry().insert1({
-                'content_hash': content_hash,
-                'store': store.name,
-                'size': len(data)
-            })
-
-        return content_hash
-
-    def decode(self, content_hash, *, key=None, store=None) -> str:
-        # Download and return local path - transparent to user
-        obj_path = content_path(content_hash)
-        # List to get filename (stored as {hash}/{filename})
-        filename = store.list(obj_path)[0]
+    def decode(self, stored, *, key=None) -> str:
+        filename, contents = stored.split(b"\0", 1)
+        filename = filename.decode()
         download_path = Path(dj.config['download_path']) / filename
         download_path.parent.mkdir(parents=True, exist_ok=True)
-        store.download(f"{obj_path}/{filename}", download_path)
+        download_path.write_bytes(contents)
         return str(download_path)
 ```
 
-## ObjectRef Interface (for `object@store` only)
-
-Only `object@store` returns `ObjectRef` for explicit lazy access. This is intentional -
-large files and folders (Zarr, HDF5, etc.) benefit from user-controlled download/access.
-
+Usage:
 ```python
-class ObjectRef:
-    """Lazy reference to stored object (object@store only)."""
-
-    def __init__(self, path, store):
-        self.path = path
-        self.store = store
-
-    def download(self, local_path=None) -> Path:
-        """Download object to local filesystem."""
-        if local_path is None:
-            local_path = Path(dj.config['download_path']) / Path(self.path).name
-        self.store.download(self.path, local_path)
-        return local_path
-
-    def open(self, mode='rb'):
-        """Open via fsspec for streaming/direct access."""
-        return self.store.open(self.path, mode)
-
-    def exists(self) -> bool:
-        """Check if object exists in store."""
-        return self.store.exists(self.path)
+class Attachments(dj.Manual):
+    definition = """
+    attachment_id : int
+    ---
+    config : <attach>           # internal (small file in DB)
+    data_file : <xattach>       # external (default store)
+    archive : <xattach@cold>    # external (specific store)
+    """
 ```
 
-## Summary
+## Type Layering Summary
 
-| Type | Storage | Column | Dedup | Returns |
-|------|---------|--------|-------|---------|
-| `object@store` | `{schema}/{table}/{pk}/` | JSON | No | ObjectRef (lazy) |
-| `<djblob>` | Internal DB | LONGBLOB | No | Python object |
-| `<djblob@store>` | `_content/{hash}/` | char(64) | Yes | Python object |
-| `<attach>` | Internal DB | LONGBLOB | No | Local file path |
-| `<attach@store>` | `_content/{hash}/` | char(64) | Yes | Local file path |
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     AttributeTypes                          │
+│  <djblob>   <xblob>   <attach>   <xattach>   <custom>      │
+├─────────────────────────────────────────────────────────────┤
+│                    Core DataJoint Types                     │
+│     longblob        content        object                   │
+│                   content@store   object@store              │
+├─────────────────────────────────────────────────────────────┤
+│                      MySQL Types                            │
+│  LONGBLOB    CHAR(64)    JSON    VARCHAR    INT    etc.    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Storage Comparison
+
+| AttributeType | Core Type | Storage Location | Dedup | Returns |
+|---------------|-----------|------------------|-------|---------|
+| `<djblob>` | `longblob` | Database | No | Python object |
+| `<xblob>` | `content` | `_content/{hash}/` | Yes | Python object |
+| `<xblob@store>` | `content@store` | `_content/{hash}/` | Yes | Python object |
+| `<attach>` | `longblob` | Database | No | Local file path |
+| `<xattach>` | `content` | `_content/{hash}/` | Yes | Local file path |
+| `<xattach@store>` | `content@store` | `_content/{hash}/` | Yes | Local file path |
+| — | `object` | `{schema}/{table}/{pk}/` | No | ObjectRef |
+| — | `object@store` | `{schema}/{table}/{pk}/` | No | ObjectRef |
+
+## Reference Counting for Content Type
+
+The `ContentRegistry` table tracks content-addressed objects:
+
+```python
+class ContentRegistry:
+    definition = """
+    # Content-addressed object registry
+    content_hash : char(64)          # SHA256 hex
+    ---
+    store        : varchar(64)       # Store name
+    size         : bigint unsigned   # Size in bytes
+    created      : timestamp DEFAULT CURRENT_TIMESTAMP
+    """
+```
+
+Garbage collection finds orphaned content:
+
+```python
+def garbage_collect(schema):
+    """Remove content not referenced by any table."""
+    # Get all registered hashes
+    registered = set(ContentRegistry().fetch('content_hash', 'store'))
+
+    # Get all referenced hashes from tables with content-type columns
+    referenced = set()
+    for table in schema.tables:
+        for attr in table.heading.attributes:
+            if attr.type in ('content', 'content@...'):
+                hashes = table.fetch(attr.name)
+                referenced.update((h, attr.store) for h in hashes)
+
+    # Delete orphaned content
+    for content_hash, store in (registered - referenced):
+        store_backend = get_store(store)
+        store_backend.delete(content_path(content_hash))
+        (ContentRegistry() & {'content_hash': content_hash}).delete()
+```
 
 ## Key Design Decisions
 
-1. **Unified OAS paradigm**: All external storage uses OAS infrastructure
-2. **Content-addressed region**: `_content/` folder for deduplicated objects
-3. **Reference counting**: Via `ContentRegistry` table + query-based orphan detection
-4. **Transparent access**: `<djblob@store>` and `<attach@store>` return same types as internal variants
-5. **Lazy access for objects**: Only `object@store` returns ObjectRef (for large files/folders)
-6. **Deduplication**: Content hash determines identity; identical content stored once
+1. **Layered architecture**: Core types (`content`, `object`) separate from AttributeTypes
+2. **Content type**: New core type for content-addressed, deduplicated storage
+3. **Naming convention**:
+   - `<djblob>` = internal serialized (database)
+   - `<xblob>` = external serialized (content-addressed)
+   - `<attach>` = internal file
+   - `<xattach>` = external file
+4. **Transparent access**: AttributeTypes return Python objects or file paths, not references
+5. **Lazy access for objects**: Only `object`/`object@store` returns ObjectRef
 
-## Migration from Legacy `~external_*`
+## Migration from Legacy Types
 
-For existing schemas with `~external_*` tables:
-
-1. Read legacy external references
-2. Re-upload to `_content/` region
-3. Update column values to content hashes
-4. Drop `~external_*` tables
-5. Create `ContentRegistry` entries
+| Legacy | New Equivalent |
+|--------|----------------|
+| `longblob` (auto-serialized) | `<djblob>` |
+| `blob@store` | `<xblob@store>` |
+| `attach` | `<attach>` |
+| `attach@store` | `<xattach@store>` |
+| `filepath@store` | Deprecated (use `object@store` or `<xattach@store>`) |
 
 ## Open Questions
 
-1. **Hash collision**: SHA256 is effectively collision-free, but should we verify on fetch?
-2. **Partial uploads**: How to handle interrupted uploads? Temp path then rename?
-3. **Cross-schema deduplication**: Should `_content/` be per-schema or global?
-4. **Backward compat**: How long to support reading from legacy `~external_*`?
+1. Should `content` without `@store` use a default store, or require explicit store?
+2. Should we support `<xblob>` without `@store` syntax (implying default store)?
+3. Should `filepath@store` be kept for backward compat or fully deprecated?
