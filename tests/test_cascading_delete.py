@@ -146,3 +146,23 @@ def test_delete_1159(thing_tables):
 
     assert len(tbl_a) == 6, "Failed to cascade restriction attributes"
     assert len(tbl_e) == 3, "Failed to cascade restriction attributes"
+
+
+def test_part_delete_kwargs_passthrough(schema_simp_pop):
+    """Test issue #1276: Part.delete should pass kwargs through to Table.delete.
+
+    This test verifies that kwargs like transaction=False can be passed to
+    Part.delete, enabling use within external transactions.
+    """
+    assert B.C(), "Part table B.C should have data"
+    initial_count = len(B.C())
+
+    # Use an external transaction and pass transaction=False to Part.delete
+    with B.C().connection.transaction:
+        # Restrict to a single entry and delete with transaction=False
+        restricted = B.C() & "id_a=0 AND id_b=0 AND id_c=0"
+        if restricted:
+            restricted.delete(force=True, transaction=False)
+
+    # Verify deletion occurred
+    assert len(B.C()) < initial_count, "Part.delete with transaction=False should work"
