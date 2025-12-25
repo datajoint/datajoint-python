@@ -332,3 +332,341 @@ class TestLineageInProjection:
 
         computed = Student.proj(doubled="enrollment_year * 2")
         assert computed.heading["doubled"].lineage is None
+
+
+@pytest.fixture
+def schema_pk_rules(connection):
+    """
+    Create a schema with tables for testing join primary key rules.
+
+    These tables are designed to test the functional dependency rules:
+    - A → B: every attr in PK(B) is either in PK(A) or secondary in A
+    - B → A: every attr in PK(A) is either in PK(B) or secondary in B
+    """
+    schema = dj.Schema("test_pk_rules", connection=connection, create_schema=True)
+
+    # Base tables for testing various scenarios
+    @schema
+    class TableX(dj.Manual):
+        """Table with single PK attribute x."""
+
+        definition = """
+        x : int
+        ---
+        x_data : int
+        """
+
+    @schema
+    class TableXY(dj.Manual):
+        """Table with composite PK (x, y)."""
+
+        definition = """
+        x : int
+        y : int
+        ---
+        xy_data : int
+        """
+
+    @schema
+    class TableXZ(dj.Manual):
+        """Table with composite PK (x, z)."""
+
+        definition = """
+        x : int
+        z : int
+        ---
+        xz_data : int
+        """
+
+    @schema
+    class TableZ(dj.Manual):
+        """Table with single PK z and secondary x."""
+
+        definition = """
+        z : int
+        ---
+        x : int
+        z_data : int
+        """
+
+    @schema
+    class TableXZwithY(dj.Manual):
+        """Table with PK (x, z) and secondary y."""
+
+        definition = """
+        x : int
+        z : int
+        ---
+        y : int
+        xzy_data : int
+        """
+
+    @schema
+    class TableYZwithX(dj.Manual):
+        """Table with PK (y, z) and secondary x."""
+
+        definition = """
+        y : int
+        z : int
+        ---
+        x : int
+        yzx_data : int
+        """
+
+    @schema
+    class TableXYwithZ(dj.Manual):
+        """Table with PK (x, y) and secondary z."""
+
+        definition = """
+        x : int
+        y : int
+        ---
+        z : int
+        xyz_data : int
+        """
+
+    # Insert test data
+    TableX.insert([{"x": 1, "x_data": 10}, {"x": 2, "x_data": 20}], skip_duplicates=True)
+    TableXY.insert(
+        [
+            {"x": 1, "y": 1, "xy_data": 11},
+            {"x": 1, "y": 2, "xy_data": 12},
+            {"x": 2, "y": 1, "xy_data": 21},
+        ],
+        skip_duplicates=True,
+    )
+    TableXZ.insert(
+        [
+            {"x": 1, "z": 1, "xz_data": 11},
+            {"x": 1, "z": 2, "xz_data": 12},
+            {"x": 2, "z": 1, "xz_data": 21},
+        ],
+        skip_duplicates=True,
+    )
+    TableZ.insert(
+        [
+            {"z": 1, "x": 1, "z_data": 10},
+            {"z": 2, "x": 1, "z_data": 20},
+            {"z": 3, "x": 2, "z_data": 30},
+        ],
+        skip_duplicates=True,
+    )
+    TableXZwithY.insert(
+        [
+            {"x": 1, "z": 1, "y": 1, "xzy_data": 111},
+            {"x": 1, "z": 2, "y": 2, "xzy_data": 122},
+            {"x": 2, "z": 1, "y": 1, "xzy_data": 211},
+        ],
+        skip_duplicates=True,
+    )
+    TableYZwithX.insert(
+        [
+            {"y": 1, "z": 1, "x": 1, "yzx_data": 111},
+            {"y": 1, "z": 2, "x": 2, "yzx_data": 122},
+            {"y": 2, "z": 1, "x": 1, "yzx_data": 211},
+        ],
+        skip_duplicates=True,
+    )
+    TableXYwithZ.insert(
+        [
+            {"x": 1, "y": 1, "z": 1, "xyz_data": 111},
+            {"x": 1, "y": 2, "z": 2, "xyz_data": 122},
+            {"x": 2, "y": 1, "z": 1, "xyz_data": 211},
+        ],
+        skip_duplicates=True,
+    )
+
+    yield {
+        "schema": schema,
+        "TableX": TableX,
+        "TableXY": TableXY,
+        "TableXZ": TableXZ,
+        "TableZ": TableZ,
+        "TableXZwithY": TableXZwithY,
+        "TableYZwithX": TableYZwithX,
+        "TableXYwithZ": TableXYwithZ,
+    }
+
+    schema.drop(force=True)
+
+
+class TestJoinPrimaryKeyRules:
+    """
+    Test the join primary key determination rules.
+
+    The rules are:
+    - A → B: PK(A * B) = PK(A), A's attributes first
+    - B → A (not A → B): PK(A * B) = PK(B), B's attributes first
+    - Both A → B and B → A: PK(A * B) = PK(A) (left preference)
+    - Neither: PK(A * B) = PK(A) ∪ PK(B)
+    """
+
+    def test_b_determines_a(self, schema_pk_rules):
+        """
+        Test case: B → A (y is secondary in B, so PK(B) determines y).
+
+        A: x*, y*           PK(A) = {x, y}
+        B: x*, z*, y        PK(B) = {x, z}, y is secondary
+
+        A → B? z not in PK(A) and z not secondary in A → No
+        B → A? y secondary in B → Yes
+
+        Result: PK = {x, z}, B's attributes first
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableXZwithY = schema_pk_rules["TableXZwithY"]
+
+        result = TableXY * TableXZwithY
+
+        # PK should be {x, z} (PK of B)
+        assert set(result.primary_key) == {"x", "z"}
+        # B's attributes should come first (x, z are both in B's PK)
+        assert result.heading.names[0] in {"x", "z"}
+        assert result.heading.names[1] in {"x", "z"}
+
+    def test_both_directions_bijection_like(self, schema_pk_rules):
+        """
+        Test case: Both A → B and B → A (bijection-like).
+
+        A: x*, y*, z        PK(A) = {x, y}, z is secondary
+        B: y*, z*, x        PK(B) = {y, z}, x is secondary
+
+        A → B? z secondary in A → Yes
+        B → A? x secondary in B → Yes
+
+        Both hold, prefer left: PK = {x, y}, A's attributes first
+        """
+        TableXYwithZ = schema_pk_rules["TableXYwithZ"]
+        TableYZwithX = schema_pk_rules["TableYZwithX"]
+
+        result = TableXYwithZ * TableYZwithX
+
+        # PK should be {x, y} (PK of A, left preference)
+        assert set(result.primary_key) == {"x", "y"}
+        # A's PK attributes should come first
+        assert result.heading.names[0] in {"x", "y"}
+        assert result.heading.names[1] in {"x", "y"}
+
+    def test_neither_direction(self, schema_pk_rules):
+        """
+        Test case: Neither A → B nor B → A.
+
+        A: x*, y*           PK(A) = {x, y}
+        B: z*, x            PK(B) = {z}, x is secondary
+
+        A → B? z not in PK(A) and z not secondary in A → No
+        B → A? y not in PK(B) and y not secondary in B → No
+
+        Result: PK = {x, y, z} (union), A's attributes first
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableZ = schema_pk_rules["TableZ"]
+
+        result = TableXY * TableZ
+
+        # PK should be {x, y, z} (union)
+        assert set(result.primary_key) == {"x", "y", "z"}
+        # A's PK attributes should come first
+        pk_names = result.primary_key
+        assert pk_names[0] in {"x", "y"}
+        assert pk_names[1] in {"x", "y"}
+        assert pk_names[2] == "z"
+
+    def test_a_determines_b_simple(self, schema_pk_rules):
+        """
+        Test case: A → B (simple subordinate relationship).
+
+        A: x*               PK(A) = {x}
+        B: x*, y*           PK(B) = {x, y}
+
+        A → B? x in PK(A), y not in PK(A), y not secondary in A → No
+        B → A? x in PK(B) → Yes
+
+        Result: PK = {x, y} (PK of B), B's attributes first
+        """
+        TableX = schema_pk_rules["TableX"]
+        TableXY = schema_pk_rules["TableXY"]
+
+        result = TableX * TableXY
+
+        # B → A holds (x is in PK(B)), A → B doesn't (y not in A)
+        # Result: PK = PK(B) = {x, y}
+        assert set(result.primary_key) == {"x", "y"}
+
+    def test_non_commutativity_pk_selection(self, schema_pk_rules):
+        """
+        Test that A * B may have different PK than B * A.
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableXZwithY = schema_pk_rules["TableXZwithY"]
+
+        result_ab = TableXY * TableXZwithY
+        result_ba = TableXZwithY * TableXY
+
+        # For A * B: B → A, so PK = {x, z}
+        assert set(result_ab.primary_key) == {"x", "z"}
+
+        # For B * A: A is now the "other", and A → B doesn't hold,
+        # B → A still means the new A (old B) determines new B (old A)
+        # Actually, let's recalculate:
+        # New A = TableXZwithY: PK = {x, z}, y is secondary
+        # New B = TableXY: PK = {x, y}
+        # New A → New B? y secondary in new A → Yes
+        # So PK = PK(new A) = {x, z}
+        assert set(result_ba.primary_key) == {"x", "z"}
+
+        # In this case, both have the same PK but potentially different attribute order
+
+    def test_non_commutativity_attribute_order(self, schema_pk_rules):
+        """
+        Test that attribute order depends on which operand provides the PK.
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableXZwithY = schema_pk_rules["TableXZwithY"]
+
+        result_ab = TableXY * TableXZwithY  # B → A, B's attrs first
+        result_ba = TableXZwithY * TableXY  # A → B, A's attrs first
+
+        # In result_ab, B (TableXZwithY) provides PK, so its attrs come first
+        # In result_ba, A (TableXZwithY) provides PK, so its attrs come first
+        # Both should have TableXZwithY's attributes first
+        ab_names = result_ab.heading.names
+        ba_names = result_ba.heading.names
+
+        # The first attributes should be from the PK-providing table
+        # Both cases have TableXZwithY providing the PK
+        assert ab_names[0] in {"x", "z"}
+        assert ba_names[0] in {"x", "z"}
+
+    def test_join_preserves_all_attributes(self, schema_pk_rules):
+        """
+        Test that all attributes from both tables are included in the result.
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableXZwithY = schema_pk_rules["TableXZwithY"]
+
+        result = TableXY * TableXZwithY
+
+        # All unique attributes should be present
+        all_expected = {"x", "y", "z", "xy_data", "xzy_data"}
+        assert set(result.heading.names) == all_expected
+
+    def test_pk_attributes_come_first(self, schema_pk_rules):
+        """
+        Test that primary key attributes always come first in the heading.
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableZ = schema_pk_rules["TableZ"]
+
+        result = TableXY * TableZ
+
+        # PK = {x, y, z}
+        pk = set(result.primary_key)
+        names = result.heading.names
+
+        # All PK attributes should come before any secondary attributes
+        pk_indices = [names.index(attr) for attr in pk]
+        secondary_indices = [names.index(attr) for attr in names if attr not in pk]
+
+        if secondary_indices:  # If there are secondary attributes
+            assert max(pk_indices) < min(secondary_indices)

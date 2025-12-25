@@ -471,14 +471,95 @@ class Heading:
     def join(self, other):
         """
         Join two headings into a new one.
+
+        The primary key of the result depends on the functional dependency relationship:
+        - A → B (self determines other): PK = PK(self), self's attributes first
+        - B → A (other determines self) and not A → B: PK = PK(other), other's attributes first
+        - Neither: PK = PK(self) ∪ PK(other), self's attributes first
+
+        A → B holds iff every attribute in PK(B) is either in PK(A) or secondary in A.
+        B → A holds iff every attribute in PK(A) is either in PK(B) or secondary in B.
+
         It assumes that self and other are headings that share no common dependent attributes.
         """
-        return Heading(
-            [self.attributes[name].todict() for name in self.primary_key]
-            + [other.attributes[name].todict() for name in other.primary_key if name not in self.primary_key]
-            + [self.attributes[name].todict() for name in self.secondary_attributes if name not in other.primary_key]
-            + [other.attributes[name].todict() for name in other.secondary_attributes if name not in self.primary_key]
+        # Check functional dependencies
+        self_determines_other = all(
+            name in self.primary_key or name in self.secondary_attributes for name in other.primary_key
         )
+        other_determines_self = all(
+            name in other.primary_key or name in other.secondary_attributes for name in self.primary_key
+        )
+
+        seen = set()
+        result_attrs = []
+
+        if self_determines_other:
+            # A → B: use PK(A), A's attributes first
+            # 1. All of A's PK attrs (as PK)
+            for name in self.primary_key:
+                result_attrs.append(dict(self.attributes[name].todict(), in_key=True))
+                seen.add(name)
+            # 2. B's PK attrs not already included (as secondary, determined by A's PK)
+            for name in other.primary_key:
+                if name not in seen:
+                    result_attrs.append(dict(other.attributes[name].todict(), in_key=False))
+                    seen.add(name)
+            # 3. A's secondary attrs not already included
+            for name in self.secondary_attributes:
+                if name not in seen:
+                    result_attrs.append(dict(self.attributes[name].todict(), in_key=False))
+                    seen.add(name)
+            # 4. B's secondary attrs not already included
+            for name in other.secondary_attributes:
+                if name not in seen:
+                    result_attrs.append(dict(other.attributes[name].todict(), in_key=False))
+                    seen.add(name)
+
+        elif other_determines_self:
+            # B → A (and not A → B): use PK(B), B's attributes first
+            # 1. All of B's PK attrs (as PK)
+            for name in other.primary_key:
+                result_attrs.append(dict(other.attributes[name].todict(), in_key=True))
+                seen.add(name)
+            # 2. A's PK attrs not already included (as secondary, determined by B's PK)
+            for name in self.primary_key:
+                if name not in seen:
+                    result_attrs.append(dict(self.attributes[name].todict(), in_key=False))
+                    seen.add(name)
+            # 3. B's secondary attrs not already included
+            for name in other.secondary_attributes:
+                if name not in seen:
+                    result_attrs.append(dict(other.attributes[name].todict(), in_key=False))
+                    seen.add(name)
+            # 4. A's secondary attrs not already included
+            for name in self.secondary_attributes:
+                if name not in seen:
+                    result_attrs.append(dict(self.attributes[name].todict(), in_key=False))
+                    seen.add(name)
+
+        else:
+            # Neither: use PK(A) ∪ PK(B), A's attributes first
+            # 1. All of A's PK attrs (as PK)
+            for name in self.primary_key:
+                result_attrs.append(dict(self.attributes[name].todict(), in_key=True))
+                seen.add(name)
+            # 2. B's PK attrs not already included (as PK)
+            for name in other.primary_key:
+                if name not in seen:
+                    result_attrs.append(dict(other.attributes[name].todict(), in_key=True))
+                    seen.add(name)
+            # 3. A's secondary attrs not already included
+            for name in self.secondary_attributes:
+                if name not in seen:
+                    result_attrs.append(dict(self.attributes[name].todict(), in_key=False))
+                    seen.add(name)
+            # 4. B's secondary attrs not already included
+            for name in other.secondary_attributes:
+                if name not in seen:
+                    result_attrs.append(dict(other.attributes[name].todict(), in_key=False))
+                    seen.add(name)
+
+        return Heading(result_attrs)
 
     def set_primary_key(self, primary_key):
         """
