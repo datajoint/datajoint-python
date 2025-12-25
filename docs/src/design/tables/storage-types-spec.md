@@ -43,15 +43,15 @@ class Analysis(dj.Computed):
 - Path derived from content hash (SHA256)
 - Many-to-one: multiple rows can reference same object
 - Reference counted for garbage collection
-- Returns `ObjectRef` for lazy access (same as regular OAS)
+- **Transparent access**: Returns same type as internal variant (Python object or file path)
 
 ```python
 class ProcessedData(dj.Computed):
     definition = """
     -> RawData
     ---
-    features : <djblob@main>     # Serialized Python object, deduplicated
-    source_file : <attach@main>  # File attachment, deduplicated
+    features : <djblob@main>     # Returns Python object (fetched transparently)
+    source_file : <attach@main>  # Returns local file path (downloaded transparently)
     """
 ```
 
@@ -118,22 +118,26 @@ def garbage_collect(schema):
         (ContentRegistry() & {'content_hash': content_hash}).delete()
 ```
 
-### ObjectRef for Content-Addressed Objects
+### Transparent Access for Content-Addressed Objects
 
-Content-addressed objects return `ObjectRef` just like regular OAS objects:
+Content-addressed objects return the same types as their internal counterparts:
 
 ```python
 row = (ProcessedData & key).fetch1()
 
-# Both return ObjectRef
-results_ref = row['features']      # <djblob@store>
-file_ref = row['source_file']      # <attach@store>
+# <djblob@store> returns Python object (like <djblob>)
+features = row['features']         # dict, array, etc. - fetched and deserialized
 
-# Same interface as regular OAS
-results_ref.download('/local/path')
-data = results_ref.load()          # For djblob: deserialize
-local_path = file_ref.download()   # For attach: download, return path
+# <attach@store> returns local file path (like <attach>)
+local_path = row['source_file']    # '/downloads/data.csv' - downloaded automatically
+
+# Only object@store returns ObjectRef for explicit lazy access
+ref = row['results']               # ObjectRef - user controls when to download
 ```
+
+This makes external storage transparent - users work with Python objects and file paths,
+not storage references. The `@store` suffix only affects where data is stored, not how
+it's accessed.
 
 ## AttributeType Implementations
 
@@ -180,13 +184,12 @@ class DJBlobExternalType(AttributeType):
 
         return content_hash
 
-    def decode(self, content_hash, *, key=None, store=None) -> ObjectRef:
-        # Return ObjectRef for lazy access
-        return ObjectRef(
-            path=content_path(content_hash),
-            store=store,
-            loader=blob.unpack  # Custom loader for deserialization
-        )
+    def decode(self, content_hash, *, key=None, store=None) -> Any:
+        # Fetch and deserialize - transparent to user
+        from . import blob
+        path = content_path(content_hash)
+        data = store.get(path)
+        return blob.unpack(data)
 ```
 
 ### `<attach>` - Internal File Attachment
@@ -227,7 +230,7 @@ class AttachExternalType(AttributeType):
             path.name.encode() + b"\0" + data
         ).hexdigest()
 
-        # Store as folder with original filename preserved
+        # Store with original filename preserved
         obj_path = content_path(content_hash)
         if not store.exists(obj_path):
             store.put(f"{obj_path}/{path.name}", data)
@@ -239,26 +242,29 @@ class AttachExternalType(AttributeType):
 
         return content_hash
 
-    def decode(self, content_hash, *, key=None, store=None) -> ObjectRef:
-        return ObjectRef(
-            path=content_path(content_hash),
-            store=store,
-            # ObjectRef handles file download
-        )
+    def decode(self, content_hash, *, key=None, store=None) -> str:
+        # Download and return local path - transparent to user
+        obj_path = content_path(content_hash)
+        # List to get filename (stored as {hash}/{filename})
+        filename = store.list(obj_path)[0]
+        download_path = Path(dj.config['download_path']) / filename
+        download_path.parent.mkdir(parents=True, exist_ok=True)
+        store.download(f"{obj_path}/{filename}", download_path)
+        return str(download_path)
 ```
 
-## Unified ObjectRef Interface
+## ObjectRef Interface (for `object@store` only)
 
-All external storage (both path-addressed and content-addressed) returns `ObjectRef`:
+Only `object@store` returns `ObjectRef` for explicit lazy access. This is intentional -
+large files and folders (Zarr, HDF5, etc.) benefit from user-controlled download/access.
 
 ```python
 class ObjectRef:
-    """Lazy reference to stored object."""
+    """Lazy reference to stored object (object@store only)."""
 
-    def __init__(self, path, store, loader=None):
+    def __init__(self, path, store):
         self.path = path
         self.store = store
-        self._loader = loader  # Optional custom deserializer
 
     def download(self, local_path=None) -> Path:
         """Download object to local filesystem."""
@@ -267,35 +273,33 @@ class ObjectRef:
         self.store.download(self.path, local_path)
         return local_path
 
-    def load(self) -> Any:
-        """Load and optionally deserialize object."""
-        data = self.store.get(self.path)
-        if self._loader:
-            return self._loader(data)
-        return data
-
     def open(self, mode='rb'):
-        """Open via fsspec for streaming access."""
+        """Open via fsspec for streaming/direct access."""
         return self.store.open(self.path, mode)
+
+    def exists(self) -> bool:
+        """Check if object exists in store."""
+        return self.store.exists(self.path)
 ```
 
 ## Summary
 
 | Type | Storage | Column | Dedup | Returns |
 |------|---------|--------|-------|---------|
-| `object@store` | `{schema}/{table}/{pk}/` | JSON | No | ObjectRef |
+| `object@store` | `{schema}/{table}/{pk}/` | JSON | No | ObjectRef (lazy) |
 | `<djblob>` | Internal DB | LONGBLOB | No | Python object |
-| `<djblob@store>` | `_content/{hash}/` | char(64) | Yes | ObjectRef |
-| `<attach>` | Internal DB | LONGBLOB | No | Local path |
-| `<attach@store>` | `_content/{hash}/` | char(64) | Yes | ObjectRef |
+| `<djblob@store>` | `_content/{hash}/` | char(64) | Yes | Python object |
+| `<attach>` | Internal DB | LONGBLOB | No | Local file path |
+| `<attach@store>` | `_content/{hash}/` | char(64) | Yes | Local file path |
 
 ## Key Design Decisions
 
 1. **Unified OAS paradigm**: All external storage uses OAS infrastructure
 2. **Content-addressed region**: `_content/` folder for deduplicated objects
 3. **Reference counting**: Via `ContentRegistry` table + query-based orphan detection
-4. **ObjectRef everywhere**: External types return ObjectRef for consistent lazy access
-5. **Deduplication**: Content hash determines identity; identical content stored once
+4. **Transparent access**: `<djblob@store>` and `<attach@store>` return same types as internal variants
+5. **Lazy access for objects**: Only `object@store` returns ObjectRef (for large files/folders)
+6. **Deduplication**: Content hash determines identity; identical content stored once
 
 ## Migration from Legacy `~external_*`
 
