@@ -17,11 +17,8 @@ This document defines a layered storage architecture:
 
 ### External References
 
-`filepath` is **not** an OAS region - it's a general reference tracker for external resources:
-- OAS store paths: `store://main/experiment/data.h5`
-- URLs: `https://example.com/dataset.zip`
-- S3: `s3://bucket/key/file.nwb`
-- Any fsspec-compatible URI
+`filepath@store` provides portable relative paths within configured stores with lazy ObjectRef access.
+For arbitrary URLs that don't need ObjectRef semantics, use `varchar` instead.
 
 ## Core Types
 
@@ -110,38 +107,31 @@ The `content` type stores a `char(64)` hash in the database:
 features CHAR(64) NOT NULL  -- SHA256 hex hash
 ```
 
-### `filepath` - External Reference Tracker
+### `filepath@store` - Portable External Reference
 
-**Upgraded from legacy.** General-purpose reference tracker for external resources:
+**Upgraded from legacy.** Relative path references within configured stores:
 
-- **Not an OAS region**: references can point anywhere (URLs, S3, OAS stores, etc.)
-- **User controls URIs**: any fsspec-compatible URI
+- **Relative paths**: paths within a configured store (portable across environments)
+- **Store-aware**: resolves paths against configured store backend
 - Returns `ObjectRef` for lazy access via fsspec
 - Stores optional checksum for verification
-- No integrity guarantees (external resources may change/disappear)
+
+**Key benefit**: Portability. The path is relative to the store, so pipelines can be moved
+between environments (dev → prod, cloud → local) by changing store configuration without
+updating data.
 
 ```python
 class RawData(dj.Manual):
     definition = """
     session_id : int
     ---
-    recording : filepath      # external reference
+    recording : filepath@main      # relative path within 'main' store
     """
 
-# Insert - user provides URI (various protocols)
+# Insert - user provides relative path within the store
 table.insert1({
     'session_id': 1,
-    'recording': 's3://my-bucket/experiment_001/data.nwb'
-})
-# Or URL
-table.insert1({
-    'session_id': 2,
-    'recording': 'https://example.com/public/dataset.h5'
-})
-# Or OAS store reference
-table.insert1({
-    'session_id': 3,
-    'recording': 'store://main/custom/path/file.zarr'
+    'recording': 'experiment_001/data.nwb'  # relative to main store root
 })
 
 # Fetch - returns ObjectRef (lazy)
@@ -151,33 +141,43 @@ ref.download('/local/path')      # explicit download
 ref.open()                       # fsspec streaming access
 ```
 
+#### When to Use `filepath@store` vs `varchar`
+
+| Use Case | Recommended Type |
+|----------|------------------|
+| Need ObjectRef/lazy access | `filepath@store` |
+| Need portability (relative paths) | `filepath@store` |
+| Want checksum verification | `filepath@store` |
+| Just storing a URL string | `varchar` |
+| External URLs you don't control | `varchar` |
+
+For arbitrary URLs (S3, HTTP, etc.) where you don't need ObjectRef semantics,
+just use `varchar`. A string is simpler and more transparent.
+
 #### Filepath Type Behavior
 
 ```python
 # Core type behavior
 class FilepathType:
-    """Core external reference type."""
+    """Core external reference type with store-relative paths."""
 
-    def store(self, uri: str, compute_checksum: bool = False) -> dict:
-        """
-        Register external reference, return metadata.
-        Optionally compute checksum for verification.
-        """
-        metadata = {'uri': uri}
+    def store(self, relative_path: str, store_backend, compute_checksum: bool = False) -> dict:
+        """Register reference to file in store."""
+        metadata = {'path': relative_path}
 
         if compute_checksum:
-            # Use fsspec to access and compute checksum
-            fs, path = fsspec.core.url_to_fs(uri)
-            if fs.exists(path):
-                metadata['checksum'] = compute_file_checksum(fs, path)
-                metadata['size'] = fs.size(path)
+            full_path = store_backend.resolve(relative_path)
+            if store_backend.exists(full_path):
+                metadata['checksum'] = compute_file_checksum(store_backend, full_path)
+                metadata['size'] = store_backend.size(full_path)
 
         return metadata
 
-    def retrieve(self, metadata: dict) -> ObjectRef:
+    def retrieve(self, metadata: dict, store_backend) -> ObjectRef:
         """Return ObjectRef for lazy access."""
         return ObjectRef(
-            uri=metadata['uri'],
+            store=store_backend,
+            path=metadata['path'],
             checksum=metadata.get('checksum')  # optional verification
         )
 ```
@@ -189,32 +189,21 @@ The `filepath` type uses the `json` core type:
 ```sql
 -- filepath column (MySQL)
 recording JSON NOT NULL
--- Contains: {"uri": "s3://...", "checksum": "...", "size": ...}
+-- Contains: {"path": "experiment_001/data.nwb", "checksum": "...", "size": ...}
 
 -- filepath column (PostgreSQL)
 recording JSONB NOT NULL
 ```
 
-#### Supported URI Schemes
-
-| Scheme | Example | Backend |
-|--------|---------|---------|
-| `s3://` | `s3://bucket/key/file.nwb` | S3 via fsspec |
-| `gs://` | `gs://bucket/object` | Google Cloud Storage |
-| `https://` | `https://example.com/data.h5` | HTTP(S) |
-| `file://` | `file:///local/path/data.csv` | Local filesystem |
-| `store://` | `store://main/path/file.zarr` | OAS store |
-
 #### Key Differences from Legacy `filepath@store`
 
 | Feature | Legacy | New |
 |---------|--------|-----|
-| Location | OAS store only | Any URI (S3, HTTP, etc.) |
 | Access | Copy to local stage | ObjectRef (lazy) |
 | Copying | Automatic | Explicit via `ref.download()` |
 | Streaming | No | Yes via `ref.open()` |
-| Integrity | Managed by DataJoint | External (may change) |
-| Store param | Required (`@store`) | Optional (embedded in URI) |
+| Paths | Relative | Relative (unchanged) |
+| Store param | Required (`@store`) | Required (`@store`) |
 
 ### `json` - Cross-Database JSON Type
 
@@ -378,7 +367,7 @@ class Attachments(dj.Manual):
 │  <djblob>   <xblob>   <attach>   <xattach>   <custom>             │
 ├───────────────────────────────────────────────────────────────────┤
 │                     Core DataJoint Types                           │
-│   longblob     content      object      filepath      json         │
+│   longblob     content      object    filepath@s      json         │
 │              content@s    object@s                                 │
 ├───────────────────────────────────────────────────────────────────┤
 │                    Database Types                                  │
@@ -399,7 +388,7 @@ class Attachments(dj.Manual):
 | `<xattach@s>` | `content@s` | `_content/{hash}` | Yes | Local file path |
 | `object` | — | `{schema}/{table}/{pk}/` | No | ObjectRef |
 | `object@s` | — | `{schema}/{table}/{pk}/` | No | ObjectRef |
-| `filepath` | `json` | External (any URI) | No | ObjectRef |
+| `filepath@s` | `json` | Configured store (relative path) | No | ObjectRef |
 
 ## Reference Counting for Content Type
 
@@ -448,37 +437,39 @@ def garbage_collect(project):
 
 ## Core Type Comparison
 
-| Feature | `object` | `content` | `filepath` |
-|---------|----------|-----------|------------|
-| Location | OAS store | OAS store | Anywhere (URI) |
-| Addressing | Primary key | Content hash | User URI |
+| Feature | `object` | `content` | `filepath@store` |
+|---------|----------|-----------|------------------|
+| Location | OAS store | OAS store | Configured store |
+| Addressing | Primary key | Content hash | Relative path |
 | Path control | DataJoint | DataJoint | User |
 | Deduplication | No | Yes | No |
 | Structure | Files, folders, Zarr | Single blob only | Any (via fsspec) |
 | Access | ObjectRef (lazy) | Transparent (bytes) | ObjectRef (lazy) |
-| GC | Deleted with row | Reference counted | N/A (external) |
-| Integrity | DataJoint managed | DataJoint managed | External (no guarantees) |
+| GC | Deleted with row | Reference counted | N/A (user managed) |
+| Integrity | DataJoint managed | DataJoint managed | User managed |
 
 **When to use each:**
 - **`object`**: Large/complex objects where DataJoint controls organization (Zarr, HDF5)
 - **`content`**: Deduplicated serialized data or file attachments via `<xblob>`, `<xattach>`
-- **`filepath`**: External references (S3, URLs, etc.) not managed by DataJoint
+- **`filepath@store`**: Portable references to files in configured stores
+- **`varchar`**: Arbitrary URLs/paths where ObjectRef semantics aren't needed
 
 ## Key Design Decisions
 
-1. **Layered architecture**: Core types (`object`, `content`, `filepath`, `json`) separate from AttributeTypes
+1. **Layered architecture**: Core types (`object`, `content`, `filepath@store`, `json`) separate from AttributeTypes
 2. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
-3. **Filepath as reference tracker**: Not an OAS region - tracks external URIs (S3, HTTP, etc.)
-4. **Content type**: Single-blob, content-addressed, deduplicated storage
-5. **JSON core type**: Cross-database compatible (MySQL JSON, PostgreSQL JSONB)
-6. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
-7. **Naming convention**:
+3. **Filepath for portability**: `filepath@store` uses relative paths within stores for environment portability
+4. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
+5. **Content type**: Single-blob, content-addressed, deduplicated storage
+6. **JSON core type**: Cross-database compatible (MySQL JSON, PostgreSQL JSONB)
+7. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
+8. **Naming convention**:
    - `<djblob>` = internal serialized (database)
    - `<xblob>` = external serialized (content-addressed)
    - `<attach>` = internal file (single file)
    - `<xattach>` = external file (single file)
-8. **Transparent access**: AttributeTypes return Python objects or file paths
-9. **Lazy access**: `object`, `object@store`, and `filepath` return ObjectRef
+9. **Transparent access**: AttributeTypes return Python objects or file paths
+10. **Lazy access**: `object`, `object@store`, and `filepath@store` return ObjectRef
 
 ## Migration from Legacy Types
 
@@ -550,5 +541,4 @@ def migrate_external_store(schema, store_name):
 
 1. Should `content` without `@store` use a default store, or require explicit store?
 2. Should we support `<xblob>` without `@store` syntax (implying default store)?
-3. Should `filepath` without `@store` be supported (using default store)?
-4. How long should the backward compatibility layer support legacy `~external_*` format?
+3. How long should the backward compatibility layer support legacy `~external_*` format?
