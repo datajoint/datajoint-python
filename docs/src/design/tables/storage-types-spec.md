@@ -2,11 +2,14 @@
 
 ## Overview
 
-This document defines a layered storage architecture:
+This document defines a two-layer storage architecture:
 
-1. **Database types**: `longblob`, `varchar`, `int`, `json`, etc.
-2. **Core DataJoint types**: `object`, `content`, `filepath`, `json` (and `@store` variants where applicable)
-3. **AttributeTypes**: `<djblob>`, `<xblob>`, `<attach>`, etc. (built on top of core types)
+1. **Database types**: `longblob`, `varchar`, `int`, `json`, etc. (MySQL/PostgreSQL native)
+2. **AttributeTypes**: Custom types with `encode()`/`decode()` semantics
+
+All DataJoint storage types (`object`, `content`, `filepath@store`, `<djblob>`, etc.) are
+implemented as **AttributeTypes**. Some are built-in (auto-registered, use `dj.config` for stores)
+while others are user-defined.
 
 ### OAS Storage Regions
 
@@ -20,17 +23,21 @@ This document defines a layered storage architecture:
 `filepath@store` provides portable relative paths within configured stores with lazy ObjectRef access.
 For arbitrary URLs that don't need ObjectRef semantics, use `varchar` instead.
 
-## Core Types
+## Built-in AttributeTypes
+
+Built-in types are auto-registered and use `dj.config['stores']` for store configuration.
+They use `json` as their database dtype to store metadata.
 
 ### `object` / `object@store` - Path-Addressed Storage
 
-**Already implemented.** OAS (Object-Augmented Schema) storage:
+**Built-in AttributeType.** OAS (Object-Augmented Schema) storage:
 
 - Path derived from primary key: `{schema}/{table}/{pk}/{attribute}/`
 - One-to-one relationship with table row
 - Deleted when row is deleted
 - Returns `ObjectRef` for lazy access
 - Supports direct writes (Zarr, HDF5) via fsspec
+- **dtype**: `json` (stores path, store name, metadata)
 
 ```python
 class Analysis(dj.Computed):
@@ -42,9 +49,34 @@ class Analysis(dj.Computed):
     """
 ```
 
+#### Implementation
+
+```python
+class ObjectType(AttributeType):
+    """Built-in AttributeType for path-addressed OAS storage."""
+    type_name = "object"
+    dtype = "json"
+
+    def encode(self, value, *, key=None, store_name=None) -> dict:
+        store = get_store(store_name or dj.config['stores']['default'])
+        path = self._compute_path(key)  # {schema}/{table}/{pk}/{attr}/
+        store.put(path, value)
+        return {
+            "path": path,
+            "store": store_name,
+            # Additional metadata (size, timestamps, etc.)
+        }
+
+    def decode(self, stored: dict, *, key=None) -> ObjectRef:
+        return ObjectRef(
+            store=get_store(stored["store"]),
+            path=stored["path"]
+        )
+```
+
 ### `content` / `content@store` - Content-Addressed Storage
 
-**New core type.** Content-addressed storage with deduplication:
+**Built-in AttributeType.** Content-addressed storage with deduplication:
 
 - **Single blob only**: stores a single file or serialized object (not folders)
 - **Per-project scope**: content is shared across all schemas in a project (not per-schema)
@@ -53,6 +85,7 @@ class Analysis(dj.Computed):
 - Reference counted for garbage collection
 - Deduplication: identical content stored once across the entire project
 - For folders/complex objects, use `object` type instead
+- **dtype**: `json` (stores hash, store name, size, metadata)
 
 ```
 store_root/
@@ -63,58 +96,63 @@ store_root/
     └── {hash[:2]}/{hash[2:4]}/{hash}
 ```
 
-#### Content Type Behavior
-
-The `content` core type:
-- Accepts `bytes` on insert
-- Computes SHA256 hash of the content
-- Stores in `_content/{hash}/` if not already present (deduplication)
-- Returns `bytes` on fetch (transparent retrieval)
-- Registers in `ContentRegistry` for GC tracking
+#### Implementation
 
 ```python
-# Core type behavior (built-in, not an AttributeType)
-class ContentType:
-    """Core content-addressed storage type."""
+class ContentType(AttributeType):
+    """Built-in AttributeType for content-addressed storage."""
+    type_name = "content"
+    dtype = "json"
 
-    def store(self, data: bytes, store_backend) -> str:
-        """Store content, return hash."""
+    def encode(self, data: bytes, *, key=None, store_name=None) -> dict:
+        """Store content, return metadata as JSON."""
         content_hash = hashlib.sha256(data).hexdigest()
+        store = get_store(store_name or dj.config['stores']['default'])
         path = f"_content/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
 
-        if not store_backend.exists(path):
-            store_backend.put(path, data)
+        if not store.exists(path):
+            store.put(path, data)
             ContentRegistry().insert1({
                 'content_hash': content_hash,
-                'store': store_backend.name,
+                'store': store_name,
                 'size': len(data)
-            })
+            }, skip_duplicates=True)
 
-        return content_hash
+        return {
+            "hash": content_hash,
+            "store": store_name,
+            "size": len(data)
+        }
 
-    def retrieve(self, content_hash: str, store_backend) -> bytes:
+    def decode(self, stored: dict, *, key=None) -> bytes:
         """Retrieve content by hash."""
-        path = f"_content/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
-        return store_backend.get(path)
+        store = get_store(stored["store"])
+        path = f"_content/{stored['hash'][:2]}/{stored['hash'][2:4]}/{stored['hash']}"
+        return store.get(path)
 ```
 
 #### Database Column
 
-The `content` type stores a `char(64)` hash in the database:
+The `content` type stores JSON metadata:
 
 ```sql
--- content column
-features CHAR(64) NOT NULL  -- SHA256 hex hash
+-- content column (MySQL)
+features JSON NOT NULL
+-- Contains: {"hash": "abc123...", "store": "main", "size": 12345}
+
+-- content column (PostgreSQL)
+features JSONB NOT NULL
 ```
 
 ### `filepath@store` - Portable External Reference
 
-**Upgraded from legacy.** Relative path references within configured stores:
+**Built-in AttributeType.** Relative path references within configured stores:
 
 - **Relative paths**: paths within a configured store (portable across environments)
 - **Store-aware**: resolves paths against configured store backend
 - Returns `ObjectRef` for lazy access via fsspec
 - Stores optional checksum for verification
+- **dtype**: `json` (stores path, store name, checksum, metadata)
 
 **Key benefit**: Portability. The path is relative to the store, so pipelines can be moved
 between environments (dev → prod, cloud → local) by changing store configuration without
@@ -154,42 +192,43 @@ ref.open()                       # fsspec streaming access
 For arbitrary URLs (S3, HTTP, etc.) where you don't need ObjectRef semantics,
 just use `varchar`. A string is simpler and more transparent.
 
-#### Filepath Type Behavior
+#### Implementation
 
 ```python
-# Core type behavior
-class FilepathType:
-    """Core external reference type with store-relative paths."""
+class FilepathType(AttributeType):
+    """Built-in AttributeType for store-relative file references."""
+    type_name = "filepath"
+    dtype = "json"
 
-    def store(self, relative_path: str, store_backend, compute_checksum: bool = False) -> dict:
+    def encode(self, relative_path: str, *, key=None, store_name=None,
+               compute_checksum: bool = False) -> dict:
         """Register reference to file in store."""
-        metadata = {'path': relative_path}
+        store = get_store(store_name)  # store_name required for filepath
+        metadata = {'path': relative_path, 'store': store_name}
 
         if compute_checksum:
-            full_path = store_backend.resolve(relative_path)
-            if store_backend.exists(full_path):
-                metadata['checksum'] = compute_file_checksum(store_backend, full_path)
-                metadata['size'] = store_backend.size(full_path)
+            full_path = store.resolve(relative_path)
+            if store.exists(full_path):
+                metadata['checksum'] = compute_file_checksum(store, full_path)
+                metadata['size'] = store.size(full_path)
 
         return metadata
 
-    def retrieve(self, metadata: dict, store_backend) -> ObjectRef:
+    def decode(self, stored: dict, *, key=None) -> ObjectRef:
         """Return ObjectRef for lazy access."""
         return ObjectRef(
-            store=store_backend,
-            path=metadata['path'],
-            checksum=metadata.get('checksum')  # optional verification
+            store=get_store(stored['store']),
+            path=stored['path'],
+            checksum=stored.get('checksum')  # optional verification
         )
 ```
 
 #### Database Column
 
-The `filepath` type uses the `json` core type:
-
 ```sql
 -- filepath column (MySQL)
 recording JSON NOT NULL
--- Contains: {"path": "experiment_001/data.nwb", "checksum": "...", "size": ...}
+-- Contains: {"path": "experiment_001/data.nwb", "store": "main", "checksum": "...", "size": ...}
 
 -- filepath column (PostgreSQL)
 recording JSONB NOT NULL
@@ -205,49 +244,52 @@ recording JSONB NOT NULL
 | Paths | Relative | Relative (unchanged) |
 | Store param | Required (`@store`) | Required (`@store`) |
 
+## Database Types
+
 ### `json` - Cross-Database JSON Type
 
-**New core type.** JSON storage compatible across MySQL and PostgreSQL:
+JSON storage compatible across MySQL and PostgreSQL:
 
 ```sql
 -- MySQL
 column_name JSON NOT NULL
 
--- PostgreSQL
+-- PostgreSQL (uses JSONB for better indexing)
 column_name JSONB NOT NULL
 ```
 
-The `json` core type:
+The `json` database type:
+- Used as dtype by built-in AttributeTypes (`object`, `content`, `filepath@store`)
 - Stores arbitrary JSON-serializable data
 - Automatically uses appropriate type for database backend
 - Supports JSON path queries where available
 
 ## Parameterized AttributeTypes
 
-AttributeTypes can be parameterized with `<type@param>` syntax. The parameter is passed
-through to the underlying dtype:
+AttributeTypes can be parameterized with `<type@param>` syntax. The parameter specifies
+which store to use:
 
 ```python
 class AttributeType:
-    type_name: str      # Name used in <brackets>
-    dtype: str          # Base underlying type
+    type_name: str      # Name used in <brackets> or as bare type
+    dtype: str          # Database type or built-in AttributeType
 
-    # When user writes <type_name@param>, resolved dtype becomes:
-    # f"{dtype}@{param}" if param specified, else dtype
+    # When user writes type_name@param, resolved store becomes param
 ```
 
 **Resolution examples:**
 ```
-<xblob>       → dtype = "content"       → default store
-<xblob@cold>  → dtype = "content@cold"  → cold store
-<djblob>      → dtype = "longblob"      → database
-<djblob@x>    → ERROR: longblob doesn't support parameters
+<xblob>       → uses content type   → default store
+<xblob@cold>  → uses content type   → cold store
+<djblob>      → dtype = "longblob"  → database (no store)
+object@cold   → uses object type    → cold store
 ```
 
-This means `<xblob>` and `<xblob@store>` share the same AttributeType class - the
-parameter flows through to the core type, which validates whether it supports `@store`.
+AttributeTypes can use other AttributeTypes as their dtype (composition):
+- `<xblob>` uses `content` - adds djblob serialization on top of content-addressed storage
+- `<xattach>` uses `content` - adds filename preservation on top of content-addressed storage
 
-## AttributeTypes (Built on Core Types)
+## User-Defined AttributeTypes
 
 ### `<djblob>` - Internal Serialized Blob
 
@@ -364,31 +406,35 @@ class Attachments(dj.Manual):
 ```
 ┌───────────────────────────────────────────────────────────────────┐
 │                        AttributeTypes                              │
-│  <djblob>   <xblob>   <attach>   <xattach>   <custom>             │
+│                                                                    │
+│  Built-in:   object    content    filepath@s                       │
+│  User:       <djblob>  <xblob>    <attach>   <xattach>  <custom>  │
 ├───────────────────────────────────────────────────────────────────┤
-│                     Core DataJoint Types                           │
-│   longblob     content      object    filepath@s      json         │
-│              content@s    object@s                                 │
-├───────────────────────────────────────────────────────────────────┤
-│                    Database Types                                  │
-│   LONGBLOB     CHAR(64)     JSON      JSON/JSONB    VARCHAR  etc. │
-│                           (MySQL)    (PostgreSQL)                  │
+│                    Database Types (dtype)                          │
+│                                                                    │
+│          LONGBLOB      JSON/JSONB      VARCHAR      INT   etc.    │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
+All storage types are AttributeTypes:
+- **Built-in**: `object`, `content`, `filepath@store` - auto-registered, use `dj.config`
+- **User-defined**: `<djblob>`, `<xblob>`, `<attach>`, `<xattach>`, `<custom>` - registered via `@dj.register_type`
+
 ## Storage Comparison
 
-| Type | Core Type | Storage Location | Dedup | Returns |
-|------|-----------|------------------|-------|---------|
+| Type | dtype | Storage Location | Dedup | Returns |
+|------|-------|------------------|-------|---------|
+| `object` | `json` | `{schema}/{table}/{pk}/` | No | ObjectRef |
+| `object@s` | `json` | `{schema}/{table}/{pk}/` | No | ObjectRef |
+| `content` | `json` | `_content/{hash}` | Yes | bytes |
+| `content@s` | `json` | `_content/{hash}` | Yes | bytes |
+| `filepath@s` | `json` | Configured store (relative path) | No | ObjectRef |
 | `<djblob>` | `longblob` | Database | No | Python object |
 | `<xblob>` | `content` | `_content/{hash}` | Yes | Python object |
 | `<xblob@s>` | `content@s` | `_content/{hash}` | Yes | Python object |
 | `<attach>` | `longblob` | Database | No | Local file path |
 | `<xattach>` | `content` | `_content/{hash}` | Yes | Local file path |
 | `<xattach@s>` | `content@s` | `_content/{hash}` | Yes | Local file path |
-| `object` | — | `{schema}/{table}/{pk}/` | No | ObjectRef |
-| `object@s` | — | `{schema}/{table}/{pk}/` | No | ObjectRef |
-| `filepath@s` | `json` | Configured store (relative path) | No | ObjectRef |
 
 ## Reference Counting for Content Type
 
@@ -435,10 +481,11 @@ def garbage_collect(project):
         (ContentRegistry() & {'content_hash': content_hash}).delete()
 ```
 
-## Core Type Comparison
+## Built-in AttributeType Comparison
 
 | Feature | `object` | `content` | `filepath@store` |
 |---------|----------|-----------|------------------|
+| dtype | `json` | `json` | `json` |
 | Location | OAS store | OAS store | Configured store |
 | Addressing | Primary key | Content hash | Relative path |
 | Path control | DataJoint | DataJoint | User |
@@ -456,20 +503,21 @@ def garbage_collect(project):
 
 ## Key Design Decisions
 
-1. **Layered architecture**: Core types (`object`, `content`, `filepath@store`, `json`) separate from AttributeTypes
-2. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
-3. **Filepath for portability**: `filepath@store` uses relative paths within stores for environment portability
-4. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
-5. **Content type**: Single-blob, content-addressed, deduplicated storage
-6. **JSON core type**: Cross-database compatible (MySQL JSON, PostgreSQL JSONB)
-7. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
-8. **Naming convention**:
+1. **Two-layer architecture**: Database types (`json`, `longblob`, etc.) and AttributeTypes
+2. **All storage types are AttributeTypes**: Built-in (`object`, `content`, `filepath@store`) and user-defined (`<djblob>`, etc.)
+3. **Built-in types use JSON dtype**: Stores metadata (path, hash, store name, etc.) in JSON columns
+4. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
+5. **Filepath for portability**: `filepath@store` uses relative paths within stores for environment portability
+6. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
+7. **Content type**: Single-blob, content-addressed, deduplicated storage
+8. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
+9. **Naming convention**:
    - `<djblob>` = internal serialized (database)
    - `<xblob>` = external serialized (content-addressed)
    - `<attach>` = internal file (single file)
    - `<xattach>` = external file (single file)
-9. **Transparent access**: AttributeTypes return Python objects or file paths
-10. **Lazy access**: `object`, `object@store`, and `filepath@store` return ObjectRef
+10. **Transparent access**: AttributeTypes return Python objects or file paths
+11. **Lazy access**: `object`, `object@store`, and `filepath@store` return ObjectRef
 
 ## Migration from Legacy Types
 
