@@ -22,8 +22,7 @@ This plan describes the implementation of a three-layer type architecture for Da
 | Phase 3: User-Defined AttributeTypes | 🔲 Pending | AttachType/FilepathType pending |
 | Phase 4: Insert and Fetch Integration | ✅ Complete | Type chain encoding/decoding |
 | Phase 5: Garbage Collection | 🔲 Pending | |
-| Phase 6: Migration Utilities | 🔲 Pending | |
-| Phase 7: Documentation and Testing | 🔲 Pending | |
+| Phase 6: Documentation and Testing | 🔲 Pending | |
 
 ---
 
@@ -343,18 +342,7 @@ def garbage_collect(schemas: list, store_name: str, dry_run=True) -> dict:
 
 ---
 
-## Phase 6: Migration Utilities 🔲
-
-**Status**: Pending
-
-### Key migrations needed:
-1. Legacy `~external_{store}` tables → content-addressed storage
-2. UUID-based external references → hash-based JSON metadata
-3. Legacy `filepath@store` → new `<filepath@store>` with ObjectRef
-
----
-
-## Phase 7: Documentation and Testing 🔲
+## Phase 6: Documentation and Testing 🔲
 
 **Status**: Pending
 
@@ -381,7 +369,6 @@ def garbage_collect(schemas: list, store_name: str, dry_run=True) -> dict:
 | `src/datajoint/fetch.py` | ✅ | Type chain decoding on fetch |
 | `src/datajoint/blob.py` | ✅ | Removed bypass_serialization |
 | `src/datajoint/gc.py` | 🔲 | Garbage collection (to be created) |
-| `src/datajoint/migrate.py` | 🔲 | Migration utilities |
 
 ---
 
