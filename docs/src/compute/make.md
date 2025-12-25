@@ -152,7 +152,7 @@ class ImageAnalysis(dj.Computed):
     # Complex image analysis results
     -> Image
     ---
-    analysis_result : longblob
+    analysis_result : <djblob>
     processing_time : float
     """
 
@@ -188,7 +188,7 @@ class ImageAnalysis(dj.Computed):
     # Complex image analysis results
     -> Image
     ---
-    analysis_result : longblob
+    analysis_result : <djblob>
     processing_time : float
     """
 

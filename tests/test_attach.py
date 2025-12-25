@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-import pytest
 
 from .schema_external import Attach
 
@@ -23,9 +22,7 @@ def test_attach_attributes(schema_ext, minio_client, tmpdir_factory):
         table.insert1(dict(attach=i, img=attach1, txt=attach2))
 
     download_folder = Path(tmpdir_factory.mktemp("download"))
-    keys, path1, path2 = table.fetch(
-        "KEY", "img", "txt", download_path=download_folder, order_by="KEY"
-    )
+    keys, path1, path2 = table.fetch("KEY", "img", "txt", download_path=download_folder, order_by="KEY")
 
     # verify that different attachment are renamed if their filenames collide
     assert path1[0] != path2[0]
@@ -61,8 +58,6 @@ def test_return_string(schema_ext, minio_client, tmpdir_factory):
     table.insert1(dict(attach=2, img=attach1, txt=attach2))
 
     download_folder = Path(tmpdir_factory.mktemp("download"))
-    keys, path1, path2 = table.fetch(
-        "KEY", "img", "txt", download_path=download_folder, order_by="KEY"
-    )
+    keys, path1, path2 = table.fetch("KEY", "img", "txt", download_path=download_folder, order_by="KEY")
 
     assert isinstance(path1[0], str)

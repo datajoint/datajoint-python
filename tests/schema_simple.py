@@ -83,10 +83,7 @@ class B(dj.Computed):
             sigma = random.lognormvariate(0, 4)
             n = random.randint(0, 10)
             self.insert1(dict(key, mu=mu, sigma=sigma, n=n))
-            sub.insert(
-                dict(key, id_c=j, value=random.normalvariate(mu, sigma))
-                for j in range(n)
-            )
+            sub.insert(dict(key, id_c=j, value=random.normalvariate(mu, sigma)) for j in range(n))
 
 
 class L(dj.Lookup):
@@ -159,11 +156,7 @@ class E(dj.Computed):
         random.shuffle(bc_references)
 
         self.insert1(dict(key, **random.choice(l_contents)))
-        part_f.insert(
-            dict(key, id_f=i, **ref)
-            for i, ref in enumerate(bc_references)
-            if random.getrandbits(1)
-        )
+        part_f.insert(dict(key, id_f=i, **ref) for i, ref in enumerate(bc_references) if random.getrandbits(1))
         g_inserts = [dict(key, id_g=i, **ref) for i, ref in enumerate(l_contents)]
         part_g.insert(g_inserts)
         h_inserts = [dict(key, id_h=i) for i in range(4)]
@@ -248,9 +241,7 @@ class Profile(dj.Manual):
             with self.connection.transaction:
                 self.insert1(profile, ignore_extra_fields=True)
                 for url in profile["website"]:
-                    self.Website().insert1(
-                        dict(ssn=profile["ssn"], url_hash=Website().insert1_url(url))
-                    )
+                    self.Website().insert1(dict(ssn=profile["ssn"], url_hash=Website().insert1_url(url)))
 
 
 class TTestUpdate(dj.Lookup):

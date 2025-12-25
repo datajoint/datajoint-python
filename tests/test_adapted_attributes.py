@@ -1,5 +1,10 @@
-import os
-import tempfile
+"""
+Tests for adapted/custom attribute types.
+
+These tests use the legacy AttributeAdapter API for backward compatibility testing.
+"""
+
+import warnings
 from itertools import zip_longest
 
 import networkx as nx
@@ -10,6 +15,9 @@ import datajoint as dj
 from . import schema_adapted
 from .schema_adapted import Connectivity, Layout
 
+# Filter deprecation warnings from legacy AttributeAdapter usage in these tests
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
 
 @pytest.fixture
 def schema_name(prefix):
@@ -18,28 +26,28 @@ def schema_name(prefix):
 
 @pytest.fixture
 def adapted_graph_instance():
-    yield schema_adapted.GraphAdapter()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        yield schema_adapted.GraphAdapter()
 
 
 @pytest.fixture
 def schema_ad(
     connection_test,
     adapted_graph_instance,
-    enable_adapted_types,
     enable_filepath_feature,
     s3_creds,
     tmpdir,
     schema_name,
 ):
-    dj.config["stores"] = {
-        "repo-s3": dict(
-            s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir)
-        )
-    }
+    dj.config["stores"] = {"repo-s3": dict(s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir))}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        layout_adapter = schema_adapted.LayoutToFilepath()
     context = {
         **schema_adapted.LOCALS_ADAPTED,
         "graph": adapted_graph_instance,
-        "layout_to_filepath": schema_adapted.LayoutToFilepath(),
+        "layout_to_filepath": layout_adapter,
     }
     schema = dj.schema(schema_name, context=context, connection=connection_test)
     schema(schema_adapted.Connectivity)
@@ -60,9 +68,7 @@ def local_schema(schema_ad, schema_name):
 @pytest.fixture
 def schema_virtual_module(schema_ad, adapted_graph_instance, schema_name):
     """Fixture for testing virtual modules"""
-    schema_virtual_module = dj.VirtualModule(
-        "virtual_module", schema_name, add_objects={"graph": adapted_graph_instance}
-    )
+    schema_virtual_module = dj.VirtualModule("virtual_module", schema_name, add_objects={"graph": adapted_graph_instance})
     return schema_virtual_module
 
 
@@ -100,7 +106,7 @@ def test_adapted_filepath_type(schema_ad, minio_client):
     c.delete()
 
 
-def test_adapted_spawned(local_schema, enable_adapted_types):
+def test_adapted_spawned(local_schema):
     c = Connectivity()  # a spawned class
     graphs = [
         nx.lollipop_graph(4, 2),

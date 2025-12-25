@@ -26,8 +26,8 @@ class Segmentation(dj.Computed):
           -> Segmentation
           roi  : smallint   # roi number
           ---
-          roi_pixels  : longblob   #  indices of pixels
-          roi_weights : longblob   #  weights of pixels
+          roi_pixels  : <djblob>   #  indices of pixels
+          roi_weights : <djblob>   #  weights of pixels
           """
 
      def make(self, key):
@@ -101,7 +101,7 @@ definition = """
 -> ElectrodeResponse
 channel: int
 ---
-response: longblob  # response of a channel
+response: <djblob>  # response of a channel
 """
 ```
 

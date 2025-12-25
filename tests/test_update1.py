@@ -1,5 +1,4 @@
 import os
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -27,9 +26,7 @@ def mock_stores_update(tmpdir_factory):
     og_stores_config = dj.config.get("stores")
     if "stores" not in dj.config:
         dj.config["stores"] = {}
-    dj.config["stores"]["update_store"] = dict(
-        protocol="file", location=tmpdir_factory.mktemp("store")
-    )
+    dj.config["stores"]["update_store"] = dict(protocol="file", location=tmpdir_factory.mktemp("store"))
     dj.config["stores"]["update_repo"] = dict(
         stage=tmpdir_factory.mktemp("repo_stage"),
         protocol="file",
@@ -44,9 +41,7 @@ def mock_stores_update(tmpdir_factory):
 
 @pytest.fixture
 def schema_update1(connection_test, prefix):
-    schema = dj.Schema(
-        prefix + "_update1", context=dict(Thing=Thing), connection=connection_test
-    )
+    schema = dj.Schema(prefix + "_update1", context=dict(Thing=Thing), connection=connection_test)
     schema(Thing)
     yield schema
     schema.drop()
@@ -99,9 +94,7 @@ def test_update1(tmpdir, enable_filepath_feature, schema_update1, mock_stores_up
     )
     check3 = Thing.fetch1()
 
-    assert (
-        check1["number"] == 0 and check1["picture"] is None and check1["params"] is None
-    )
+    assert check1["number"] == 0 and check1["picture"] is None and check1["params"] is None
 
     assert (
         check2["number"] == 3
@@ -124,9 +117,7 @@ def test_update1(tmpdir, enable_filepath_feature, schema_update1, mock_stores_up
     assert original_file_data == final_file_data
 
 
-def test_update1_nonexistent(
-    enable_filepath_feature, schema_update1, mock_stores_update
-):
+def test_update1_nonexistent(enable_filepath_feature, schema_update1, mock_stores_update):
     with pytest.raises(DataJointError):
         # updating a non-existent entry
         Thing.update1(dict(thing=100, frac=0.5))
@@ -138,9 +129,7 @@ def test_update1_noprimary(enable_filepath_feature, schema_update1, mock_stores_
         Thing.update1(dict(number=None))
 
 
-def test_update1_misspelled_attribute(
-    enable_filepath_feature, schema_update1, mock_stores_update
-):
+def test_update1_misspelled_attribute(enable_filepath_feature, schema_update1, mock_stores_update):
     key = dict(thing=17)
     Thing.insert1(dict(key, frac=1.5))
     with pytest.raises(DataJointError):
