@@ -469,7 +469,8 @@ class QueryExpression:
         In A.aggr(B, ...), groups entries from B by the primary key of A and computes
         aggregate functions. Requires functional dependency: every entry in B must match
         exactly one entry in A. This means B must have all of A's primary key attributes
-        as homologous namesakes (same name AND same lineage).
+        as homologous namesakes (same name AND same lineage). These attributes can be
+        either primary or secondary in B.
 
         :param group: the query expression to aggregate (B in A.aggr(B))
         :param attributes: attributes from self to include in the result
@@ -643,7 +644,8 @@ class Aggregation(QueryExpression):
 
         For A.aggr(B, ...), ensures functional dependency: every entry in B must match
         exactly one entry in A. This requires B to have all of A's primary key attributes
-        as homologous namesakes (same name AND same lineage).
+        as homologous namesakes (same name AND same lineage). These attributes can be
+        either primary or secondary in B.
 
         :param arg: the grouping expression (A in A.aggr(B))
         :param group: the expression to aggregate (B in A.aggr(B))

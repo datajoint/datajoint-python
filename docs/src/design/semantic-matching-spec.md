@@ -442,9 +442,9 @@ In `A.aggr(B, ...)`, entries from B are grouped by A's primary key and aggregate
 
 **Functional Dependency Requirement**: Every entry in B must match exactly one entry in A. This requires:
 
-1. **B must have all of A's primary key attributes**: If A's primary key is `(a, b)`, then B must contain attributes named `a` and `b`.
+1. **B must have all of A's primary key attributes**: If A's primary key is `(a, b)`, then B must contain attributes named `a` and `b`. These attributes can be either primary or secondary in B.
 
-2. **Primary key attributes must be homologous**: The namesake attributes in B must have the same lineage as in A. This ensures they represent the same entity.
+2. **These attributes must be homologous**: The namesake attributes in B must have the same lineage as in A. This ensures they represent the same entity.
 
 ```python
 # Valid: Session.aggr(Trial, ...) where Trial has session_id from Session
