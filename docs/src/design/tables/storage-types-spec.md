@@ -34,10 +34,12 @@ class Analysis(dj.Computed):
 
 **New core type.** Content-addressed storage with deduplication:
 
-- Path derived from content hash: `_content/{hash[:2]}/{hash[2:4]}/{hash}/`
+- **Single blob only**: stores a single file or serialized object (not folders)
+- Path derived from content hash: `_content/{hash[:2]}/{hash[2:4]}/{hash}`
 - Many-to-one: multiple rows can reference same content
 - Reference counted for garbage collection
 - Deduplication: identical content stored once
+- For folders/complex objects, use `object` type instead
 
 ```
 store_root/
@@ -91,6 +93,31 @@ The `content` type stores a `char(64)` hash in the database:
 -- content column
 features CHAR(64) NOT NULL  -- SHA256 hex hash
 ```
+
+## Parameterized AttributeTypes
+
+AttributeTypes can be parameterized with `<type@param>` syntax. The parameter is passed
+through to the underlying dtype:
+
+```python
+class AttributeType:
+    type_name: str      # Name used in <brackets>
+    dtype: str          # Base underlying type
+
+    # When user writes <type_name@param>, resolved dtype becomes:
+    # f"{dtype}@{param}" if param specified, else dtype
+```
+
+**Resolution examples:**
+```
+<xblob>       → dtype = "content"       → default store
+<xblob@cold>  → dtype = "content@cold"  → cold store
+<djblob>      → dtype = "longblob"      → database
+<djblob@x>    → ERROR: longblob doesn't support parameters
+```
+
+This means `<xblob>` and `<xblob@store>` share the same AttributeType class - the
+parameter flows through to the core type, which validates whether it supports `@store`.
 
 ## AttributeTypes (Built on Core Types)
 
@@ -272,17 +299,33 @@ def garbage_collect(schema):
         (ContentRegistry() & {'content_hash': content_hash}).delete()
 ```
 
+## Content vs Object: When to Use Each
+
+| Feature | `content` | `object` |
+|---------|-----------|----------|
+| Addressing | Content hash (SHA256) | Path (from primary key) |
+| Deduplication | Yes | No |
+| Structure | Single blob only | Files, folders, Zarr, HDF5 |
+| Access | Transparent (returns bytes) | Lazy (returns ObjectRef) |
+| GC | Reference counted | Deleted with row |
+| Use case | Serialized data, file attachments | Large/complex objects, streaming |
+
+**Rule of thumb:**
+- Need deduplication or storing serialized Python objects? → `content` via `<xblob>`
+- Need folders, Zarr, HDF5, or streaming access? → `object`
+
 ## Key Design Decisions
 
 1. **Layered architecture**: Core types (`content`, `object`) separate from AttributeTypes
-2. **Content type**: New core type for content-addressed, deduplicated storage
-3. **Naming convention**:
+2. **Content type**: Single-blob, content-addressed, deduplicated storage
+3. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
+4. **Naming convention**:
    - `<djblob>` = internal serialized (database)
    - `<xblob>` = external serialized (content-addressed)
-   - `<attach>` = internal file
-   - `<xattach>` = external file
-4. **Transparent access**: AttributeTypes return Python objects or file paths, not references
-5. **Lazy access for objects**: Only `object`/`object@store` returns ObjectRef
+   - `<attach>` = internal file (single file)
+   - `<xattach>` = external file (single file)
+5. **Transparent access**: AttributeTypes return Python objects or file paths, not references
+6. **Lazy access for objects**: Only `object`/`object@store` returns ObjectRef
 
 ## Migration from Legacy Types
 
