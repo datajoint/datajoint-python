@@ -341,6 +341,22 @@ The following attributes from the right operand's primary key are not determined
 the left operand: ['z']. Use an inner join or restructure the query.
 ```
 
+### Bypassing the Left Join Constraint
+
+For special cases where the user takes responsibility for handling the potentially invalid primary key, the constraint can be bypassed using `allow_invalid_primary_key=True`:
+
+```python
+# Normally blocked - B does not determine A
+A.join(B, left=True)  # Error: A → B not satisfied
+
+# Bypass the constraint - user takes responsibility
+A.join(B, left=True, allow_invalid_primary_key=True)  # Allowed, PK = PK(A) ∪ PK(B)
+```
+
+When bypassed, the resulting primary key is the union of both operands' primary keys (PK(A) ∪ PK(B)). The user must ensure that subsequent operations (such as `GROUP BY` or projection) establish a valid primary key.
+
+This mechanism is used internally by aggregation (`aggr`) with `keep_all_rows=True`, which resets the primary key via the `GROUP BY` clause.
+
 ### Aggregation Exception
 
 `A.aggr(B, keep_all_rows=True)` uses a left join internally but has the **opposite requirement**: **B → A** (the group expression B must have all of A's primary key attributes).
