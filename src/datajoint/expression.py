@@ -282,7 +282,7 @@ class QueryExpression:
             "The @ operator has been removed in DataJoint 2.0. " "Use .join(other, semantic_check=False) for permissive joins."
         )
 
-    def join(self, other, semantic_check=True, left=False):
+    def join(self, other, semantic_check=True, left=False, _allow_invalid_primary_key=False):
         """
         Create the joined QueryExpression.
 
@@ -290,9 +290,11 @@ class QueryExpression:
         lineage (homologous namesakes) are used for joining.
 
         :param other: QueryExpression to join with
-        :param semantic_check: If True (default), raise error on non-homologous namesakes
-            and enforce left join A → B constraint. If False, bypass these checks.
+        :param semantic_check: If True (default), raise error on non-homologous namesakes.
+            If False, bypass semantic check (use for legacy compatibility).
         :param left: If True, perform a left join retaining all rows from self.
+        :param _allow_invalid_primary_key: Internal flag to allow invalid PK in left joins
+            (used by aggregation where GROUP BY resets the PK afterward).
 
         Examples:
             a * b  is short for a.join(b)
@@ -336,10 +338,12 @@ class QueryExpression:
         result._connection = self.connection
         result._support = self.support + other.support
         result._left = self._left + [left] + other._left
-        result._heading = self.heading.join(other.heading, left=left, semantic_check=semantic_check)
+        result._heading = self.heading.join(other.heading, left=left, allow_invalid_primary_key=_allow_invalid_primary_key)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
-        result._original_heading = self.original_heading.join(other.original_heading, left=left, semantic_check=semantic_check)
+        result._original_heading = self.original_heading.join(
+            other.original_heading, left=left, allow_invalid_primary_key=_allow_invalid_primary_key
+        )
         assert len(result.support) == len(result._left) + 1
         return result
 
@@ -683,8 +687,8 @@ class Aggregation(QueryExpression):
 
         if keep_all_rows and len(group.support) > 1 or group.heading.new_attributes:
             group = group.make_subquery()  # subquery if left joining a join
-        # Use semantic_check=False to bypass left join A → B validation (aggregation resets PK via GROUP BY)
-        join = arg.join(group, semantic_check=False, left=keep_all_rows)
+        # Allow invalid PK for left join (aggregation resets PK via GROUP BY afterward)
+        join = arg.join(group, left=keep_all_rows, _allow_invalid_primary_key=True)
         result = cls()
         result._connection = join.connection
         result._heading = join.heading.set_primary_key(arg.primary_key)  # use left operand's primary key

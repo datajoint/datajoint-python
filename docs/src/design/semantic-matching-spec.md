@@ -338,19 +338,7 @@ Session.join(Trial, left=True)  # OK: Session → Trial
 ```
 DataJointError: Left join requires the left operand to determine the right operand (A → B).
 The following attributes from the right operand's primary key are not determined by
-the left operand: ['z']. Use an inner join, restructure the query, or use semantic_check=False.
-```
-
-### Bypassing with `semantic_check=False`
-
-When `semantic_check=False` is used for a left join where A → B doesn't hold, the constraint is bypassed and **PK = PK(A) ∪ PK(B)** is used. This is useful when the caller will reset the primary key afterward (e.g., aggregation with GROUP BY).
-
-```python
-# Direct left join - normally blocked
-A.join(B, left=True)  # Error: A doesn't determine B
-
-# Bypass with semantic_check=False - produces PK(A) ∪ PK(B)
-A.join(B, left=True, semantic_check=False)  # Allowed, but PK may have NULLs
+the left operand: ['z']. Use an inner join or restructure the query.
 ```
 
 ### Aggregation Exception
@@ -361,9 +349,11 @@ This apparent contradiction is resolved by the `GROUP BY` clause:
 
 1. Aggregation requires B → A so that B can be grouped by A's primary key
 2. The intermediate left join `A LEFT JOIN B` would have an invalid PK under the normal left join rules
-3. Aggregation uses `semantic_check=False` for its internal join, producing PK(A) ∪ PK(B)
+3. Aggregation internally allows the invalid PK, producing PK(A) ∪ PK(B)
 4. The `GROUP BY PK(A)` clause then **resets** the primary key to PK(A)
 5. The final result has PK(A), which consists entirely of non-NULL values from A
+
+Note: The semantic check (homologous namesake validation) is still performed for aggregation's internal join. Only the primary key validity constraint is bypassed.
 
 **Example:**
 ```
@@ -373,7 +363,7 @@ Trial: session_id*, trial_num*, response_time    (references Session)
 # Aggregation with keep_all_rows=True
 Session.aggr(Trial, keep_all_rows=True, avg_rt='avg(response_time)')
 
-# Internally: Session LEFT JOIN Trial with semantic_check=False
+# Internally: Session LEFT JOIN Trial (with invalid PK allowed)
 # Intermediate PK would be {session_id} ∪ {session_id, trial_num} = {session_id, trial_num}
 # But GROUP BY session_id resets PK to {session_id}
 # Result: All sessions, with avg_rt=NULL for sessions without trials

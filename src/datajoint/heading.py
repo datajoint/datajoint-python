@@ -468,7 +468,7 @@ class Heading:
         )
         return Heading(chain(copy_attrs, compute_attrs))
 
-    def join(self, other, left=False, semantic_check=True):
+    def join(self, other, left=False, allow_invalid_primary_key=False):
         """
         Join two headings into a new one.
 
@@ -486,16 +486,16 @@ class Heading:
         - If B → A or Neither, the PK would include B's attributes, which could be NULL
         - Only when A → B does PK(A) uniquely identify all result rows
 
-        When semantic_check=False for left joins where A → B doesn't hold, the constraint
-        is bypassed and PK = PK(A) ∪ PK(B) is used. This is useful for aggregation, where
-        the GROUP BY clause resets the primary key afterward.
+        When allow_invalid_primary_key=True for left joins where A → B doesn't hold,
+        the constraint is bypassed and PK = PK(A) ∪ PK(B) is used. This is useful for
+        aggregation, where the GROUP BY clause resets the primary key afterward.
 
         It assumes that self and other are headings that share no common dependent attributes.
 
         :param other: The other heading to join with
-        :param left: If True, this is a left join (requires A → B unless semantic_check=False)
-        :param semantic_check: If False, bypass left join A → B validation (PK becomes union)
-        :raises DataJointError: If left=True, semantic_check=True, and A does not determine B
+        :param left: If True, this is a left join (requires A → B unless allow_invalid_primary_key)
+        :param allow_invalid_primary_key: If True, bypass left join A → B validation (PK becomes union)
+        :raises DataJointError: If left=True and A does not determine B (unless allow_invalid_primary_key)
         """
         from .errors import DataJointError
 
@@ -507,9 +507,9 @@ class Heading:
             name in other.primary_key or name in other.secondary_attributes for name in self.primary_key
         )
 
-        # For left joins, require A → B unless semantic_check=False
+        # For left joins, require A → B unless allow_invalid_primary_key=True
         if left and not self_determines_other:
-            if semantic_check:
+            if not allow_invalid_primary_key:
                 missing = [
                     name
                     for name in other.primary_key
@@ -519,7 +519,7 @@ class Heading:
                     f"Left join requires the left operand to determine the right operand (A → B). "
                     f"The following attributes from the right operand's primary key are not "
                     f"determined by the left operand: {missing}. "
-                    f"Use an inner join, restructure the query, or use semantic_check=False."
+                    f"Use an inner join or restructure the query."
                 )
             else:
                 # Bypass: use union of PKs (will be reset by caller, e.g., aggregation)
