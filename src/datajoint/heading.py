@@ -468,7 +468,7 @@ class Heading:
         )
         return Heading(chain(copy_attrs, compute_attrs))
 
-    def join(self, other):
+    def join(self, other, left=False):
         """
         Join two headings into a new one.
 
@@ -480,8 +480,20 @@ class Heading:
         A → B holds iff every attribute in PK(B) is either in PK(A) or secondary in A.
         B → A holds iff every attribute in PK(A) is either in PK(B) or secondary in B.
 
+        For left joins (left=True), A → B is required. Otherwise, the result would not
+        have a valid primary key because:
+        - Unmatched rows from A have NULL values for B's attributes
+        - If B → A or Neither, the PK would include B's attributes, which could be NULL
+        - Only when A → B does PK(A) uniquely identify all result rows
+
         It assumes that self and other are headings that share no common dependent attributes.
+
+        :param other: The other heading to join with
+        :param left: If True, this is a left join (requires A → B)
+        :raises DataJointError: If left=True and A does not determine B
         """
+        from .errors import DataJointError
+
         # Check functional dependencies
         self_determines_other = all(
             name in self.primary_key or name in self.secondary_attributes for name in other.primary_key
@@ -490,10 +502,22 @@ class Heading:
             name in other.primary_key or name in other.secondary_attributes for name in self.primary_key
         )
 
+        # For left joins, require A → B
+        if left and not self_determines_other:
+            missing = [
+                name for name in other.primary_key if name not in self.primary_key and name not in self.secondary_attributes
+            ]
+            raise DataJointError(
+                f"Left join requires the left operand to determine the right operand (A → B). "
+                f"The following attributes from the right operand's primary key are not "
+                f"determined by the left operand: {missing}. "
+                f"Use an inner join or restructure the query."
+            )
+
         seen = set()
         result_attrs = []
 
-        if self_determines_other:
+        if left or self_determines_other:
             # A → B: use PK(A), A's attributes first
             # 1. All of A's PK attrs (as PK)
             for name in self.primary_key:

@@ -336,10 +336,10 @@ class QueryExpression:
         result._connection = self.connection
         result._support = self.support + other.support
         result._left = self._left + [left] + other._left
-        result._heading = self.heading.join(other.heading)
+        result._heading = self.heading.join(other.heading, left=left)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
-        result._original_heading = self.original_heading.join(other.original_heading)
+        result._original_heading = self.original_heading.join(other.original_heading, left=left)
         assert len(result.support) == len(result._left) + 1
         return result
 

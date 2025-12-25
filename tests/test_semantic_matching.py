@@ -670,3 +670,87 @@ class TestJoinPrimaryKeyRules:
 
         if secondary_indices:  # If there are secondary attributes
             assert max(pk_indices) < min(secondary_indices)
+
+
+class TestLeftJoinConstraint:
+    """
+    Test that left joins require A → B (left operand determines right operand).
+
+    For left joins, B's attributes could be NULL for unmatched rows, so the PK
+    must be PK(A) only. This is only valid when A → B.
+    """
+
+    def test_left_join_valid_when_a_determines_b(self, schema_pk_rules):
+        """
+        Left join should work when A → B.
+
+        A: x*, y*, z        PK(A) = {x, y}, z is secondary
+        B: y*, z*, x        PK(B) = {y, z}, x is secondary
+
+        A → B? z secondary in A → Yes
+        Left join is valid, PK = {x, y}
+        """
+        TableXYwithZ = schema_pk_rules["TableXYwithZ"]
+        TableYZwithX = schema_pk_rules["TableYZwithX"]
+
+        # This should work - A → B holds
+        result = TableXYwithZ().join(TableYZwithX(), left=True)
+
+        # PK should be PK(A) = {x, y}
+        assert set(result.primary_key) == {"x", "y"}
+
+    def test_left_join_fails_when_b_determines_a_only(self, schema_pk_rules):
+        """
+        Left join should fail when only B → A (not A → B).
+
+        A: x*, y*           PK(A) = {x, y}
+        B: x*, z*, y        PK(B) = {x, z}, y is secondary
+
+        A → B? z not in PK(A) and z not secondary in A → No
+        B → A? y secondary in B → Yes
+
+        Left join is invalid because z would need to be in PK but could be NULL.
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableXZwithY = schema_pk_rules["TableXZwithY"]
+
+        # This should fail - A → B does not hold
+        with pytest.raises(DataJointError) as exc_info:
+            TableXY().join(TableXZwithY(), left=True)
+
+        assert "Left join requires" in str(exc_info.value)
+        assert "A → B" in str(exc_info.value) or "determine" in str(exc_info.value)
+
+    def test_left_join_fails_when_neither_direction(self, schema_pk_rules):
+        """
+        Left join should fail when neither A → B nor B → A.
+
+        A: x*, y*           PK(A) = {x, y}
+        B: z*, x            PK(B) = {z}, x is secondary
+
+        A → B? z not in A → No
+        B → A? y not in B → No
+
+        Left join is invalid.
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableZ = schema_pk_rules["TableZ"]
+
+        # This should fail - A → B does not hold
+        with pytest.raises(DataJointError) as exc_info:
+            TableXY().join(TableZ(), left=True)
+
+        assert "Left join requires" in str(exc_info.value)
+
+    def test_inner_join_still_works_when_b_determines_a(self, schema_pk_rules):
+        """
+        Inner join should still work normally when B → A (even though left join fails).
+        """
+        TableXY = schema_pk_rules["TableXY"]
+        TableXZwithY = schema_pk_rules["TableXZwithY"]
+
+        # Inner join should work - B → A applies
+        result = TableXY * TableXZwithY
+
+        # PK should be {x, z} (B's PK)
+        assert set(result.primary_key) == {"x", "z"}

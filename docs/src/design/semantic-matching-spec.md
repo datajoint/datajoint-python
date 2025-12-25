@@ -302,6 +302,45 @@ With these rules, join is **not commutative** in terms of:
 
 The **result set** (the actual rows returned) remains the same regardless of order, but the **schema** (primary key and attribute order) may differ.
 
+### Left Join Constraint
+
+For left joins (`A.join(B, left=True)`), the functional dependency **A → B is required**.
+
+**Why this constraint exists:**
+
+In a left join, all rows from A are retained even if there's no matching row in B. For unmatched rows, B's attributes are NULL. This creates a problem for primary key validity:
+
+| Scenario | PK by inner join rule | Left join problem |
+|----------|----------------------|-------------------|
+| A → B | PK(A) | ✅ Safe — A's attrs always present |
+| B → A | PK(B) | ❌ B's PK attrs could be NULL |
+| Neither | PK(A) ∪ PK(B) | ❌ B's PK attrs could be NULL |
+
+**Example of invalid left join:**
+```
+A: x*, y*           PK(A) = {x, y}
+B: x*, z*, y        PK(B) = {x, z}, y is secondary
+
+Inner join: PK = {x, z} (B → A rule)
+Left join attempt: FAILS because z could be NULL for unmatched A rows
+```
+
+**Valid left join example:**
+```
+Session: session_id*, date
+Trial: session_id*, trial_num*, stimulus    (references Session)
+
+Session.join(Trial, left=True)  # OK: Session → Trial
+# PK = {session_id}, all sessions retained even without trials
+```
+
+**Error message:**
+```
+DataJointError: Left join requires the left operand to determine the right operand (A → B).
+The following attributes from the right operand's primary key are not determined by
+the left operand: ['z']. Use an inner join or restructure the query.
+```
+
 ## Universal Set `dj.U`
 
 `dj.U()` or `dj.U('attr1', 'attr2', ...)` represents the universal set of all possible values and lineages.
