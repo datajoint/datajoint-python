@@ -2,14 +2,31 @@
 
 ## Overview
 
-This document defines a two-layer storage architecture:
+This document defines a three-layer type architecture:
 
-1. **Database types**: `longblob`, `varchar`, `int`, `json`, etc. (MySQL/PostgreSQL native)
-2. **AttributeTypes**: Custom types with `encode()`/`decode()` semantics
+1. **Native database types** - Backend-specific (`FLOAT`, `TINYINT UNSIGNED`, `LONGBLOB`). Discouraged for direct use.
+2. **Core DataJoint types** - Standardized across backends, scientist-friendly (`float32`, `uint8`, `bool`, `json`).
+3. **AttributeTypes** - Programmatic types with `encode()`/`decode()` semantics. Composable.
 
-All DataJoint storage types (`object`, `content`, `filepath@store`, `<djblob>`, etc.) are
-implemented as **AttributeTypes**. Some are built-in (auto-registered, use `dj.config` for stores)
-while others are user-defined.
+```
+┌───────────────────────────────────────────────────────────────────┐
+│                     AttributeTypes (Layer 3)                       │
+│                                                                    │
+│  Built-in:   object    content    filepath@s    <djblob>  <xblob> │
+│  User:       <custom>  <mytype>   ...                              │
+├───────────────────────────────────────────────────────────────────┤
+│                 Core DataJoint Types (Layer 2)                     │
+│                                                                    │
+│  int8  int16  int32  int64   float32  float64   bool   decimal    │
+│  uint8 uint16 uint32 uint64  varchar  char      uuid   date       │
+│  json  longblob  blob  timestamp  datetime  enum                   │
+├───────────────────────────────────────────────────────────────────┤
+│               Native Database Types (Layer 1)                      │
+│                                                                    │
+│  MySQL:      TINYINT  SMALLINT  INT  BIGINT  FLOAT  DOUBLE  ...   │
+│  PostgreSQL: SMALLINT INTEGER   BIGINT  REAL  DOUBLE PRECISION    │
+└───────────────────────────────────────────────────────────────────┘
+```
 
 ### OAS Storage Regions
 
@@ -23,10 +40,68 @@ while others are user-defined.
 `filepath@store` provides portable relative paths within configured stores with lazy ObjectRef access.
 For arbitrary URLs that don't need ObjectRef semantics, use `varchar` instead.
 
-## Built-in AttributeTypes
+## Core DataJoint Types (Layer 2)
 
-Built-in types are auto-registered and use `dj.config['stores']` for store configuration.
-They use `json` as their database dtype to store metadata.
+Core types provide a standardized, scientist-friendly interface that works identically across
+MySQL and PostgreSQL backends. Users should prefer these over native database types.
+
+### Numeric Types
+
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `int8` | 8-bit signed | `TINYINT` | `SMALLINT` (clamped) |
+| `int16` | 16-bit signed | `SMALLINT` | `SMALLINT` |
+| `int32` | 32-bit signed | `INT` | `INTEGER` |
+| `int64` | 64-bit signed | `BIGINT` | `BIGINT` |
+| `uint8` | 8-bit unsigned | `TINYINT UNSIGNED` | `SMALLINT` (checked) |
+| `uint16` | 16-bit unsigned | `SMALLINT UNSIGNED` | `INTEGER` (checked) |
+| `uint32` | 32-bit unsigned | `INT UNSIGNED` | `BIGINT` (checked) |
+| `uint64` | 64-bit unsigned | `BIGINT UNSIGNED` | `NUMERIC(20)` |
+| `float32` | 32-bit float | `FLOAT` | `REAL` |
+| `float64` | 64-bit float | `DOUBLE` | `DOUBLE PRECISION` |
+| `decimal(p,s)` | Fixed precision | `DECIMAL(p,s)` | `NUMERIC(p,s)` |
+
+### String Types
+
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `char(n)` | Fixed-length | `CHAR(n)` | `CHAR(n)` |
+| `varchar(n)` | Variable-length | `VARCHAR(n)` | `VARCHAR(n)` |
+
+### Boolean
+
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `bool` | True/False | `TINYINT(1)` | `BOOLEAN` |
+
+### Date/Time Types
+
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `date` | Date only | `DATE` | `DATE` |
+| `datetime` | Date and time | `DATETIME(6)` | `TIMESTAMP` |
+| `timestamp` | Auto-updating | `TIMESTAMP` | `TIMESTAMP` |
+| `time` | Time only | `TIME` | `TIME` |
+
+### Binary Types
+
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `blob` | Binary up to 64KB | `BLOB` | `BYTEA` |
+| `longblob` | Binary up to 4GB | `LONGBLOB` | `BYTEA` |
+
+### Special Types
+
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `json` | JSON document | `JSON` | `JSONB` |
+| `uuid` | UUID | `CHAR(36)` | `UUID` |
+| `enum(...)` | Enumeration | `ENUM(...)` | `VARCHAR` + CHECK |
+
+## AttributeTypes (Layer 3)
+
+AttributeTypes provide `encode()`/`decode()` semantics on top of core types. They are
+composable and can be built-in or user-defined.
 
 ### `object` / `object@store` - Path-Addressed Storage
 
@@ -401,25 +476,6 @@ class Attachments(dj.Manual):
     """
 ```
 
-## Type Layering Summary
-
-```
-┌───────────────────────────────────────────────────────────────────┐
-│                        AttributeTypes                              │
-│                                                                    │
-│  Built-in:   object    content    filepath@s                       │
-│  User:       <djblob>  <xblob>    <attach>   <xattach>  <custom>  │
-├───────────────────────────────────────────────────────────────────┤
-│                    Database Types (dtype)                          │
-│                                                                    │
-│          LONGBLOB      JSON/JSONB      VARCHAR      INT   etc.    │
-└───────────────────────────────────────────────────────────────────┘
-```
-
-All storage types are AttributeTypes:
-- **Built-in**: `object`, `content`, `filepath@store` - auto-registered, use `dj.config`
-- **User-defined**: `<djblob>`, `<xblob>`, `<attach>`, `<xattach>`, `<custom>` - registered via `@dj.register_type`
-
 ## Storage Comparison
 
 | Type | dtype | Storage Location | Dedup | Returns |
@@ -503,21 +559,25 @@ def garbage_collect(project):
 
 ## Key Design Decisions
 
-1. **Two-layer architecture**: Database types (`json`, `longblob`, etc.) and AttributeTypes
-2. **All storage types are AttributeTypes**: Built-in (`object`, `content`, `filepath@store`) and user-defined (`<djblob>`, etc.)
-3. **Built-in types use JSON dtype**: Stores metadata (path, hash, store name, etc.) in JSON columns
-4. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
-5. **Filepath for portability**: `filepath@store` uses relative paths within stores for environment portability
-6. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
-7. **Content type**: Single-blob, content-addressed, deduplicated storage
-8. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
-9. **Naming convention**:
-   - `<djblob>` = internal serialized (database)
-   - `<xblob>` = external serialized (content-addressed)
-   - `<attach>` = internal file (single file)
-   - `<xattach>` = external file (single file)
-10. **Transparent access**: AttributeTypes return Python objects or file paths
-11. **Lazy access**: `object`, `object@store`, and `filepath@store` return ObjectRef
+1. **Three-layer architecture**:
+   - Layer 1: Native database types (backend-specific, discouraged)
+   - Layer 2: Core DataJoint types (standardized, scientist-friendly)
+   - Layer 3: AttributeTypes (encode/decode, composable)
+2. **Core types are scientist-friendly**: `float32`, `uint8`, `bool` instead of `FLOAT`, `TINYINT UNSIGNED`, `TINYINT(1)`
+3. **AttributeTypes are composable**: `<xblob>` uses `content`, which uses `json`
+4. **Built-in AttributeTypes use JSON dtype**: Stores metadata (path, hash, store name, etc.)
+5. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
+6. **Filepath for portability**: `filepath@store` uses relative paths within stores for environment portability
+7. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
+8. **Content type**: Single-blob, content-addressed, deduplicated storage
+9. **Parameterized types**: `type@param` passes store parameter
+10. **Naming convention**:
+    - `<djblob>` = internal serialized (database)
+    - `<xblob>` = external serialized (content-addressed)
+    - `<attach>` = internal file (single file)
+    - `<xattach>` = external file (single file)
+11. **Transparent access**: AttributeTypes return Python objects or file paths
+12. **Lazy access**: `object`, `object@store`, and `filepath@store` return ObjectRef
 
 ## Migration from Legacy Types
 
