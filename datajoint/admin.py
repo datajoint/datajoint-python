@@ -1,17 +1,39 @@
+"""
+Administrative utilities for managing database connections and passwords.
+
+This module provides functions for viewing and terminating database connections
+through the MySQL processlist interface, as well as password management.
+"""
+
+from __future__ import annotations
+
 import logging
 from getpass import getpass
 
 import pymysql
 from packaging import version
 
-from .connection import conn
+from .connection import Connection, conn
 from .settings import config
 from .utils import user_choice
 
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def set_password(new_password=None, connection=None, update_config=None):
+def set_password(
+    new_password: str | None = None,
+    connection: Connection | None = None,
+    update_config: bool | None = None,
+) -> None:
+    """
+    Change the database password for the current user.
+
+    Args:
+        new_password: The new password. If None, prompts for input.
+        connection: A datajoint.Connection object. If None, uses datajoint.conn().
+        update_config: If True, save the new password to local config.
+            If None, prompts the user.
+    """
     connection = conn() if connection is None else connection
     if new_password is None:
         new_password = getpass("New password: ")
@@ -36,20 +58,27 @@ def set_password(new_password=None, connection=None, update_config=None):
         config.save_local(verbose=True)
 
 
-def kill(restriction=None, connection=None, order_by=None):
+def kill(
+    restriction: str | None = None,
+    connection: Connection | None = None,
+    order_by: str | list[str] | None = None,
+) -> None:
     """
-    view and kill database connections.
+    View and interactively kill database connections.
 
-    :param restriction: restriction to be applied to processlist
-    :param connection: a datajoint.Connection object. Default calls datajoint.conn()
-    :param order_by: order by a single attribute or the list of attributes. defaults to 'id'.
+    Displays active database connections matching the optional restriction and
+    prompts the user to select connections to terminate.
 
-    Restrictions are specified as strings and can involve any of the attributes of
-    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+    Args:
+        restriction: SQL WHERE clause condition to filter the processlist.
+            Can reference any column from information_schema.processlist:
+            ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+        connection: A datajoint.Connection object. If None, uses datajoint.conn().
+        order_by: Column name(s) to sort results by. Defaults to 'id'.
 
     Examples:
-        dj.kill('HOST LIKE "%compute%"') lists only connections from hosts containing "compute".
-        dj.kill('TIME > 600') lists only connections in their current state for more than 10 minutes
+        >>> dj.kill('HOST LIKE "%compute%"')  # connections from hosts containing "compute"
+        >>> dj.kill('TIME > 600')  # connections idle for more than 10 minutes
     """
 
     if connection is None:
@@ -95,18 +124,28 @@ def kill(restriction=None, connection=None, order_by=None):
                     logger.warn("Process not found")
 
 
-def kill_quick(restriction=None, connection=None):
+def kill_quick(
+    restriction: str | None = None,
+    connection: Connection | None = None,
+) -> int:
     """
-    Kill database connections without prompting. Returns number of terminated connections.
+    Kill database connections without prompting.
 
-    :param restriction: restriction to be applied to processlist
-    :param connection: a datajoint.Connection object. Default calls datajoint.conn()
+    Terminates all database connections matching the optional restriction
+    without user confirmation.
 
-    Restrictions are specified as strings and can involve any of the attributes of
-    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+    Args:
+        restriction: SQL WHERE clause condition to filter the processlist.
+            Can reference any column from information_schema.processlist:
+            ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+        connection: A datajoint.Connection object. If None, uses datajoint.conn().
+
+    Returns:
+        Number of connections terminated.
 
     Examples:
-        dj.kill('HOST LIKE "%compute%"') terminates connections from hosts containing "compute".
+        >>> dj.kill_quick('HOST LIKE "%compute%"')  # kill connections from "compute" hosts
+        >>> dj.kill_quick('TIME > 600')  # kill connections idle for more than 10 minutes
     """
     if connection is None:
         connection = conn()
