@@ -53,8 +53,10 @@ def _get(connection, attr, data, squeeze, download_path):
     if attr.is_object:
         # Object type - return ObjectRef handle
         json_data = json.loads(data) if isinstance(data, str) else data
+        # Get the correct backend based on store name in metadata
+        store_name = json_data.get("store")  # None for default store
         try:
-            spec = config.get_object_storage_spec()
+            spec = config.get_object_store_spec(store_name)
             backend = StorageBackend(spec)
         except DataJointError:
             backend = None
