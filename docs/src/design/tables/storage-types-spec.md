@@ -12,19 +12,20 @@ This document defines a three-layer type architecture:
 ┌───────────────────────────────────────────────────────────────────┐
 │                     AttributeTypes (Layer 3)                       │
 │                                                                    │
-│  Built-in:  <object>  <content>  <filepath@s>  <djblob>  <xblob>  │
+│  Built-in:  <djblob>  <object>  <content>  <filepath@s>  <xblob>  │
 │  User:      <custom>  <mytype>   ...                               │
 ├───────────────────────────────────────────────────────────────────┤
 │                 Core DataJoint Types (Layer 2)                     │
 │                                                                    │
-│  int8  int16  int32  int64   float32  float64   bool   decimal    │
-│  uint8 uint16 uint32 uint64  varchar  char      uuid   date       │
-│  json  longblob  blob  timestamp  datetime  enum                   │
+│  float32  float64  int64  uint64  int32  uint32  int16  uint16    │
+│  int8  uint8  bool  uuid  json  blob  date  datetime              │
+│  char(n)  varchar(n)  enum(...)                                    │
 ├───────────────────────────────────────────────────────────────────┤
 │               Native Database Types (Layer 1)                      │
 │                                                                    │
 │  MySQL:      TINYINT  SMALLINT  INT  BIGINT  FLOAT  DOUBLE  ...   │
 │  PostgreSQL: SMALLINT INTEGER   BIGINT  REAL  DOUBLE PRECISION    │
+│  (pass through with warning for non-standard types)                │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -49,61 +50,65 @@ For arbitrary URLs that don't need ObjectRef semantics, use `varchar` instead.
 Core types provide a standardized, scientist-friendly interface that works identically across
 MySQL and PostgreSQL backends. Users should prefer these over native database types.
 
+**All core types are recorded in field comments using `:type:` syntax for reconstruction.**
+
 ### Numeric Types
 
-| Core Type | Description | MySQL | PostgreSQL |
-|-----------|-------------|-------|------------|
-| `int8` | 8-bit signed | `TINYINT` | `SMALLINT` (clamped) |
-| `int16` | 16-bit signed | `SMALLINT` | `SMALLINT` |
-| `int32` | 32-bit signed | `INT` | `INTEGER` |
-| `int64` | 64-bit signed | `BIGINT` | `BIGINT` |
-| `uint8` | 8-bit unsigned | `TINYINT UNSIGNED` | `SMALLINT` (checked) |
-| `uint16` | 16-bit unsigned | `SMALLINT UNSIGNED` | `INTEGER` (checked) |
-| `uint32` | 32-bit unsigned | `INT UNSIGNED` | `BIGINT` (checked) |
-| `uint64` | 64-bit unsigned | `BIGINT UNSIGNED` | `NUMERIC(20)` |
-| `float32` | 32-bit float | `FLOAT` | `REAL` |
-| `float64` | 64-bit float | `DOUBLE` | `DOUBLE PRECISION` |
-| `decimal(p,s)` | Fixed precision | `DECIMAL(p,s)` | `NUMERIC(p,s)` |
+| Core Type | Description | MySQL |
+|-----------|-------------|-------|
+| `int8` | 8-bit signed | `TINYINT` |
+| `int16` | 16-bit signed | `SMALLINT` |
+| `int32` | 32-bit signed | `INT` |
+| `int64` | 64-bit signed | `BIGINT` |
+| `uint8` | 8-bit unsigned | `TINYINT UNSIGNED` |
+| `uint16` | 16-bit unsigned | `SMALLINT UNSIGNED` |
+| `uint32` | 32-bit unsigned | `INT UNSIGNED` |
+| `uint64` | 64-bit unsigned | `BIGINT UNSIGNED` |
+| `float32` | 32-bit float | `FLOAT` |
+| `float64` | 64-bit float | `DOUBLE` |
 
 ### String Types
 
-| Core Type | Description | MySQL | PostgreSQL |
-|-----------|-------------|-------|------------|
-| `char(n)` | Fixed-length | `CHAR(n)` | `CHAR(n)` |
-| `varchar(n)` | Variable-length | `VARCHAR(n)` | `VARCHAR(n)` |
+| Core Type | Description | MySQL |
+|-----------|-------------|-------|
+| `char(n)` | Fixed-length | `CHAR(n)` |
+| `varchar(n)` | Variable-length | `VARCHAR(n)` |
 
 ### Boolean
 
-| Core Type | Description | MySQL | PostgreSQL |
-|-----------|-------------|-------|------------|
-| `bool` | True/False | `TINYINT(1)` | `BOOLEAN` |
+| Core Type | Description | MySQL |
+|-----------|-------------|-------|
+| `bool` | True/False | `TINYINT` |
 
 ### Date/Time Types
 
-| Core Type | Description | MySQL | PostgreSQL |
-|-----------|-------------|-------|------------|
-| `date` | Date only | `DATE` | `DATE` |
-| `datetime` | Date and time | `DATETIME(6)` | `TIMESTAMP` |
-| `timestamp` | Auto-updating | `TIMESTAMP` | `TIMESTAMP` |
-| `time` | Time only | `TIME` | `TIME` |
+| Core Type | Description | MySQL |
+|-----------|-------------|-------|
+| `date` | Date only | `DATE` |
+| `datetime` | Date and time | `DATETIME` |
 
 ### Binary Types
 
-Core binary types store raw bytes without any serialization. Use `<djblob>` AttributeType
+The core `blob` type stores raw bytes without any serialization. Use `<djblob>` AttributeType
 for serialized Python objects.
 
-| Core Type | Description | MySQL | PostgreSQL |
-|-----------|-------------|-------|------------|
-| `blob` | Raw bytes up to 64KB | `BLOB` | `BYTEA` |
-| `longblob` | Raw bytes up to 4GB | `LONGBLOB` | `BYTEA` |
+| Core Type | Description | MySQL |
+|-----------|-------------|-------|
+| `blob` | Raw bytes | `LONGBLOB` |
 
-### Special Types
+### Other Types
 
-| Core Type | Description | MySQL | PostgreSQL |
-|-----------|-------------|-------|------------|
-| `json` | JSON document | `JSON` | `JSONB` |
-| `uuid` | UUID | `CHAR(36)` | `UUID` |
-| `enum(...)` | Enumeration | `ENUM(...)` | `VARCHAR` + CHECK |
+| Core Type | Description | MySQL |
+|-----------|-------------|-------|
+| `json` | JSON document | `JSON` |
+| `uuid` | UUID | `BINARY(16)` |
+| `enum(...)` | Enumeration | `ENUM(...)` |
+
+### Native Passthrough Types
+
+Users may use native database types directly (e.g., `text`, `mediumint auto_increment`),
+but these will generate a warning about non-standard usage. Native types are not recorded
+in field comments and may have portability issues across database backends.
 
 ## AttributeTypes (Layer 3)
 

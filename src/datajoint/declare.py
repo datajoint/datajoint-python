@@ -14,24 +14,43 @@ from .condition import translate_attribute
 from .errors import DataJointError
 from .settings import config
 
-# Core DataJoint type aliases - scientist-friendly names mapped to native SQL types
-# These types can be used without angle brackets in table definitions
-CORE_TYPE_ALIASES = {
-    # Numeric types
-    "FLOAT32": "float",
-    "FLOAT64": "double",
-    "INT64": "bigint",
-    "UINT64": "bigint unsigned",
-    "INT32": "int",
-    "UINT32": "int unsigned",
-    "INT16": "smallint",
-    "UINT16": "smallint unsigned",
-    "INT8": "tinyint",
-    "UINT8": "tinyint unsigned",
-    "BOOL": "tinyint",
-    # UUID type
-    "UUID": "binary(16)",
+# Core DataJoint types - scientist-friendly names that are fully supported
+# These are recorded in field comments using :type: syntax for reconstruction
+# Format: pattern_name -> (regex_pattern, mysql_type or None if same as matched)
+CORE_TYPES = {
+    # Numeric types (aliased to native SQL)
+    "float32": (r"float32$", "float"),
+    "float64": (r"float64$", "double"),
+    "int64": (r"int64$", "bigint"),
+    "uint64": (r"uint64$", "bigint unsigned"),
+    "int32": (r"int32$", "int"),
+    "uint32": (r"uint32$", "int unsigned"),
+    "int16": (r"int16$", "smallint"),
+    "uint16": (r"uint16$", "smallint unsigned"),
+    "int8": (r"int8$", "tinyint"),
+    "uint8": (r"uint8$", "tinyint unsigned"),
+    "bool": (r"bool$", "tinyint"),
+    # UUID (stored as binary)
+    "uuid": (r"uuid$", "binary(16)"),
+    # JSON
+    "json": (r"json$", None),  # json passes through as-is
+    # Binary (blob maps to longblob)
+    "blob": (r"blob$", "longblob"),
+    # Temporal
+    "date": (r"date$", None),
+    "datetime": (r"datetime$", None),
+    # String types (with parameters)
+    "char": (r"char\s*\(\d+\)$", None),
+    "varchar": (r"varchar\s*\(\d+\)$", None),
+    # Enumeration
+    "enum": (r"enum\s*\(.+\)$", None),
 }
+
+# Compile core type patterns
+CORE_TYPE_PATTERNS = {name: re.compile(pattern, re.I) for name, (pattern, _) in CORE_TYPES.items()}
+
+# Get SQL mapping for core types
+CORE_TYPE_SQL = {name: sql_type for name, (_, sql_type) in CORE_TYPES.items()}
 
 MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {
@@ -40,47 +59,38 @@ CONSTANT_LITERALS = {
 }  # SQL literals to be used without quotes (case insensitive)
 
 # Type patterns for declaration parsing
-# Two categories: core type aliases and native passthrough types
 TYPE_PATTERN = {
     k: re.compile(v, re.I)
     for k, v in dict(
-        # Core DataJoint type aliases (scientist-friendly names)
-        FLOAT32=r"float32$",
-        FLOAT64=r"float64$",
-        INT64=r"int64$",
-        UINT64=r"uint64$",
-        INT32=r"int32$",
-        UINT32=r"uint32$",
-        INT16=r"int16$",
-        UINT16=r"uint16$",
-        INT8=r"int8$",
-        UINT8=r"uint8$",
-        BOOL=r"bool$",
-        UUID=r"uuid$",
-        # Native SQL types (passthrough)
+        # Core DataJoint types
+        **{name.upper(): pattern for name, (pattern, _) in CORE_TYPES.items()},
+        # Native SQL types (passthrough with warning for non-standard use)
         INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
-        STRING=r"(var)?char\s*\(.+\)$",
-        JSON=r"json$",
-        ENUM=r"enum\s*\(.+\)$",
-        TEMPORAL=r"(date|datetime|time|timestamp|year)(\s*\(.+\))?$",
-        BLOB=r"(tiny|small|medium|long|)blob$",
+        STRING=r"(var)?char\s*\(.+\)$",  # Catches char/varchar not matched by core types
+        TEMPORAL=r"(time|timestamp|year)(\s*\(.+\))?$",  # time, timestamp, year (not date/datetime)
+        NATIVE_BLOB=r"(tiny|small|medium|long)blob$",  # Specific blob variants
+        TEXT=r"(tiny|small|medium|long)?text$",  # Text types
         # AttributeTypes use angle brackets
         ADAPTED=r"<.+>$",
     ).items()
 }
 
-# Types that require special handling (stored in attribute comment for reconstruction)
-SPECIAL_TYPES = {"ADAPTED"} | set(CORE_TYPE_ALIASES)
+# Core types are stored in attribute comment for reconstruction
+CORE_TYPE_NAMES = {name.upper() for name in CORE_TYPES}
 
-# Native SQL types that pass through without modification
+# Special types that need comment storage (core types + adapted)
+SPECIAL_TYPES = CORE_TYPE_NAMES | {"ADAPTED"}
+
+# Native SQL types that pass through (with optional warning)
 NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
 
 assert SPECIAL_TYPES <= set(TYPE_PATTERN)
 
 
 def match_type(attribute_type):
+    """Match an attribute type string to a category."""
     try:
         return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
     except StopIteration:
@@ -444,7 +454,7 @@ def substitute_special_type(match, category, foreign_key_sql, context):
     Substitute special types with their native SQL equivalents.
 
     Special types are:
-    - Core type aliases (float32 → float, uuid → binary(16), etc.)
+    - Core DataJoint types (float32 → float, uuid → binary(16), blob → longblob, etc.)
     - ADAPTED types (AttributeTypes in angle brackets)
 
     :param match: dict containing with keys "type" and "comment" -- will be modified in place
@@ -462,9 +472,13 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         category = match_type(match["type"])
         if category in SPECIAL_TYPES:
             substitute_special_type(match, category, foreign_key_sql, context)
-    elif category in CORE_TYPE_ALIASES:
-        # Core type alias - substitute with native SQL type
-        match["type"] = CORE_TYPE_ALIASES[category]
+    elif category in CORE_TYPE_NAMES:
+        # Core DataJoint type - substitute with native SQL type if mapping exists
+        core_name = category.lower()
+        sql_type = CORE_TYPE_SQL.get(core_name)
+        if sql_type is not None:
+            match["type"] = sql_type
+        # else: type passes through as-is (json, date, datetime, char, varchar, enum)
     else:
         assert False, f"Unknown special type: {category}"
 
@@ -510,13 +524,22 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
 
     category = match_type(match["type"])
+
     if category in SPECIAL_TYPES:
-        match["comment"] = ":{type}:{comment}".format(**match)  # insert custom type into comment
+        # Core types and AttributeTypes are recorded in comment for reconstruction
+        match["comment"] = ":{type}:{comment}".format(**match)
         substitute_special_type(match, category, foreign_key_sql, context)
+    elif category in NATIVE_TYPES:
+        # Non-standard native type - warn user
+        logger.warning(
+            f"Non-standard native type '{match['type']}' in attribute '{match['name']}'. "
+            "Consider using a core DataJoint type for better portability."
+        )
 
     # Check for invalid default values on blob types (after type substitution)
-    final_category = match_type(match["type"])
-    if final_category == "BLOB" and match["default"] not in {"DEFAULT NULL", "NOT NULL"}:
+    # Note: blob → longblob, so check for NATIVE_BLOB or longblob result
+    final_type = match["type"].lower()
+    if ("blob" in final_type) and match["default"] not in {"DEFAULT NULL", "NOT NULL"}:
         raise DataJointError("The default value for blob attributes can only be NULL in:\n{line}".format(line=line))
 
     sql = ("`{name}` {type} {default}" + (' COMMENT "{comment}"' if match["comment"] else "")).format(**match)

@@ -8,7 +8,7 @@ import numpy as np
 from .attribute_adapter import get_adapter
 from .attribute_type import AttributeType
 from .declare import (
-    CORE_TYPE_ALIASES,
+    CORE_TYPE_NAMES,
     SPECIAL_TYPES,
     TYPE_PATTERN,
 )
@@ -348,7 +348,7 @@ class Heading:
 
                 if category == "UUID":
                     attr["uuid"] = True
-                elif category in CORE_TYPE_ALIASES:
+                elif category in CORE_TYPE_NAMES:
                     # Core type alias - already resolved in DB
                     pass
 
