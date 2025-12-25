@@ -193,6 +193,38 @@ class ObjectType(AttributeType):
 - `ref.download(dest)` - Download to local path
 - `ref.listdir()` / `ref.walk()` - For directories
 
+### Staged Insert for Object Types
+
+For large objects like Zarr arrays, `staged_insert.py` provides direct writes to storage:
+
+```python
+with table.staged_insert1 as staged:
+    # 1. Set primary key first (required for path construction)
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # 2. Get storage handle and write directly
+    z = zarr.open(staged.store('raw_data', '.zarr'), mode='w')
+    z[:] = large_array
+
+    # 3. On exit: metadata computed, record inserted
+```
+
+**Flow comparison:**
+
+| Normal Insert | Staged Insert |
+|--------------|---------------|
+| `ObjectType.encode()` uploads content | Direct writes via `staged.store()` |
+| Single operation | Two-phase: write then finalize |
+| Good for files/folders | Ideal for Zarr, HDF5, streaming |
+
+Both produce the same JSON metadata format compatible with `ObjectRef.from_json()`.
+
+**Key methods:**
+- `staged.store(field, ext)` - Returns `FSMap` for Zarr/xarray
+- `staged.open(field, ext)` - Returns file handle for binary writes
+- `staged.fs` - Raw fsspec filesystem access
+
 ---
 
 ## Phase 3: User-Defined AttributeTypes
@@ -365,6 +397,7 @@ def garbage_collect(schemas: list, store_name: str, dry_run=True) -> dict:
 | `src/datajoint/content_registry.py` | ✅ | Content storage functions (put, get, delete) |
 | `src/datajoint/objectref.py` | ✅ | ObjectRef handle for lazy access |
 | `src/datajoint/storage.py` | ✅ | StorageBackend, build_object_path |
+| `src/datajoint/staged_insert.py` | ✅ | Staged insert for direct object storage writes |
 | `src/datajoint/table.py` | ✅ | Type chain encoding on insert |
 | `src/datajoint/fetch.py` | ✅ | Type chain decoding on fetch |
 | `src/datajoint/blob.py` | ✅ | Removed bypass_serialization |
