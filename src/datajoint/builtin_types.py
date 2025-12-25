@@ -9,6 +9,7 @@ Built-in Types:
     - ``<djblob>``: Serialize Python objects to DataJoint's blob format (internal storage)
     - ``<content>``: Content-addressed storage with SHA256 deduplication
     - ``<xblob>``: External serialized blobs using content-addressed storage
+    - ``<object>``: Path-addressed storage for files/folders (Zarr, HDF5)
 
 Example - Creating a Custom Type:
     Here's how to define your own AttributeType, modeled after the built-in types::
@@ -237,3 +238,192 @@ class XBlobType(AttributeType):
         from . import blob
 
         return blob.unpack(stored, squeeze=False)
+
+
+# =============================================================================
+# Path-Addressed Storage Types (OAS - Object-Augmented Schema)
+# =============================================================================
+
+
+@register_type
+class ObjectType(AttributeType):
+    """
+    Path-addressed storage for files and folders.
+
+    The ``<object>`` type provides managed file/folder storage where the path
+    is derived from the primary key: ``{schema}/{table}/objects/{pk}/{field}_{token}.{ext}``
+
+    Unlike ``<content>`` (content-addressed), each row has its own storage path,
+    and content is deleted when the row is deleted. This is ideal for:
+
+    - Zarr arrays (hierarchical chunked data)
+    - HDF5 files
+    - Complex multi-file outputs
+    - Any content that shouldn't be deduplicated
+
+    Example::
+
+        @schema
+        class Analysis(dj.Computed):
+            definition = '''
+            -> Recording
+            ---
+            results : <object@mystore>
+            '''
+
+        def make(self, key):
+            # Store a file
+            self.insert1({**key, 'results': '/path/to/results.zarr'})
+
+        # Fetch returns ObjectRef for lazy access
+        ref = (Analysis & key).fetch1('results')
+        ref.path       # Storage path
+        ref.read()     # Read file content
+        ref.fsmap      # For zarr.open(ref.fsmap)
+
+    Storage Structure:
+        Objects are stored at::
+
+            {store_root}/{schema}/{table}/objects/{pk}/{field}_{token}.ext
+
+        The token ensures uniqueness even if content is replaced.
+
+    Comparison with ``<content>``::
+
+        | Aspect         | <object>          | <content>           |
+        |----------------|-------------------|---------------------|
+        | Addressing     | Path (by PK)      | Hash (by content)   |
+        | Deduplication  | No                | Yes                 |
+        | Deletion       | With row          | GC when unreferenced|
+        | Use case       | Zarr, HDF5        | Blobs, attachments  |
+
+    Note:
+        A store must be specified (``<object@store>``) unless a default store
+        is configured. Returns ``ObjectRef`` on fetch for lazy access.
+    """
+
+    type_name = "object"
+    dtype = "json"
+
+    def encode(
+        self,
+        value: Any,
+        *,
+        key: dict | None = None,
+        store_name: str | None = None,
+    ) -> dict:
+        """
+        Store content and return metadata.
+
+        Args:
+            value: Content to store. Can be:
+                - bytes: Raw bytes to store as file
+                - str/Path: Path to local file or folder to upload
+            key: Dict containing context for path construction:
+                - _schema: Schema name
+                - _table: Table name
+                - _field: Field/attribute name
+                - Other entries are primary key values
+            store_name: Store to use. If None, uses default store.
+
+        Returns:
+            Metadata dict suitable for ObjectRef.from_json()
+        """
+        from datetime import datetime, timezone
+        from pathlib import Path
+
+        from .content_registry import get_store_backend
+        from .storage import build_object_path
+
+        # Extract context from key
+        key = key or {}
+        schema = key.pop("_schema", "unknown")
+        table = key.pop("_table", "unknown")
+        field = key.pop("_field", "data")
+        primary_key = {k: v for k, v in key.items() if not k.startswith("_")}
+
+        # Determine content type and extension
+        is_dir = False
+        ext = None
+        size = None
+
+        if isinstance(value, bytes):
+            content = value
+            size = len(content)
+        elif isinstance(value, (str, Path)):
+            source_path = Path(value)
+            if not source_path.exists():
+                raise FileNotFoundError(f"Source path does not exist: {source_path}")
+            is_dir = source_path.is_dir()
+            ext = source_path.suffix if not is_dir else None
+            if is_dir:
+                # For directories, we'll upload later
+                content = None
+            else:
+                content = source_path.read_bytes()
+                size = len(content)
+        else:
+            raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
+
+        # Build storage path
+        path, token = build_object_path(
+            schema=schema,
+            table=table,
+            field=field,
+            primary_key=primary_key,
+            ext=ext,
+        )
+
+        # Get storage backend
+        backend = get_store_backend(store_name)
+
+        # Upload content
+        if is_dir:
+            # Upload directory recursively
+            source_path = Path(value)
+            backend.put_folder(str(source_path), path)
+            # Compute size by summing all files
+            size = sum(f.stat().st_size for f in source_path.rglob("*") if f.is_file())
+        else:
+            backend.put_buffer(content, path)
+
+        # Build metadata
+        timestamp = datetime.now(timezone.utc)
+        metadata = {
+            "path": path,
+            "store": store_name,
+            "size": size,
+            "ext": ext,
+            "is_dir": is_dir,
+            "timestamp": timestamp.isoformat(),
+        }
+
+        return metadata
+
+    def decode(self, stored: dict, *, key: dict | None = None) -> Any:
+        """
+        Create ObjectRef handle for lazy access.
+
+        Args:
+            stored: Metadata dict from database.
+            key: Primary key values (unused).
+
+        Returns:
+            ObjectRef for accessing the stored content.
+        """
+        from .content_registry import get_store_backend
+        from .objectref import ObjectRef
+
+        store_name = stored.get("store")
+        backend = get_store_backend(store_name)
+        return ObjectRef.from_json(stored, backend=backend)
+
+    def validate(self, value: Any) -> None:
+        """Validate that value is bytes or a valid path."""
+        from pathlib import Path
+
+        if isinstance(value, bytes):
+            return
+        if isinstance(value, (str, Path)):
+            return
+        raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")

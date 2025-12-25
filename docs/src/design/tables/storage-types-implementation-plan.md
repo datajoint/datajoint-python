@@ -18,7 +18,8 @@ This plan describes the implementation of a three-layer type architecture for Da
 |-------|--------|-------|
 | Phase 1: Core Type System | ✅ Complete | CORE_TYPES dict, type chain resolution |
 | Phase 2: Content-Addressed Storage | ✅ Complete | Function-based, no registry table |
-| Phase 3: User-Defined AttributeTypes | 🔲 Pending | XBlobType done, AttachType/FilepathType pending |
+| Phase 2b: Path-Addressed Storage | ✅ Complete | ObjectType for files/folders |
+| Phase 3: User-Defined AttributeTypes | 🔲 Pending | AttachType/FilepathType pending |
 | Phase 4: Insert and Fetch Integration | ✅ Complete | Type chain encoding/decoding |
 | Phase 5: Garbage Collection | 🔲 Pending | |
 | Phase 6: Migration Utilities | 🔲 Pending | |
@@ -140,6 +141,58 @@ class XBlobType(AttributeType):
     def decode(self, stored: bytes, *, key=None) -> Any:
         return blob.unpack(stored, squeeze=False)
 ```
+
+---
+
+## Phase 2b: Path-Addressed Storage (ObjectType) ✅
+
+**Status**: Complete
+
+### Design: Path vs Content Addressing
+
+| Aspect | `<content>` | `<object>` |
+|--------|-------------|------------|
+| Addressing | Content-hash (SHA256) | Path (from primary key) |
+| Path Format | `_content/{hash[:2]}/{hash[2:4]}/{hash}` | `{schema}/{table}/objects/{pk}/{field}_{token}.ext` |
+| Deduplication | Yes (same content = same hash) | No (each row has unique path) |
+| Deletion | GC when unreferenced | Deleted with row |
+| Use case | Serialized blobs, attachments | Zarr, HDF5, folders |
+
+### Implemented in `src/datajoint/builtin_types.py`:
+
+```python
+@register_type
+class ObjectType(AttributeType):
+    """Path-addressed storage for files and folders."""
+    type_name = "object"
+    dtype = "json"
+
+    def encode(self, value, *, key=None, store_name=None) -> dict:
+        # value can be bytes, str path, or Path
+        # key contains _schema, _table, _field for path construction
+        path, token = build_object_path(schema, table, field, primary_key, ext)
+        backend.put_buffer(content, path)  # or put_folder for directories
+        return {
+            "path": path,
+            "store": store_name,
+            "size": size,
+            "ext": ext,
+            "is_dir": is_dir,
+            "timestamp": timestamp.isoformat(),
+        }
+
+    def decode(self, stored: dict, *, key=None) -> ObjectRef:
+        # Returns lazy handle for fsspec-based access
+        return ObjectRef.from_json(stored, backend=backend)
+```
+
+### ObjectRef Features:
+- `ref.path` - Storage path
+- `ref.read()` - Read file content
+- `ref.open()` - Open as file handle
+- `ref.fsmap` - For `zarr.open(ref.fsmap)`
+- `ref.download(dest)` - Download to local path
+- `ref.listdir()` / `ref.walk()` - For directories
 
 ---
 
@@ -319,8 +372,11 @@ def garbage_collect(schemas: list, store_name: str, dry_run=True) -> dict:
 |------|--------|---------|
 | `src/datajoint/declare.py` | ✅ | CORE_TYPES, type parsing, SQL generation |
 | `src/datajoint/heading.py` | ✅ | Simplified attribute properties |
-| `src/datajoint/attribute_type.py` | ✅ | ContentType, XBlobType, type chain resolution |
+| `src/datajoint/attribute_type.py` | ✅ | Base class, registry, type chain resolution |
+| `src/datajoint/builtin_types.py` | ✅ | DJBlobType, ContentType, XBlobType, ObjectType |
 | `src/datajoint/content_registry.py` | ✅ | Content storage functions (put, get, delete) |
+| `src/datajoint/objectref.py` | ✅ | ObjectRef handle for lazy access |
+| `src/datajoint/storage.py` | ✅ | StorageBackend, build_object_path |
 | `src/datajoint/table.py` | ✅ | Type chain encoding on insert |
 | `src/datajoint/fetch.py` | ✅ | Type chain decoding on fetch |
 | `src/datajoint/blob.py` | ✅ | Removed bypass_serialization |
@@ -343,7 +399,7 @@ def garbage_collect(schemas: list, store_name: str, dry_run=True) -> dict:
 
 ```
 Layer 3: AttributeTypes (user-facing)
-         <djblob>, <xblob>, <attach>, <xattach>, <filepath@store>
+         <djblob>, <object>, <content>, <xblob>, <attach>, <xattach>, <filepath@store>
          ↓ encode() / ↑ decode()
 
 Layer 2: Core DataJoint Types
@@ -352,6 +408,14 @@ Layer 2: Core DataJoint Types
 
 Layer 1: Native Database Types
          FLOAT, BIGINT, BINARY(16), JSON, LONGBLOB, VARCHAR(n), etc.
+```
+
+**Built-in AttributeTypes:**
+```
+<djblob>   → longblob (internal serialized storage)
+<object>   → json     (path-addressed, for Zarr/HDF5/folders)
+<content>  → json     (content-addressed with deduplication)
+<xblob>    → <content> → json (external serialized with dedup)
 ```
 
 **Type Composition Example:**
