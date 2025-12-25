@@ -468,7 +468,7 @@ class Heading:
         )
         return Heading(chain(copy_attrs, compute_attrs))
 
-    def join(self, other, left=False, _aggregation=False):
+    def join(self, other, left=False, semantic_check=True):
         """
         Join two headings into a new one.
 
@@ -480,22 +480,22 @@ class Heading:
         A → B holds iff every attribute in PK(B) is either in PK(A) or secondary in A.
         B → A holds iff every attribute in PK(A) is either in PK(B) or secondary in B.
 
-        For left joins (left=True), A → B is required. Otherwise, the result would not
-        have a valid primary key because:
+        For left joins (left=True), A → B is required by default. Otherwise, the result
+        would not have a valid primary key because:
         - Unmatched rows from A have NULL values for B's attributes
         - If B → A or Neither, the PK would include B's attributes, which could be NULL
         - Only when A → B does PK(A) uniquely identify all result rows
 
-        Exception: Aggregation (A.aggr(B, keep_all_rows=True)) uses a left join internally
-        but requires B → A instead. This is valid because the GROUP BY clause resets the
-        primary key to PK(A), which consists of non-NULL values from the left operand.
+        When semantic_check=False for left joins where A → B doesn't hold, the constraint
+        is bypassed and PK = PK(A) ∪ PK(B) is used. This is useful for aggregation, where
+        the GROUP BY clause resets the primary key afterward.
 
         It assumes that self and other are headings that share no common dependent attributes.
 
         :param other: The other heading to join with
-        :param left: If True, this is a left join (requires A → B unless _aggregation=True)
-        :param _aggregation: If True, skip left join validation (used by Aggregation.create)
-        :raises DataJointError: If left=True and A does not determine B (unless _aggregation)
+        :param left: If True, this is a left join (requires A → B unless semantic_check=False)
+        :param semantic_check: If False, bypass left join A → B validation (PK becomes union)
+        :raises DataJointError: If left=True, semantic_check=True, and A does not determine B
         """
         from .errors import DataJointError
 
@@ -507,17 +507,23 @@ class Heading:
             name in other.primary_key or name in other.secondary_attributes for name in self.primary_key
         )
 
-        # For left joins, require A → B (unless this is an aggregation context)
-        if left and not _aggregation and not self_determines_other:
-            missing = [
-                name for name in other.primary_key if name not in self.primary_key and name not in self.secondary_attributes
-            ]
-            raise DataJointError(
-                f"Left join requires the left operand to determine the right operand (A → B). "
-                f"The following attributes from the right operand's primary key are not "
-                f"determined by the left operand: {missing}. "
-                f"Use an inner join or restructure the query."
-            )
+        # For left joins, require A → B unless semantic_check=False
+        if left and not self_determines_other:
+            if semantic_check:
+                missing = [
+                    name
+                    for name in other.primary_key
+                    if name not in self.primary_key and name not in self.secondary_attributes
+                ]
+                raise DataJointError(
+                    f"Left join requires the left operand to determine the right operand (A → B). "
+                    f"The following attributes from the right operand's primary key are not "
+                    f"determined by the left operand: {missing}. "
+                    f"Use an inner join, restructure the query, or use semantic_check=False."
+                )
+            else:
+                # Bypass: use union of PKs (will be reset by caller, e.g., aggregation)
+                other_determines_self = False  # Force the "Neither" case
 
         seen = set()
         result_attrs = []
