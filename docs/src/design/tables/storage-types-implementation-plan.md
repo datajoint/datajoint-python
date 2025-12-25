@@ -21,8 +21,8 @@ This plan describes the implementation of a three-layer type architecture for Da
 | Phase 2b: Path-Addressed Storage | ✅ Complete | ObjectType for files/folders |
 | Phase 3: User-Defined AttributeTypes | ✅ Complete | AttachType, XAttachType, FilepathType |
 | Phase 4: Insert and Fetch Integration | ✅ Complete | Type chain encoding/decoding |
-| Phase 5: Garbage Collection | 🔲 Pending | |
-| Phase 6: Documentation and Testing | 🔲 Pending | |
+| Phase 5: Garbage Collection | ✅ Complete | gc.py with scan/collect functions |
+| Phase 6: Documentation and Testing | ✅ Complete | Test files for all new types |
 
 ---
 
@@ -337,66 +337,50 @@ def _get(connection, attr, data, squeeze, download_path):
 
 ---
 
-## Phase 5: Garbage Collection 🔲
+## Phase 5: Garbage Collection ✅
 
-**Status**: Pending
+**Status**: Complete
 
-### Design (updated for function-based approach):
-
-Since we don't have a registry table, GC works by scanning:
+### Implemented in `src/datajoint/gc.py`:
 
 ```python
-def scan_content_references(schemas: list) -> set[tuple[str, str]]:
-    """
-    Scan all schemas for content references.
+import datajoint as dj
 
-    Returns:
-        Set of (content_hash, store) tuples that are referenced
-    """
-    referenced = set()
-    for schema in schemas:
-        for table in schema.tables:
-            for attr in table.heading.attributes:
-                if uses_content_storage(attr):
-                    # Fetch all JSON metadata from this column
-                    for row in table.fetch(attr.name):
-                        if isinstance(row, dict) and 'hash' in row:
-                            referenced.add((row['hash'], row.get('store')))
-    return referenced
+# Scan schemas and find orphaned content
+stats = dj.gc.scan(schema1, schema2, store_name='mystore')
 
-def list_stored_content(store_name: str) -> set[str]:
-    """List all content hashes in a store by scanning _content/ directory."""
-    ...
+# Remove orphaned content (dry_run=False to actually delete)
+stats = dj.gc.collect(schema1, schema2, store_name='mystore', dry_run=True)
 
-def garbage_collect(schemas: list, store_name: str, dry_run=True) -> dict:
-    """
-    Remove unreferenced content from storage.
-
-    Returns:
-        Stats: {'scanned': N, 'orphaned': M, 'deleted': K, 'bytes_freed': B}
-    """
-    referenced = scan_content_references(schemas)
-    stored = list_stored_content(store_name)
-    orphaned = stored - {h for h, s in referenced if s == store_name}
-
-    if not dry_run:
-        for content_hash in orphaned:
-            delete_content(content_hash, store_name)
-
-    return {'orphaned': len(orphaned), ...}
+# Format statistics for display
+print(dj.gc.format_stats(stats))
 ```
+
+**Key functions:**
+- `scan_references(*schemas, store_name=None)` - Scan tables for content hashes
+- `list_stored_content(store_name=None)` - List all content in `_content/` directory
+- `scan(*schemas, store_name=None)` - Find orphaned content without deleting
+- `collect(*schemas, store_name=None, dry_run=True)` - Remove orphaned content
+- `format_stats(stats)` - Human-readable statistics output
+
+**GC Process:**
+1. Scan all tables in provided schemas for content-type attributes
+2. Extract content hashes from JSON metadata in those columns
+3. Scan storage `_content/` directory for all stored hashes
+4. Compute orphaned = stored - referenced
+5. Optionally delete orphaned content (when `dry_run=False`)
 
 ---
 
-## Phase 6: Documentation and Testing 🔲
+## Phase 6: Documentation and Testing ✅
 
-**Status**: Pending
+**Status**: Complete
 
-### Test files to create:
+### Test files created:
 - `tests/test_content_storage.py` - Content-addressed storage functions
-- `tests/test_xblob.py` - XBlobType roundtrip
 - `tests/test_type_composition.py` - Type chain encoding/decoding
 - `tests/test_gc.py` - Garbage collection
+- `tests/test_attribute_type.py` - AttributeType registry and DJBlobType (existing)
 
 ---
 
@@ -415,7 +399,10 @@ def garbage_collect(schemas: list, store_name: str, dry_run=True) -> dict:
 | `src/datajoint/table.py` | ✅ | Type chain encoding on insert |
 | `src/datajoint/fetch.py` | ✅ | Type chain decoding on fetch |
 | `src/datajoint/blob.py` | ✅ | Removed bypass_serialization |
-| `src/datajoint/gc.py` | 🔲 | Garbage collection (to be created) |
+| `src/datajoint/gc.py` | ✅ | Garbage collection for content storage |
+| `tests/test_content_storage.py` | ✅ | Tests for content_registry.py |
+| `tests/test_type_composition.py` | ✅ | Tests for type chain encoding/decoding |
+| `tests/test_gc.py` | ✅ | Tests for garbage collection |
 
 ---
 
