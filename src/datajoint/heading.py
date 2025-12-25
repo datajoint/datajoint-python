@@ -243,9 +243,6 @@ class Heading:
             as_dict=True,
         ).fetchone()
         if info is None:
-            if table_name == "~log":
-                logger.warning("Could not create the ~log table")
-                return
             raise DataJointError(
                 "The table `{database}`.`{table_name}` is not defined.".format(table_name=table_name, database=database)
             )

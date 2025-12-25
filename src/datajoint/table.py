@@ -5,7 +5,6 @@ import itertools
 import json
 import logging
 import mimetypes
-import platform
 import re
 import uuid
 from datetime import datetime, timezone
@@ -34,7 +33,6 @@ from .settings import config
 from .staged_insert import staged_insert1 as _staged_insert1
 from .storage import StorageBackend, build_object_path, verify_or_create_store_metadata
 from .utils import get_master, is_camel_case, user_choice
-from .version import __version__ as version
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -73,7 +71,6 @@ class Table(QueryExpression):
     """
 
     _table_name = None  # must be defined in subclass
-    _log_ = None  # placeholder for the Log table object
 
     # These properties must be set by the schema decorator (schemas.py) at class level
     # or by FreeTable at instance level
@@ -118,7 +115,7 @@ class Table(QueryExpression):
             # skip if no create privilege
             pass
         else:
-            self._log("Declared " + self.full_table_name)
+            logger.info("Declared %s", self.full_table_name)
             # Populate lineage entries for semantic matching
             self._populate_lineage()
 
@@ -153,7 +150,7 @@ class Table(QueryExpression):
                     self.__class__._heading = Heading(table_info=self.heading.table_info)
                     if prompt:
                         logger.info("Table altered")
-                    self._log("Altered " + self.full_table_name)
+                    logger.info("Altered %s", self.full_table_name)
 
     def _populate_lineage(self):
         """
@@ -292,16 +289,6 @@ class Table(QueryExpression):
         :return: full table name in the schema
         """
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
-
-    @property
-    def _log(self):
-        if self._log_ is None:
-            self._log_ = Log(
-                self.connection,
-                database=self.database,
-                skip_logging=self.table_name.startswith("~"),
-            )
-        return self._log_
 
     @property
     def external(self):
@@ -609,7 +596,7 @@ class Table(QueryExpression):
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
         self.connection.query(query)
         count = self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
-        self._log(query[:255])
+        logger.debug("Deleted from %s", self.full_table_name)
         return count
 
     def delete(
@@ -787,10 +774,9 @@ class Table(QueryExpression):
             self.connection.query(query)
             # Clean up lineage entries
             delete_lineage_entries(self.connection, self.database, self.table_name)
-            logger.info("Dropped table %s" % self.full_table_name)
-            self._log(query[:255])
+            logger.info("Dropped table %s", self.full_table_name)
         else:
-            logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
+            logger.info("Nothing to drop: table %s is not declared", self.full_table_name)
 
     def drop(self):
         """
@@ -1097,76 +1083,3 @@ class FreeTable(Table):
 
     def __repr__(self):
         return "FreeTable(`%s`.`%s`)\n" % (self.database, self._table_name) + super().__repr__()
-
-
-class Log(Table):
-    """
-    The log table for each schema.
-    Instances are callable.  Calls log the time and identifying information along with the event.
-
-    :param skip_logging: if True, then log entry is skipped by default. See __call__
-    """
-
-    _table_name = "~log"
-
-    def __init__(self, conn, database, skip_logging=False):
-        self.database = database
-        self.skip_logging = skip_logging
-        self._connection = conn
-        self._heading = Heading(table_info=dict(conn=conn, database=database, table_name=self.table_name, context=None))
-        self._support = [self.full_table_name]
-
-        self._definition = """    # event logging table for `{database}`
-        id       :int unsigned auto_increment     # event order id
-        ---
-        timestamp = CURRENT_TIMESTAMP : timestamp # event timestamp
-        version  :varchar(12)                     # datajoint version
-        user     :varchar(255)                    # user@host
-        host=""  :varchar(255)                    # system hostname
-        event="" :varchar(255)                    # event message
-        """.format(database=database)
-
-        super().__init__()
-
-        if not self.is_declared:
-            self.declare()
-            self.connection.dependencies.clear()
-        self._user = self.connection.get_user()
-
-    @property
-    def definition(self):
-        return self._definition
-
-    def __call__(self, event, skip_logging=None):
-        """
-
-        :param event: string to write into the log table
-        :param skip_logging: If True then do not log. If None, then use self.skip_logging
-        """
-        skip_logging = self.skip_logging if skip_logging is None else skip_logging
-        if not skip_logging:
-            try:
-                self.insert1(
-                    dict(
-                        user=self._user,
-                        version=version + "py",
-                        host=platform.uname().node,
-                        event=event,
-                    ),
-                    skip_duplicates=True,
-                    ignore_extra_fields=True,
-                )
-            except DataJointError:
-                logger.info("could not log event in table ~log")
-
-    def delete(self):
-        """
-        bypass interactive prompts and cascading dependencies
-
-        :return: number of deleted items
-        """
-        return self.delete_quick(get_count=True)
-
-    def drop(self):
-        """bypass interactive prompts and cascading dependencies"""
-        self.drop_quick()

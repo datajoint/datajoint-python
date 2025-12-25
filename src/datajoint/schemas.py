@@ -11,7 +11,7 @@ from .errors import AccessError, DataJointError
 from .external import ExternalMapping
 from .heading import Heading
 from .settings import config
-from .table import FreeTable, Log, lookup_class_name
+from .table import FreeTable, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
 from .utils import to_camel_case, user_choice
 
@@ -63,7 +63,6 @@ class Schema:
         :param add_objects: a mapping with additional objects to make available to the context in which table classes
         are declared.
         """
-        self._log = None
         self.connection = connection
         self.database = None
         self.context = context
@@ -136,7 +135,7 @@ class Schema:
                     "Schema `{name}` does not exist and could not be created. Check permissions.".format(name=schema_name)
                 )
             else:
-                self.log("created")
+                logger.info("Created schema `%s`", schema_name)
         self.connection.register(self)
 
         # decorate all tables already decorated
@@ -230,13 +229,6 @@ class Schema:
         if isinstance(instance, (Imported, Computed)) and not isinstance(instance, Part):
             if table_class not in self._auto_populated_tables:
                 self._auto_populated_tables.append(table_class)
-
-    @property
-    def log(self):
-        self._assert_exists()
-        if self._log is None:
-            self._log = Log(self.connection, self.database)
-        return self._log
 
     def __repr__(self):
         return "Schema `{name}`\n".format(name=self.database)
@@ -420,7 +412,7 @@ class Schema:
     def list_tables(self):
         """
         Return a list of all tables in the schema except tables with ~ in first character such
-        as ~logs and ~job
+        as ~job
 
         :return: A list of table names from the database schema.
         """
