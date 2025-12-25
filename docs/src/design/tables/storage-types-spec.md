@@ -4,17 +4,24 @@
 
 This document defines a layered storage architecture:
 
-1. **MySQL types**: `longblob`, `varchar`, `int`, etc.
-2. **Core DataJoint types**: `object`, `content`, `filepath` (and their `@store` variants)
+1. **Database types**: `longblob`, `varchar`, `int`, `json`, etc.
+2. **Core DataJoint types**: `object`, `content`, `filepath`, `json` (and `@store` variants where applicable)
 3. **AttributeTypes**: `<djblob>`, `<xblob>`, `<attach>`, etc. (built on top of core types)
 
-### Three OAS Storage Regions
+### OAS Storage Regions
 
 | Region | Path Pattern | Addressing | Use Case |
 |--------|--------------|------------|----------|
 | Object | `{schema}/{table}/{pk}/` | Primary key | Large objects, Zarr, HDF5 |
 | Content | `_content/{hash}` | Content hash | Deduplicated blobs/files |
-| Filepath | `_files/{user-path}` | User-defined | User-organized files |
+
+### External References
+
+`filepath` is **not** an OAS region - it's a general reference tracker for external resources:
+- OAS store paths: `store://main/experiment/data.h5`
+- URLs: `https://example.com/dataset.zip`
+- S3: `s3://bucket/key/file.nwb`
+- Any fsspec-compatible URI
 
 ## Core Types
 
@@ -55,11 +62,8 @@ store_root/
 ├── {schema}/{table}/{pk}/     # object storage (path-addressed by PK)
 │   └── {attribute}/
 │
-├── _content/                   # content storage (content-addressed)
-│   └── {hash[:2]}/{hash[2:4]}/{hash}
-│
-└── _files/                     # filepath storage (user-addressed)
-    └── {user-defined-path}
+└── _content/                   # content storage (content-addressed)
+    └── {hash[:2]}/{hash[2:4]}/{hash}
 ```
 
 #### Content Type Behavior
@@ -106,31 +110,41 @@ The `content` type stores a `char(64)` hash in the database:
 features CHAR(64) NOT NULL  -- SHA256 hex hash
 ```
 
-### `filepath` / `filepath@store` - User-Addressed Storage
+### `filepath` - External Reference Tracker
 
-**Upgraded from legacy.** User-defined path organization with ObjectRef access:
+**Upgraded from legacy.** General-purpose reference tracker for external resources:
 
-- **User controls paths**: relative path specified by user (not derived from PK or hash)
-- Stored in `_files/{user-path}` within the store
-- Returns `ObjectRef` for lazy access (no automatic copying)
-- Stores checksum in database for verification
-- Supports files and folders (like `object`)
+- **Not an OAS region**: references can point anywhere (URLs, S3, OAS stores, etc.)
+- **User controls URIs**: any fsspec-compatible URI
+- Returns `ObjectRef` for lazy access via fsspec
+- Stores optional checksum for verification
+- No integrity guarantees (external resources may change/disappear)
 
 ```python
 class RawData(dj.Manual):
     definition = """
     session_id : int
     ---
-    recording : filepath@raw      # user specifies path
+    recording : filepath      # external reference
     """
 
-# Insert - user provides relative path
+# Insert - user provides URI (various protocols)
 table.insert1({
     'session_id': 1,
-    'recording': 'experiment_001/session_001/data.nwb'
+    'recording': 's3://my-bucket/experiment_001/data.nwb'
+})
+# Or URL
+table.insert1({
+    'session_id': 2,
+    'recording': 'https://example.com/public/dataset.h5'
+})
+# Or OAS store reference
+table.insert1({
+    'session_id': 3,
+    'recording': 'store://main/custom/path/file.zarr'
 })
 
-# Fetch - returns ObjectRef (lazy, no copy)
+# Fetch - returns ObjectRef (lazy)
 row = (table & 'session_id=1').fetch1()
 ref = row['recording']           # ObjectRef
 ref.download('/local/path')      # explicit download
@@ -142,55 +156,82 @@ ref.open()                       # fsspec streaming access
 ```python
 # Core type behavior
 class FilepathType:
-    """Core user-addressed storage type."""
+    """Core external reference type."""
 
-    def store(self, user_path: str, store_backend) -> dict:
+    def store(self, uri: str, compute_checksum: bool = False) -> dict:
         """
-        Register filepath, return metadata.
-        File must already exist at _files/{user_path} in store.
+        Register external reference, return metadata.
+        Optionally compute checksum for verification.
         """
-        full_path = f"_files/{user_path}"
-        if not store_backend.exists(full_path):
-            raise FileNotFoundError(f"File not found: {full_path}")
+        metadata = {'uri': uri}
 
-        # Compute checksum for verification
-        checksum = store_backend.checksum(full_path)
-        size = store_backend.size(full_path)
+        if compute_checksum:
+            # Use fsspec to access and compute checksum
+            fs, path = fsspec.core.url_to_fs(uri)
+            if fs.exists(path):
+                metadata['checksum'] = compute_file_checksum(fs, path)
+                metadata['size'] = fs.size(path)
 
-        return {
-            'path': user_path,
-            'checksum': checksum,
-            'size': size
-        }
+        return metadata
 
-    def retrieve(self, metadata: dict, store_backend) -> ObjectRef:
+    def retrieve(self, metadata: dict) -> ObjectRef:
         """Return ObjectRef for lazy access."""
         return ObjectRef(
-            path=f"_files/{metadata['path']}",
-            store=store_backend,
-            checksum=metadata.get('checksum')  # for verification
+            uri=metadata['uri'],
+            checksum=metadata.get('checksum')  # optional verification
         )
 ```
 
 #### Database Column
 
-The `filepath` type stores JSON metadata:
+The `filepath` type uses the `json` core type:
 
 ```sql
--- filepath column
+-- filepath column (MySQL)
 recording JSON NOT NULL
--- Contains: {"path": "...", "checksum": "...", "size": ...}
+-- Contains: {"uri": "s3://...", "checksum": "...", "size": ...}
+
+-- filepath column (PostgreSQL)
+recording JSONB NOT NULL
 ```
+
+#### Supported URI Schemes
+
+| Scheme | Example | Backend |
+|--------|---------|---------|
+| `s3://` | `s3://bucket/key/file.nwb` | S3 via fsspec |
+| `gs://` | `gs://bucket/object` | Google Cloud Storage |
+| `https://` | `https://example.com/data.h5` | HTTP(S) |
+| `file://` | `file:///local/path/data.csv` | Local filesystem |
+| `store://` | `store://main/path/file.zarr` | OAS store |
 
 #### Key Differences from Legacy `filepath@store`
 
 | Feature | Legacy | New |
 |---------|--------|-----|
+| Location | OAS store only | Any URI (S3, HTTP, etc.) |
 | Access | Copy to local stage | ObjectRef (lazy) |
 | Copying | Automatic | Explicit via `ref.download()` |
 | Streaming | No | Yes via `ref.open()` |
-| Folders | No | Yes |
-| Interface | Returns local path | Returns ObjectRef |
+| Integrity | Managed by DataJoint | External (may change) |
+| Store param | Required (`@store`) | Optional (embedded in URI) |
+
+### `json` - Cross-Database JSON Type
+
+**New core type.** JSON storage compatible across MySQL and PostgreSQL:
+
+```sql
+-- MySQL
+column_name JSON NOT NULL
+
+-- PostgreSQL
+column_name JSONB NOT NULL
+```
+
+The `json` core type:
+- Stores arbitrary JSON-serializable data
+- Automatically uses appropriate type for database backend
+- Supports JSON path queries where available
 
 ## Parameterized AttributeTypes
 
@@ -337,11 +378,12 @@ class Attachments(dj.Manual):
 │  <djblob>   <xblob>   <attach>   <xattach>   <custom>             │
 ├───────────────────────────────────────────────────────────────────┤
 │                     Core DataJoint Types                           │
-│   longblob     content      object       filepath                  │
-│              content@s    object@s     filepath@s                  │
+│   longblob     content      object      filepath      json         │
+│              content@s    object@s                                 │
 ├───────────────────────────────────────────────────────────────────┤
-│                        MySQL Types                                 │
-│   LONGBLOB     CHAR(64)      JSON       JSON      VARCHAR   etc.  │
+│                    Database Types                                  │
+│   LONGBLOB     CHAR(64)     JSON      JSON/JSONB    VARCHAR  etc. │
+│                           (MySQL)    (PostgreSQL)                  │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -357,7 +399,7 @@ class Attachments(dj.Manual):
 | `<xattach@s>` | `content@s` | `_content/{hash}` | Yes | Local file path |
 | `object` | — | `{schema}/{table}/{pk}/` | No | ObjectRef |
 | `object@s` | — | `{schema}/{table}/{pk}/` | No | ObjectRef |
-| `filepath@s` | — | `_files/{user-path}` | No | ObjectRef |
+| `filepath` | `json` | External (any URI) | No | ObjectRef |
 
 ## Reference Counting for Content Type
 
@@ -408,33 +450,35 @@ def garbage_collect(project):
 
 | Feature | `object` | `content` | `filepath` |
 |---------|----------|-----------|------------|
-| Addressing | Primary key | Content hash | User-defined path |
+| Location | OAS store | OAS store | Anywhere (URI) |
+| Addressing | Primary key | Content hash | User URI |
 | Path control | DataJoint | DataJoint | User |
 | Deduplication | No | Yes | No |
-| Structure | Files, folders, Zarr | Single blob only | Files, folders |
+| Structure | Files, folders, Zarr | Single blob only | Any (via fsspec) |
 | Access | ObjectRef (lazy) | Transparent (bytes) | ObjectRef (lazy) |
-| GC | Deleted with row | Reference counted | Deleted with row |
-| Checksum | Optional | Implicit (is the hash) | Stored in DB |
+| GC | Deleted with row | Reference counted | N/A (external) |
+| Integrity | DataJoint managed | DataJoint managed | External (no guarantees) |
 
 **When to use each:**
 - **`object`**: Large/complex objects where DataJoint controls organization (Zarr, HDF5)
 - **`content`**: Deduplicated serialized data or file attachments via `<xblob>`, `<xattach>`
-- **`filepath`**: User-managed file organization, external data sources
+- **`filepath`**: External references (S3, URLs, etc.) not managed by DataJoint
 
 ## Key Design Decisions
 
-1. **Layered architecture**: Core types (`object`, `content`, `filepath`) separate from AttributeTypes
-2. **Three OAS regions**: object (PK-addressed), content (hash-addressed), filepath (user-addressed)
-3. **Content type**: Single-blob, content-addressed, deduplicated storage
-4. **Filepath upgrade**: Returns ObjectRef (lazy) instead of copying files
-5. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
-6. **Naming convention**:
+1. **Layered architecture**: Core types (`object`, `content`, `filepath`, `json`) separate from AttributeTypes
+2. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
+3. **Filepath as reference tracker**: Not an OAS region - tracks external URIs (S3, HTTP, etc.)
+4. **Content type**: Single-blob, content-addressed, deduplicated storage
+5. **JSON core type**: Cross-database compatible (MySQL JSON, PostgreSQL JSONB)
+6. **Parameterized types**: `<type@param>` passes parameter to underlying dtype
+7. **Naming convention**:
    - `<djblob>` = internal serialized (database)
    - `<xblob>` = external serialized (content-addressed)
    - `<attach>` = internal file (single file)
    - `<xattach>` = external file (single file)
-7. **Transparent access**: AttributeTypes return Python objects or file paths
-8. **Lazy access**: `object`, `object@store`, and `filepath@store` return ObjectRef
+8. **Transparent access**: AttributeTypes return Python objects or file paths
+9. **Lazy access**: `object`, `object@store`, and `filepath` return ObjectRef
 
 ## Migration from Legacy Types
 
