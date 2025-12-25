@@ -9,7 +9,7 @@ from hashlib import sha1
 
 import pyparsing as pp
 
-from .attribute_adapter import get_adapter
+from .attribute_type import get_adapter
 from .condition import translate_attribute
 from .errors import DataJointError
 from .settings import config

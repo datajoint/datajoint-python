@@ -5,7 +5,7 @@ from itertools import chain
 
 import numpy as np
 
-from .attribute_adapter import get_adapter
+from .attribute_type import get_adapter
 from .attribute_type import AttributeType
 from .declare import (
     CORE_TYPE_NAMES,
@@ -65,7 +65,6 @@ default_attribute_properties = dict(  # these default values are set in computed
     store=None,
     unsupported=False,
     attribute_expression=None,
-    database=None,
     dtype=object,
 )
 
@@ -282,7 +281,6 @@ class Heading:
         for attr in attributes:
             attr.update(
                 in_key=(attr["in_key"] == "PRI"),
-                database=database,
                 nullable=attr["nullable"] == "YES",
                 autoincrement=bool(re.search(r"auto_increment", attr["Extra"], flags=re.I)),
                 numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "INTEGER", "FLOAT")),

@@ -56,8 +56,6 @@ serialize_lookup = {
 
 compression = {b"ZL123\0": zlib.decompress}
 
-bypass_serialization = False  # runtime setting to bypass blob (en|de)code
-
 # runtime setting to read integers as 32-bit to read blobs created by the 32-bit
 # version of the mYm library for MATLAB
 use_32bit_dims = False
@@ -507,17 +505,9 @@ class Blob:
 
 
 def pack(obj, compress=True):
-    if bypass_serialization:
-        # provide a way to move blobs quickly without de/serialization
-        assert isinstance(obj, bytes) and obj.startswith((b"ZL123\0", b"mYm\0", b"dj0\0"))
-        return obj
     return Blob().pack(obj, compress=compress)
 
 
 def unpack(blob, squeeze=False):
-    if bypass_serialization:
-        # provide a way to move blobs quickly without de/serialization
-        assert isinstance(blob, bytes) and blob.startswith((b"ZL123\0", b"mYm\0", b"dj0\0"))
-        return blob
     if blob is not None:
         return Blob(squeeze=squeeze).unpack(blob)
