@@ -89,10 +89,13 @@ MySQL and PostgreSQL backends. Users should prefer these over native database ty
 
 ### Binary Types
 
+Core binary types store raw bytes without any serialization. Use `<djblob>` AttributeType
+for serialized Python objects.
+
 | Core Type | Description | MySQL | PostgreSQL |
 |-----------|-------------|-------|------------|
-| `blob` | Binary up to 64KB | `BLOB` | `BYTEA` |
-| `longblob` | Binary up to 4GB | `LONGBLOB` | `BYTEA` |
+| `blob` | Raw bytes up to 64KB | `BLOB` | `BYTEA` |
+| `longblob` | Raw bytes up to 4GB | `LONGBLOB` | `BYTEA` |
 
 ### Special Types
 

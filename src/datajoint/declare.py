@@ -87,14 +87,15 @@ EXTERNAL_TYPES = {
     "EXTERNAL_BLOB",
     "FILEPATH",
 }  # data referenced by a UUID in external tables
-SERIALIZED_TYPES = {
+# Blob and attachment types cannot have SQL default values (other than NULL)
+BINARY_TYPES = {
     "EXTERNAL_ATTACH",
     "INTERNAL_ATTACH",
     "EXTERNAL_BLOB",
     "INTERNAL_BLOB",
-}  # requires packing data
+}
 
-assert set().union(SPECIAL_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)
+assert set().union(SPECIAL_TYPES, EXTERNAL_TYPES, BINARY_TYPES) <= set(TYPE_PATTERN)
 
 
 def match_type(attribute_type):
@@ -549,12 +550,12 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         match["comment"] = ":{type}:{comment}".format(**match)  # insert custom type into comment
         substitute_special_type(match, category, foreign_key_sql, context)
 
-    if category in SERIALIZED_TYPES and match["default"] not in {
+    if category in BINARY_TYPES and match["default"] not in {
         "DEFAULT NULL",
         "NOT NULL",
     }:
         raise DataJointError(
-            "The default value for a blob or attachment attributes can only be NULL in:\n{line}".format(line=line)
+            "The default value for blob or attachment attributes can only be NULL in:\n{line}".format(line=line)
         )
 
     sql = ("`{name}` {type} {default}" + (' COMMENT "{comment}"' if match["comment"] else "")).format(**match)
