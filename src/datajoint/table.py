@@ -925,7 +925,7 @@ class Table(QueryExpression):
         processing by mysql API.
 
         In the simplified type system:
-        - Adapters (AttributeTypes) handle all custom encoding
+        - Adapters (AttributeTypes) handle all custom encoding via type chains
         - UUID values are converted to bytes
         - JSON values are serialized
         - Blob values pass through as bytes
@@ -940,10 +940,23 @@ class Table(QueryExpression):
             return None
         attr = self.heading[name]
 
-        # Apply adapter encoding first (if present)
+        # Apply adapter encoding with type chain support
         if attr.adapter:
+            from .attribute_type import resolve_dtype
+
             attr.adapter.validate(value)
-            value = attr.adapter.encode(value, key=None)
+
+            # Resolve full type chain
+            _, type_chain, resolved_store = resolve_dtype(f"<{attr.adapter.type_name}>", store_name=attr.store)
+
+            # Apply encoders from outermost to innermost
+            for attr_type in type_chain:
+                # Pass store_name to encoders that support it
+                try:
+                    value = attr_type.encode(value, key=None, store_name=resolved_store)
+                except TypeError:
+                    # Encoder doesn't accept store_name parameter
+                    value = attr_type.encode(value, key=None)
 
         # Handle NULL values
         if value is None or (attr.numeric and (value == "" or np.isnan(float(value)))):

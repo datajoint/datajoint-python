@@ -40,7 +40,10 @@ def _get(connection, attr, data, squeeze, download_path):
     - JSON types are parsed
     - UUID types are converted from bytes
     - Blob types return raw bytes (unless an adapter handles them)
-    - Adapters (AttributeTypes) handle all custom encoding/decoding
+    - Adapters (AttributeTypes) handle all custom encoding/decoding via type chains
+
+    For composed types (e.g., <xblob> using <content>), decoders are applied
+    in reverse order: innermost first, then outermost.
 
     :param connection: a dj.Connection object
     :param attr: attribute from the table's heading
@@ -52,29 +55,35 @@ def _get(connection, attr, data, squeeze, download_path):
     if data is None:
         return None
 
-    # JSON type - parse and optionally decode via adapter
-    if attr.json:
-        parsed = json.loads(data)
-        if attr.adapter:
-            return attr.adapter.decode(parsed, key=None)
-        return parsed
-
-    # UUID type - convert bytes to UUID object
-    if attr.uuid:
-        result = uuid_module.UUID(bytes=data)
-        if attr.adapter:
-            return attr.adapter.decode(result, key=None)
-        return result
-
-    # Blob type - return raw bytes or decode via adapter
-    if attr.is_blob:
-        if attr.adapter:
-            return attr.adapter.decode(data, key=None)
-        return data  # raw bytes
-
-    # Other types with adapter
+    # Get the final storage type and type chain if adapter present
     if attr.adapter:
-        return attr.adapter.decode(data, key=None)
+        from .attribute_type import resolve_dtype
+
+        final_dtype, type_chain, _ = resolve_dtype(f"<{attr.adapter.type_name}>")
+
+        # First, process the final dtype (what's stored in the database)
+        if final_dtype.lower() == "json":
+            data = json.loads(data)
+        elif final_dtype.lower() in ("longblob", "blob", "mediumblob", "tinyblob"):
+            pass  # Blob data is already bytes
+        elif final_dtype.lower() == "binary(16)":
+            data = uuid_module.UUID(bytes=data)
+
+        # Apply decoders in reverse order: innermost first, then outermost
+        for attr_type in reversed(type_chain):
+            data = attr_type.decode(data, key=None)
+
+        return data
+
+    # No adapter - handle native types
+    if attr.json:
+        return json.loads(data)
+
+    if attr.uuid:
+        return uuid_module.UUID(bytes=data)
+
+    if attr.is_blob:
+        return data  # raw bytes
 
     # Native types - pass through unchanged
     return data
