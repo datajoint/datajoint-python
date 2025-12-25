@@ -92,3 +92,82 @@ phase_two.Protocol.insert(phase_one.Protocol)
 protocols = phase_one.Protocol.fetch()
 phase_two.Protocol.insert(protocols)
 ```
+
+## Object attributes
+
+Tables with [`object`](../design/tables/object.md) type attributes can be inserted with
+local file paths, folder paths, remote URLs, or streams. The content is automatically
+copied to object storage.
+
+```python
+# Insert with local file path
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "raw_data": "/local/path/to/data.dat"
+})
+
+# Insert with local folder path
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "raw_data": "/local/path/to/data_folder/"
+})
+
+# Insert from remote URL (S3, GCS, Azure, HTTP)
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "raw_data": "s3://source-bucket/path/to/data.dat"
+})
+
+# Insert remote Zarr store (e.g., from collaborator)
+Recording.insert1({
+    "subject_id": 123,
+    "session_id": 45,
+    "neural_data": "gs://collaborator-bucket/shared/experiment.zarr"
+})
+
+# Insert from stream with explicit extension
+with open("/path/to/data.bin", "rb") as f:
+    Recording.insert1({
+        "subject_id": 123,
+        "session_id": 45,
+        "raw_data": (".bin", f)
+    })
+```
+
+Supported remote URL protocols: `s3://`, `gs://`, `az://`, `http://`, `https://`
+
+### Staged inserts
+
+For large objects like Zarr arrays, use `staged_insert1` to write directly to storage
+without creating a local copy first:
+
+```python
+import zarr
+
+with Recording.staged_insert1 as staged:
+    # Set primary key values first
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # Create Zarr array directly in object storage
+    z = zarr.open(staged.store('raw_data', '.zarr'), mode='w', shape=(10000, 10000))
+    z[:] = compute_large_array()
+
+    # Assign to record
+    staged.rec['raw_data'] = z
+
+# On successful exit: metadata computed, record inserted
+# On exception: storage cleaned up, no record inserted
+```
+
+The `staged_insert1` context manager provides:
+
+- `staged.rec`: Dict for setting attribute values
+- `staged.store(field, ext)`: Returns fsspec store for Zarr/xarray
+- `staged.open(field, ext, mode)`: Returns file handle for writing
+- `staged.fs`: Direct fsspec filesystem access
+
+See the [object type documentation](../design/tables/object.md) for more details.

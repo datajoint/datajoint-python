@@ -14,9 +14,7 @@ def test_external_put(schema_ext, mock_stores, mock_cache):
     """
     external storage put and get and remove
     """
-    ext = ExternalTable(
-        schema_ext.connection, store="raw", database=schema_ext.database
-    )
+    ext = ExternalTable(schema_ext.connection, store="raw", database=schema_ext.database)
     initial_length = len(ext)
     input_ = np.random.randn(3, 7, 8)
     count = 7
@@ -41,9 +39,7 @@ class TestLeadingSlash:
         """
         self._leading_slash(schema_ext, index=100, store="share")
 
-    def test_file_leading_slash(
-        self, schema_ext, mock_stores, mock_cache, minio_client
-    ):
+    def test_file_leading_slash(self, schema_ext, mock_stores, mock_cache, minio_client):
         """
         File external storage configured with leading slash
         """
@@ -56,58 +52,42 @@ class TestLeadingSlash:
         id = index
         dj.config["stores"][store]["location"] = "leading/slash/test"
         SimpleRemote.insert([{"simple": id, "item": value}])
-        assert np.array_equal(
-            value, (SimpleRemote & "simple={}".format(id)).fetch1("item")
-        )
+        assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
         id = index + 1
         dj.config["stores"][store]["location"] = "/leading/slash/test"
         SimpleRemote.insert([{"simple": id, "item": value}])
-        assert np.array_equal(
-            value, (SimpleRemote & "simple={}".format(id)).fetch1("item")
-        )
+        assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
         id = index + 2
         dj.config["stores"][store]["location"] = "leading\\slash\\test"
         SimpleRemote.insert([{"simple": id, "item": value}])
-        assert np.array_equal(
-            value, (SimpleRemote & "simple={}".format(id)).fetch1("item")
-        )
+        assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
         id = index + 3
         dj.config["stores"][store]["location"] = "f:\\leading\\slash\\test"
         SimpleRemote.insert([{"simple": id, "item": value}])
-        assert np.array_equal(
-            value, (SimpleRemote & "simple={}".format(id)).fetch1("item")
-        )
+        assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
         id = index + 4
         dj.config["stores"][store]["location"] = "f:\\leading/slash\\test"
         SimpleRemote.insert([{"simple": id, "item": value}])
-        assert np.array_equal(
-            value, (SimpleRemote & "simple={}".format(id)).fetch1("item")
-        )
+        assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
         id = index + 5
         dj.config["stores"][store]["location"] = "/"
         SimpleRemote.insert([{"simple": id, "item": value}])
-        assert np.array_equal(
-            value, (SimpleRemote & "simple={}".format(id)).fetch1("item")
-        )
+        assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
         id = index + 6
         dj.config["stores"][store]["location"] = "C:\\"
         SimpleRemote.insert([{"simple": id, "item": value}])
-        assert np.array_equal(
-            value, (SimpleRemote & "simple={}".format(id)).fetch1("item")
-        )
+        assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
         id = index + 7
         dj.config["stores"][store]["location"] = ""
         SimpleRemote.insert([{"simple": id, "item": value}])
-        assert np.array_equal(
-            value, (SimpleRemote & "simple={}".format(id)).fetch1("item")
-        )
+        assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
         dj.config["stores"][store]["location"] = oldConfig
 

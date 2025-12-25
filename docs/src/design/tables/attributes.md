@@ -48,9 +48,10 @@ fractional digits.
    Because of its well-defined precision, `decimal` values can be used in equality
    comparison and be included in primary keys.
 
--  `longblob`: arbitrary numeric array (e.g. matrix, image, structure), up to 4
+-  `longblob`: raw binary data, up to 4
 [GiB](http://en.wikipedia.org/wiki/Gibibyte) in size.
-   Numeric arrays are compatible between MATLAB and Python (NumPy).
+   Stores and returns raw bytes without serialization.
+   For serialized Python objects (arrays, dicts, etc.), use `<djblob>` instead.
    The `longblob` and other `blob` datatypes can be configured to store data
    [externally](../../sysadmin/external-store.md) by using the `blob@store` syntax.
 
@@ -71,11 +72,58 @@ info).
 These types abstract certain kinds of non-database data to facilitate use
 together with DataJoint.
 
+- `<djblob>`: DataJoint's native serialization format for Python objects. Supports
+NumPy arrays, dicts, lists, datetime objects, and nested structures. Compatible with
+MATLAB. See [custom types](customtype.md) for details.
+
+- `object`: managed [file and folder storage](object.md) with support for direct writes
+(Zarr, HDF5) and fsspec integration. Recommended for new pipelines.
+
 - `attach`: a [file attachment](attach.md) similar to email attachments facillitating
 sending/receiving an opaque data file to/from a DataJoint pipeline.
 
 - `filepath@store`: a [filepath](filepath.md) used to link non-DataJoint managed files
 into a DataJoint pipeline.
+
+- `<custom_type>`: a [custom attribute type](customtype.md) that defines bidirectional
+conversion between Python objects and database storage formats. Use this to store
+complex data types like graphs, domain-specific objects, or custom data structures.
+
+## Numeric type aliases
+
+DataJoint provides convenient type aliases that map to standard MySQL numeric types.
+These aliases use familiar naming conventions from NumPy and other numerical computing
+libraries, making table definitions more readable and explicit about data precision.
+
+| Alias | MySQL Type | Description |
+|-------|------------|-------------|
+| `bool` | `tinyint` | Boolean value (0 or 1) |
+| `int8` | `tinyint` | 8-bit signed integer (-128 to 127) |
+| `uint8` | `tinyint unsigned` | 8-bit unsigned integer (0 to 255) |
+| `int16` | `smallint` | 16-bit signed integer (-32,768 to 32,767) |
+| `uint16` | `smallint unsigned` | 16-bit unsigned integer (0 to 65,535) |
+| `int32` | `int` | 32-bit signed integer |
+| `uint32` | `int unsigned` | 32-bit unsigned integer |
+| `int64` | `bigint` | 64-bit signed integer |
+| `uint64` | `bigint unsigned` | 64-bit unsigned integer |
+| `float32` | `float` | 32-bit single-precision floating point |
+| `float64` | `double` | 64-bit double-precision floating point |
+
+Example usage:
+
+```python
+@schema
+class Measurement(dj.Manual):
+    definition = """
+    measurement_id : int
+    ---
+    temperature : float32       # single-precision temperature reading
+    precise_value : float64     # double-precision measurement
+    sample_count : uint32       # unsigned 32-bit counter
+    sensor_flags : uint8        # 8-bit status flags
+    is_valid : bool             # boolean flag
+    """
+```
 
 ## Datatypes not (yet) supported
 

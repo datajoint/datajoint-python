@@ -49,7 +49,7 @@ def test_invalid_uuid_restrict1(schema_uuid):
         k, m = (Basic & {"item": u}).fetch1("KEY", "number")
 
 
-def test_invalid_uuid_restrict1(schema_uuid):
+def test_invalid_uuid_restrict2(schema_uuid):
     """test that only UUID objects are accepted when inserting UUID fields"""
     u = "abc"
     with pytest.raises(DataJointError):

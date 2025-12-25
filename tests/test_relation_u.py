@@ -1,10 +1,9 @@
-import pytest
 from pytest import raises
 
 import datajoint as dj
 
-from .schema import *
-from .schema_simple import *
+from .schema import Language, TTest
+from .schema_simple import ArgmaxTest
 
 
 def test_restriction(lang, languages, trial):
@@ -22,7 +21,7 @@ def test_restriction(lang, languages, trial):
 
 def test_invalid_restriction(schema_any):
     with raises(dj.DataJointError):
-        result = dj.U("color") & dict(color="red")
+        dj.U("color") & dict(color="red")
 
 
 def test_ineffective_restriction(lang):
@@ -42,7 +41,7 @@ def test_join(experiment):
 
 def test_invalid_join(schema_any):
     with raises(dj.DataJointError):
-        rel = dj.U("language") * dict(language="English")
+        dj.U("language") * dict(language="English")
 
 
 def test_repr_without_attrs(schema_any):
@@ -60,7 +59,7 @@ def test_aggregations(schema_any):
     n2 = dj.U().aggr(Language, n="count(*)").fetch1("n")
     assert n1 == n2
     rel = dj.U("language").aggr(Language, number_of_speakers="count(*)")
-    assert len(rel) == len(set(l[1] for l in Language.contents))
+    assert len(rel) == len(set(lang[1] for lang in Language.contents))
     assert (rel & 'language="English"').fetch1("number_of_speakers") == 3
 
 
@@ -75,6 +74,4 @@ def test_aggr(schema_any, schema_simp):
     rel = ArgmaxTest()
     amax1 = (dj.U("val") * rel) & dj.U("secondary_key").aggr(rel, val="min(val)")
     amax2 = (dj.U("val") * rel) * dj.U("secondary_key").aggr(rel, val="min(val)")
-    assert (
-        len(amax1) == len(amax2) == rel.n
-    ), "Aggregated argmax with join and restriction does not yield the same length."
+    assert len(amax1) == len(amax2) == rel.n, "Aggregated argmax with join and restriction does not yield the same length."

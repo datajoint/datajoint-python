@@ -1,46 +1,82 @@
 # Credentials
 
-Configure the connection through DataJoint's `config` object:
+Database credentials should never be stored in config files. Use environment variables or a secrets directory instead.
 
-```python
-> import datajoint as dj
-DataJoint 0.4.9 (February 1, 2017)
-No configuration found. Use `dj.config` to configure and save the configuration.
+## Environment Variables (Recommended)
+
+Set the following environment variables:
+
+```bash
+export DJ_HOST=db.example.com
+export DJ_USER=alice
+export DJ_PASS=secret
 ```
 
-You may now set the database credentials:
+These take priority over all other configuration sources.
 
-```python
-dj.config['database.host'] = "alicelab.datajoint.io"
-dj.config['database.user'] = "alice"
-dj.config['database.password'] = "haha not my real password"
+## Secrets Directory
+
+Create a `.secrets/` directory next to your `datajoint.json`:
+
+```
+myproject/
+├── datajoint.json
+└── .secrets/
+    ├── database.user      # Contains: alice
+    └── database.password  # Contains: secret
 ```
 
-Skip setting the password to make DataJoint prompt to enter the password every time.
+Each file contains a single secret value (no JSON, just the raw value).
 
-You may save the configuration in the local work directory with
-`dj.config.save_local()` or for all your projects in `dj.config.save_global()`.
-Configuration changes should be made through the `dj.config` interface; the config file
-should not be modified directly by the user.
+Add `.secrets/` to your `.gitignore`:
 
-You may leave the user or the password as `None`, in which case you will be prompted to
-enter them manually for every session.
-Setting the password as an empty string allows access without a password.
-
-Note that the system environment variables `DJ_HOST`, `DJ_USER`, and `DJ_PASS` will
-overwrite the settings in the config file.
-You can use them to set the connection credentials instead of config files.
-
-To change the password, the `dj.set_password` function will walk you through the
-process:
-
-```python
-dj.set_password()
+```
+# .gitignore
+.secrets/
 ```
 
-After that, update the password in the configuration and save it as described above:
+## Docker / Kubernetes
+
+Mount secrets at `/run/secrets/datajoint/`:
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    volumes:
+      - ./secrets:/run/secrets/datajoint:ro
+```
+
+## Interactive Prompt
+
+If credentials are not provided via environment variables or secrets, DataJoint will prompt for them when connecting:
 
 ```python
-dj.config['database.password'] = 'my#cool!new*psswrd'
-dj.config.save_local()   # or dj.config.save_global()
+>>> import datajoint as dj
+>>> dj.conn()
+Please enter DataJoint username: alice
+Please enter DataJoint password:
 ```
+
+## Programmatic Access
+
+You can also set credentials in Python (useful for testing):
+
+```python
+import datajoint as dj
+
+dj.config.database.user = "alice"
+dj.config.database.password = "secret"
+```
+
+Note that `password` uses `SecretStr` internally, so it will be masked in logs and repr output.
+
+## Changing Database Password
+
+To change your database password, use your database's native tools:
+
+```sql
+ALTER USER 'alice'@'%' IDENTIFIED BY 'new_password';
+```
+
+Then update your environment variables or secrets file accordingly.

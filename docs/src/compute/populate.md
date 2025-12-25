@@ -40,7 +40,7 @@ class FilteredImage(dj.Computed):
      # Filtered image
      -> Image
      ---
-     filtered_image : longblob
+     filtered_image : <djblob>
      """
 
      def make(self, key):
@@ -196,7 +196,7 @@ class ImageAnalysis(dj.Computed):
     # Complex image analysis results
     -> Image
     ---
-    analysis_result : longblob
+    analysis_result : <djblob>
     processing_time : float
     """
 
@@ -230,7 +230,7 @@ class ImageAnalysis(dj.Computed):
     # Complex image analysis results
     -> Image
     ---
-    analysis_result : longblob
+    analysis_result : <djblob>
     processing_time : float
     """
 

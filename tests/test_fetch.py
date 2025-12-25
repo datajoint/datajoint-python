@@ -1,11 +1,7 @@
 import decimal
-import io
 import itertools
-import logging
 import os
-import warnings
 from operator import itemgetter
-from typing import List
 
 import numpy as np
 import pandas
@@ -49,10 +45,8 @@ def test_order_by(lang, languages):
         cur = lang.fetch(order_by=("name " + ord_name, "language " + ord_lang))
         languages.sort(key=itemgetter(1), reverse=ord_lang == "DESC")
         languages.sort(key=itemgetter(0), reverse=ord_name == "DESC")
-        for c, l in zip(cur, languages):
-            assert np.all(
-                cc == ll for cc, ll in zip(c, l)
-            ), "Sorting order is different"
+        for c, l in zip(cur, languages):  # noqa: E741
+            assert np.all(cc == ll for cc, ll in zip(c, l)), "Sorting order is different"
 
 
 def test_order_by_default(lang, languages):
@@ -60,7 +54,7 @@ def test_order_by_default(lang, languages):
     cur = lang.fetch(order_by=("language", "name DESC"))
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
-    for c, l in zip(cur, languages):
+    for c, l in zip(cur, languages):  # noqa: E741
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 
@@ -77,7 +71,7 @@ def test_order_by_limit(lang, languages):
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
-    for c, l in list(zip(cur, languages))[:4]:
+    for c, l in list(zip(cur, languages))[:4]:  # noqa: E741
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 
@@ -105,7 +99,7 @@ def test_limit_offset(lang, languages):
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
-    for c, l in list(zip(cur, languages[2:6])):
+    for c, l in list(zip(cur, languages[2:6])):  # noqa: E741
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 
@@ -119,9 +113,7 @@ def test_iter(lang, languages):
     # now as dict
     cur = lang.fetch(as_dict=True, order_by=("language", "name DESC"))
     for row, (tname, tlang) in list(zip(cur, languages)):
-        assert (
-            row["name"] == tname and row["language"] == tlang
-        ), "Values are not the same"
+        assert row["name"] == tname and row["language"] == tlang, "Values are not the same"
 
 
 def test_keys(lang, languages):
@@ -169,7 +161,7 @@ def test_fetch1_step1(lang, languages):
 
 def test_misspelled_attribute(schema_any):
     with pytest.raises(dj.DataJointError):
-        f = (schema.Language & 'lang = "ENGLISH"').fetch()
+        (schema.Language & 'lang = "ENGLISH"').fetch()
 
 
 def test_repr(subject):
@@ -201,7 +193,7 @@ def test_offset(lang, languages):
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
-    for c, l in list(zip(cur, languages[1:]))[:4]:
+    for c, l in list(zip(cur, languages[1:]))[:4]:  # noqa: E741
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 
@@ -258,7 +250,7 @@ def test_nullable_numbers(schema_any):
 
 def test_fetch_format(subject):
     """test fetch_format='frame'"""
-    with dj.config(fetch_format="frame"):
+    with dj.config.override(fetch_format="frame"):
         # test if lists are both dicts
         list1 = sorted(subject.proj().fetch(as_dict=True), key=itemgetter("subject_id"))
         list2 = sorted(subject.fetch(dj.key), key=itemgetter("subject_id"))
@@ -272,9 +264,7 @@ def test_fetch_format(subject):
 
         subject_notes, key, real_id = subject.fetch("subject_notes", dj.key, "real_id")
 
-        np.testing.assert_array_equal(
-            sorted(subject_notes), sorted(tmp["subject_notes"])
-        )
+        np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp["subject_notes"]))
         np.testing.assert_array_equal(sorted(real_id), sorted(tmp["real_id"]))
         list1 = sorted(key, key=itemgetter("subject_id"))
         for l1, l2 in zip(list1, list2):
@@ -283,9 +273,9 @@ def test_fetch_format(subject):
 
 def test_key_fetch1(subject):
     """test KEY fetch1 - issue #976"""
-    with dj.config(fetch_format="array"):
+    with dj.config.override(fetch_format="array"):
         k1 = (subject & "subject_id=10").fetch1("KEY")
-    with dj.config(fetch_format="frame"):
+    with dj.config.override(fetch_format="frame"):
         k2 = (subject & "subject_id=10").fetch1("KEY")
     assert k1 == k2
 
@@ -300,7 +290,7 @@ def test_query_caching(schema_any):
     # initialize cache directory
     os.mkdir(os.path.expanduser("~/dj_query_cache"))
 
-    with dj.config(query_cache=os.path.expanduser("~/dj_query_cache")):
+    with dj.config.override(query_cache=os.path.expanduser("~/dj_query_cache")):
         conn = schema.TTest3.connection
         # insert sample data and load cache
         schema.TTest3.insert([dict(key=100 + i, value=200 + i) for i in range(2)])
