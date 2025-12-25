@@ -19,7 +19,7 @@ This plan describes the implementation of a three-layer type architecture for Da
 | Phase 1: Core Type System | ✅ Complete | CORE_TYPES dict, type chain resolution |
 | Phase 2: Content-Addressed Storage | ✅ Complete | Function-based, no registry table |
 | Phase 2b: Path-Addressed Storage | ✅ Complete | ObjectType for files/folders |
-| Phase 3: User-Defined AttributeTypes | 🔲 Pending | AttachType/FilepathType pending |
+| Phase 3: User-Defined AttributeTypes | ✅ Complete | AttachType, XAttachType, FilepathType |
 | Phase 4: Insert and Fetch Integration | ✅ Complete | Type chain encoding/decoding |
 | Phase 5: Garbage Collection | 🔲 Pending | |
 | Phase 6: Documentation and Testing | 🔲 Pending | |
@@ -227,14 +227,16 @@ Both produce the same JSON metadata format compatible with `ObjectRef.from_json(
 
 ---
 
-## Phase 3: User-Defined AttributeTypes
+## Phase 3: User-Defined AttributeTypes ✅
 
-**Status**: Partially complete
+**Status**: Complete
+
+All built-in AttributeTypes are implemented in `src/datajoint/builtin_types.py`.
 
 ### 3.1 XBlobType ✅
-Implemented as shown above. Composes with `<content>`.
+External serialized blobs using content-addressed storage. Composes with `<content>`.
 
-### 3.2 AttachType and XAttachType 🔲
+### 3.2 AttachType ✅
 
 ```python
 @register_type
@@ -243,40 +245,52 @@ class AttachType(AttributeType):
     type_name = "attach"
     dtype = "longblob"
 
-    def encode(self, filepath, *, key=None) -> bytes:
-        path = Path(filepath)
-        return path.name.encode() + b"\0" + path.read_bytes()
+    def encode(self, filepath, *, key=None, store_name=None) -> bytes:
+        # Returns: filename (UTF-8) + null byte + contents
+        return path.name.encode("utf-8") + b"\x00" + path.read_bytes()
 
     def decode(self, stored, *, key=None) -> str:
-        filename, contents = stored.split(b"\0", 1)
-        # Write to download_path and return path
+        # Extracts to download_path, returns local path
         ...
+```
 
+### 3.3 XAttachType ✅
+
+```python
 @register_type
 class XAttachType(AttributeType):
     """External file attachment using content-addressed storage."""
     type_name = "xattach"
-    dtype = "<content>"
-    # Similar to AttachType but composes with content storage
+    dtype = "<content>"  # Composes with ContentType
+    # Same encode/decode as AttachType, but stored externally with dedup
 ```
 
-### 3.3 FilepathType 🔲
+### 3.4 FilepathType ✅
 
 ```python
 @register_type
 class FilepathType(AttributeType):
-    """Portable relative path reference within configured stores."""
+    """Reference to existing file in configured store."""
     type_name = "filepath"
     dtype = "json"
 
     def encode(self, relative_path: str, *, key=None, store_name=None) -> dict:
-        """Register reference to file in store."""
-        return {'path': relative_path, 'store': store_name}
+        # Verifies file exists, returns metadata
+        return {'path': path, 'store': store_name, 'size': size, ...}
 
     def decode(self, stored: dict, *, key=None) -> ObjectRef:
-        """Return ObjectRef for lazy access."""
-        return ObjectRef(store=stored['store'], path=stored['path'])
+        # Returns ObjectRef for lazy access
+        return ObjectRef.from_json(stored, backend=backend)
 ```
+
+### Type Comparison
+
+| Type | Storage | Copies File | Dedup | Returns |
+|------|---------|-------------|-------|---------|
+| `<attach>` | Database | Yes | No | Local path |
+| `<xattach>` | External | Yes | Yes | Local path |
+| `<filepath>` | Reference | No | N/A | ObjectRef |
+| `<object>` | External | Yes | No | ObjectRef |
 
 ---
 
@@ -433,9 +447,12 @@ Layer 1: Native Database Types
 **Built-in AttributeTypes:**
 ```
 <djblob>   → longblob (internal serialized storage)
+<attach>   → longblob (internal file attachment)
 <object>   → json     (path-addressed, for Zarr/HDF5/folders)
+<filepath> → json     (reference to existing file in store)
 <content>  → json     (content-addressed with deduplication)
 <xblob>    → <content> → json (external serialized with dedup)
+<xattach>  → <content> → json (external file attachment with dedup)
 ```
 
 **Type Composition Example:**

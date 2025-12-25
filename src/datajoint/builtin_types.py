@@ -10,6 +10,9 @@ Built-in Types:
     - ``<content>``: Content-addressed storage with SHA256 deduplication
     - ``<xblob>``: External serialized blobs using content-addressed storage
     - ``<object>``: Path-addressed storage for files/folders (Zarr, HDF5)
+    - ``<attach>``: Internal file attachment stored in database
+    - ``<xattach>``: External file attachment with deduplication
+    - ``<filepath@store>``: Reference to existing file in store
 
 Example - Creating a Custom Type:
     Here's how to define your own AttributeType, modeled after the built-in types::
@@ -427,3 +430,317 @@ class ObjectType(AttributeType):
         if isinstance(value, (str, Path)):
             return
         raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
+
+
+# =============================================================================
+# File Attachment Types
+# =============================================================================
+
+
+@register_type
+class AttachType(AttributeType):
+    """
+    Internal file attachment stored in database.
+
+    The ``<attach>`` type stores a file directly in the database as a ``LONGBLOB``.
+    The filename is preserved and the file is extracted to the configured
+    download path on fetch.
+
+    Example::
+
+        @schema
+        class Documents(dj.Manual):
+            definition = '''
+            doc_id : int
+            ---
+            report : <attach>
+            '''
+
+        # Insert a file
+        table.insert1({'doc_id': 1, 'report': '/path/to/report.pdf'})
+
+        # Fetch extracts to download_path and returns local path
+        local_path = (table & 'doc_id=1').fetch1('report')
+
+    Storage Format:
+        The blob contains: ``filename\\0contents``
+        - Filename (UTF-8 encoded) + null byte + raw file contents
+
+    Note:
+        - For large files, use ``<xattach>`` (external storage with deduplication)
+        - For files that shouldn't be copied, use ``<filepath@store>``
+    """
+
+    type_name = "attach"
+    dtype = "longblob"
+
+    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
+        """
+        Read file and encode as filename + contents.
+
+        Args:
+            value: Path to file (str or Path).
+            key: Primary key values (unused).
+            store_name: Unused for internal storage.
+
+        Returns:
+            Bytes: filename (UTF-8) + null byte + file contents
+        """
+        from pathlib import Path
+
+        path = Path(value)
+        if not path.exists():
+            raise FileNotFoundError(f"Attachment file not found: {path}")
+        if path.is_dir():
+            raise IsADirectoryError(f"<attach> does not support directories: {path}")
+
+        filename = path.name
+        contents = path.read_bytes()
+        return filename.encode("utf-8") + b"\x00" + contents
+
+    def decode(self, stored: bytes, *, key: dict | None = None) -> str:
+        """
+        Extract file to download path and return local path.
+
+        Args:
+            stored: Blob containing filename + null + contents.
+            key: Primary key values (unused).
+
+        Returns:
+            Path to extracted file as string.
+        """
+        from pathlib import Path
+
+        from .settings import config
+
+        # Split on first null byte
+        null_pos = stored.index(b"\x00")
+        filename = stored[:null_pos].decode("utf-8")
+        contents = stored[null_pos + 1 :]
+
+        # Write to download path
+        download_path = Path(config.get("download_path", "."))
+        download_path.mkdir(parents=True, exist_ok=True)
+        local_path = download_path / filename
+
+        local_path.write_bytes(contents)
+        return str(local_path)
+
+    def validate(self, value: Any) -> None:
+        """Validate that value is a valid file path."""
+        from pathlib import Path
+
+        if not isinstance(value, (str, Path)):
+            raise TypeError(f"<attach> expects a file path, got {type(value).__name__}")
+
+
+@register_type
+class XAttachType(AttributeType):
+    """
+    External file attachment with content-addressed storage.
+
+    The ``<xattach>`` type stores files externally using content-addressed
+    storage. Like ``<attach>``, the filename is preserved and the file is
+    extracted on fetch. Unlike ``<attach>``, files are stored externally
+    with automatic deduplication.
+
+    Example::
+
+        @schema
+        class LargeDocuments(dj.Manual):
+            definition = '''
+            doc_id : int
+            ---
+            dataset : <xattach@mystore>
+            '''
+
+        # Insert a large file
+        table.insert1({'doc_id': 1, 'dataset': '/path/to/large_file.h5'})
+
+        # Fetch downloads and returns local path
+        local_path = (table & 'doc_id=1').fetch1('dataset')
+
+    Type Composition:
+        ``<xattach>`` composes with ``<content>``::
+
+            Insert: file → read + encode filename → put_content() → JSON
+            Fetch:  JSON → get_content() → extract → local path
+
+    Comparison::
+
+        | Type       | Storage  | Deduplication | Best for           |
+        |------------|----------|---------------|---------------------|
+        | <attach>   | Database | No            | Small files (<16MB) |
+        | <xattach>  | External | Yes           | Large files         |
+    """
+
+    type_name = "xattach"
+    dtype = "<content>"  # Composition: uses ContentType
+
+    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
+        """
+        Read file and encode as filename + contents.
+
+        Args:
+            value: Path to file (str or Path).
+            key: Primary key values (unused).
+            store_name: Passed to ContentType for storage.
+
+        Returns:
+            Bytes: filename (UTF-8) + null byte + file contents
+        """
+        from pathlib import Path
+
+        path = Path(value)
+        if not path.exists():
+            raise FileNotFoundError(f"Attachment file not found: {path}")
+        if path.is_dir():
+            raise IsADirectoryError(f"<xattach> does not support directories: {path}")
+
+        filename = path.name
+        contents = path.read_bytes()
+        return filename.encode("utf-8") + b"\x00" + contents
+
+    def decode(self, stored: bytes, *, key: dict | None = None) -> str:
+        """
+        Extract file to download path and return local path.
+
+        Args:
+            stored: Bytes containing filename + null + contents.
+            key: Primary key values (unused).
+
+        Returns:
+            Path to extracted file as string.
+        """
+        from pathlib import Path
+
+        from .settings import config
+
+        # Split on first null byte
+        null_pos = stored.index(b"\x00")
+        filename = stored[:null_pos].decode("utf-8")
+        contents = stored[null_pos + 1 :]
+
+        # Write to download path
+        download_path = Path(config.get("download_path", "."))
+        download_path.mkdir(parents=True, exist_ok=True)
+        local_path = download_path / filename
+
+        local_path.write_bytes(contents)
+        return str(local_path)
+
+    def validate(self, value: Any) -> None:
+        """Validate that value is a valid file path."""
+        from pathlib import Path
+
+        if not isinstance(value, (str, Path)):
+            raise TypeError(f"<xattach> expects a file path, got {type(value).__name__}")
+
+
+# =============================================================================
+# Filepath Reference Type
+# =============================================================================
+
+
+@register_type
+class FilepathType(AttributeType):
+    """
+    Reference to existing file in configured store.
+
+    The ``<filepath@store>`` type stores a reference to a file that already
+    exists in the storage backend. Unlike ``<attach>`` or ``<object>``, no
+    file copying occurs - only the path is recorded.
+
+    This is useful when:
+    - Files are managed externally (e.g., by acquisition software)
+    - Files are too large to copy
+    - You want to reference shared datasets
+
+    Example::
+
+        @schema
+        class Recordings(dj.Manual):
+            definition = '''
+            recording_id : int
+            ---
+            raw_data : <filepath@acquisition>
+            '''
+
+        # Reference an existing file (no copy)
+        table.insert1({'recording_id': 1, 'raw_data': 'subject01/session001/data.bin'})
+
+        # Fetch returns ObjectRef for lazy access
+        ref = (table & 'recording_id=1').fetch1('raw_data')
+        ref.read()      # Read file content
+        ref.download()  # Download to local path
+
+    Storage Format:
+        JSON metadata: ``{path, store}``
+
+    Warning:
+        The file must exist in the store at the specified path.
+        DataJoint does not manage the lifecycle of referenced files.
+    """
+
+    type_name = "filepath"
+    dtype = "json"
+
+    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> dict:
+        """
+        Store path reference as JSON metadata.
+
+        Args:
+            value: Relative path within the store (str).
+            key: Primary key values (unused).
+            store_name: Store where the file exists.
+
+        Returns:
+            Metadata dict: {path, store}
+        """
+        from datetime import datetime, timezone
+
+        from .content_registry import get_store_backend
+
+        path = str(value)
+
+        # Optionally verify file exists
+        backend = get_store_backend(store_name)
+        if not backend.exists(path):
+            raise FileNotFoundError(f"File not found in store '{store_name or 'default'}': {path}")
+
+        # Get file info
+        try:
+            size = backend.size(path)
+        except Exception:
+            size = None
+
+        return {
+            "path": path,
+            "store": store_name,
+            "size": size,
+            "is_dir": False,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    def decode(self, stored: dict, *, key: dict | None = None) -> Any:
+        """
+        Create ObjectRef handle for lazy access.
+
+        Args:
+            stored: Metadata dict with path and store.
+            key: Primary key values (unused).
+
+        Returns:
+            ObjectRef for accessing the file.
+        """
+        from .content_registry import get_store_backend
+        from .objectref import ObjectRef
+
+        store_name = stored.get("store")
+        backend = get_store_backend(store_name)
+        return ObjectRef.from_json(stored, backend=backend)
+
+    def validate(self, value: Any) -> None:
+        """Validate that value is a path string."""
+        if not isinstance(value, str):
+            raise TypeError(f"<filepath> expects a path string, got {type(value).__name__}")
