@@ -346,29 +346,42 @@ def _get(connection, attr, data, squeeze, download_path):
 ```python
 import datajoint as dj
 
-# Scan schemas and find orphaned content
+# Scan schemas and find orphaned content/objects
 stats = dj.gc.scan(schema1, schema2, store_name='mystore')
 
-# Remove orphaned content (dry_run=False to actually delete)
+# Remove orphaned content/objects (dry_run=False to actually delete)
 stats = dj.gc.collect(schema1, schema2, store_name='mystore', dry_run=True)
 
 # Format statistics for display
 print(dj.gc.format_stats(stats))
 ```
 
+**Supported storage patterns:**
+
+1. **Content-Addressed Storage** (`<content>`, `<xblob>`, `<xattach>`):
+   - Stored at: `_content/{hash[:2]}/{hash[2:4]}/{hash}`
+   - Referenced by SHA256 hash in JSON metadata
+
+2. **Path-Addressed Storage** (`<object>`):
+   - Stored at: `{schema}/{table}/objects/{pk}/{field}_{token}/`
+   - Referenced by path in JSON metadata
+
 **Key functions:**
 - `scan_references(*schemas, store_name=None)` - Scan tables for content hashes
+- `scan_object_references(*schemas, store_name=None)` - Scan tables for object paths
 - `list_stored_content(store_name=None)` - List all content in `_content/` directory
-- `scan(*schemas, store_name=None)` - Find orphaned content without deleting
-- `collect(*schemas, store_name=None, dry_run=True)` - Remove orphaned content
+- `list_stored_objects(store_name=None)` - List all objects in `*/objects/` directories
+- `scan(*schemas, store_name=None)` - Find orphaned content/objects without deleting
+- `collect(*schemas, store_name=None, dry_run=True)` - Remove orphaned content/objects
+- `delete_object(path, store_name=None)` - Delete an object directory
 - `format_stats(stats)` - Human-readable statistics output
 
 **GC Process:**
-1. Scan all tables in provided schemas for content-type attributes
-2. Extract content hashes from JSON metadata in those columns
-3. Scan storage `_content/` directory for all stored hashes
-4. Compute orphaned = stored - referenced
-5. Optionally delete orphaned content (when `dry_run=False`)
+1. Scan all tables in provided schemas for content-type and object-type attributes
+2. Extract content hashes and object paths from JSON metadata columns
+3. Scan storage for all stored content (`_content/`) and objects (`*/objects/`)
+4. Compute orphaned = stored - referenced (for both types)
+5. Optionally delete orphaned items (when `dry_run=False`)
 
 ---
 
