@@ -8,7 +8,6 @@ import warnings
 
 from .connection import conn
 from .errors import AccessError, DataJointError
-from .external import ExternalMapping
 from .heading import Heading
 from .jobs import JobTable
 from .settings import config
@@ -71,7 +70,6 @@ class Schema:
         self.create_schema = create_schema
         self.create_tables = create_tables
         self._jobs = None
-        self.external = ExternalMapping(self)
         self.add_objects = add_objects
         self.declare_list = []
         if schema_name:

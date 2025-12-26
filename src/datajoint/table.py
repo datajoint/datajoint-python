@@ -102,12 +102,9 @@ class Table(QueryExpression):
                 "Table class name `{name}` is invalid. Please use CamelCase. ".format(name=self.class_name)
                 + "Classes defining tables should be formatted in strict CamelCase."
             )
-        sql, external_stores = declare(self.full_table_name, self.definition, context)
+        sql, _external_stores = declare(self.full_table_name, self.definition, context)
         sql = sql.format(database=self.database)
         try:
-            # declare all external tables before declaring main table
-            for store in external_stores:
-                self.connection.schemas[self.database].external[store]
             self.connection.query(sql)
         except AccessError:
             # skip if no create privilege
@@ -126,7 +123,7 @@ class Table(QueryExpression):
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
         old_definition = self.describe(context=context)
-        sql, external_stores = alter(self.definition, old_definition, context)
+        sql, _external_stores = alter(self.definition, old_definition, context)
         if not sql:
             if prompt:
                 logger.warning("Nothing to alter.")
@@ -134,9 +131,6 @@ class Table(QueryExpression):
             sql = "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql)
             if not prompt or user_choice(sql + "\n\nExecute?") == "yes":
                 try:
-                    # declare all external tables before declaring main table
-                    for store in external_stores:
-                        self.connection.schemas[self.database].external[store]
                     self.connection.query(sql)
                 except AccessError:
                     # skip if no create privilege
@@ -351,7 +345,7 @@ class Table(QueryExpression):
                 size = source_path.stat().st_size
         else:
             raise DataJointError(
-                f"Invalid value type for object attribute {name}. " "Expected file path, folder path, or (ext, stream) tuple."
+                f"Invalid value type for object attribute {name}. Expected file path, folder path, or (ext, stream) tuple."
             )
 
         # Get storage spec for path building
