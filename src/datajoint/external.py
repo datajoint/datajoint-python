@@ -5,14 +5,17 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from tqdm import tqdm
 
-from .declare import EXTERNAL_TABLE_ROOT
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
 from .heading import Heading
 from .settings import config
 from .storage import StorageBackend
 from .table import FreeTable, Table
+
 from .utils import safe_write
+
+# External table name root (deprecated - external tables are being phased out)
+EXTERNAL_TABLE_ROOT = "~external"
 
 logger = logging.getLogger(__name__.split(".")[0])
 
