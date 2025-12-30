@@ -7,7 +7,7 @@ import re
 from .autopopulate import AutoPopulate
 from .errors import DataJointError
 from .table import Table
-from .utils import ClassProperty, from_camel_case
+from .utils import from_camel_case
 
 _base_regexp = r"[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*"
 
@@ -78,6 +78,26 @@ class TableMeta(type):
     def __iter__(cls):
         return iter(cls())
 
+    # Class properties - defined on metaclass to work at class level
+    @property
+    def connection(cls):
+        """The database connection for this table."""
+        return cls._connection
+
+    @property
+    def table_name(cls):
+        """The table name formatted for MySQL."""
+        if cls._prefix is None:
+            raise AttributeError("Class prefix is not defined!")
+        return cls._prefix + from_camel_case(cls.__name__)
+
+    @property
+    def full_table_name(cls):
+        """The fully qualified table name (`database`.`table`)."""
+        if cls.database is None:
+            return None
+        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+
 
 class UserTable(Table, metaclass=TableMeta):
     """
@@ -100,27 +120,6 @@ class UserTable(Table, metaclass=TableMeta):
         :return: a string containing the table definition using the DataJoint DDL.
         """
         raise NotImplementedError('Subclasses of Table must implement the property "definition"')
-
-    @ClassProperty
-    def connection(cls):
-        return cls._connection
-
-    @ClassProperty
-    def table_name(cls):
-        """
-        :return: the table name of the table formatted for mysql.
-        """
-        if cls._prefix is None:
-            raise AttributeError("Class prefix is not defined!")
-        return cls._prefix + from_camel_case(cls.__name__)
-
-    @ClassProperty
-    def full_table_name(cls):
-        if cls not in {Manual, Imported, Lookup, Computed, Part, UserTable}:
-            # for derived classes only
-            if cls.database is None:
-                raise DataJointError("Class %s is not properly declared (schema decorator not applied?)" % cls.__name__)
-            return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
 
 
 class Manual(UserTable):
@@ -163,7 +162,28 @@ class Computed(UserTable, AutoPopulate):
     tier_regexp = r"(?P<computed>" + _prefix + _base_regexp + ")"
 
 
-class Part(UserTable):
+class PartMeta(TableMeta):
+    """Metaclass for Part tables with overridden class properties."""
+
+    @property
+    def table_name(cls):
+        """The table name for a Part is derived from its master table."""
+        return None if cls.master is None else cls.master.table_name + "__" + from_camel_case(cls.__name__)
+
+    @property
+    def full_table_name(cls):
+        """The fully qualified table name (`database`.`table`)."""
+        if cls.database is None or cls.table_name is None:
+            return None
+        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+
+    @property
+    def master(cls):
+        """The master table for this Part table."""
+        return cls._master
+
+
+class Part(UserTable, metaclass=PartMeta):
     """
     Inherit from this class if the table's values are details of an entry in another table
     and if this table is populated by the other table. For example, the entries inheriting from
@@ -183,24 +203,6 @@ class Part(UserTable):
         + _base_regexp
         + ")"
     )
-
-    @ClassProperty
-    def connection(cls):
-        return cls._connection
-
-    @ClassProperty
-    def full_table_name(cls):
-        return (
-            None if cls.database is None or cls.table_name is None else r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
-        )
-
-    @ClassProperty
-    def master(cls):
-        return cls._master
-
-    @ClassProperty
-    def table_name(cls):
-        return None if cls.master is None else cls.master.table_name + "__" + from_camel_case(cls.__name__)
 
     def delete(self, force=False):
         """
