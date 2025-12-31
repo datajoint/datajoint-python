@@ -537,8 +537,17 @@ class Config(BaseSettings):
         self._config_path = filepath
 
     def _update_from_flat_dict(self, data: dict[str, Any]) -> None:
-        """Update settings from a flat dict with dot notation keys."""
+        """Update settings from a dict (flat dot-notation or nested)."""
         for key, value in data.items():
+            # Handle nested dicts by recursively updating
+            if isinstance(value, dict) and hasattr(self, key):
+                group_obj = getattr(self, key)
+                for nested_key, nested_value in value.items():
+                    if hasattr(group_obj, nested_key):
+                        setattr(group_obj, nested_key, nested_value)
+                continue
+
+            # Handle flat dot-notation keys
             parts = key.split(".")
             if len(parts) == 1:
                 if hasattr(self, key) and not key.startswith("_"):
