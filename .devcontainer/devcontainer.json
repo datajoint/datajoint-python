@@ -1,7 +1,6 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:0-18",
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
+  "dockerComposeFile": ["../docker-compose.yaml", "docker-compose.yml"],
+  "service": "app",
+  "workspaceFolder": "/src",
   "postCreateCommand": "curl -fsSL https://pixi.sh/install.sh | bash && echo 'export PATH=\"$HOME/.pixi/bin:$PATH\"' >> ~/.bashrc"
 }
