@@ -41,17 +41,17 @@ def schema_ad(
 @pytest.fixture
 def local_schema(schema_ad, schema_name):
     """Fixture for testing spawned classes"""
-    local_schema = dj.Schema(schema_name)
+    local_schema = dj.Schema(schema_name, connection=schema_ad.connection)
     local_schema.spawn_missing_classes()
     yield local_schema
-    local_schema.drop()
+    # Don't drop - schema_ad fixture handles cleanup
 
 
 @pytest.fixture
 def schema_virtual_module(schema_ad, schema_name):
     """Fixture for testing virtual modules"""
     # Types are registered globally, no need to add_objects for adapters
-    schema_virtual_module = dj.VirtualModule("virtual_module", schema_name)
+    schema_virtual_module = dj.VirtualModule("virtual_module", schema_name, connection=schema_ad.connection)
     return schema_virtual_module
 
 

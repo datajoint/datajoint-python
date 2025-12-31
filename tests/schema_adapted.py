@@ -1,6 +1,4 @@
 import inspect
-import json
-from pathlib import Path
 
 import networkx as nx
 
@@ -12,7 +10,7 @@ class GraphType(dj.AttributeType):
     """Custom type for storing NetworkX graphs as edge lists."""
 
     type_name = "graph"
-    dtype = "longblob"
+    dtype = "<djblob>"  # Use djblob for proper serialization
 
     def encode(self, obj, *, key=None):
         """Convert graph object into an edge list."""
@@ -26,22 +24,18 @@ class GraphType(dj.AttributeType):
 
 @dj.register_type
 class LayoutToFilepathType(dj.AttributeType):
-    """Custom type that saves a graph layout to a filepath."""
+    """Custom type that saves a graph layout as serialized JSON blob."""
 
     type_name = "layout_to_filepath"
-    dtype = "filepath@repo-s3"
+    dtype = "<djblob>"  # Use djblob for serialization
 
     def encode(self, layout, *, key=None):
-        """Save layout to file and return path."""
-        path = Path(dj.config["stores"]["repo-s3"]["stage"], "layout.json")
-        with open(str(path), "w") as f:
-            json.dump(layout, f)
-        return path
+        """Serialize layout dict."""
+        return layout  # djblob handles serialization
 
-    def decode(self, path, *, key=None):
-        """Load layout from file."""
-        with open(path, "r") as f:
-            return json.load(f)
+    def decode(self, stored, *, key=None):
+        """Deserialize layout dict."""
+        return stored  # djblob handles deserialization
 
 
 class Connectivity(dj.Manual):
