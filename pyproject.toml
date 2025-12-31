@@ -153,19 +153,19 @@ skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
 ignore-words-list = "rever,numer,astroid"
 
 [tool.pytest_env]
-# Default environment variables for tests
-# When running from host: DJ_HOST=localhost (set via pixi task)
+# Default environment variables for tests (D: prefix = only set if not defined)
+# When running from host: DJ_HOST=localhost (set via command line or pixi task)
 # When running in devcontainer/docker: DJ_HOST=db (docker-compose service name)
-DJ_HOST="db"
-DJ_PORT="3306"
-DJ_USER="root"
-DJ_PASS="password"
-DJ_TEST_USER="datajoint"
-DJ_TEST_PASSWORD="datajoint"
-S3_ENDPOINT="minio:9000"
-S3_ACCESS_KEY="datajoint"
-S3_SECRET_KEY="datajoint"
-S3_BUCKET="datajoint.test"
+"D:DJ_HOST" = "db"
+"D:DJ_PORT" = "3306"
+"D:DJ_USER" = "root"
+"D:DJ_PASS" = "password"
+"D:DJ_TEST_USER" = "datajoint"
+"D:DJ_TEST_PASSWORD" = "datajoint"
+"D:S3_ENDPOINT" = "minio:9000"
+"D:S3_ACCESS_KEY" = "datajoint"
+"D:S3_SECRET_KEY" = "datajoint"
+"D:S3_BUCKET" = "datajoint.test"
 
 
 [tool.pixi.workspace]

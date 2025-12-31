@@ -77,6 +77,10 @@ class Table(QueryExpression):
 
     @property
     def table_name(self):
+        # For UserTable subclasses, table_name is computed by the metaclass.
+        # Delegate to the class's table_name if _table_name is not set.
+        if self._table_name is None:
+            return type(self).table_name
         return self._table_name
 
     @property

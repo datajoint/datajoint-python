@@ -248,9 +248,10 @@ class TestTypeChaining:
 
     def test_resolve_native_dtype(self):
         """Test resolving a native dtype."""
-        final_dtype, chain = resolve_dtype("longblob")
+        final_dtype, chain, store = resolve_dtype("longblob")
         assert final_dtype == "longblob"
         assert chain == []
+        assert store is None
 
     def test_resolve_custom_dtype(self):
         """Test resolving a custom dtype."""
@@ -266,10 +267,11 @@ class TestTypeChaining:
             def decode(self, stored, *, key=None):
                 return stored
 
-        final_dtype, chain = resolve_dtype("<test_resolve>")
+        final_dtype, chain, store = resolve_dtype("<test_resolve>")
         assert final_dtype == "varchar(100)"
         assert len(chain) == 1
         assert chain[0].type_name == "test_resolve"
+        assert store is None
 
     def test_resolve_chained_dtype(self):
         """Test resolving a chained dtype."""
@@ -296,11 +298,12 @@ class TestTypeChaining:
             def decode(self, stored, *, key=None):
                 return stored
 
-        final_dtype, chain = resolve_dtype("<test_outer>")
+        final_dtype, chain, store = resolve_dtype("<test_outer>")
         assert final_dtype == "longblob"
         assert len(chain) == 2
         assert chain[0].type_name == "test_outer"
         assert chain[1].type_name == "test_inner"
+        assert store is None
 
     def test_circular_reference_detection(self):
         """Test that circular type references are detected."""

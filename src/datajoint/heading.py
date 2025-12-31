@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__.split(".")[0])
 default_attribute_properties = dict(  # these default values are set in computed attributes
     name=None,
     type="expression",
+    original_type=None,  # For core types, stores the alias (e.g., "uuid") while type has db type ("binary(16)")
     in_key=False,
     nullable=False,
     default=None,
@@ -292,6 +293,7 @@ class Heading:
                 store=None,
                 attribute_expression=None,
                 is_hidden=attr["name"].startswith("_"),
+                original_type=None,  # May be set later for core type aliases
             )
 
             if any(TYPE_PATTERN[t].match(attr["type"]) for t in ("INTEGER", "FLOAT")):
@@ -303,7 +305,14 @@ class Heading:
             special = re.match(r":(?P<type>[^:]+):(?P<comment>.*)", attr["comment"])
             if special:
                 special = special.groupdict()
-                attr.update(special)
+                attr["comment"] = special["comment"]  # Always update the comment
+                # Only update the type for adapted types (angle brackets)
+                # Core types (uuid, float32, etc.) keep the database type for SQL
+                if special["type"].startswith("<"):
+                    attr["type"] = special["type"]
+                else:
+                    # Store the original type name for display but keep db_type for SQL
+                    attr["original_type"] = special["type"]
 
             # process AttributeTypes (adapted types in angle brackets)
             if special and TYPE_PATTERN["ADAPTED"].match(attr["type"]):
@@ -328,18 +337,15 @@ class Heading:
 
             # Handle core type aliases (uuid, float32, etc.)
             if special:
+                # Check original_type for core type detection (not attr["type"] which is now db type)
+                original_type = attr.get("original_type", attr["type"])
                 try:
-                    category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(attr["type"]))
+                    category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(original_type))
                 except StopIteration:
-                    if attr["type"].startswith("external"):
-                        url = (
-                            "https://docs.datajoint.io/python/admin/5-blob-config.html"
-                            "#migration-between-datajoint-v0-11-and-v0-12"
-                        )
+                    if original_type.startswith("external"):
                         raise DataJointError(
-                            "Legacy datatype `{type}`. Migrate your external stores to datajoint 0.12: {url}".format(
-                                url=url, **attr
-                            )
+                            f"Legacy datatype `{original_type}`. Migrate your external stores to datajoint 0.12: "
+                            "https://docs.datajoint.io/python/admin/5-blob-config.html#migration-between-datajoint-v0-11-and-v0-12"
                         )
                     # Not a special type - that's fine, could be native passthrough
                     category = None
