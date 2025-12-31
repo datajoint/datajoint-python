@@ -332,8 +332,8 @@ class Heading:
                     attr["type"] = attr["adapter"].dtype
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):
                         raise DataJointError(f"Invalid dtype '{attr['type']}' in attribute type <{adapter_name}>.")
-                    # Update is_blob based on resolved dtype
-                    attr["is_blob"] = bool(TYPE_PATTERN["BLOB"].match(attr["type"]))
+                    # Update is_blob based on resolved dtype (check both BLOB and NATIVE_BLOB patterns)
+                    attr["is_blob"] = any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BLOB", "NATIVE_BLOB"))
 
             # Handle core type aliases (uuid, float32, etc.)
             if special:

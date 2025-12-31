@@ -250,7 +250,7 @@ class TTestUpdate(dj.Lookup):
     ---
     string_attr     : varchar(255)
     num_attr=null   : float
-    blob_attr       : longblob
+    blob_attr       : <djblob>
     """
 
     contents = [

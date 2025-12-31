@@ -1,6 +1,7 @@
 import decimal
 import itertools
 import os
+import shutil
 from operator import itemgetter
 
 import numpy as np
@@ -288,7 +289,7 @@ def test_same_secondary_attribute(schema_any):
 
 def test_query_caching(schema_any):
     # initialize cache directory
-    os.mkdir(os.path.expanduser("~/dj_query_cache"))
+    os.makedirs(os.path.expanduser("~/dj_query_cache"), exist_ok=True)
 
     with dj.config.override(query_cache=os.path.expanduser("~/dj_query_cache")):
         conn = schema.TTest3.connection
@@ -315,8 +316,8 @@ def test_query_caching(schema_any):
         # purge query cache
         conn.purge_query_cache()
 
-    # reset cache directory state (will fail if purge was unsuccessful)
-    os.rmdir(os.path.expanduser("~/dj_query_cache"))
+    # reset cache directory state
+    shutil.rmtree(os.path.expanduser("~/dj_query_cache"), ignore_errors=True)
 
 
 def test_fetch_group_by(schema_any):

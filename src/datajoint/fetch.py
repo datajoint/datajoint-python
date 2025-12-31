@@ -49,9 +49,11 @@ def _get(connection, attr, data, squeeze, download_path):
     :param attr: attribute from the table's heading
     :param data: raw value fetched from the database
     :param squeeze: if True squeeze blobs (legacy, unused)
-    :param download_path: for fetches that download data (legacy, unused in simplified model)
+    :param download_path: for fetches that download data (attachments, filepaths)
     :return: decoded data
     """
+    from .settings import config
+
     if data is None:
         return None
 
@@ -69,9 +71,19 @@ def _get(connection, attr, data, squeeze, download_path):
         elif final_dtype.lower() == "binary(16)":
             data = uuid_module.UUID(bytes=data)
 
-        # Apply decoders in reverse order: innermost first, then outermost
-        for attr_type in reversed(type_chain):
-            data = attr_type.decode(data, key=None)
+        # Temporarily set download_path for types that need it (attachments, filepaths)
+        original_download_path = config.get("download_path", ".")
+        config["download_path"] = str(download_path)
+        try:
+            # Apply decoders in reverse order: innermost first, then outermost
+            for attr_type in reversed(type_chain):
+                data = attr_type.decode(data, key=None)
+        finally:
+            config["download_path"] = original_download_path
+
+        # Apply squeeze for blob types (removes singleton dimensions from arrays)
+        if squeeze and isinstance(data, np.ndarray):
+            data = data.squeeze()
 
         return data
 

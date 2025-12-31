@@ -90,7 +90,7 @@ def test_part(schema_any):
     """
     Lookup and part with the same name.  See issue #365
     """
-    local_schema = dj.Schema(schema_any.database)
+    local_schema = dj.Schema(schema_any.database, connection=schema_any.connection)
 
     @local_schema
     class Type(dj.Lookup):
@@ -308,7 +308,7 @@ def test_unsupported_datatype(schema_any):
         definition = """
         experiment : int
         ---
-        description : text
+        description : completely_invalid_type_xyz
         """
 
     with pytest.raises(dj.DataJointError):

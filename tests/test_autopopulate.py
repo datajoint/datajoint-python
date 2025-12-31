@@ -106,8 +106,8 @@ def test_allow_insert(clean_autopopulate, subject, experiment):
         experiment.insert1(key)
 
 
-def test_load_dependencies(prefix):
-    schema = dj.Schema(f"{prefix}_load_dependencies_populate")
+def test_load_dependencies(prefix, connection_test):
+    schema = dj.Schema(f"{prefix}_load_dependencies_populate", connection=connection_test)
 
     @schema
     class ImageSource(dj.Lookup):
@@ -121,7 +121,7 @@ def test_load_dependencies(prefix):
         definition = """
         -> ImageSource
         ---
-        image_data: longblob
+        image_data: <djblob>
         """
 
         def make(self, key):
@@ -134,7 +134,7 @@ def test_load_dependencies(prefix):
         definition = """
         -> Image
         ---
-        crop_image: longblob
+        crop_image: <djblob>
         """
 
         def make(self, key):

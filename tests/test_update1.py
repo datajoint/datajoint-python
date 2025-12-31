@@ -14,29 +14,39 @@ class Thing(dj.Manual):
     ---
     number=0  : int
     frac    : float
-    picture = null    :   attach@update_store
-    params = null  : longblob
-    img_file = null: filepath@update_repo
+    picture = null    :   <xattach@update_store>
+    params = null  : <djblob>
+    img_file = null: <filepath@update_repo>
     timestamp = CURRENT_TIMESTAMP :   datetime
     """
 
 
 @pytest.fixture(scope="module")
 def mock_stores_update(tmpdir_factory):
-    og_stores_config = dj.config.get("stores")
-    if "stores" not in dj.config:
-        dj.config["stores"] = {}
-    dj.config["stores"]["update_store"] = dict(protocol="file", location=tmpdir_factory.mktemp("store"))
-    dj.config["stores"]["update_repo"] = dict(
-        stage=tmpdir_factory.mktemp("repo_stage"),
+    """Configure object storage stores for update tests."""
+    og_project_name = dj.config.object_storage.project_name
+    og_stores = dict(dj.config.object_storage.stores)
+
+    # Configure stores
+    dj.config.object_storage.project_name = "djtest"
+    store_location = str(tmpdir_factory.mktemp("store"))
+    repo_stage = str(tmpdir_factory.mktemp("repo_stage"))
+    repo_location = str(tmpdir_factory.mktemp("repo_loc"))
+    dj.config.object_storage.stores["update_store"] = dict(
         protocol="file",
-        location=tmpdir_factory.mktemp("repo_loc"),
+        location=store_location,
     )
-    yield
-    if og_stores_config is None:
-        del dj.config["stores"]
-    else:
-        dj.config["stores"] = og_stores_config
+    dj.config.object_storage.stores["update_repo"] = dict(
+        stage=repo_stage,
+        protocol="file",
+        location=repo_location,
+    )
+    yield {"update_store": {"location": store_location}, "update_repo": {"stage": repo_stage, "location": repo_location}}
+
+    # Restore original
+    dj.config.object_storage.project_name = og_project_name
+    dj.config.object_storage.stores.clear()
+    dj.config.object_storage.stores.update(og_stores)
 
 
 @pytest.fixture
@@ -65,21 +75,22 @@ def test_update1(tmpdir, enable_filepath_feature, schema_update1, mock_stores_up
     attach_file.unlink()
     assert not attach_file.is_file()
 
-    # filepath
-    stage_path = dj.config["stores"]["update_repo"]["stage"]
+    # filepath - note: <filepath> stores a reference, doesn't move the file
+    store_location = mock_stores_update["update_repo"]["location"]
     relpath, filename = "one/two/three", "picture.dat"
-    managed_file = Path(stage_path, relpath, filename)
+    managed_file = Path(store_location, relpath, filename)
     managed_file.parent.mkdir(parents=True, exist_ok=True)
     original_file_data = os.urandom(3000)
     with managed_file.open("wb") as f:
         f.write(original_file_data)
-    Thing.update1(dict(key, img_file=managed_file))
-    managed_file.unlink()
-    assert not managed_file.is_file()
+    # Insert the relative path within the store
+    Thing.update1(dict(key, img_file=f"{relpath}/{filename}"))
 
     check2 = Thing.fetch1(download_path=tmpdir)
     buffer2 = Path(check2["picture"]).read_bytes()  # read attachment
-    final_file_data = managed_file.read_bytes()  # read filepath
+    # For filepath, fetch returns ObjectRef - read the file through it
+    filepath_ref = check2["img_file"]
+    final_file_data = filepath_ref.read() if filepath_ref else managed_file.read_bytes()
 
     # CHECK 3 -- reset to default values using None
     Thing.update1(

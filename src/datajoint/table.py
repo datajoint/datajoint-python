@@ -254,6 +254,11 @@ class Table(QueryExpression):
         """
         :return: full table name in the schema
         """
+        if self.database is None or self.table_name is None:
+            raise DataJointError(
+                f"Class {self.__class__.__name__} is not associated with a schema. "
+                "Apply a schema decorator or use schema() to bind it."
+            )
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
 
     @property

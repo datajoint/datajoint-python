@@ -190,7 +190,7 @@ def test_insert_longblob_32bit(schema_any, enable_feature_32bit_dims):
         "0023000000410200000001000000070000000400000000000000640064006400640064006400640025"
         "00000041020000000100000008000000040000000000000053007400610067006500200031003000')"
     )
-    dj.conn().query(query_32_blob).fetchall()
+    schema_any.connection.query(query_32_blob).fetchall()
     fetched = (Longblob & "id=1").fetch1()
     expected = {
         "id": 1,

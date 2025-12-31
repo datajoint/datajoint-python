@@ -267,6 +267,9 @@ class Config(BaseSettings):
     cache: Path | None = None
     query_cache: Path | None = None
 
+    # Download path for attachments and filepaths
+    download_path: str = "."
+
     # Internal: track where config was loaded from
     _config_path: Path | None = None
     _secrets_dir: Path | None = None
@@ -674,6 +677,29 @@ class Config(BaseSettings):
             for part in parts[:-1]:
                 obj = getattr(obj, part)
             setattr(obj, parts[-1], value)
+
+    def __delitem__(self, key: str) -> None:
+        """Reset setting to default by dot-notation key."""
+        # Get the default value from the model fields
+        parts = key.split(".")
+        if len(parts) == 1:
+            field_info = self.model_fields.get(key)
+            if field_info is not None:
+                default = field_info.default
+                if default is not None:
+                    setattr(self, key, default)
+                elif field_info.default_factory is not None:
+                    setattr(self, key, field_info.default_factory())
+                else:
+                    setattr(self, key, None)
+            else:
+                raise KeyError(f"Setting '{key}' not found")
+        else:
+            # For nested settings, reset to None or empty
+            obj: Any = self
+            for part in parts[:-1]:
+                obj = getattr(obj, part)
+            setattr(obj, parts[-1], None)
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get setting with optional default value."""

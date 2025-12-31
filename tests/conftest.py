@@ -201,33 +201,56 @@ def connection_test(connection_root, prefix, db_creds_test):
 
 @pytest.fixture(scope="session")
 def stores_config(s3_creds, tmpdir_factory):
+    """Configure object storage stores for tests."""
     return {
-        "raw": dict(protocol="file", location=tmpdir_factory.mktemp("raw")),
+        "raw": dict(protocol="file", location=str(tmpdir_factory.mktemp("raw"))),
         "repo": dict(
-            stage=tmpdir_factory.mktemp("repo"),
+            stage=str(tmpdir_factory.mktemp("repo")),
             protocol="file",
-            location=tmpdir_factory.mktemp("repo"),
+            location=str(tmpdir_factory.mktemp("repo")),
         ),
         "repo-s3": dict(
-            s3_creds,
             protocol="s3",
+            endpoint=s3_creds["endpoint"],
+            access_key=s3_creds["access_key"],
+            secret_key=s3_creds["secret_key"],
+            bucket=s3_creds.get("bucket", "datajoint-test"),
             location="dj/repo",
-            stage=tmpdir_factory.mktemp("repo-s3"),
+            stage=str(tmpdir_factory.mktemp("repo-s3")),
+            secure=False,  # MinIO runs without SSL in tests
         ),
-        "local": dict(protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)),
-        "share": dict(s3_creds, protocol="s3", location="dj/store/repo", subfolding=(2, 4)),
+        "local": dict(protocol="file", location=str(tmpdir_factory.mktemp("local"))),
+        "share": dict(
+            protocol="s3",
+            endpoint=s3_creds["endpoint"],
+            access_key=s3_creds["access_key"],
+            secret_key=s3_creds["secret_key"],
+            bucket=s3_creds.get("bucket", "datajoint-test"),
+            location="dj/store/repo",
+            secure=False,  # MinIO runs without SSL in tests
+        ),
     }
 
 
 @pytest.fixture
 def mock_stores(stores_config):
-    og_stores_config = dj.config.get("stores")
-    dj.config["stores"] = stores_config
+    """Configure object storage stores for tests using new object_storage system."""
+    # Save original configuration
+    og_project_name = dj.config.object_storage.project_name
+    og_stores = dict(dj.config.object_storage.stores)
+
+    # Set test configuration
+    dj.config.object_storage.project_name = "djtest"
+    dj.config.object_storage.stores.clear()
+    for name, config in stores_config.items():
+        dj.config.object_storage.stores[name] = config
+
     yield
-    if og_stores_config is None:
-        del dj.config["stores"]
-    else:
-        dj.config["stores"] = og_stores_config
+
+    # Restore original configuration
+    dj.config.object_storage.project_name = og_project_name
+    dj.config.object_storage.stores.clear()
+    dj.config.object_storage.stores.update(og_stores)
 
 
 @pytest.fixture
@@ -663,31 +686,29 @@ def object_storage_config(tmpdir_factory):
 
 
 @pytest.fixture
-def mock_object_storage(object_storage_config, monkeypatch):
+def mock_object_storage(object_storage_config):
     """Mock object storage configuration in datajoint config."""
-    original_object_storage = getattr(dj.config, "_object_storage", None)
+    # Save original values
+    original = {
+        "project_name": dj.config.object_storage.project_name,
+        "protocol": dj.config.object_storage.protocol,
+        "location": dj.config.object_storage.location,
+        "token_length": dj.config.object_storage.token_length,
+    }
 
-    class MockObjectStorageSettings:
-        def __init__(self, config):
-            self.project_name = config["project_name"]
-            self.protocol = config["protocol"]
-            self.location = config["location"]
-            self.token_length = config.get("token_length", 8)
-            self.partition_pattern = config.get("partition_pattern")
-            self.bucket = config.get("bucket")
-            self.endpoint = config.get("endpoint")
-            self.access_key = config.get("access_key")
-            self.secret_key = config.get("secret_key")
-            self.secure = config.get("secure", True)
-            self.container = config.get("container")
-
-    mock_settings = MockObjectStorageSettings(object_storage_config)
-    monkeypatch.setattr(dj.config, "object_storage", mock_settings)
+    # Set test values
+    dj.config.object_storage.project_name = object_storage_config["project_name"]
+    dj.config.object_storage.protocol = object_storage_config["protocol"]
+    dj.config.object_storage.location = object_storage_config["location"]
+    dj.config.object_storage.token_length = object_storage_config.get("token_length", 8)
 
     yield object_storage_config
 
-    if original_object_storage is not None:
-        monkeypatch.setattr(dj.config, "object_storage", original_object_storage)
+    # Restore original values
+    dj.config.object_storage.project_name = original["project_name"]
+    dj.config.object_storage.protocol = original["protocol"]
+    dj.config.object_storage.location = original["location"]
+    dj.config.object_storage.token_length = original["token_length"]
 
 
 @pytest.fixture

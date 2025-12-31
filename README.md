@@ -141,3 +141,66 @@ DataJoint (<https://datajoint.com>).
   - [Contribution Guidelines](https://docs.datajoint.com/about/contribute/)
 
   - [Developer Guide](https://docs.datajoint.com/core/datajoint-python/latest/develop/)
+
+## Developer Guide
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) for running MySQL and MinIO services
+- [pixi](https://prefix.dev/docs/pixi/overview) package manager (or pip/conda)
+
+### Setting Up the Development Environment
+
+1. Clone the repository and install dependencies:
+
+   ```bash
+   git clone https://github.com/datajoint/datajoint-python.git
+   cd datajoint-python
+   pixi install
+   ```
+
+2. Start the required services (MySQL and MinIO):
+
+   ```bash
+   docker compose up -d db minio
+   ```
+
+### Running Tests
+
+Run tests with pytest using the test environment:
+
+```bash
+DJ_HOST=localhost DJ_PORT=3306 S3_ENDPOINT=localhost:9000 python -m pytest tests/
+```
+
+Or run specific test files:
+
+```bash
+DJ_HOST=localhost DJ_PORT=3306 S3_ENDPOINT=localhost:9000 python -m pytest tests/test_blob.py -v
+```
+
+### Running Pre-commit Checks
+
+Pre-commit hooks ensure code quality before commits. Install and run them:
+
+```bash
+# Install pre-commit hooks
+pre-commit install
+
+# Run all pre-commit checks manually
+pre-commit run --all-files
+
+# Run specific hooks
+pre-commit run ruff --all-files
+pre-commit run mypy --all-files
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DJ_HOST` | `localhost` | MySQL server hostname |
+| `DJ_PORT` | `3306` | MySQL server port |
+| `DJ_USER` | `datajoint` | MySQL username |
+| `DJ_PASS` | `datajoint` | MySQL password |
+| `S3_ENDPOINT` | `localhost:9000` | MinIO/S3 endpoint |

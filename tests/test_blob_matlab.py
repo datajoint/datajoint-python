@@ -11,7 +11,7 @@ class Blob(dj.Manual):
     id : int
     -----
     comment  :  varchar(255)
-    blob  : longblob
+    blob  : <djblob>
     """
 
 

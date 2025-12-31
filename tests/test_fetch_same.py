@@ -10,7 +10,7 @@ class ProjData(dj.Manual):
     ---
     resp : float
     sim  : float
-    big : longblob
+    big : <djblob>
     blah : varchar(10)
     """
 

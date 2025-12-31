@@ -43,7 +43,8 @@ def test_cli_config():
 
     stdout, stderr = process.communicate()
     cleaned = stdout.strip(" >\t\n\r")
-    for key in ("database.user", "database.password", "database.host"):
+    # Config now uses pydantic format: Config(database=DatabaseSettings(host=..., user=..., ...))
+    for key in ("host=", "user=", "password="):
         assert key in cleaned, f"Key {key} not found in config from stdout: {cleaned}"
 
 
@@ -67,7 +68,7 @@ def test_cli_args():
     assert "test_host" == stdout[37:46]
 
 
-def test_cli_schemas(prefix, connection_root):
+def test_cli_schemas(prefix, connection_root, db_creds_root):
     schema = dj.Schema(prefix + "_cli", locals(), connection=connection_root)
 
     @schema
@@ -78,8 +79,16 @@ def test_cli_schemas(prefix, connection_root):
         """
         contents = list(dict(i=i, j=j + 2) for i in range(3) for j in range(3))
 
+    # Pass credentials via CLI args to avoid prompting for username
     process = subprocess.Popen(
-        ["dj", "-s", "djtest_cli:test_schema"],
+        [
+            "dj",
+            f"-u{db_creds_root['user']}",
+            f"-p{db_creds_root['password']}",
+            f"-h{db_creds_root['host']}",
+            "-s",
+            "djtest_cli:test_schema",
+        ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

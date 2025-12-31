@@ -523,7 +523,22 @@ class AttachType(AttributeType):
         download_path.mkdir(parents=True, exist_ok=True)
         local_path = download_path / filename
 
-        local_path.write_bytes(contents)
+        # Handle filename collision - if file exists with different content, add suffix
+        if local_path.exists():
+            existing_contents = local_path.read_bytes()
+            if existing_contents != contents:
+                # Find unique filename
+                stem = local_path.stem
+                suffix = local_path.suffix
+                counter = 1
+                while local_path.exists() and local_path.read_bytes() != contents:
+                    local_path = download_path / f"{stem}_{counter}{suffix}"
+                    counter += 1
+
+        # Only write if file doesn't exist or has different content
+        if not local_path.exists():
+            local_path.write_bytes(contents)
+
         return str(local_path)
 
     def validate(self, value: Any) -> None:
@@ -626,7 +641,22 @@ class XAttachType(AttributeType):
         download_path.mkdir(parents=True, exist_ok=True)
         local_path = download_path / filename
 
-        local_path.write_bytes(contents)
+        # Handle filename collision - if file exists with different content, add suffix
+        if local_path.exists():
+            existing_contents = local_path.read_bytes()
+            if existing_contents != contents:
+                # Find unique filename
+                stem = local_path.stem
+                suffix = local_path.suffix
+                counter = 1
+                while local_path.exists() and local_path.read_bytes() != contents:
+                    local_path = download_path / f"{stem}_{counter}{suffix}"
+                    counter += 1
+
+        # Only write if file doesn't exist or has different content
+        if not local_path.exists():
+            local_path.write_bytes(contents)
+
         return str(local_path)
 
     def validate(self, value: Any) -> None:
@@ -741,6 +771,8 @@ class FilepathType(AttributeType):
         return ObjectRef.from_json(stored, backend=backend)
 
     def validate(self, value: Any) -> None:
-        """Validate that value is a path string."""
-        if not isinstance(value, str):
-            raise TypeError(f"<filepath> expects a path string, got {type(value).__name__}")
+        """Validate that value is a path string or Path object."""
+        from pathlib import Path
+
+        if not isinstance(value, (str, Path)):
+            raise TypeError(f"<filepath> expects a path string or Path, got {type(value).__name__}")
