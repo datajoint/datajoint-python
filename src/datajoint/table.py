@@ -975,8 +975,7 @@ class Table(QueryExpression):
             # Numeric - convert to string
             elif attr.numeric:
                 value = str(int(value) if isinstance(value, bool) else value)
-            # Blob - pass through as bytes (adapters handle serialization)
-            # elif attr.is_blob: pass through unchanged
+            # Blob - pass through as bytes (use <djblob> for automatic serialization)
 
         return name, placeholder, value
 

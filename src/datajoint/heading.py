@@ -286,7 +286,7 @@ class Heading:
                 autoincrement=bool(re.search(r"auto_increment", attr["Extra"], flags=re.I)),
                 numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "INTEGER", "FLOAT")),
                 string=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("ENUM", "TEMPORAL", "STRING")),
-                is_blob=bool(TYPE_PATTERN["BLOB"].match(attr["type"])),
+                is_blob=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BLOB", "NATIVE_BLOB")),
                 uuid=False,
                 json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
                 adapter=None,
@@ -316,7 +316,7 @@ class Heading:
 
             # process AttributeTypes (adapted types in angle brackets)
             if special and TYPE_PATTERN["ADAPTED"].match(attr["type"]):
-                assert context is not None, "Declaration context is not set"
+                # Context can be None for built-in types that are globally registered
                 adapter_name = special["type"]
                 try:
                     adapter_result = get_adapter(context, adapter_name)
@@ -338,7 +338,7 @@ class Heading:
             # Handle core type aliases (uuid, float32, etc.)
             if special:
                 # Check original_type for core type detection (not attr["type"] which is now db type)
-                original_type = attr.get("original_type", attr["type"])
+                original_type = attr["original_type"] or attr["type"]
                 try:
                     category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(original_type))
                 except StopIteration:

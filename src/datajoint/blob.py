@@ -13,7 +13,6 @@ from itertools import repeat
 import numpy as np
 
 from .errors import DataJointError
-from .settings import config
 
 deserialize_lookup = {
     0: {"dtype": None, "scalar_type": "UNKNOWN"},
@@ -89,12 +88,6 @@ class Blob:
         self.protocol = None
 
     def set_dj0(self):
-        if not config.get("enable_python_native_blobs"):
-            raise DataJointError(
-                """v0.12+ python native blobs disabled.
-                See also: https://github.com/datajoint/datajoint-python#python-native-blobs"""
-            )
-
         self.protocol = b"dj0\0"  # when using new blob features
 
     def squeeze(self, array, convert_to_scalar=True):

@@ -530,9 +530,9 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         match["comment"] = ":{type}:{comment}".format(**match)
         substitute_special_type(match, category, foreign_key_sql, context)
     elif category in NATIVE_TYPES:
-        # Non-standard native type - warn user
+        # Native type - warn user
         logger.warning(
-            f"Non-standard native type '{match['type']}' in attribute '{match['name']}'. "
+            f"Native type '{match['type']}' is used in attribute '{match['name']}'. "
             "Consider using a core DataJoint type for better portability."
         )
 

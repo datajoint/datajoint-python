@@ -83,7 +83,7 @@ def _get(connection, attr, data, squeeze, download_path):
         return uuid_module.UUID(bytes=data)
 
     if attr.is_blob:
-        return data  # raw bytes
+        return data  # raw bytes (use <djblob> for automatic deserialization)
 
     # Native types - pass through unchanged
     return data

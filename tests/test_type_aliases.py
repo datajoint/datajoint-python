@@ -33,7 +33,7 @@ class TestTypeAliasPatterns:
         category = match_type(alias)
         assert category == expected_category
         assert category in SPECIAL_TYPES
-        assert category in CORE_TYPE_SQL
+        assert category.lower() in CORE_TYPE_SQL  # CORE_TYPE_SQL uses lowercase keys
 
     @pytest.mark.parametrize(
         "alias,expected_mysql_type",
@@ -54,7 +54,7 @@ class TestTypeAliasPatterns:
     def test_type_alias_mysql_mapping(self, alias, expected_mysql_type):
         """Test that type aliases map to correct MySQL types."""
         category = match_type(alias)
-        mysql_type = CORE_TYPE_SQL[category]
+        mysql_type = CORE_TYPE_SQL[category.lower()]  # CORE_TYPE_SQL uses lowercase keys
         assert mysql_type == expected_mysql_type
 
     @pytest.mark.parametrize(
