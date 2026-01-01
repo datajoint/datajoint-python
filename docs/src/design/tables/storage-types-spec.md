@@ -6,13 +6,13 @@ This document defines a three-layer type architecture:
 
 1. **Native database types** - Backend-specific (`FLOAT`, `TINYINT UNSIGNED`, `LONGBLOB`). Discouraged for direct use.
 2. **Core DataJoint types** - Standardized across backends, scientist-friendly (`float32`, `uint8`, `bool`, `json`).
-3. **AttributeTypes** - Programmatic types with `encode()`/`decode()` semantics. Composable.
+3. **Codec Types** - Programmatic types with `encode()`/`decode()` semantics. Composable.
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│                     AttributeTypes (Layer 3)                       │
+│                      Codec Types (Layer 3)                         │
 │                                                                    │
-│  Built-in:  <blob>  <attach>  <object@>  <hash@>  <filepath@>  │
+│  Built-in:  <blob>  <attach>  <object@>  <hash@>  <filepath@>     │
 │  User:      <custom>  <mytype>   ...                               │
 ├───────────────────────────────────────────────────────────────────┤
 │                 Core DataJoint Types (Layer 2)                     │
@@ -31,7 +31,7 @@ This document defines a three-layer type architecture:
 
 **Syntax distinction:**
 - Core types: `int32`, `float64`, `varchar(255)` - no brackets
-- AttributeTypes: `<blob>`, `<object@store>`, `<filepath@main>` - angle brackets
+- Codec types: `<blob>`, `<object@store>`, `<filepath@main>` - angle brackets
 - The `@` character indicates external storage (object store vs database)
 
 ### OAS Storage Regions
@@ -106,7 +106,7 @@ created_at : datetime = CURRENT_TIMESTAMP
 
 ### Binary Types
 
-The core `bytes` type stores raw bytes without any serialization. Use `<blob>` AttributeType
+The core `bytes` type stores raw bytes without any serialization. Use the `<blob>` codec
 for serialized Python objects.
 
 | Core Type | Description | MySQL | PostgreSQL |
@@ -193,25 +193,25 @@ definitions. This ensures consistent behavior across all tables and simplifies p
 - **No per-column overrides**: `CHARACTER SET` and `COLLATE` are rejected in type definitions
 - **Like timezone**: Encoding is infrastructure configuration, not part of the data model
 
-## AttributeTypes (Layer 3)
+## Codec Types (Layer 3)
 
-AttributeTypes provide `encode()`/`decode()` semantics on top of core types. They are
+Codec types provide `encode()`/`decode()` semantics on top of core types. They are
 composable and can be built-in or user-defined.
 
 ### Storage Mode: `@` Convention
 
-The `@` character in AttributeType syntax indicates **external storage** (object store):
+The `@` character in codec syntax indicates **external storage** (object store):
 
 - **No `@`**: Internal storage (database) - e.g., `<blob>`, `<attach>`
 - **`@` present**: External storage (object store) - e.g., `<blob@>`, `<attach@store>`
 - **`@` alone**: Use default store - e.g., `<blob@>`
 - **`@name`**: Use named store - e.g., `<blob@cold>`
 
-Some types support both modes (`<blob>`, `<attach>`), others are external-only (`<object@>`, `<hash@>`, `<filepath@>`).
+Some codecs support both modes (`<blob>`, `<attach>`), others are external-only (`<object@>`, `<hash@>`, `<filepath@>`).
 
-### Type Resolution and Chaining
+### Codec Resolution and Chaining
 
-AttributeTypes resolve to core types through chaining. The `get_dtype(is_external)` method
+Codecs resolve to core types through chaining. The `get_dtype(is_external)` method
 returns the appropriate dtype based on storage mode:
 
 ```
@@ -233,7 +233,7 @@ Resolution at declaration time:
 
 ### `<object@>` / `<object@store>` - Path-Addressed Storage
 
-**Built-in AttributeType. External only.**
+**Built-in codec. External only.**
 
 OAS (Object-Augmented Schema) storage for files and folders:
 
@@ -257,9 +257,9 @@ class Analysis(dj.Computed):
 #### Implementation
 
 ```python
-class ObjectType(AttributeType):
+class ObjectCodec(dj.Codec):
     """Path-addressed OAS storage. External only."""
-    type_name = "object"
+    name = "object"
 
     def get_dtype(self, is_external: bool) -> str:
         if not is_external:
@@ -278,7 +278,7 @@ class ObjectType(AttributeType):
 
 ### `<hash@>` / `<hash@store>` - Hash-Addressed Storage
 
-**Built-in AttributeType. External only.**
+**Built-in codec. External only.**
 
 Hash-addressed storage with deduplication:
 
@@ -303,9 +303,9 @@ store_root/
 #### Implementation
 
 ```python
-class HashType(AttributeType):
+class HashCodec(dj.Codec):
     """Hash-addressed storage. External only."""
-    type_name = "hash"
+    name = "hash"
 
     def get_dtype(self, is_external: bool) -> str:
         if not is_external:
@@ -346,7 +346,7 @@ features JSONB NOT NULL
 
 ### `<filepath@store>` - Portable External Reference
 
-**Built-in AttributeType. External only (store required).**
+**Built-in codec. External only (store required).**
 
 Relative path references within configured stores:
 
@@ -397,9 +397,9 @@ just use `varchar`. A string is simpler and more transparent.
 #### Implementation
 
 ```python
-class FilepathType(AttributeType):
+class FilepathCodec(dj.Codec):
     """Store-relative file references. External only."""
-    type_name = "filepath"
+    name = "filepath"
 
     def get_dtype(self, is_external: bool) -> str:
         if not is_external:
@@ -452,12 +452,12 @@ column_name JSONB NOT NULL
 ```
 
 The `json` database type:
-- Used as dtype by built-in AttributeTypes (`<object@>`, `<hash@>`, `<filepath@store>`)
+- Used as dtype by built-in codecs (`<object@>`, `<hash@>`, `<filepath@store>`)
 - Stores arbitrary JSON-serializable data
 - Automatically uses appropriate type for database backend
 - Supports JSON path queries where available
 
-## Built-in AttributeTypes
+## Built-in Codecs
 
 ### `<blob>` / `<blob@>` - Serialized Python Objects
 
@@ -471,10 +471,10 @@ blob format. Compatible with MATLAB.
 - **`<blob@store>`**: Stored in specific named store
 
 ```python
-@dj.register_type
-class BlobType(AttributeType):
+@dj.codec
+class BlobCodec(dj.Codec):
     """Serialized Python objects. Supports internal and external."""
-    type_name = "blob"
+    name = "blob"
 
     def get_dtype(self, is_external: bool) -> str:
         return "<hash>" if is_external else "bytes"
@@ -511,10 +511,10 @@ Stores files with filename preserved. On fetch, extracts to configured download 
 - **`<attach@store>`**: Stored in specific named store
 
 ```python
-@dj.register_type
-class AttachType(AttributeType):
+@dj.codec
+class AttachCodec(dj.Codec):
     """File attachment with filename. Supports internal and external."""
-    type_name = "attach"
+    name = "attach"
 
     def get_dtype(self, is_external: bool) -> str:
         return "<hash>" if is_external else "bytes"
@@ -543,15 +543,15 @@ class Attachments(dj.Manual):
     """
 ```
 
-## User-Defined AttributeTypes
+## User-Defined Codecs
 
-Users can define custom AttributeTypes for domain-specific data:
+Users can define custom codecs for domain-specific data:
 
 ```python
-@dj.register_type
-class GraphType(AttributeType):
+@dj.codec
+class GraphCodec(dj.Codec):
     """Store NetworkX graphs. Internal only (no external support)."""
-    type_name = "graph"
+    name = "graph"
 
     def get_dtype(self, is_external: bool) -> str:
         if is_external:
@@ -568,13 +568,13 @@ class GraphType(AttributeType):
         return G
 ```
 
-Custom types can support both modes by returning different dtypes:
+Custom codecs can support both modes by returning different dtypes:
 
 ```python
-@dj.register_type
-class ImageType(AttributeType):
+@dj.codec
+class ImageCodec(dj.Codec):
     """Store images. Supports both internal and external."""
-    type_name = "image"
+    name = "image"
 
     def get_dtype(self, is_external: bool) -> str:
         return "<hash>" if is_external else "bytes"
@@ -632,7 +632,7 @@ def garbage_collect(store_name):
         store.delete(hash_path(hash_id))
 ```
 
-## Built-in AttributeType Comparison
+## Built-in Codec Comparison
 
 | Feature | `<blob>` | `<attach>` | `<object@>` | `<hash@>` | `<filepath@>` |
 |---------|----------|------------|-------------|--------------|---------------|
@@ -658,13 +658,13 @@ def garbage_collect(store_name):
 1. **Three-layer architecture**:
    - Layer 1: Native database types (backend-specific, discouraged)
    - Layer 2: Core DataJoint types (standardized, scientist-friendly)
-   - Layer 3: AttributeTypes (encode/decode, composable)
+   - Layer 3: Codec types (encode/decode, composable)
 2. **Core types are scientist-friendly**: `float32`, `uint8`, `bool`, `bytes` instead of `FLOAT`, `TINYINT UNSIGNED`, `LONGBLOB`
-3. **AttributeTypes use angle brackets**: `<blob>`, `<object@store>`, `<filepath@main>` - distinguishes from core types
+3. **Codecs use angle brackets**: `<blob>`, `<object@store>`, `<filepath@main>` - distinguishes from core types
 4. **`@` indicates external storage**: No `@` = database, `@` present = object store
-5. **`get_dtype(is_external)` method**: Types resolve dtype at declaration time based on storage mode
-6. **AttributeTypes are composable**: `<blob@>` uses `<hash@>`, which uses `json`
-7. **Built-in external types use JSON dtype**: Stores metadata (path, hash, store name, etc.)
+5. **`get_dtype(is_external)` method**: Codecs resolve dtype at declaration time based on storage mode
+6. **Codecs are composable**: `<blob@>` uses `<hash@>`, which uses `json`
+7. **Built-in external codecs use JSON dtype**: Stores metadata (path, hash, store name, etc.)
 8. **Two OAS regions**: object (PK-addressed) and hash (hash-addressed) within managed stores
 9. **Filepath for portability**: `<filepath@store>` uses relative paths within stores for environment portability
 10. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
@@ -673,9 +673,9 @@ def garbage_collect(store_name):
     - No `@` = internal storage (database)
     - `@` alone = default store
     - `@name` = named store
-12. **Dual-mode types**: `<blob>` and `<attach>` support both internal and external storage
-13. **External-only types**: `<object@>`, `<hash@>`, `<filepath@>` require `@`
-14. **Transparent access**: AttributeTypes return Python objects or file paths
+12. **Dual-mode codecs**: `<blob>` and `<attach>` support both internal and external storage
+13. **External-only codecs**: `<object@>`, `<hash@>`, `<filepath@>` require `@`
+14. **Transparent access**: Codecs return Python objects or file paths
 15. **Lazy access**: `<object@>` and `<filepath@store>` return ObjectRef
 16. **MD5 for content hashing**: See [Hash Algorithm Choice](#hash-algorithm-choice) below
 17. **No separate registry**: Hash metadata stored in JSON columns, not a separate table

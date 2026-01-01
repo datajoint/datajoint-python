@@ -76,10 +76,10 @@ for portable pipelines. Using native types will generate a warning.
 
 See the [storage types spec](storage-types-spec.md) for complete mappings.
 
-## AttributeTypes (special datatypes)
+## Codec types (special datatypes)
 
-AttributeTypes provide `encode()`/`decode()` semantics for complex data that doesn't
-fit native database types. They are denoted with angle brackets: `<type_name>`.
+Codecs provide `encode()`/`decode()` semantics for complex data that doesn't
+fit native database types. They are denoted with angle brackets: `<name>`.
 
 ### Storage mode: `@` convention
 
@@ -90,7 +90,7 @@ The `@` character indicates **external storage** (object store vs database):
 - **`@` alone**: Use default store - e.g., `<blob@>`
 - **`@name`**: Use named store - e.g., `<blob@cold>`
 
-### Built-in AttributeTypes
+### Built-in codecs
 
 **Serialization types** - for Python objects:
 
@@ -123,9 +123,9 @@ The `@` character indicates **external storage** (object store vs database):
 - `<filepath@store>`: Reference to existing file in a configured store. No file
   copying occurs. Returns `ObjectRef` for lazy access. External only. See [filepath](filepath.md).
 
-### User-defined AttributeTypes
+### User-defined codecs
 
-- `<custom_type>`: Define your own [custom attribute type](customtype.md) with
+- `<custom_type>`: Define your own [custom codec](customtype.md) with
   bidirectional conversion between Python objects and database storage. Use for
   graphs, domain-specific objects, or custom data structures.
 
