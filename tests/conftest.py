@@ -701,6 +701,7 @@ def mock_object_storage(object_storage_config):
         "protocol": dj.config.object_storage.protocol,
         "location": dj.config.object_storage.location,
         "token_length": dj.config.object_storage.token_length,
+        "stores": dict(dj.config.object_storage.stores),
     }
 
     # Set test values
@@ -709,6 +710,12 @@ def mock_object_storage(object_storage_config):
     dj.config.object_storage.location = object_storage_config["location"]
     dj.config.object_storage.token_length = object_storage_config.get("token_length", 8)
 
+    # Configure 'local' store using same location
+    dj.config.object_storage.stores["local"] = {
+        "protocol": "file",
+        "location": object_storage_config["location"],
+    }
+
     yield object_storage_config
 
     # Restore original values
@@ -716,6 +723,8 @@ def mock_object_storage(object_storage_config):
     dj.config.object_storage.protocol = original["protocol"]
     dj.config.object_storage.location = original["location"]
     dj.config.object_storage.token_length = original["token_length"]
+    dj.config.object_storage.stores.clear()
+    dj.config.object_storage.stores.update(original["stores"])
 
 
 @pytest.fixture

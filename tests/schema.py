@@ -200,8 +200,8 @@ class Ephys(dj.Imported):
         -> master
         channel    :tinyint unsigned   # channel number within Ephys
         ----
-        voltage    : <djblob>
-        current = null : <djblob>   # optional current to test null handling
+        voltage    : <blob>
+        current = null : <blob>   # optional current to test null handling
         """
 
     def _make_tuples(self, key):
@@ -228,7 +228,7 @@ class Image(dj.Manual):
     # table for testing blob inserts
     id           : int # image identifier
     ---
-    img             : <djblob> # image
+    img             : <blob> # image
     """
 
 
@@ -454,7 +454,7 @@ class Longblob(dj.Manual):
     definition = """
     id: int
     ---
-    data: <djblob>
+    data: <blob>
     """
 
 

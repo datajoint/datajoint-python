@@ -1,14 +1,13 @@
 """
 Tests for type composition (type chain encoding/decoding).
 
-This tests the <xblob> → <content> → json composition pattern
+This tests the <blob@> → <hash> → json composition pattern
 and similar type chains.
 """
 
 from datajoint.attribute_type import (
     AttributeType,
-    _type_registry,
-    register_type,
+    _codec_registry,
     resolve_dtype,
 )
 
@@ -18,23 +17,24 @@ class TestTypeChainResolution:
 
     def setup_method(self):
         """Clear test types from registry before each test."""
-        for name in list(_type_registry.keys()):
+        for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
-                del _type_registry[name]
+                del _codec_registry[name]
 
     def teardown_method(self):
         """Clean up test types after each test."""
-        for name in list(_type_registry.keys()):
+        for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
-                del _type_registry[name]
+                del _codec_registry[name]
 
     def test_single_type_chain(self):
         """Test resolving a single-type chain."""
 
-        @register_type
         class TestSingle(AttributeType):
-            type_name = "test_single"
-            dtype = "varchar(100)"
+            name = "test_single"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "varchar(100)"
 
             def encode(self, value, *, key=None, store_name=None):
                 return str(value)
@@ -52,10 +52,11 @@ class TestTypeChainResolution:
     def test_two_type_chain(self):
         """Test resolving a two-type chain."""
 
-        @register_type
         class TestInner(AttributeType):
-            type_name = "test_inner"
-            dtype = "longblob"
+            name = "test_inner"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
 
             def encode(self, value, *, key=None, store_name=None):
                 return value
@@ -63,10 +64,11 @@ class TestTypeChainResolution:
             def decode(self, stored, *, key=None):
                 return stored
 
-        @register_type
         class TestOuter(AttributeType):
-            type_name = "test_outer"
-            dtype = "<test_inner>"
+            name = "test_outer"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner>"
 
             def encode(self, value, *, key=None, store_name=None):
                 return value
@@ -76,7 +78,7 @@ class TestTypeChainResolution:
 
         final_dtype, chain, store = resolve_dtype("<test_outer>")
 
-        assert final_dtype == "longblob"
+        assert final_dtype == "bytes"
         assert len(chain) == 2
         assert chain[0].type_name == "test_outer"
         assert chain[1].type_name == "test_inner"
@@ -84,10 +86,11 @@ class TestTypeChainResolution:
     def test_three_type_chain(self):
         """Test resolving a three-type chain."""
 
-        @register_type
         class TestBase(AttributeType):
-            type_name = "test_base"
-            dtype = "json"
+            name = "test_base"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "json"
 
             def encode(self, value, *, key=None, store_name=None):
                 return value
@@ -95,10 +98,11 @@ class TestTypeChainResolution:
             def decode(self, stored, *, key=None):
                 return stored
 
-        @register_type
         class TestMiddle(AttributeType):
-            type_name = "test_middle"
-            dtype = "<test_base>"
+            name = "test_middle"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_base>"
 
             def encode(self, value, *, key=None, store_name=None):
                 return value
@@ -106,10 +110,11 @@ class TestTypeChainResolution:
             def decode(self, stored, *, key=None):
                 return stored
 
-        @register_type
         class TestTop(AttributeType):
-            type_name = "test_top"
-            dtype = "<test_middle>"
+            name = "test_top"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_middle>"
 
             def encode(self, value, *, key=None, store_name=None):
                 return value
@@ -131,24 +136,25 @@ class TestTypeChainEncodeDecode:
 
     def setup_method(self):
         """Clear test types from registry before each test."""
-        for name in list(_type_registry.keys()):
+        for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
-                del _type_registry[name]
+                del _codec_registry[name]
 
     def teardown_method(self):
         """Clean up test types after each test."""
-        for name in list(_type_registry.keys()):
+        for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
-                del _type_registry[name]
+                del _codec_registry[name]
 
     def test_encode_order(self):
         """Test that encode is applied outer → inner."""
         encode_order = []
 
-        @register_type
         class TestInnerEnc(AttributeType):
-            type_name = "test_inner_enc"
-            dtype = "longblob"
+            name = "test_inner_enc"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
 
             def encode(self, value, *, key=None, store_name=None):
                 encode_order.append("inner")
@@ -157,10 +163,11 @@ class TestTypeChainEncodeDecode:
             def decode(self, stored, *, key=None):
                 return stored
 
-        @register_type
         class TestOuterEnc(AttributeType):
-            type_name = "test_outer_enc"
-            dtype = "<test_inner_enc>"
+            name = "test_outer_enc"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner_enc>"
 
             def encode(self, value, *, key=None, store_name=None):
                 encode_order.append("outer")
@@ -183,10 +190,11 @@ class TestTypeChainEncodeDecode:
         """Test that decode is applied inner → outer (reverse of encode)."""
         decode_order = []
 
-        @register_type
         class TestInnerDec(AttributeType):
-            type_name = "test_inner_dec"
-            dtype = "longblob"
+            name = "test_inner_dec"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
 
             def encode(self, value, *, key=None, store_name=None):
                 return value
@@ -195,10 +203,11 @@ class TestTypeChainEncodeDecode:
                 decode_order.append("inner")
                 return stored.replace(b"_inner", b"")
 
-        @register_type
         class TestOuterDec(AttributeType):
-            type_name = "test_outer_dec"
-            dtype = "<test_inner_dec>"
+            name = "test_outer_dec"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner_dec>"
 
             def encode(self, value, *, key=None, store_name=None):
                 return value
@@ -220,10 +229,11 @@ class TestTypeChainEncodeDecode:
     def test_roundtrip(self):
         """Test encode/decode roundtrip through a type chain."""
 
-        @register_type
         class TestInnerRt(AttributeType):
-            type_name = "test_inner_rt"
-            dtype = "longblob"
+            name = "test_inner_rt"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
 
             def encode(self, value, *, key=None, store_name=None):
                 # Compress (just add prefix for testing)
@@ -233,10 +243,11 @@ class TestTypeChainEncodeDecode:
                 # Decompress
                 return stored.replace(b"COMPRESSED:", b"")
 
-        @register_type
         class TestOuterRt(AttributeType):
-            type_name = "test_outer_rt"
-            dtype = "<test_inner_rt>"
+            name = "test_outer_rt"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner_rt>"
 
             def encode(self, value, *, key=None, store_name=None):
                 # Serialize (just encode string for testing)
@@ -269,63 +280,68 @@ class TestTypeChainEncodeDecode:
 class TestBuiltinTypeComposition:
     """Tests for built-in type composition."""
 
-    def test_xblob_resolves_to_json(self):
-        """Test that <xblob> → <content> → json."""
-        final_dtype, chain, _ = resolve_dtype("<xblob>")
+    def test_blob_internal_resolves_to_bytes(self):
+        """Test that <blob> (internal) → bytes."""
+        final_dtype, chain, _ = resolve_dtype("<blob>")
+
+        assert final_dtype == "bytes"
+        assert len(chain) == 1
+        assert chain[0].type_name == "blob"
+
+    def test_blob_external_resolves_to_json(self):
+        """Test that <blob@store> → <hash> → json."""
+        final_dtype, chain, store = resolve_dtype("<blob@store>")
 
         assert final_dtype == "json"
         assert len(chain) == 2
-        assert chain[0].type_name == "xblob"
-        assert chain[1].type_name == "content"
+        assert chain[0].type_name == "blob"
+        assert chain[1].type_name == "hash"
+        assert store == "store"
 
-    def test_xattach_resolves_to_json(self):
-        """Test that <xattach> → <content> → json."""
-        final_dtype, chain, _ = resolve_dtype("<xattach>")
+    def test_attach_internal_resolves_to_bytes(self):
+        """Test that <attach> (internal) → bytes."""
+        final_dtype, chain, _ = resolve_dtype("<attach>")
+
+        assert final_dtype == "bytes"
+        assert len(chain) == 1
+        assert chain[0].type_name == "attach"
+
+    def test_attach_external_resolves_to_json(self):
+        """Test that <attach@store> → <hash> → json."""
+        final_dtype, chain, store = resolve_dtype("<attach@store>")
 
         assert final_dtype == "json"
         assert len(chain) == 2
-        assert chain[0].type_name == "xattach"
-        assert chain[1].type_name == "content"
+        assert chain[0].type_name == "attach"
+        assert chain[1].type_name == "hash"
+        assert store == "store"
 
-    def test_djblob_resolves_to_longblob(self):
-        """Test that <djblob> → longblob (no chain)."""
-        final_dtype, chain, _ = resolve_dtype("<djblob>")
-
-        assert final_dtype == "longblob"
-        assert len(chain) == 1
-        assert chain[0].type_name == "djblob"
-
-    def test_content_resolves_to_json(self):
-        """Test that <content> → json."""
-        final_dtype, chain, _ = resolve_dtype("<content>")
+    def test_hash_external_resolves_to_json(self):
+        """Test that <hash@store> → json (external only)."""
+        final_dtype, chain, store = resolve_dtype("<hash@store>")
 
         assert final_dtype == "json"
         assert len(chain) == 1
-        assert chain[0].type_name == "content"
+        assert chain[0].type_name == "hash"
+        assert store == "store"
 
-    def test_object_resolves_to_json(self):
-        """Test that <object> → json."""
-        final_dtype, chain, _ = resolve_dtype("<object>")
+    def test_object_external_resolves_to_json(self):
+        """Test that <object@> → json (external only)."""
+        final_dtype, chain, store = resolve_dtype("<object@store>")
 
         assert final_dtype == "json"
         assert len(chain) == 1
         assert chain[0].type_name == "object"
+        assert store == "store"
 
-    def test_attach_resolves_to_longblob(self):
-        """Test that <attach> → longblob."""
-        final_dtype, chain, _ = resolve_dtype("<attach>")
-
-        assert final_dtype == "longblob"
-        assert len(chain) == 1
-        assert chain[0].type_name == "attach"
-
-    def test_filepath_resolves_to_json(self):
-        """Test that <filepath> → json."""
-        final_dtype, chain, _ = resolve_dtype("<filepath>")
+    def test_filepath_external_resolves_to_json(self):
+        """Test that <filepath@> → json (external only)."""
+        final_dtype, chain, store = resolve_dtype("<filepath@store>")
 
         assert final_dtype == "json"
         assert len(chain) == 1
         assert chain[0].type_name == "filepath"
+        assert store == "store"
 
 
 class TestStoreNameParsing:
@@ -333,14 +349,14 @@ class TestStoreNameParsing:
 
     def test_type_with_store(self):
         """Test parsing type with store name."""
-        final_dtype, chain, store = resolve_dtype("<xblob@mystore>")
+        final_dtype, chain, store = resolve_dtype("<blob@mystore>")
 
         assert final_dtype == "json"
         assert store == "mystore"
 
     def test_type_without_store(self):
         """Test parsing type without store name."""
-        final_dtype, chain, store = resolve_dtype("<xblob>")
+        final_dtype, chain, store = resolve_dtype("<blob>")
 
         assert store is None
 

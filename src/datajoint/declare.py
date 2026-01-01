@@ -471,7 +471,17 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         attr_type, store_name = get_adapter(context, match["type"])
         if store_name is not None:
             match["store"] = store_name
-        match["type"] = attr_type.dtype
+        # Determine if external storage is used (store_name is present, even if empty string for default)
+        is_external = store_name is not None
+        inner_dtype = attr_type.get_dtype(is_external=is_external)
+
+        # If inner dtype is a codec without store, propagate the store from outer type
+        # e.g., <attach@mystore> returns <hash>, we need to resolve as <hash@mystore>
+        if inner_dtype.startswith("<") and "@" not in inner_dtype and match.get("store") is not None:
+            # Append store to the inner dtype
+            inner_dtype = inner_dtype[:-1] + "@" + match["store"] + ">"
+
+        match["type"] = inner_dtype
         # Recursively resolve if dtype is also a special type
         category = match_type(match["type"])
         if category in SPECIAL_TYPES:

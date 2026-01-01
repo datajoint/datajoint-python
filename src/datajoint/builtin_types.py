@@ -119,8 +119,7 @@ class BlobCodec(Codec):
         return blob.unpack(stored, squeeze=False)
 
 
-# Backward compatibility alias
-DJBlobType = BlobCodec
+# Note: DJBlobType is defined at end of file as DJBlobCodec (not BlobCodec)
 
 
 # =============================================================================
@@ -179,9 +178,9 @@ class HashCodec(Codec):
         Returns:
             Metadata dict: {hash, store, size}
         """
-        from .hash_registry import put_hash_content
+        from .content_registry import put_content
 
-        return put_hash_content(value, store_name=store_name)
+        return put_content(value, store_name=store_name)
 
     def decode(self, stored: dict, *, key: dict | None = None) -> bytes:
         """
@@ -194,9 +193,9 @@ class HashCodec(Codec):
         Returns:
             Original bytes.
         """
-        from .hash_registry import get_hash_content
+        from .content_registry import get_content
 
-        return get_hash_content(stored["hash"], store_name=stored.get("store"))
+        return get_content(stored["hash"], store_name=stored.get("store"))
 
     def validate(self, value: Any) -> None:
         """Validate that value is bytes."""
@@ -204,8 +203,7 @@ class HashCodec(Codec):
             raise TypeError(f"<hash> expects bytes, got {type(value).__name__}")
 
 
-# Backward compatibility alias
-ContentType = HashCodec
+# Note: ContentType is defined at end of file as ContentCodec (not HashCodec)
 
 
 # =============================================================================
@@ -300,7 +298,8 @@ class ObjectCodec(Codec):
         from datetime import datetime, timezone
         from pathlib import Path
 
-        from .storage import build_object_path, get_store_backend
+        from .content_registry import get_store_backend
+        from .storage import build_object_path
 
         # Extract context from key
         key = key or {}
@@ -396,7 +395,7 @@ class ObjectCodec(Codec):
             ObjectRef for accessing the stored content.
         """
         from .objectref import ObjectRef
-        from .storage import get_store_backend
+        from .content_registry import get_store_backend
 
         store_name = stored.get("store")
         backend = get_store_backend(store_name)
@@ -618,7 +617,7 @@ class FilepathCodec(Codec):
         """
         from datetime import datetime, timezone
 
-        from .storage import get_store_backend
+        from .content_registry import get_store_backend
 
         path = str(value)
 
@@ -653,7 +652,7 @@ class FilepathCodec(Codec):
             ObjectRef for accessing the file.
         """
         from .objectref import ObjectRef
-        from .storage import get_store_backend
+        from .content_registry import get_store_backend
 
         store_name = stored.get("store")
         backend = get_store_backend(store_name)
@@ -669,11 +668,3 @@ class FilepathCodec(Codec):
 
 # Backward compatibility alias
 FilepathType = FilepathCodec
-
-
-# =============================================================================
-# Legacy aliases for backward compatibility
-# =============================================================================
-
-# Old names that mapped to content-addressed storage
-XBlobType = BlobCodec  # <xblob> is now <blob@>

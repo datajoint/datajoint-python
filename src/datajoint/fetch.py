@@ -42,7 +42,7 @@ def _get(connection, attr, data, squeeze, download_path):
     - Blob types return raw bytes (unless an adapter handles them)
     - Adapters (AttributeTypes) handle all custom encoding/decoding via type chains
 
-    For composed types (e.g., <xblob> using <content>), decoders are applied
+    For composed types (e.g., <blob@> using <hash>), decoders are applied
     in reverse order: innermost first, then outermost.
 
     :param connection: a dj.Connection object
@@ -61,7 +61,13 @@ def _get(connection, attr, data, squeeze, download_path):
     if attr.adapter:
         from .attribute_type import resolve_dtype
 
-        final_dtype, type_chain, _ = resolve_dtype(f"<{attr.adapter.type_name}>")
+        # Include store if present to get correct chain for external storage
+        store = getattr(attr, "store", None)
+        if store is not None:
+            dtype_spec = f"<{attr.adapter.type_name}@{store}>"
+        else:
+            dtype_spec = f"<{attr.adapter.type_name}>"
+        final_dtype, type_chain, _ = resolve_dtype(dtype_spec)
 
         # First, process the final dtype (what's stored in the database)
         if final_dtype.lower() == "json":
@@ -95,7 +101,7 @@ def _get(connection, attr, data, squeeze, download_path):
         return uuid_module.UUID(bytes=data)
 
     if attr.is_blob:
-        return data  # raw bytes (use <djblob> for automatic deserialization)
+        return data  # raw bytes (use <blob> for automatic deserialization)
 
     # Native types - pass through unchanged
     return data

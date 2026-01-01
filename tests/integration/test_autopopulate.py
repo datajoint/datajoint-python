@@ -121,7 +121,7 @@ def test_load_dependencies(prefix, connection_test):
         definition = """
         -> ImageSource
         ---
-        image_data: <djblob>
+        image_data: <blob>
         """
 
         def make(self, key):
@@ -134,7 +134,7 @@ def test_load_dependencies(prefix, connection_test):
         definition = """
         -> Image
         ---
-        crop_image: <djblob>
+        crop_image: <blob>
         """
 
         def make(self, key):

@@ -14,8 +14,8 @@ class Thing(dj.Manual):
     ---
     number=0  : int
     frac    : float
-    picture = null    :   <xattach@update_store>
-    params = null  : <djblob>
+    picture = null    :   <attach@update_store>
+    params = null  : <blob>
     img_file = null: <filepath@update_repo>
     timestamp = CURRENT_TIMESTAMP :   datetime
     """

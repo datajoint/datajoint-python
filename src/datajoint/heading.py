@@ -326,7 +326,9 @@ class Heading:
                     # if no adapter, then delay the error until the first invocation
                     attr["adapter"] = _MissingType(adapter_name)
                 else:
-                    attr["type"] = attr["adapter"].dtype
+                    # Determine if external storage based on store presence
+                    is_external = attr.get("store") is not None
+                    attr["type"] = attr["adapter"].get_dtype(is_external=is_external)
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):
                         raise DataJointError(f"Invalid dtype '{attr['type']}' in attribute type <{adapter_name}>.")
                     # Update is_blob based on resolved dtype (check both BYTES and NATIVE_BLOB patterns)

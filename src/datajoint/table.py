@@ -790,7 +790,7 @@ class Table(QueryExpression):
             # Numeric - convert to string
             elif attr.numeric:
                 value = str(int(value) if isinstance(value, bool) else value)
-            # Blob - pass through as bytes (use <djblob> for automatic serialization)
+            # Blob - pass through as bytes (use <blob> for automatic serialization)
 
         return name, placeholder, value
 

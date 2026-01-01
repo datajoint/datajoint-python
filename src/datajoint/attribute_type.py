@@ -110,8 +110,7 @@ class Codec(ABC):
             existing = _codec_registry[cls.name]
             if type(existing) is not cls:
                 raise DataJointError(
-                    f"Codec <{cls.name}> already registered by "
-                    f"{type(existing).__module__}.{type(existing).__name__}"
+                    f"Codec <{cls.name}> already registered by " f"{type(existing).__module__}.{type(existing).__name__}"
                 )
             return  # Same class, idempotent
 
@@ -234,9 +233,14 @@ def register_type(cls: type[Codec]) -> type[Codec]:
     if not isinstance(cls, type) or not issubclass(cls, Codec):
         raise TypeError(f"register_type requires a Codec subclass, got {cls!r}")
 
-    # If already registered via __init_subclass__, this is a no-op
+    # Check if already registered
     if cls.name and cls.name in _codec_registry:
-        return cls
+        existing = _codec_registry[cls.name]
+        if type(existing) is not cls:
+            raise DataJointError(
+                f"Codec <{cls.name}> already registered by " f"{type(existing).__module__}.{type(existing).__name__}"
+            )
+        return cls  # Same class, idempotent
 
     # Manual registration for classes that didn't auto-register
     if cls.name:
@@ -330,8 +334,7 @@ def get_codec(name: str) -> Codec:
         return _codec_registry[type_name]
 
     raise DataJointError(
-        f"Unknown codec: <{type_name}>. "
-        f"Ensure the codec is defined (inherit from dj.Codec with name='{type_name}')."
+        f"Unknown codec: <{type_name}>. " f"Ensure the codec is defined (inherit from dj.Codec with name='{type_name}')."
     )
 
 
@@ -417,7 +420,7 @@ def _load_entry_points() -> None:
                 codec_class = ep.load()
                 # The class should auto-register via __init_subclass__
                 # But if it's an old-style class, manually register
-                if ep.name not in _codec_registry and hasattr(codec_class, 'name'):
+                if ep.name not in _codec_registry and hasattr(codec_class, "name"):
                     _codec_registry[ep.name] = codec_class()
                 logger.debug(f"Loaded codec <{ep.name}> from entry point {ep.value}")
             except Exception as e:
@@ -522,10 +525,7 @@ def get_adapter(context: dict | None, adapter_name: str) -> tuple[Codec, str | N
     if is_codec_registered(type_name):
         return get_codec(type_name), store_name
 
-    raise DataJointError(
-        f"Codec <{type_name}> is not registered. "
-        "Define a Codec subclass with name='{type_name}'."
-    )
+    raise DataJointError(f"Codec <{type_name}> is not registered. " "Define a Codec subclass with name='{type_name}'.")
 
 
 # =============================================================================

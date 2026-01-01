@@ -13,7 +13,7 @@ class Simple(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : <xblob@local>
+    item  : <blob@local>
     """
 
 
@@ -21,7 +21,7 @@ class SimpleRemote(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : <xblob@share>
+    item  : <blob@share>
     """
 
 
@@ -36,7 +36,7 @@ class Dimension(dj.Lookup):
     definition = """
     dim  : int
     ---
-    dimensions  : <djblob>
+    dimensions  : <blob>
     """
     contents = ([0, [100, 50]], [1, [3, 4, 8, 6]])
 
@@ -47,8 +47,8 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img : <xblob@share>     #  objects are stored as specified by dj.config['stores']['share']
-    neg : <xblob@local>   # objects are stored as specified by dj.config['stores']['local']
+    img : <blob@share>     #  objects are stored as specified by dj.config['stores']['share']
+    neg : <blob@local>   # objects are stored as specified by dj.config['stores']['local']
     """
 
     def make(self, key):
@@ -62,7 +62,7 @@ class Attach(dj.Manual):
     # table for storing attachments
     attach : int
     ----
-    img : <xattach@share>    #  attachments are stored as specified by: dj.config['stores']['share']
+    img : <attach@share>    #  attachments are stored as specified by: dj.config['stores']['share']
     txt : <attach>      #  attachments are stored directly in the database
     """
 

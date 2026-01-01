@@ -20,35 +20,39 @@ class TestUsesContentStorage:
 
         assert gc._uses_content_storage(attr) is False
 
-    def test_returns_true_for_content_type(self):
-        """Test that True is returned for <content> type."""
+    def test_returns_true_for_hash_type(self):
+        """Test that True is returned for <hash@> type."""
         attr = MagicMock()
         attr.adapter = MagicMock()
-        attr.adapter.type_name = "content"
+        attr.adapter.type_name = "hash"
+        attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
 
-    def test_returns_true_for_xblob_type(self):
-        """Test that True is returned for <xblob> type."""
+    def test_returns_true_for_blob_external(self):
+        """Test that True is returned for <blob@> type (external)."""
         attr = MagicMock()
         attr.adapter = MagicMock()
-        attr.adapter.type_name = "xblob"
+        attr.adapter.type_name = "blob"
+        attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
 
-    def test_returns_true_for_xattach_type(self):
-        """Test that True is returned for <xattach> type."""
+    def test_returns_true_for_attach_external(self):
+        """Test that True is returned for <attach@> type (external)."""
         attr = MagicMock()
         attr.adapter = MagicMock()
-        attr.adapter.type_name = "xattach"
+        attr.adapter.type_name = "attach"
+        attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
 
-    def test_returns_false_for_other_types(self):
-        """Test that False is returned for non-content types."""
+    def test_returns_false_for_blob_internal(self):
+        """Test that False is returned for <blob> internal storage."""
         attr = MagicMock()
         attr.adapter = MagicMock()
-        attr.adapter.type_name = "djblob"
+        attr.adapter.type_name = "blob"
+        attr.store = None
 
         assert gc._uses_content_storage(attr) is False
 
@@ -107,7 +111,7 @@ class TestUsesObjectStorage:
         """Test that False is returned for non-object types."""
         attr = MagicMock()
         attr.adapter = MagicMock()
-        attr.adapter.type_name = "xblob"
+        attr.adapter.type_name = "blob"
 
         assert gc._uses_object_storage(attr) is False
 
