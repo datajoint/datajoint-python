@@ -38,6 +38,10 @@ Use these portable, scientist-friendly types for cross-database compatibility.
 -  `enum(...)`: one of several enumerated values, e.g., `enum("low", "medium", "high")`.
    Do not use enums in primary keys due to difficulty changing definitions.
 
+**Encoding policy:** All strings use UTF-8 encoding (`utf8mb4` in MySQL, `UTF8` in PostgreSQL).
+Character encoding and collation are database-level configuration, not part of type definitions.
+Comparisons are case-sensitive by default.
+
 ### Date/Time
 
 -  `date`: date as `'YYYY-MM-DD'`.

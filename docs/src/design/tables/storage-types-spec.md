@@ -76,6 +76,9 @@ MySQL and PostgreSQL backends. Users should prefer these over native database ty
 | `varchar(n)` | Variable-length | `VARCHAR(n)` | `VARCHAR(n)` |
 | `text` | Unlimited text | `TEXT` | `TEXT` |
 
+**Encoding:** All strings use UTF-8 (`utf8mb4` in MySQL, `UTF8` in PostgreSQL).
+See [Encoding and Collation Policy](#encoding-and-collation-policy) for details.
+
 ### Boolean
 
 | Core Type | Description | MySQL | PostgreSQL |
@@ -136,6 +139,8 @@ declarative syntax:
 | `PRIMARY KEY` | ❌ Not allowed | Position above `---` line |
 | `UNIQUE` | ❌ Not allowed | Use DataJoint index syntax |
 | `COMMENT 'text'` | ❌ Not allowed | Use `# comment` syntax |
+| `CHARACTER SET` | ❌ Not allowed | Database-level configuration |
+| `COLLATE` | ❌ Not allowed | Database-level configuration |
 | `AUTO_INCREMENT` | ⚠️ Discouraged | Allowed with native types only, generates warning |
 | `UNSIGNED` | ✅ Allowed | Part of type semantics (use `uint*` core types) |
 
@@ -146,6 +151,32 @@ declarative syntax:
 - Primary keys should be meaningful, not arbitrary
 
 If required, use native types: `int auto_increment` or `serial` (with warning).
+
+### Encoding and Collation Policy
+
+Character encoding and collation are **database-level configuration**, not part of type
+definitions. This ensures consistent behavior across all tables and simplifies portability.
+
+**Configuration** (in `dj.config` or `datajoint.json`):
+```json
+{
+    "database.charset": "utf8mb4",
+    "database.collation": "utf8mb4_bin"
+}
+```
+
+**Defaults:**
+
+| Setting | MySQL | PostgreSQL |
+|---------|-------|------------|
+| Charset | `utf8mb4` | `UTF8` |
+| Collation | `utf8mb4_bin` | `C` |
+
+**Policy:**
+- **UTF-8 required**: DataJoint validates charset is UTF-8 compatible at connection time
+- **Case-sensitive by default**: Binary collation (`utf8mb4_bin` / `C`) ensures predictable comparisons
+- **No per-column overrides**: `CHARACTER SET` and `COLLATE` are rejected in type definitions
+- **Like timezone**: Encoding is infrastructure configuration, not part of the data model
 
 ## AttributeTypes (Layer 3)
 
