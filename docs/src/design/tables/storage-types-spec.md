@@ -135,8 +135,8 @@ declarative syntax:
 
 | Modifier | Status | DataJoint Alternative |
 |----------|--------|----------------------|
-| `NOT NULL` / `NULL` | ❌ Not allowed | Position above/below `---` determines nullability |
-| `DEFAULT value` | ❌ Not allowed | Use `= value` syntax after type |
+| `NOT NULL` / `NULL` | ❌ Not allowed | Use `= NULL` for nullable; omit default for required |
+| `DEFAULT value` | ❌ Not allowed | Use `= value` syntax before the type |
 | `PRIMARY KEY` | ❌ Not allowed | Position above `---` line |
 | `UNIQUE` | ❌ Not allowed | Use DataJoint index syntax |
 | `COMMENT 'text'` | ❌ Not allowed | Use `# comment` syntax |
@@ -144,6 +144,20 @@ declarative syntax:
 | `COLLATE` | ❌ Not allowed | Database-level configuration |
 | `AUTO_INCREMENT` | ⚠️ Discouraged | Allowed with native types only, generates warning |
 | `UNSIGNED` | ✅ Allowed | Part of type semantics (use `uint*` core types) |
+
+**Nullability and defaults:** DataJoint handles nullability through the default value syntax.
+An attribute is nullable if and only if its default is `NULL`:
+
+```
+# Required (NOT NULL, no default)
+name : varchar(100)
+
+# Nullable (default is NULL)
+nickname = NULL : varchar(100)
+
+# Required with default value
+status = "active" : varchar(20)
+```
 
 **Auto-increment policy:** DataJoint discourages `AUTO_INCREMENT` / `SERIAL` because:
 - Breaks reproducibility (IDs depend on insertion order)
