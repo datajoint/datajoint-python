@@ -442,7 +442,7 @@ column_name JSONB NOT NULL
 ```
 
 The `json` database type:
-- Used as dtype by built-in AttributeTypes (`<object>`, `<content>`, `<filepath@store>`)
+- Used as dtype by built-in AttributeTypes (`<object@>`, `<content@>`, `<filepath@store>`)
 - Stores arbitrary JSON-serializable data
 - Automatically uses appropriate type for database backend
 - Supports JSON path queries where available
