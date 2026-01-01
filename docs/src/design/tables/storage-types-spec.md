@@ -609,49 +609,31 @@ class ImageType(AttributeType):
 | `<hash@s>` | `json` | `JSON`/`JSONB` | `_hash/{hash}` | Yes | bytes |
 | `<filepath@s>` | `json` | `JSON`/`JSONB` | Configured store | No | ObjectRef |
 
-## Reference Counting for Hash Type
+## Garbage Collection for Hash Storage
 
-The `HashRegistry` is a **project-level** table that tracks hash-addressed objects
-across all schemas. This differs from the legacy `~external_*` tables which were per-schema.
-
-```python
-class HashRegistry:
-    """
-    Project-level hash registry.
-    Stored in a designated database (e.g., `{project}_hash`).
-    """
-    definition = """
-    # Hash-addressed object registry (project-wide)
-    hash_id : char(64)          # SHA256 hex
-    ---
-    store        : varchar(64)       # Store name
-    size         : uint64            # Size in bytes
-    created = CURRENT_TIMESTAMP : datetime
-    """
-```
-
-Garbage collection scans **all schemas** in the project:
+Hash metadata (hash, store, size) is stored directly in each table's JSON column - no separate
+registry table is needed. Garbage collection scans all tables to find referenced hashes:
 
 ```python
-def garbage_collect(project):
-    """Remove data not referenced by any table in any schema."""
-    # Get all registered hashes
-    registered = set(HashRegistry().fetch('hash_id', 'store'))
+def garbage_collect(store_name):
+    """Remove hash-addressed data not referenced by any table."""
+    # Scan store for all hash files
+    store = get_store(store_name)
+    all_hashes = set(store.list_hashes())  # from _hash/ directory
 
-    # Get all referenced hashes from ALL schemas in the project
+    # Scan all tables for referenced hashes
     referenced = set()
     for schema in project.schemas:
         for table in schema.tables:
             for attr in table.heading.attributes:
-                if attr.type in ('hash', 'hash@...'):
-                    hashes = table.fetch(attr.name)
-                    referenced.update((h, attr.store) for h in hashes)
+                if uses_hash_storage(attr):  # <blob@>, <attach@>, <hash@>
+                    for row in table.fetch(attr.name):
+                        if row and row.get('store') == store_name:
+                            referenced.add(row['hash'])
 
-    # Delete orphaned data
-    for hash_id, store in (registered - referenced):
-        store_backend = get_store(store)
-        store_backend.delete(hash_path(hash_id))
-        (HashRegistry() & {'hash_id': hash_id}).delete()
+    # Delete orphaned files
+    for hash_id in (all_hashes - referenced):
+        store.delete(hash_path(hash_id))
 ```
 
 ## Built-in AttributeType Comparison
