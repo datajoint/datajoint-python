@@ -45,6 +45,11 @@ __all__ = [
     "kill",
     "MatCell",
     "MatStruct",
+    # New codec API
+    "Codec",
+    "list_codecs",
+    "get_codec",
+    # Backward compatibility aliases
     "AttributeType",
     "register_type",
     "list_types",
@@ -61,7 +66,14 @@ __all__ = [
 from . import errors
 from . import migrate
 from .admin import kill
-from .attribute_type import AttributeType, list_types, register_type
+from .attribute_type import (
+    AttributeType,
+    Codec,
+    get_codec,
+    list_codecs,
+    list_types,
+    register_type,
+)
 from .blob import MatCell, MatStruct
 from .cli import cli
 from .connection import Connection, conn

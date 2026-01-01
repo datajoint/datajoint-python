@@ -1,31 +1,30 @@
 """
-Built-in DataJoint attribute types.
+Built-in DataJoint codecs.
 
-This module defines the standard AttributeTypes that ship with DataJoint.
-These serve as both useful built-in types and as examples for users who
-want to create their own custom types.
+This module defines the standard codecs that ship with DataJoint.
+These serve as both useful built-in codecs and as examples for users who
+want to create their own custom codecs.
 
-Built-in Types:
-    - ``<djblob>``: Serialize Python objects to DataJoint's blob format (internal storage)
-    - ``<content>``: Content-addressed storage with SHA256 deduplication
-    - ``<xblob>``: External serialized blobs using content-addressed storage
+Built-in Codecs:
+    - ``<blob>``: Serialize Python objects (internal) or external with dedup
+    - ``<hash>``: Hash-addressed storage with MD5 deduplication
     - ``<object>``: Path-addressed storage for files/folders (Zarr, HDF5)
-    - ``<attach>``: Internal file attachment stored in database
-    - ``<xattach>``: External file attachment with deduplication
+    - ``<attach>``: File attachment (internal) or external with dedup
     - ``<filepath@store>``: Reference to existing file in store
 
-Example - Creating a Custom Type:
-    Here's how to define your own AttributeType, modeled after the built-in types::
+Example - Creating a Custom Codec:
+    Here's how to define your own codec, modeled after the built-in codecs::
 
         import datajoint as dj
         import networkx as nx
 
-        @dj.register_type
-        class GraphType(dj.AttributeType):
+        class GraphCodec(dj.Codec):
             '''Store NetworkX graphs as edge lists.'''
 
-            type_name = "graph"      # Use as <graph> in definitions
-            dtype = "<djblob>"       # Compose with djblob for serialization
+            name = "graph"  # Use as <graph> in definitions
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<blob>"  # Compose with blob for serialization
 
             def encode(self, graph, *, key=None, store_name=None):
                 # Convert graph to a serializable format
@@ -59,22 +58,26 @@ from __future__ import annotations
 
 from typing import Any
 
-from .attribute_type import AttributeType, register_type
+from .attribute_type import Codec
+from .errors import DataJointError
 
 
 # =============================================================================
-# DJBlob Types - DataJoint's native serialization
+# Blob Codec - DataJoint's native serialization
 # =============================================================================
 
 
-@register_type
-class DJBlobType(AttributeType):
+class BlobCodec(Codec):
     """
     Serialize Python objects using DataJoint's blob format.
 
-    The ``<djblob>`` type handles serialization of arbitrary Python objects
+    The ``<blob>`` codec handles serialization of arbitrary Python objects
     including NumPy arrays, dictionaries, lists, datetime objects, and UUIDs.
-    Data is stored in a MySQL ``LONGBLOB`` column.
+
+    Supports both internal and external storage:
+    - ``<blob>``: Stored in database (bytes → LONGBLOB)
+    - ``<blob@>``: Stored externally via ``<hash@>`` with deduplication
+    - ``<blob@store>``: Stored in specific named store
 
     Format Features:
         - Protocol headers (``mYm`` for MATLAB-compatible, ``dj0`` for Python-native)
@@ -88,19 +91,20 @@ class DJBlobType(AttributeType):
             definition = '''
             data_id : int
             ---
-            results : <djblob>      # Serialized Python objects
+            small_result : <blob>       # internal (in database)
+            large_result : <blob@>      # external (default store)
+            archive : <blob@cold>       # external (specific store)
             '''
 
         # Insert any serializable object
-        table.insert1({'data_id': 1, 'results': {'scores': [0.9, 0.8], 'labels': ['a', 'b']}})
-
-    Note:
-        Plain ``longblob`` columns store raw bytes without serialization.
-        Use ``<djblob>`` when you need automatic serialization.
+        table.insert1({'data_id': 1, 'small_result': {'scores': [0.9, 0.8]}})
     """
 
-    type_name = "djblob"
-    dtype = "longblob"
+    name = "blob"
+
+    def get_dtype(self, is_external: bool) -> str:
+        """Return bytes for internal, <hash> for external storage."""
+        return "<hash>" if is_external else "bytes"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
         """Serialize a Python object to DataJoint's blob format."""
@@ -115,22 +119,27 @@ class DJBlobType(AttributeType):
         return blob.unpack(stored, squeeze=False)
 
 
+# Backward compatibility alias
+DJBlobType = BlobCodec
+
+
 # =============================================================================
-# Content-Addressed Storage Types
+# Hash-Addressed Storage Codec
 # =============================================================================
 
 
-@register_type
-class ContentType(AttributeType):
+class HashCodec(Codec):
     """
-    Content-addressed storage with SHA256 deduplication.
+    Hash-addressed storage with MD5 deduplication.
 
-    The ``<content>`` type stores raw bytes using content-addressed storage.
-    Data is identified by its SHA256 hash and stored in a hierarchical directory:
-    ``_content/{hash[:2]}/{hash[2:4]}/{hash}``
+    The ``<hash@>`` codec stores raw bytes using content-addressed storage.
+    Data is identified by its MD5 hash and stored in a hierarchical directory:
+    ``_hash/{hash[:2]}/{hash[2:4]}/{hash}``
 
     The database column stores JSON metadata: ``{hash, store, size}``.
     Duplicate content is automatically deduplicated.
+
+    External only - requires @ modifier.
 
     Example::
 
@@ -139,20 +148,24 @@ class ContentType(AttributeType):
             definition = '''
             content_id : int
             ---
-            data : <content@mystore>
+            data : <hash@mystore>
             '''
 
         # Insert raw bytes
         table.insert1({'content_id': 1, 'data': b'raw binary content'})
 
     Note:
-        This type accepts only ``bytes``. For Python objects, use ``<xblob>``.
-        A store must be specified (e.g., ``<content@store>``) unless a default
-        store is configured.
+        This codec accepts only ``bytes``. For Python objects, use ``<blob@>``.
+        Typically used indirectly via ``<blob@>`` or ``<attach@>`` rather than directly.
     """
 
-    type_name = "content"
-    dtype = "json"
+    name = "hash"
+
+    def get_dtype(self, is_external: bool) -> str:
+        """Hash storage is external only."""
+        if not is_external:
+            raise DataJointError("<hash> requires @ (external storage only)")
+        return "json"
 
     def encode(self, value: bytes, *, key: dict | None = None, store_name: str | None = None) -> dict:
         """
@@ -166,9 +179,9 @@ class ContentType(AttributeType):
         Returns:
             Metadata dict: {hash, store, size}
         """
-        from .content_registry import put_content
+        from .hash_registry import put_hash_content
 
-        return put_content(value, store_name=store_name)
+        return put_hash_content(value, store_name=store_name)
 
     def decode(self, stored: dict, *, key: dict | None = None) -> bytes:
         """
@@ -181,88 +194,41 @@ class ContentType(AttributeType):
         Returns:
             Original bytes.
         """
-        from .content_registry import get_content
+        from .hash_registry import get_hash_content
 
-        return get_content(stored["hash"], store_name=stored.get("store"))
+        return get_hash_content(stored["hash"], store_name=stored.get("store"))
 
     def validate(self, value: Any) -> None:
         """Validate that value is bytes."""
         if not isinstance(value, bytes):
-            raise TypeError(f"<content> expects bytes, got {type(value).__name__}")
+            raise TypeError(f"<hash> expects bytes, got {type(value).__name__}")
 
 
-@register_type
-class XBlobType(AttributeType):
-    """
-    External serialized blobs with content-addressed storage.
-
-    The ``<xblob>`` type combines DataJoint's blob serialization with
-    content-addressed storage. Objects are serialized, then stored externally
-    with automatic deduplication.
-
-    This is ideal for large objects (NumPy arrays, DataFrames) that may be
-    duplicated across rows.
-
-    Example::
-
-        @schema
-        class LargeArrays(dj.Manual):
-            definition = '''
-            array_id : int
-            ---
-            data : <xblob@mystore>
-            '''
-
-        import numpy as np
-        table.insert1({'array_id': 1, 'data': np.random.rand(1000, 1000)})
-
-    Type Composition:
-        ``<xblob>`` composes with ``<content>``::
-
-            Insert: object → blob.pack() → put_content() → JSON metadata
-            Fetch:  JSON → get_content() → blob.unpack() → object
-
-    Note:
-        - For internal storage, use ``<djblob>``
-        - For raw bytes without serialization, use ``<content>``
-    """
-
-    type_name = "xblob"
-    dtype = "<content>"  # Composition: uses ContentType
-
-    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
-        """Serialize object to bytes (passed to ContentType)."""
-        from . import blob
-
-        return blob.pack(value, compress=True)
-
-    def decode(self, stored: bytes, *, key: dict | None = None) -> Any:
-        """Deserialize bytes back to Python object."""
-        from . import blob
-
-        return blob.unpack(stored, squeeze=False)
+# Backward compatibility alias
+ContentType = HashCodec
 
 
 # =============================================================================
-# Path-Addressed Storage Types (OAS - Object-Augmented Schema)
+# Path-Addressed Storage Codec (OAS - Object-Augmented Schema)
 # =============================================================================
 
 
-@register_type
-class ObjectType(AttributeType):
+class ObjectCodec(Codec):
     """
     Path-addressed storage for files and folders.
 
-    The ``<object>`` type provides managed file/folder storage where the path
-    is derived from the primary key: ``{schema}/{table}/objects/{pk}/{field}_{token}.{ext}``
+    The ``<object@>`` codec provides managed file/folder storage where the path
+    is derived from the primary key: ``{schema}/{table}/{pk}/{field}/``
 
-    Unlike ``<content>`` (content-addressed), each row has its own storage path,
+    Unlike ``<hash@>`` (hash-addressed), each row has its own storage path,
     and content is deleted when the row is deleted. This is ideal for:
 
     - Zarr arrays (hierarchical chunked data)
     - HDF5 files
     - Complex multi-file outputs
     - Any content that shouldn't be deduplicated
+
+    External only - requires @ modifier.
 
     Example::
 
@@ -287,26 +253,25 @@ class ObjectType(AttributeType):
     Storage Structure:
         Objects are stored at::
 
-            {store_root}/{schema}/{table}/objects/{pk}/{field}_{token}.ext
+            {store_root}/{schema}/{table}/{pk}/{field}/
 
-        The token ensures uniqueness even if content is replaced.
+    Comparison with ``<hash@>``::
 
-    Comparison with ``<content>``::
-
-        | Aspect         | <object>          | <content>           |
+        | Aspect         | <object@>         | <hash@>             |
         |----------------|-------------------|---------------------|
         | Addressing     | Path (by PK)      | Hash (by content)   |
         | Deduplication  | No                | Yes                 |
         | Deletion       | With row          | GC when unreferenced|
         | Use case       | Zarr, HDF5        | Blobs, attachments  |
-
-    Note:
-        A store must be specified (``<object@store>``) unless a default store
-        is configured. Returns ``ObjectRef`` on fetch for lazy access.
     """
 
-    type_name = "object"
-    dtype = "json"
+    name = "object"
+
+    def get_dtype(self, is_external: bool) -> str:
+        """Object storage is external only."""
+        if not is_external:
+            raise DataJointError("<object> requires @ (external storage only)")
+        return "json"
 
     def encode(
         self,
@@ -335,8 +300,7 @@ class ObjectType(AttributeType):
         from datetime import datetime, timezone
         from pathlib import Path
 
-        from .content_registry import get_store_backend
-        from .storage import build_object_path
+        from .storage import build_object_path, get_store_backend
 
         # Extract context from key
         key = key or {}
@@ -355,7 +319,6 @@ class ObjectType(AttributeType):
         ext = None
         size = None
         item_count = None
-        source_path = None
 
         if isinstance(value, bytes):
             content = value
@@ -371,8 +334,6 @@ class ObjectType(AttributeType):
         elif isinstance(value, (str, Path)):
             source_path = Path(value)
             if not source_path.exists():
-                from .errors import DataJointError
-
                 raise DataJointError(f"Source path not found: {source_path}")
             is_dir = source_path.is_dir()
             ext = source_path.suffix if not is_dir else None
@@ -434,8 +395,8 @@ class ObjectType(AttributeType):
         Returns:
             ObjectRef for accessing the stored content.
         """
-        from .content_registry import get_store_backend
         from .objectref import ObjectRef
+        from .storage import get_store_backend
 
         store_name = stored.get("store")
         backend = get_store_backend(store_name)
@@ -459,17 +420,24 @@ class ObjectType(AttributeType):
         raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
 
 
+# Backward compatibility alias
+ObjectType = ObjectCodec
+
+
 # =============================================================================
-# File Attachment Types
+# File Attachment Codecs
 # =============================================================================
 
 
-@register_type
-class AttachType(AttributeType):
+class AttachCodec(Codec):
     """
-    Internal file attachment stored in database.
+    File attachment with filename preserved.
 
-    The ``<attach>`` type stores a file directly in the database as a ``LONGBLOB``.
+    Supports both internal and external storage:
+    - ``<attach>``: Stored in database (bytes → LONGBLOB)
+    - ``<attach@>``: Stored externally via ``<hash@>`` with deduplication
+    - ``<attach@store>``: Stored in specific named store
+
     The filename is preserved and the file is extracted to the configured
     download path on fetch.
 
@@ -480,26 +448,27 @@ class AttachType(AttributeType):
             definition = '''
             doc_id : int
             ---
-            report : <attach>
+            config : <attach>           # internal (small file in DB)
+            dataset : <attach@>         # external (default store)
+            archive : <attach@cold>     # external (specific store)
             '''
 
         # Insert a file
-        table.insert1({'doc_id': 1, 'report': '/path/to/report.pdf'})
+        table.insert1({'doc_id': 1, 'config': '/path/to/config.json'})
 
         # Fetch extracts to download_path and returns local path
-        local_path = (table & 'doc_id=1').fetch1('report')
+        local_path = (table & 'doc_id=1').fetch1('config')
 
-    Storage Format:
+    Storage Format (internal):
         The blob contains: ``filename\\0contents``
         - Filename (UTF-8 encoded) + null byte + raw file contents
-
-    Note:
-        - For large files, use ``<xattach>`` (external storage with deduplication)
-        - For files that shouldn't be copied, use ``<filepath@store>``
     """
 
-    type_name = "attach"
-    dtype = "longblob"
+    name = "attach"
+
+    def get_dtype(self, is_external: bool) -> str:
+        """Return bytes for internal, <hash> for external storage."""
+        return "<hash>" if is_external else "bytes"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
         """
@@ -576,137 +545,25 @@ class AttachType(AttributeType):
             raise TypeError(f"<attach> expects a file path, got {type(value).__name__}")
 
 
-@register_type
-class XAttachType(AttributeType):
-    """
-    External file attachment with content-addressed storage.
-
-    The ``<xattach>`` type stores files externally using content-addressed
-    storage. Like ``<attach>``, the filename is preserved and the file is
-    extracted on fetch. Unlike ``<attach>``, files are stored externally
-    with automatic deduplication.
-
-    Example::
-
-        @schema
-        class LargeDocuments(dj.Manual):
-            definition = '''
-            doc_id : int
-            ---
-            dataset : <xattach@mystore>
-            '''
-
-        # Insert a large file
-        table.insert1({'doc_id': 1, 'dataset': '/path/to/large_file.h5'})
-
-        # Fetch downloads and returns local path
-        local_path = (table & 'doc_id=1').fetch1('dataset')
-
-    Type Composition:
-        ``<xattach>`` composes with ``<content>``::
-
-            Insert: file → read + encode filename → put_content() → JSON
-            Fetch:  JSON → get_content() → extract → local path
-
-    Comparison::
-
-        | Type       | Storage  | Deduplication | Best for           |
-        |------------|----------|---------------|---------------------|
-        | <attach>   | Database | No            | Small files (<16MB) |
-        | <xattach>  | External | Yes           | Large files         |
-    """
-
-    type_name = "xattach"
-    dtype = "<content>"  # Composition: uses ContentType
-
-    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
-        """
-        Read file and encode as filename + contents.
-
-        Args:
-            value: Path to file (str or Path).
-            key: Primary key values (unused).
-            store_name: Passed to ContentType for storage.
-
-        Returns:
-            Bytes: filename (UTF-8) + null byte + file contents
-        """
-        from pathlib import Path
-
-        path = Path(value)
-        if not path.exists():
-            raise FileNotFoundError(f"Attachment file not found: {path}")
-        if path.is_dir():
-            raise IsADirectoryError(f"<xattach> does not support directories: {path}")
-
-        filename = path.name
-        contents = path.read_bytes()
-        return filename.encode("utf-8") + b"\x00" + contents
-
-    def decode(self, stored: bytes, *, key: dict | None = None) -> str:
-        """
-        Extract file to download path and return local path.
-
-        Args:
-            stored: Bytes containing filename + null + contents.
-            key: Primary key values (unused).
-
-        Returns:
-            Path to extracted file as string.
-        """
-        from pathlib import Path
-
-        from .settings import config
-
-        # Split on first null byte
-        null_pos = stored.index(b"\x00")
-        filename = stored[:null_pos].decode("utf-8")
-        contents = stored[null_pos + 1 :]
-
-        # Write to download path
-        download_path = Path(config.get("download_path", "."))
-        download_path.mkdir(parents=True, exist_ok=True)
-        local_path = download_path / filename
-
-        # Handle filename collision - if file exists with different content, add suffix
-        if local_path.exists():
-            existing_contents = local_path.read_bytes()
-            if existing_contents != contents:
-                # Find unique filename
-                stem = local_path.stem
-                suffix = local_path.suffix
-                counter = 1
-                while local_path.exists() and local_path.read_bytes() != contents:
-                    local_path = download_path / f"{stem}_{counter}{suffix}"
-                    counter += 1
-
-        # Only write if file doesn't exist or has different content
-        if not local_path.exists():
-            local_path.write_bytes(contents)
-
-        return str(local_path)
-
-    def validate(self, value: Any) -> None:
-        """Validate that value is a valid file path."""
-        from pathlib import Path
-
-        if not isinstance(value, (str, Path)):
-            raise TypeError(f"<xattach> expects a file path, got {type(value).__name__}")
+# Backward compatibility aliases
+AttachType = AttachCodec
+XAttachType = AttachCodec  # <attach@> is now just AttachCodec with external storage
 
 
 # =============================================================================
-# Filepath Reference Type
+# Filepath Reference Codec
 # =============================================================================
 
 
-@register_type
-class FilepathType(AttributeType):
+class FilepathCodec(Codec):
     """
     Reference to existing file in configured store.
 
-    The ``<filepath@store>`` type stores a reference to a file that already
-    exists in the storage backend. Unlike ``<attach>`` or ``<object>``, no
+    The ``<filepath@store>`` codec stores a reference to a file that already
+    exists in the storage backend. Unlike ``<attach>`` or ``<object@>``, no
     file copying occurs - only the path is recorded.
+
+    External only - requires @store.
 
     This is useful when:
     - Files are managed externally (e.g., by acquisition software)
@@ -739,8 +596,13 @@ class FilepathType(AttributeType):
         DataJoint does not manage the lifecycle of referenced files.
     """
 
-    type_name = "filepath"
-    dtype = "json"
+    name = "filepath"
+
+    def get_dtype(self, is_external: bool) -> str:
+        """Filepath is external only."""
+        if not is_external:
+            raise DataJointError("<filepath> requires @store")
+        return "json"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> dict:
         """
@@ -756,7 +618,7 @@ class FilepathType(AttributeType):
         """
         from datetime import datetime, timezone
 
-        from .content_registry import get_store_backend
+        from .storage import get_store_backend
 
         path = str(value)
 
@@ -790,8 +652,8 @@ class FilepathType(AttributeType):
         Returns:
             ObjectRef for accessing the file.
         """
-        from .content_registry import get_store_backend
         from .objectref import ObjectRef
+        from .storage import get_store_backend
 
         store_name = stored.get("store")
         backend = get_store_backend(store_name)
@@ -803,3 +665,15 @@ class FilepathType(AttributeType):
 
         if not isinstance(value, (str, Path)):
             raise TypeError(f"<filepath> expects a path string or Path, got {type(value).__name__}")
+
+
+# Backward compatibility alias
+FilepathType = FilepathCodec
+
+
+# =============================================================================
+# Legacy aliases for backward compatibility
+# =============================================================================
+
+# Old names that mapped to content-addressed storage
+XBlobType = BlobCodec  # <xblob> is now <blob@>
