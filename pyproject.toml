@@ -16,7 +16,6 @@ dependencies = [
   "tqdm",
   "networkx",
   "pydot",
-  "minio>=7.0.0",
   "fsspec>=2023.1.0",
   "matplotlib",
   "faker",
@@ -86,15 +85,21 @@ test = [
   "pytest",
   "pytest-cov",
   "pytest-env",
-  "docker",
   "requests",
-  "graphviz"
+  "graphviz",
 ]
 
 [project.optional-dependencies]
 s3 = ["s3fs>=2023.1.0"]
 gcs = ["gcsfs>=2023.1.0"]
 azure = ["adlfs>=2023.1.0"]
+test = [
+  "pytest",
+  "pytest-cov",
+  "pytest-env",
+  "requests",
+  "s3fs>=2023.1.0",
+]
 dev = [
   "pre-commit",
   "ruff",
@@ -127,7 +132,7 @@ ignore = [
 # Per-file ignores (equivalent to flake8 --per-file-ignores)
 [tool.ruff.lint.per-file-ignores]
 "datajoint/diagram.py" = ["C901"]  # function too complex
-"tests/test_blob_matlab.py" = ["E501"]  # SQL hex strings cannot be broken across lines
+"tests/integration/test_blob_matlab.py" = ["E501"]  # SQL hex strings cannot be broken across lines
 
 [tool.ruff.lint.mccabe]
 # Maximum complexity (equivalent to flake8 --max-complexity)
@@ -154,16 +159,19 @@ skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
 ignore-words-list = "rever,numer,astroid"
 
 [tool.pytest_env]
-# Default values - pytest fixtures will override with actual container details
-DJ_USER="root"
-DJ_PASS="password"
-DJ_TEST_USER="datajoint"
-DJ_TEST_PASSWORD="datajoint"
-S3_ACCESS_KEY="datajoint"
-S3_SECRET_KEY="datajoint"
-S3_BUCKET="datajoint.test"
-PYTHON_USER="dja"
-JUPYTER_PASSWORD="datajoint"
+# Default environment variables for tests (D: prefix = only set if not defined)
+# These defaults work for local development with `docker compose up -d db minio`
+# For devcontainer/docker: override DJ_HOST=db and S3_ENDPOINT=minio:9000
+"D:DJ_HOST" = "localhost"
+"D:DJ_PORT" = "3306"
+"D:DJ_USER" = "root"
+"D:DJ_PASS" = "password"
+"D:DJ_TEST_USER" = "datajoint"
+"D:DJ_TEST_PASSWORD" = "datajoint"
+"D:S3_ENDPOINT" = "localhost:9000"
+"D:S3_ACCESS_KEY" = "datajoint"
+"D:S3_SECRET_KEY" = "datajoint"
+"D:S3_BUCKET" = "datajoint.test"
 
 
 [tool.pixi.workspace]
@@ -179,6 +187,12 @@ dev = { features = ["dev"], solve-group = "default" }
 test = { features = ["test"], solve-group = "default" }
 
 [tool.pixi.tasks]
+# Start required services (MySQL and MinIO)
+services-up = "docker compose up -d db minio"
+services-down = "docker compose down"
+# Run tests (requires services to be running, uses localhost defaults from pytest_env)
+test = { cmd = "pytest tests/", depends-on = ["services-up"] }
+test-cov = { cmd = "pytest --cov-report term-missing --cov=datajoint tests/", depends-on = ["services-up"] }
 
 [tool.pixi.dependencies]
 python = ">=3.10,<3.14"

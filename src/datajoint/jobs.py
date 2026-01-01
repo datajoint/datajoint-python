@@ -4,7 +4,6 @@ import platform
 from .errors import DuplicateError
 from .hash import key_hash
 from .heading import Heading
-from .settings import config
 from .table import Table
 
 ERROR_MESSAGE_LENGTH = 2047
@@ -27,9 +26,9 @@ class JobTable(Table):
         key_hash  :char(32)  # key hash
         ---
         status  :enum('reserved','error','ignore')  # if tuple is missing, the job is available
-        key=null  :blob  # structure containing the key
+        key=null  :<djblob>  # structure containing the key
         error_message=""  :varchar({error_message_length})  # error message returned if failed
-        error_stack=null  :mediumblob  # error stack if failed
+        error_stack=null  :<djblob>  # error stack if failed
         user="" :varchar(255) # database user
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
@@ -76,8 +75,7 @@ class JobTable(Table):
             user=self._user,
         )
         try:
-            with config.override(enable_python_native_blobs=True):
-                self.insert1(job, ignore_extra_fields=True)
+            self.insert1(job, ignore_extra_fields=True)
         except DuplicateError:
             return False
         return True
@@ -107,8 +105,7 @@ class JobTable(Table):
             user=self._user,
         )
         try:
-            with config.override(enable_python_native_blobs=True):
-                self.insert1(job, ignore_extra_fields=True)
+            self.insert1(job, ignore_extra_fields=True)
         except DuplicateError:
             return False
         return True
@@ -135,20 +132,19 @@ class JobTable(Table):
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
-        with config.override(enable_python_native_blobs=True):
-            self.insert1(
-                dict(
-                    table_name=table_name,
-                    key_hash=key_hash(key),
-                    status="error",
-                    host=platform.node(),
-                    pid=os.getpid(),
-                    connection_id=self.connection.connection_id,
-                    user=self._user,
-                    key=key,
-                    error_message=error_message,
-                    error_stack=error_stack,
-                ),
-                replace=True,
-                ignore_extra_fields=True,
-            )
+        self.insert1(
+            dict(
+                table_name=table_name,
+                key_hash=key_hash(key),
+                status="error",
+                host=platform.node(),
+                pid=os.getpid(),
+                connection_id=self.connection.connection_id,
+                user=self._user,
+                key=key,
+                error_message=error_message,
+                error_stack=error_stack,
+            ),
+            replace=True,
+            ignore_extra_fields=True,
+        )

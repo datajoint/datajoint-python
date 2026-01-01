@@ -20,7 +20,7 @@ class Experiment(dj.Imported):
     experiment_id  :smallint  # experiment number for this subject
     ---
     data_path     : int  # some number
-    extra=null : longblob  # just testing
+    extra=null : <djblob>  # just testing
     -> [nullable] User
     subject_notes=null         :varchar(2048) # {notes} e.g. purpose of experiment
     entry_time=CURRENT_TIMESTAMP :timestamp   # automatic timestamp

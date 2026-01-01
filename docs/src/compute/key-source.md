@@ -45,7 +45,7 @@ definition = """
 -> Recording
 ---
 sample_rate : float
-eeg_data : longblob
+eeg_data : <djblob>
 """
 key_source = Recording & 'recording_type = "EEG"'
 ```

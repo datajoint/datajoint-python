@@ -1,22 +1,30 @@
-import atexit
+"""
+Pytest configuration for DataJoint tests.
+
+Expects MySQL and MinIO services to be running via docker-compose:
+    docker-compose up -d db minio
+
+Environment variables (with defaults from docker-compose.yaml):
+    DJ_HOST=db          MySQL host
+    DJ_USER=root        MySQL root user
+    DJ_PASS=password    MySQL root password
+    S3_ENDPOINT=minio:9000   MinIO endpoint
+    S3_ACCESS_KEY=datajoint  MinIO access key
+    S3_SECRET_KEY=datajoint  MinIO secret key
+"""
+
 import logging
 import os
 from os import remove
-import signal
-import time
 from typing import Dict, List
 
 import certifi
-import docker
-import minio
 import pytest
-import requests
 import urllib3
 from packaging import version
 
 import datajoint as dj
 from datajoint.errors import (
-    ADAPTED_TYPE_SWITCH,
     FILEPATH_FEATURE_SWITCH,
     DataJointError,
 )
@@ -25,295 +33,10 @@ from . import schema, schema_advanced, schema_external, schema_object, schema_si
 from . import schema_uuid as schema_uuid_module
 from . import schema_type_aliases as schema_type_aliases_module
 
-# Configure logging for container management
 logger = logging.getLogger(__name__)
 
 
-def pytest_sessionstart(session):
-    """Called after the Session object has been created and configured."""
-    # This runs very early, before most fixtures, but we don't have container info yet
-    pass
-
-
-def pytest_configure(config):
-    """Called after command line options have been parsed."""
-    # This runs before pytest_sessionstart but still too early for containers
-    pass
-
-
-@pytest.fixture
-def clean_autopopulate(experiment, trial, ephys):
-    """
-    Explicit cleanup fixture for autopopulate tests.
-
-    Cleans experiment/trial/ephys tables after test completes.
-    Tests must explicitly request this fixture to get cleanup.
-    """
-    yield
-    # Cleanup after test - delete in reverse dependency order
-    ephys.delete()
-    trial.delete()
-    experiment.delete()
-
-
-@pytest.fixture
-def clean_jobs(schema_any):
-    """
-    Explicit cleanup fixture for jobs tests.
-
-    Cleans jobs table before test runs.
-    Tests must explicitly request this fixture to get cleanup.
-    """
-    try:
-        schema_any.jobs.delete()
-    except DataJointError:
-        pass
-    yield
-
-
-@pytest.fixture
-def clean_test_tables(test, test_extra, test_no_extra):
-    """
-    Explicit cleanup fixture for relation tests using test tables.
-
-    Ensures test table has lookup data and restores clean state after test.
-    Tests must explicitly request this fixture to get cleanup.
-    """
-    # Ensure lookup data exists before test
-    if not test:
-        test.insert(test.contents, skip_duplicates=True)
-
-    yield
-
-    # Restore original state after test
-    test.delete()
-    test.insert(test.contents, skip_duplicates=True)
-    test_extra.delete()
-    test_no_extra.delete()
-
-
-# Global container registry for cleanup
-_active_containers = set()
-_docker_client = None
-
-
-def _get_docker_client():
-    """Get or create docker client"""
-    global _docker_client
-    if _docker_client is None:
-        _docker_client = docker.from_env()
-    return _docker_client
-
-
-def _cleanup_containers():
-    """Clean up any remaining containers"""
-    if _active_containers:
-        logger.info(f"Emergency cleanup: {len(_active_containers)} containers to clean up")
-        try:
-            client = _get_docker_client()
-            for container_id in list(_active_containers):
-                try:
-                    container = client.containers.get(container_id)
-                    container.remove(force=True)
-                    logger.info(f"Emergency cleanup: removed container {container_id[:12]}")
-                except docker.errors.NotFound:
-                    logger.debug(f"Container {container_id[:12]} already removed")
-                except Exception as e:
-                    logger.error(f"Error cleaning up container {container_id[:12]}: {e}")
-                finally:
-                    _active_containers.discard(container_id)
-        except Exception as e:
-            logger.error(f"Error during emergency cleanup: {e}")
-    else:
-        logger.debug("No containers to clean up")
-
-
-def _register_container(container):
-    """Register a container for cleanup"""
-    _active_containers.add(container.id)
-    logger.debug(f"Registered container {container.id[:12]} for cleanup")
-
-
-def _unregister_container(container):
-    """Unregister a container from cleanup"""
-    _active_containers.discard(container.id)
-    logger.debug(f"Unregistered container {container.id[:12]} from cleanup")
-
-
-# Register cleanup functions
-atexit.register(_cleanup_containers)
-
-
-def _signal_handler(signum, frame):
-    """Handle signals to ensure container cleanup"""
-    logger.warning(f"Received signal {signum}, performing emergency container cleanup...")
-    _cleanup_containers()
-
-    # Restore default signal handler and re-raise the signal
-    # This allows pytest to handle the cancellation normally
-    signal.signal(signum, signal.SIG_DFL)
-    os.kill(os.getpid(), signum)
-
-
-# Register signal handlers for graceful cleanup, but only for non-interactive scenarios
-# In pytest, we'll rely on fixture teardown and atexit handlers primarily
-try:
-    import pytest
-
-    # If we're here, pytest is available, so only register SIGTERM (for CI/batch scenarios)
-    signal.signal(signal.SIGTERM, _signal_handler)
-    # Don't intercept SIGINT (Ctrl+C) to allow pytest's normal cancellation behavior
-except ImportError:
-    # If pytest isn't available, register both handlers
-    signal.signal(signal.SIGINT, _signal_handler)
-    signal.signal(signal.SIGTERM, _signal_handler)
-
-
-@pytest.fixture(scope="session")
-def docker_client():
-    """Docker client for managing containers."""
-    return _get_docker_client()
-
-
-@pytest.fixture(scope="session")
-def mysql_container(docker_client):
-    """Start MySQL container and wait for it to be healthy."""
-    mysql_ver = os.environ.get("MYSQL_VER", "8.0")
-    container_name = f"datajoint_test_mysql_{os.getpid()}"
-
-    logger.info(f"Starting MySQL container {container_name} with version {mysql_ver}")
-
-    # Remove existing container if it exists
-    try:
-        existing = docker_client.containers.get(container_name)
-        logger.info(f"Removing existing MySQL container {container_name}")
-        existing.remove(force=True)
-    except docker.errors.NotFound:
-        logger.debug(f"No existing MySQL container {container_name} found")
-
-    # Start MySQL container
-    container = docker_client.containers.run(
-        f"datajoint/mysql:{mysql_ver}",
-        name=container_name,
-        environment={"MYSQL_ROOT_PASSWORD": "password"},
-        command="mysqld --default-authentication-plugin=mysql_native_password",
-        ports={"3306/tcp": None},  # Let Docker assign random port
-        detach=True,
-        remove=True,
-        healthcheck={
-            "test": ["CMD", "mysqladmin", "ping", "-h", "localhost"],
-            "timeout": 30000000000,  # 30s in nanoseconds
-            "retries": 5,
-            "interval": 15000000000,  # 15s in nanoseconds
-        },
-    )
-
-    # Register container for cleanup
-    _register_container(container)
-    logger.info(f"MySQL container {container_name} started with ID {container.id[:12]}")
-
-    # Wait for health check
-    max_wait = 120  # 2 minutes
-    start_time = time.time()
-    logger.info(f"Waiting for MySQL container {container_name} to become healthy (max {max_wait}s)")
-
-    while time.time() - start_time < max_wait:
-        container.reload()
-        health_status = container.attrs["State"]["Health"]["Status"]
-        logger.debug(f"MySQL container {container_name} health status: {health_status}")
-        if health_status == "healthy":
-            break
-        time.sleep(2)
-    else:
-        logger.error(f"MySQL container {container_name} failed to become healthy within {max_wait}s")
-        container.remove(force=True)
-        raise RuntimeError("MySQL container failed to become healthy")
-
-    # Get the mapped port
-    port_info = container.attrs["NetworkSettings"]["Ports"]["3306/tcp"]
-    if port_info:
-        host_port = port_info[0]["HostPort"]
-        logger.info(f"MySQL container {container_name} is healthy and accessible on localhost:{host_port}")
-    else:
-        raise RuntimeError("Failed to get MySQL port mapping")
-
-    yield container, "localhost", int(host_port)
-
-    # Cleanup
-    logger.info(f"Cleaning up MySQL container {container_name}")
-    _unregister_container(container)
-    container.remove(force=True)
-    logger.info(f"MySQL container {container_name} removed")
-
-
-@pytest.fixture(scope="session")
-def minio_container(docker_client):
-    """Start MinIO container and wait for it to be healthy."""
-    minio_ver = os.environ.get("MINIO_VER", "RELEASE.2025-02-28T09-55-16Z")
-    container_name = f"datajoint_test_minio_{os.getpid()}"
-
-    logger.info(f"Starting MinIO container {container_name} with version {minio_ver}")
-
-    # Remove existing container if it exists
-    try:
-        existing = docker_client.containers.get(container_name)
-        logger.info(f"Removing existing MinIO container {container_name}")
-        existing.remove(force=True)
-    except docker.errors.NotFound:
-        logger.debug(f"No existing MinIO container {container_name} found")
-
-    # Start MinIO container
-    container = docker_client.containers.run(
-        f"minio/minio:{minio_ver}",
-        name=container_name,
-        environment={"MINIO_ACCESS_KEY": "datajoint", "MINIO_SECRET_KEY": "datajoint"},
-        command=["server", "--address", ":9000", "/data"],
-        ports={"9000/tcp": None},  # Let Docker assign random port
-        detach=True,
-        remove=True,
-    )
-
-    # Register container for cleanup
-    _register_container(container)
-    logger.info(f"MinIO container {container_name} started with ID {container.id[:12]}")
-
-    # Get the mapped port
-    container.reload()
-    port_info = container.attrs["NetworkSettings"]["Ports"]["9000/tcp"]
-    if port_info:
-        host_port = port_info[0]["HostPort"]
-        logger.info(f"MinIO container {container_name} mapped to localhost:{host_port}")
-    else:
-        raise RuntimeError("Failed to get MinIO port mapping")
-
-    # Wait for MinIO to be ready
-    minio_url = f"http://localhost:{host_port}"
-    max_wait = 60
-    start_time = time.time()
-    logger.info(f"Waiting for MinIO container {container_name} to become ready (max {max_wait}s)")
-
-    while time.time() - start_time < max_wait:
-        try:
-            response = requests.get(f"{minio_url}/minio/health/live", timeout=5)
-            if response.status_code == 200:
-                logger.info(f"MinIO container {container_name} is ready and accessible at {minio_url}")
-                break
-        except requests.exceptions.RequestException:
-            logger.debug(f"MinIO container {container_name} not ready yet, retrying...")
-            pass
-        time.sleep(2)
-    else:
-        logger.error(f"MinIO container {container_name} failed to become ready within {max_wait}s")
-        container.remove(force=True)
-        raise RuntimeError("MinIO container failed to become ready")
-
-    yield container, "localhost", int(host_port)
-
-    # Cleanup
-    logger.info(f"Cleaning up MinIO container {container_name}")
-    _unregister_container(container)
-    container.remove(force=True)
-    logger.info(f"MinIO container {container_name} removed")
+# --- Database connection fixtures ---
 
 
 @pytest.fixture(scope="session")
@@ -322,119 +45,90 @@ def prefix():
 
 
 @pytest.fixture(scope="session")
-def monkeysession():
-    with pytest.MonkeyPatch.context() as mp:
-        yield mp
-
-
-@pytest.fixture(scope="module")
-def monkeymodule():
-    with pytest.MonkeyPatch.context() as mp:
-        yield mp
-
-
-@pytest.fixture
-def enable_adapted_types(monkeypatch):
-    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, "TRUE")
-    yield
-    monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
-
-
-@pytest.fixture
-def enable_filepath_feature(monkeypatch):
-    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, "TRUE")
-    yield
-    monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
+def db_creds_root() -> Dict:
+    """Root database credentials from environment."""
+    host = os.environ.get("DJ_HOST", "db")
+    port = os.environ.get("DJ_PORT", "3306")
+    return dict(
+        host=f"{host}:{port}" if port else host,
+        user=os.environ.get("DJ_USER", "root"),
+        password=os.environ.get("DJ_PASS", "password"),
+    )
 
 
 @pytest.fixture(scope="session")
-def db_creds_test(mysql_container) -> Dict:
-    _, host, port = mysql_container
-    # Set environment variables for DataJoint at module level
-    os.environ["DJ_TEST_HOST"] = host
-    os.environ["DJ_TEST_PORT"] = str(port)
-
-    # Also update DataJoint's test configuration directly
-    dj.config["database.test.host"] = host
-    dj.config["database.test.port"] = port
-
+def db_creds_test() -> Dict:
+    """Test user database credentials from environment."""
+    host = os.environ.get("DJ_HOST", "db")
+    port = os.environ.get("DJ_PORT", "3306")
     return dict(
-        host=f"{host}:{port}",
-        user=os.getenv("DJ_TEST_USER", "datajoint"),
-        password=os.getenv("DJ_TEST_PASSWORD", "datajoint"),
+        host=f"{host}:{port}" if port else host,
+        user=os.environ.get("DJ_TEST_USER", "datajoint"),
+        password=os.environ.get("DJ_TEST_PASSWORD", "datajoint"),
+    )
+
+
+@pytest.fixture(scope="session")
+def s3_creds() -> Dict:
+    """S3/MinIO credentials from environment."""
+    return dict(
+        endpoint=os.environ.get("S3_ENDPOINT", "minio:9000"),
+        access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
+        secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
+        bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
     )
 
 
 @pytest.fixture(scope="session", autouse=True)
-def configure_datajoint_for_containers(mysql_container):
-    """Configure DataJoint to use pytest-managed containers. Runs automatically for all tests."""
-    _, host, port = mysql_container
+def configure_datajoint(db_creds_root):
+    """Configure DataJoint to use docker-compose services."""
+    host = os.environ.get("DJ_HOST", "db")
+    port = os.environ.get("DJ_PORT", "3306")
 
-    # Set environment variables FIRST - these will be inherited by subprocesses
-    logger.info(f"🔧 Setting environment: DJ_HOST={host}, DJ_PORT={port}")
-    os.environ["DJ_HOST"] = host
-    os.environ["DJ_PORT"] = str(port)
-
-    # Verify the environment variables were set
-    logger.info(f"🔧 Environment after setting: DJ_HOST={os.environ.get('DJ_HOST')}, DJ_PORT={os.environ.get('DJ_PORT')}")
-
-    # Also update DataJoint's configuration directly for in-process connections
     dj.config["database.host"] = host
-    dj.config["database.port"] = port
+    dj.config["database.port"] = int(port)
+    dj.config["safemode"] = False
 
-    logger.info(f"🔧 Configured DataJoint to use MySQL container at {host}:{port}")
-    return host, port  # Return values so other fixtures can use them
-
-
-@pytest.fixture(scope="session")
-def db_creds_root(mysql_container) -> Dict:
-    _, host, port = mysql_container
-    return dict(
-        host=f"{host}:{port}",
-        user=os.getenv("DJ_USER", "root"),
-        password=os.getenv("DJ_PASS", "password"),
-    )
+    logger.info(f"Configured DataJoint to use MySQL at {host}:{port}")
 
 
 @pytest.fixture(scope="session")
 def connection_root_bare(db_creds_root):
+    """Bare root connection without user setup."""
     connection = dj.Connection(**db_creds_root)
     yield connection
 
 
 @pytest.fixture(scope="session")
 def connection_root(connection_root_bare, prefix):
-    """Root user database connection."""
-    dj.config["safemode"] = False
+    """Root database connection with test users created."""
     conn_root = connection_root_bare
+
     # Create MySQL users
     if version.parse(conn_root.query("select @@version;").fetchone()[0]) >= version.parse("8.0.0"):
-        # create user if necessary on mysql8
         conn_root.query(
             """
-                CREATE USER IF NOT EXISTS 'datajoint'@'%%'
-                IDENTIFIED BY 'datajoint';
-                """
+            CREATE USER IF NOT EXISTS 'datajoint'@'%%'
+            IDENTIFIED BY 'datajoint';
+            """
         )
         conn_root.query(
             """
-                CREATE USER IF NOT EXISTS 'djview'@'%%'
-                IDENTIFIED BY 'djview';
-                """
+            CREATE USER IF NOT EXISTS 'djview'@'%%'
+            IDENTIFIED BY 'djview';
+            """
         )
         conn_root.query(
             """
-                CREATE USER IF NOT EXISTS 'djssl'@'%%'
-                IDENTIFIED BY 'djssl'
-                REQUIRE SSL;
-                """
+            CREATE USER IF NOT EXISTS 'djssl'@'%%'
+            IDENTIFIED BY 'djssl'
+            REQUIRE SSL;
+            """
         )
         conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
         conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
         conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
     else:
-        # grant permissions. For MySQL 5.7 this also automatically creates user
-        # if not exists
         conn_root.query(
             """
             GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
@@ -461,7 +155,6 @@ def connection_root(connection_root_bare, prefix):
     if os.path.exists("dj_local_conf.json"):
         remove("dj_local_conf.json")
 
-    # Remove created users
     conn_root.query("DROP USER IF EXISTS `datajoint`")
     conn_root.query("DROP USER IF EXISTS `djview`")
     conn_root.query("DROP USER IF EXISTS `djssl`")
@@ -474,9 +167,7 @@ def connection_test(connection_root, prefix, db_creds_test):
     database = f"{prefix}%%"
     permission = "ALL PRIVILEGES"
 
-    # Create MySQL users
     if version.parse(connection_root.query("select @@version;").fetchone()[0]) >= version.parse("8.0.0"):
-        # create user if necessary on mysql8
         connection_root.query(
             f"""
             CREATE USER IF NOT EXISTS '{db_creds_test["user"]}'@'%%'
@@ -490,8 +181,6 @@ def connection_test(connection_root, prefix, db_creds_test):
             """
         )
     else:
-        # grant permissions. For MySQL 5.7 this also automatically creates user
-        # if not exists
         connection_root.query(
             f"""
             GRANT {permission} ON `{database}`.*
@@ -506,49 +195,61 @@ def connection_test(connection_root, prefix, db_creds_test):
     connection.close()
 
 
-@pytest.fixture(scope="session")
-def s3_creds(minio_container) -> Dict:
-    _, host, port = minio_container
-    # Set environment variable for S3 endpoint at module level
-    os.environ["S3_ENDPOINT"] = f"{host}:{port}"
-    return dict(
-        endpoint=f"{host}:{port}",
-        access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
-        secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
-        bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
-    )
+# --- S3/MinIO fixtures ---
 
 
 @pytest.fixture(scope="session")
 def stores_config(s3_creds, tmpdir_factory):
-    stores_config = {
-        "raw": dict(protocol="file", location=tmpdir_factory.mktemp("raw")),
+    """Configure object storage stores for tests."""
+    return {
+        "raw": dict(protocol="file", location=str(tmpdir_factory.mktemp("raw"))),
         "repo": dict(
-            stage=tmpdir_factory.mktemp("repo"),
+            stage=str(tmpdir_factory.mktemp("repo")),
             protocol="file",
-            location=tmpdir_factory.mktemp("repo"),
+            location=str(tmpdir_factory.mktemp("repo")),
         ),
         "repo-s3": dict(
-            s3_creds,
             protocol="s3",
+            endpoint=s3_creds["endpoint"],
+            access_key=s3_creds["access_key"],
+            secret_key=s3_creds["secret_key"],
+            bucket=s3_creds.get("bucket", "datajoint-test"),
             location="dj/repo",
-            stage=tmpdir_factory.mktemp("repo-s3"),
+            stage=str(tmpdir_factory.mktemp("repo-s3")),
+            secure=False,  # MinIO runs without SSL in tests
         ),
-        "local": dict(protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)),
-        "share": dict(s3_creds, protocol="s3", location="dj/store/repo", subfolding=(2, 4)),
+        "local": dict(protocol="file", location=str(tmpdir_factory.mktemp("local"))),
+        "share": dict(
+            protocol="s3",
+            endpoint=s3_creds["endpoint"],
+            access_key=s3_creds["access_key"],
+            secret_key=s3_creds["secret_key"],
+            bucket=s3_creds.get("bucket", "datajoint-test"),
+            location="dj/store/repo",
+            secure=False,  # MinIO runs without SSL in tests
+        ),
     }
-    return stores_config
 
 
 @pytest.fixture
 def mock_stores(stores_config):
-    og_stores_config = dj.config.get("stores")
-    dj.config["stores"] = stores_config
+    """Configure object storage stores for tests using new object_storage system."""
+    # Save original configuration
+    og_project_name = dj.config.object_storage.project_name
+    og_stores = dict(dj.config.object_storage.stores)
+
+    # Set test configuration
+    dj.config.object_storage.project_name = "djtest"
+    dj.config.object_storage.stores.clear()
+    for name, config in stores_config.items():
+        dj.config.object_storage.stores[name] = config
+
     yield
-    if og_stores_config is None:
-        del dj.config["stores"]
-    else:
-        dj.config["stores"] = og_stores_config
+
+    # Restore original configuration
+    dj.config.object_storage.project_name = og_project_name
+    dj.config.object_storage.stores.clear()
+    dj.config.object_storage.stores.update(og_stores)
 
 
 @pytest.fixture
@@ -560,6 +261,120 @@ def mock_cache(tmpdir_factory):
         del dj.config["cache"]
     else:
         dj.config["cache"] = og_cache
+
+
+@pytest.fixture(scope="session")
+def http_client():
+    client = urllib3.PoolManager(
+        timeout=30,
+        cert_reqs="CERT_REQUIRED",
+        ca_certs=certifi.where(),
+        retries=urllib3.Retry(total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]),
+    )
+    yield client
+
+
+@pytest.fixture(scope="session")
+def s3fs_client(s3_creds):
+    """Initialize s3fs filesystem for MinIO."""
+    import s3fs
+
+    return s3fs.S3FileSystem(
+        endpoint_url=f"http://{s3_creds['endpoint']}",
+        key=s3_creds["access_key"],
+        secret=s3_creds["secret_key"],
+    )
+
+
+@pytest.fixture(scope="session")
+def minio_client(s3_creds, s3fs_client, teardown=False):
+    """S3 filesystem with test bucket created (legacy name for compatibility)."""
+    bucket = s3_creds["bucket"]
+
+    # Create bucket if it doesn't exist
+    try:
+        s3fs_client.mkdir(bucket)
+    except Exception:
+        # Bucket may already exist
+        pass
+
+    yield s3fs_client
+
+    if not teardown:
+        return
+    # Clean up objects and bucket
+    try:
+        files = s3fs_client.ls(bucket, detail=False)
+        for f in files:
+            s3fs_client.rm(f)
+        s3fs_client.rmdir(bucket)
+    except Exception:
+        pass
+
+
+# --- Utility fixtures ---
+
+
+@pytest.fixture(scope="session")
+def monkeysession():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
+
+
+@pytest.fixture(scope="module")
+def monkeymodule():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
+
+
+@pytest.fixture
+def enable_adapted_types():
+    """Deprecated - custom attribute types no longer require a feature flag."""
+    yield
+
+
+@pytest.fixture
+def enable_filepath_feature(monkeypatch):
+    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, "TRUE")
+    yield
+    monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
+
+
+# --- Cleanup fixtures ---
+
+
+@pytest.fixture
+def clean_autopopulate(experiment, trial, ephys):
+    """Cleanup fixture for autopopulate tests."""
+    yield
+    ephys.delete()
+    trial.delete()
+    experiment.delete()
+
+
+@pytest.fixture
+def clean_jobs(schema_any):
+    """Cleanup fixture for jobs tests."""
+    try:
+        schema_any.jobs.delete()
+    except DataJointError:
+        pass
+    yield
+
+
+@pytest.fixture
+def clean_test_tables(test, test_extra, test_no_extra):
+    """Cleanup fixture for relation tests."""
+    if not test:
+        test.insert(test.contents, skip_duplicates=True)
+    yield
+    test.delete()
+    test.insert(test.contents, skip_duplicates=True)
+    test_extra.delete()
+    test_no_extra.delete()
+
+
+# --- Schema fixtures ---
 
 
 @pytest.fixture(scope="module")
@@ -679,7 +494,6 @@ def thing_tables(schema_any):
     d = schema.ThingD()
     e = schema.ThingE()
 
-    # clear previous contents if any.
     c.delete_quick()
     b.delete_quick()
     a.delete_quick()
@@ -787,49 +601,7 @@ def schema_type_aliases(connection_test, prefix):
     schema.drop()
 
 
-@pytest.fixture(scope="session")
-def http_client():
-    # Initialize httpClient with relevant timeout.
-    client = urllib3.PoolManager(
-        timeout=30,
-        cert_reqs="CERT_REQUIRED",
-        ca_certs=certifi.where(),
-        retries=urllib3.Retry(total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]),
-    )
-    yield client
-
-
-@pytest.fixture(scope="session")
-def minio_client_bare(s3_creds):
-    """Initialize MinIO with an endpoint and access/secret keys."""
-    client = minio.Minio(
-        endpoint=s3_creds["endpoint"],
-        access_key=s3_creds["access_key"],
-        secret_key=s3_creds["secret_key"],
-        secure=False,
-    )
-    return client
-
-
-@pytest.fixture(scope="session")
-def minio_client(s3_creds, minio_client_bare, teardown=False):
-    """Initialize a MinIO client and create buckets for testing session."""
-    # Setup MinIO bucket
-    aws_region = "us-east-1"
-    try:
-        minio_client_bare.make_bucket(s3_creds["bucket"], location=aws_region)
-    except minio.error.S3Error as e:
-        if e.code != "BucketAlreadyOwnedByYou":
-            raise e
-
-    yield minio_client_bare
-    if not teardown:
-        return
-
-    # Teardown S3
-    objs = list(minio_client_bare.list_objects(s3_creds["bucket"], recursive=True))
-    objs = [minio_client_bare.remove_object(s3_creds["bucket"], o.object_name.encode("utf-8")) for o in objs]
-    minio_client_bare.remove_bucket(s3_creds["bucket"])
+# --- Table fixtures ---
 
 
 @pytest.fixture
@@ -905,7 +677,7 @@ def trash(schema_any):
     return schema.UberTrash()
 
 
-# Object storage fixtures
+# --- Object storage fixtures ---
 
 
 @pytest.fixture
@@ -921,36 +693,29 @@ def object_storage_config(tmpdir_factory):
 
 
 @pytest.fixture
-def mock_object_storage(object_storage_config, monkeypatch):
+def mock_object_storage(object_storage_config):
     """Mock object storage configuration in datajoint config."""
-    # Store original config
-    original_object_storage = getattr(dj.config, "_object_storage", None)
+    # Save original values
+    original = {
+        "project_name": dj.config.object_storage.project_name,
+        "protocol": dj.config.object_storage.protocol,
+        "location": dj.config.object_storage.location,
+        "token_length": dj.config.object_storage.token_length,
+    }
 
-    # Create a mock ObjectStorageSettings-like object
-    class MockObjectStorageSettings:
-        def __init__(self, config):
-            self.project_name = config["project_name"]
-            self.protocol = config["protocol"]
-            self.location = config["location"]
-            self.token_length = config.get("token_length", 8)
-            self.partition_pattern = config.get("partition_pattern")
-            self.bucket = config.get("bucket")
-            self.endpoint = config.get("endpoint")
-            self.access_key = config.get("access_key")
-            self.secret_key = config.get("secret_key")
-            self.secure = config.get("secure", True)
-            self.container = config.get("container")
-
-    mock_settings = MockObjectStorageSettings(object_storage_config)
-
-    # Patch the object_storage attribute
-    monkeypatch.setattr(dj.config, "object_storage", mock_settings)
+    # Set test values
+    dj.config.object_storage.project_name = object_storage_config["project_name"]
+    dj.config.object_storage.protocol = object_storage_config["protocol"]
+    dj.config.object_storage.location = object_storage_config["location"]
+    dj.config.object_storage.token_length = object_storage_config.get("token_length", 8)
 
     yield object_storage_config
 
-    # Restore original
-    if original_object_storage is not None:
-        monkeypatch.setattr(dj.config, "object_storage", original_object_storage)
+    # Restore original values
+    dj.config.object_storage.project_name = original["project_name"]
+    dj.config.object_storage.protocol = original["protocol"]
+    dj.config.object_storage.location = original["location"]
+    dj.config.object_storage.token_length = original["token_length"]
 
 
 @pytest.fixture

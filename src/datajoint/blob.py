@@ -13,7 +13,6 @@ from itertools import repeat
 import numpy as np
 
 from .errors import DataJointError
-from .settings import config
 
 deserialize_lookup = {
     0: {"dtype": None, "scalar_type": "UNKNOWN"},
@@ -56,8 +55,6 @@ serialize_lookup = {
 
 compression = {b"ZL123\0": zlib.decompress}
 
-bypass_serialization = False  # runtime setting to bypass blob (en|de)code
-
 # runtime setting to read integers as 32-bit to read blobs created by the 32-bit
 # version of the mYm library for MATLAB
 use_32bit_dims = False
@@ -91,12 +88,6 @@ class Blob:
         self.protocol = None
 
     def set_dj0(self):
-        if not config.get("enable_python_native_blobs"):
-            raise DataJointError(
-                """v0.12+ python native blobs disabled.
-                See also: https://github.com/datajoint/datajoint-python#python-native-blobs"""
-            )
-
         self.protocol = b"dj0\0"  # when using new blob features
 
     def squeeze(self, array, convert_to_scalar=True):
@@ -507,17 +498,9 @@ class Blob:
 
 
 def pack(obj, compress=True):
-    if bypass_serialization:
-        # provide a way to move blobs quickly without de/serialization
-        assert isinstance(obj, bytes) and obj.startswith((b"ZL123\0", b"mYm\0", b"dj0\0"))
-        return obj
     return Blob().pack(obj, compress=compress)
 
 
 def unpack(blob, squeeze=False):
-    if bypass_serialization:
-        # provide a way to move blobs quickly without de/serialization
-        assert isinstance(blob, bytes) and blob.startswith((b"ZL123\0", b"mYm\0", b"dj0\0"))
-        return blob
     if blob is not None:
         return Blob(squeeze=squeeze).unpack(blob)

@@ -141,3 +141,73 @@ DataJoint (<https://datajoint.com>).
   - [Contribution Guidelines](https://docs.datajoint.com/about/contribute/)
 
   - [Developer Guide](https://docs.datajoint.com/core/datajoint-python/latest/develop/)
+
+## Developer Guide
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) for MySQL and MinIO services
+- Python 3.10+
+
+### Running Tests
+
+Tests are organized into `unit/` (no external services) and `integration/` (requires MySQL + MinIO):
+
+```bash
+# Install dependencies
+pip install -e ".[test]"
+
+# Run unit tests only (fast, no Docker needed)
+pytest tests/unit/
+
+# Start MySQL and MinIO for integration tests
+docker compose up -d db minio
+
+# Run all tests
+pytest tests/
+
+# Run specific test file
+pytest tests/integration/test_blob.py -v
+
+# Stop services when done
+docker compose down
+```
+
+### Alternative: Full Docker
+
+Run tests entirely in Docker (no local Python needed):
+
+```bash
+docker compose --profile test up djtest --build
+```
+
+### Alternative: Using pixi
+
+[pixi](https://pixi.sh) users can run tests with automatic service management:
+
+```bash
+pixi install        # First time setup
+pixi run test       # Starts services and runs tests
+pixi run services-down  # Stop services
+```
+
+### Pre-commit Hooks
+
+```bash
+pre-commit install          # Install hooks (first time)
+pre-commit run --all-files  # Run all checks
+```
+
+### Environment Variables
+
+Tests use these defaults (configured in `pyproject.toml`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DJ_HOST` | `localhost` | MySQL hostname |
+| `DJ_PORT` | `3306` | MySQL port |
+| `DJ_USER` | `root` | MySQL username |
+| `DJ_PASS` | `password` | MySQL password |
+| `S3_ENDPOINT` | `localhost:9000` | MinIO endpoint |
+
+For Docker-based testing (devcontainer, djtest), set `DJ_HOST=db` and `S3_ENDPOINT=minio:9000`.

@@ -4,17 +4,13 @@ import inspect
 import itertools
 import json
 import logging
-import mimetypes
-import platform
 import re
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas
 
-from . import blob
 from .condition import make_condition
 from .declare import alter, declare
 from .errors import (
@@ -28,9 +24,7 @@ from .expression import QueryExpression
 from .heading import Heading
 from .settings import config
 from .staged_insert import staged_insert1 as _staged_insert1
-from .storage import StorageBackend, build_object_path, verify_or_create_store_metadata
 from .utils import get_master, is_camel_case, user_choice
-from .version import __version__ as version
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -69,7 +63,6 @@ class Table(QueryExpression):
     """
 
     _table_name = None  # must be defined in subclass
-    _log_ = None  # placeholder for the Log table object
 
     # These properties must be set by the schema decorator (schemas.py) at class level
     # or by FreeTable at instance level
@@ -78,6 +71,10 @@ class Table(QueryExpression):
 
     @property
     def table_name(self):
+        # For UserTable subclasses, table_name is computed by the metaclass.
+        # Delegate to the class's table_name if _table_name is not set.
+        if self._table_name is None:
+            return type(self).table_name
         return self._table_name
 
     @property
@@ -103,18 +100,13 @@ class Table(QueryExpression):
                 "Table class name `{name}` is invalid. Please use CamelCase. ".format(name=self.class_name)
                 + "Classes defining tables should be formatted in strict CamelCase."
             )
-        sql, external_stores = declare(self.full_table_name, self.definition, context)
+        sql, _external_stores = declare(self.full_table_name, self.definition, context)
         sql = sql.format(database=self.database)
         try:
-            # declare all external tables before declaring main table
-            for store in external_stores:
-                self.connection.schemas[self.database].external[store]
             self.connection.query(sql)
         except AccessError:
             # skip if no create privilege
             pass
-        else:
-            self._log("Declared " + self.full_table_name)
 
     def alter(self, prompt=True, context=None):
         """
@@ -127,7 +119,7 @@ class Table(QueryExpression):
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
         old_definition = self.describe(context=context)
-        sql, external_stores = alter(self.definition, old_definition, context)
+        sql, _external_stores = alter(self.definition, old_definition, context)
         if not sql:
             if prompt:
                 logger.warning("Nothing to alter.")
@@ -135,9 +127,6 @@ class Table(QueryExpression):
             sql = "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql)
             if not prompt or user_choice(sql + "\n\nExecute?") == "yes":
                 try:
-                    # declare all external tables before declaring main table
-                    for store in external_stores:
-                        self.connection.schemas[self.database].external[store]
                     self.connection.query(sql)
                 except AccessError:
                     # skip if no create privilege
@@ -147,7 +136,6 @@ class Table(QueryExpression):
                     self.__class__._heading = Heading(table_info=self.heading.table_info)
                     if prompt:
                         logger.info("Table altered")
-                    self._log("Altered " + self.full_table_name)
 
     def from_clause(self):
         """
@@ -257,194 +245,12 @@ class Table(QueryExpression):
         """
         :return: full table name in the schema
         """
+        if self.database is None or self.table_name is None:
+            raise DataJointError(
+                f"Class {self.__class__.__name__} is not associated with a schema. "
+                "Apply a schema decorator or use schema() to bind it."
+            )
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
-
-    @property
-    def _log(self):
-        if self._log_ is None:
-            self._log_ = Log(
-                self.connection,
-                database=self.database,
-                skip_logging=self.table_name.startswith("~"),
-            )
-        return self._log_
-
-    @property
-    def external(self):
-        return self.connection.schemas[self.database].external
-
-    @property
-    def object_storage(self) -> StorageBackend | None:
-        """Get the default object storage backend for this table."""
-        return self.get_object_storage()
-
-    def get_object_storage(self, store_name: str | None = None) -> StorageBackend | None:
-        """
-        Get the object storage backend for a specific store.
-
-        Args:
-            store_name: Name of the store (None for default store)
-
-        Returns:
-            StorageBackend instance or None if not configured
-        """
-        cache_key = f"_object_storage_{store_name or 'default'}"
-        if not hasattr(self, cache_key):
-            try:
-                spec = config.get_object_store_spec(store_name)
-                backend = StorageBackend(spec)
-                # Verify/create store metadata on first use
-                verify_or_create_store_metadata(backend, spec)
-                setattr(self, cache_key, backend)
-            except DataJointError:
-                setattr(self, cache_key, None)
-        return getattr(self, cache_key)
-
-    def _process_object_value(self, name: str, value, row: dict, store_name: str | None = None) -> str:
-        """
-        Process an object attribute value for insert.
-
-        Args:
-            name: Attribute name
-            value: Input value (file path, folder path, or (ext, stream) tuple)
-            row: The full row dict (needed for primary key values)
-            store_name: Name of the object store (None for default store)
-
-        Returns:
-            JSON string for database storage
-        """
-        backend = self.get_object_storage(store_name)
-        if backend is None:
-            store_desc = f"'{store_name}'" if store_name else "default"
-            raise DataJointError(
-                f"Object storage ({store_desc}) is not configured. Set object_storage settings in datajoint.json "
-                "or DJ_OBJECT_STORAGE_* environment variables."
-            )
-
-        # Extract primary key values from row
-        primary_key = {k: row[k] for k in self.primary_key if k in row}
-        if not primary_key:
-            raise DataJointError("Primary key values must be provided before object attributes for insert.")
-
-        # Determine input type and extract extension
-        is_dir = False
-        ext = None
-        size = 0
-        source_path = None
-        stream = None
-
-        if isinstance(value, tuple) and len(value) == 2:
-            # Tuple of (ext, stream)
-            ext, stream = value
-            if hasattr(stream, "read"):
-                # Read stream to buffer for upload
-                content = stream.read()
-                size = len(content)
-            else:
-                raise DataJointError(f"Invalid stream object for attribute {name}")
-        elif isinstance(value, (str, Path)):
-            source_path = Path(value)
-            if not source_path.exists():
-                raise DataJointError(f"File or folder not found: {source_path}")
-            is_dir = source_path.is_dir()
-            if not is_dir:
-                ext = source_path.suffix or None
-                size = source_path.stat().st_size
-        else:
-            raise DataJointError(
-                f"Invalid value type for object attribute {name}. " "Expected file path, folder path, or (ext, stream) tuple."
-            )
-
-        # Get storage spec for path building
-        spec = config.get_object_store_spec(store_name)
-        partition_pattern = spec.get("partition_pattern")
-        token_length = spec.get("token_length", 8)
-        location = spec.get("location", "")
-
-        # Build storage path
-        relative_path, token = build_object_path(
-            schema=self.database,
-            table=self.class_name,
-            field=name,
-            primary_key=primary_key,
-            ext=ext,
-            partition_pattern=partition_pattern,
-            token_length=token_length,
-        )
-
-        # Prepend location if specified
-        full_storage_path = f"{location}/{relative_path}" if location else relative_path
-
-        # Upload content
-        manifest = None
-        if source_path:
-            if is_dir:
-                manifest = backend.put_folder(source_path, full_storage_path)
-                size = manifest["total_size"]
-            else:
-                backend.put_file(source_path, full_storage_path)
-        elif stream:
-            backend.put_buffer(content, full_storage_path)
-
-        # Build full URL for the object
-        url = self._build_object_url(spec, full_storage_path)
-
-        # Build JSON metadata
-        timestamp = datetime.now(timezone.utc).isoformat()
-        metadata = {
-            "path": full_storage_path,
-            "size": size,
-            "hash": None,  # Hash is optional, not computed by default
-            "ext": ext,
-            "is_dir": is_dir,
-            "timestamp": timestamp,
-        }
-
-        # Add URL and store name
-        if url:
-            metadata["url"] = url
-        if store_name:
-            metadata["store"] = store_name
-
-        # Add mime_type for files
-        if not is_dir and ext:
-            mime_type, _ = mimetypes.guess_type(f"file{ext}")
-            if mime_type:
-                metadata["mime_type"] = mime_type
-
-        # Add item_count for folders
-        if is_dir and manifest:
-            metadata["item_count"] = manifest["item_count"]
-
-        return json.dumps(metadata)
-
-    def _build_object_url(self, spec: dict, path: str) -> str | None:
-        """
-        Build a full URL for an object based on the storage spec.
-
-        Args:
-            spec: Storage configuration dict
-            path: Path within the storage
-
-        Returns:
-            Full URL string or None for local storage
-        """
-        protocol = spec.get("protocol", "")
-        if protocol == "s3":
-            bucket = spec.get("bucket", "")
-            return f"s3://{bucket}/{path}"
-        elif protocol == "gcs":
-            bucket = spec.get("bucket", "")
-            return f"gs://{bucket}/{path}"
-        elif protocol == "azure":
-            container = spec.get("container", "")
-            return f"az://{container}/{path}"
-        elif protocol == "file":
-            # For local storage, return file:// URL
-            location = spec.get("location", "")
-            full_path = f"{location}/{path}" if location else path
-            return f"file://{full_path}"
-        return None
 
     def update1(self, row):
         """
@@ -629,7 +435,6 @@ class Table(QueryExpression):
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
         self.connection.query(query)
         count = self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
-        self._log(query[:255])
         return count
 
     def delete(
@@ -806,7 +611,6 @@ class Table(QueryExpression):
             query = "DROP TABLE %s" % self.full_table_name
             self.connection.query(query)
             logger.info("Dropped table %s" % self.full_table_name)
-            self._log(query[:255])
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
@@ -906,9 +710,11 @@ class Table(QueryExpression):
                             attributes_declared.update(fk_props["attr_map"])
             if do_include:
                 attributes_declared.add(attr.name)
+                # Use original_type (core type alias) if available, otherwise use type
+                display_type = attr.original_type or attr.type
                 definition += "%-20s : %-28s %s\n" % (
                     (attr.name if attr.default is None else "%s=%s" % (attr.name, attr.default)),
-                    "%s%s" % (attr.type, " auto_increment" if attr.autoincrement else ""),
+                    "%s%s" % (display_type, " auto_increment" if attr.autoincrement else ""),
                     "# " + attr.comment if attr.comment else "",
                 )
         # add remaining indexes
@@ -925,52 +731,67 @@ class Table(QueryExpression):
         as a string to be included in the query and the value, if any, to be submitted for
         processing by mysql API.
 
+        In the simplified type system:
+        - Adapters (AttributeTypes) handle all custom encoding via type chains
+        - UUID values are converted to bytes
+        - JSON values are serialized
+        - Blob values pass through as bytes
+        - Numeric values are stringified
+
         :param name:  name of attribute to be inserted
         :param value: value of attribute to be inserted
         :param ignore_extra_fields: if True, return None for unknown fields
-        :param row: the full row dict (needed for object attributes to extract primary key)
+        :param row: the full row dict (unused in simplified model)
         """
         if ignore_extra_fields and name not in self.heading:
             return None
         attr = self.heading[name]
+
+        # Apply adapter encoding with type chain support
         if attr.adapter:
-            value = attr.adapter.put(value)
+            from .attribute_type import resolve_dtype
+
+            # Skip validation and encoding for None values (nullable columns)
+            if value is None:
+                return name, "DEFAULT", None
+
+            attr.adapter.validate(value)
+
+            # Resolve full type chain
+            _, type_chain, resolved_store = resolve_dtype(f"<{attr.adapter.type_name}>", store_name=attr.store)
+
+            # Apply encoders from outermost to innermost
+            for attr_type in type_chain:
+                # Pass store_name to encoders that support it (check via introspection)
+                import inspect
+
+                sig = inspect.signature(attr_type.encode)
+                if "store_name" in sig.parameters:
+                    value = attr_type.encode(value, key=None, store_name=resolved_store)
+                else:
+                    value = attr_type.encode(value, key=None)
+
+        # Handle NULL values
         if value is None or (attr.numeric and (value == "" or np.isnan(float(value)))):
-            # set default value
             placeholder, value = "DEFAULT", None
-        else:  # not NULL
+        else:
             placeholder = "%s"
+            # UUID - convert to bytes
             if attr.uuid:
                 if not isinstance(value, uuid.UUID):
                     try:
                         value = uuid.UUID(value)
                     except (AttributeError, ValueError):
-                        raise DataJointError("badly formed UUID value {v} for attribute `{n}`".format(v=value, n=name))
+                        raise DataJointError(f"badly formed UUID value {value} for attribute `{name}`")
                 value = value.bytes
-            elif attr.is_blob:
-                value = blob.pack(value)
-                value = self.external[attr.store].put(value).bytes if attr.is_external else value
-            elif attr.is_attachment:
-                attachment_path = Path(value)
-                if attr.is_external:
-                    # value is hash of contents
-                    value = self.external[attr.store].upload_attachment(attachment_path).bytes
-                else:
-                    # value is filename + contents
-                    value = str.encode(attachment_path.name) + b"\0" + attachment_path.read_bytes()
-            elif attr.is_filepath:
-                value = self.external[attr.store].upload_filepath(value).bytes
-            elif attr.is_object:
-                # Object type - upload to object storage and return JSON metadata
-                if row is None:
-                    raise DataJointError(
-                        f"Object attribute {name} requires full row context for insert. " "This is an internal error."
-                    )
-                value = self._process_object_value(name, value, row, store_name=attr.store)
-            elif attr.numeric:
-                value = str(int(value) if isinstance(value, bool) else value)
+            # JSON - serialize to string
             elif attr.json:
                 value = json.dumps(value)
+            # Numeric - convert to string
+            elif attr.numeric:
+                value = str(int(value) if isinstance(value, bool) else value)
+            # Blob - pass through as bytes (use <djblob> for automatic serialization)
+
         return name, placeholder, value
 
     def __make_row_to_insert(self, row, field_list, ignore_extra_fields):
@@ -1111,76 +932,3 @@ class FreeTable(Table):
 
     def __repr__(self):
         return "FreeTable(`%s`.`%s`)\n" % (self.database, self._table_name) + super().__repr__()
-
-
-class Log(Table):
-    """
-    The log table for each schema.
-    Instances are callable.  Calls log the time and identifying information along with the event.
-
-    :param skip_logging: if True, then log entry is skipped by default. See __call__
-    """
-
-    _table_name = "~log"
-
-    def __init__(self, conn, database, skip_logging=False):
-        self.database = database
-        self.skip_logging = skip_logging
-        self._connection = conn
-        self._heading = Heading(table_info=dict(conn=conn, database=database, table_name=self.table_name, context=None))
-        self._support = [self.full_table_name]
-
-        self._definition = """    # event logging table for `{database}`
-        id       :int unsigned auto_increment     # event order id
-        ---
-        timestamp = CURRENT_TIMESTAMP : timestamp # event timestamp
-        version  :varchar(12)                     # datajoint version
-        user     :varchar(255)                    # user@host
-        host=""  :varchar(255)                    # system hostname
-        event="" :varchar(255)                    # event message
-        """.format(database=database)
-
-        super().__init__()
-
-        if not self.is_declared:
-            self.declare()
-            self.connection.dependencies.clear()
-        self._user = self.connection.get_user()
-
-    @property
-    def definition(self):
-        return self._definition
-
-    def __call__(self, event, skip_logging=None):
-        """
-
-        :param event: string to write into the log table
-        :param skip_logging: If True then do not log. If None, then use self.skip_logging
-        """
-        skip_logging = self.skip_logging if skip_logging is None else skip_logging
-        if not skip_logging:
-            try:
-                self.insert1(
-                    dict(
-                        user=self._user,
-                        version=version + "py",
-                        host=platform.uname().node,
-                        event=event,
-                    ),
-                    skip_duplicates=True,
-                    ignore_extra_fields=True,
-                )
-            except DataJointError:
-                logger.info("could not log event in table ~log")
-
-    def delete(self):
-        """
-        bypass interactive prompts and cascading dependencies
-
-        :return: number of deleted items
-        """
-        return self.delete_quick(get_count=True)
-
-    def drop(self):
-        """bypass interactive prompts and cascading dependencies"""
-        self.drop_quick()

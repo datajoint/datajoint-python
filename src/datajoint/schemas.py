@@ -8,11 +8,10 @@ import warnings
 
 from .connection import conn
 from .errors import AccessError, DataJointError
-from .external import ExternalMapping
 from .heading import Heading
 from .jobs import JobTable
 from .settings import config
-from .table import FreeTable, Log, lookup_class_name
+from .table import FreeTable, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
 from .utils import to_camel_case, user_choice
 
@@ -64,14 +63,12 @@ class Schema:
         :param add_objects: a mapping with additional objects to make available to the context in which table classes
         are declared.
         """
-        self._log = None
         self.connection = connection
         self.database = None
         self.context = context
         self.create_schema = create_schema
         self.create_tables = create_tables
         self._jobs = None
-        self.external = ExternalMapping(self)
         self.add_objects = add_objects
         self.declare_list = []
         if schema_name:
@@ -136,8 +133,6 @@ class Schema:
                 raise DataJointError(
                     "Schema `{name}` does not exist and could not be created. Check permissions.".format(name=schema_name)
                 )
-            else:
-                self.log("created")
         self.connection.register(self)
 
         # decorate all tables already decorated
@@ -226,13 +221,6 @@ class Schema:
                     )
                 else:
                     instance.insert(contents, skip_duplicates=True)
-
-    @property
-    def log(self):
-        self._assert_exists()
-        if self._log is None:
-            self._log = Log(self.connection, self.database)
-        return self._log
 
     def __repr__(self):
         return "Schema `{name}`\n".format(name=self.database)

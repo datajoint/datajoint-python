@@ -27,7 +27,8 @@ def _format_object_display(json_data):
 def preview(query_expression, limit, width):
     heading = query_expression.heading
     rel = query_expression.proj(*heading.non_blobs)
-    object_fields = heading.objects
+    # Object fields are AttributeTypes with adapters - not specially handled in simplified model
+    object_fields = []
     if limit is None:
         limit = config["display.limit"]
     if width is None:
@@ -87,7 +88,8 @@ def preview(query_expression, limit, width):
 def repr_html(query_expression):
     heading = query_expression.heading
     rel = query_expression.proj(*heading.non_blobs)
-    object_fields = heading.objects
+    # Object fields are AttributeTypes with adapters - not specially handled in simplified model
+    object_fields = []
     info = heading.table_status
     tuples = rel.fetch(limit=config["display.limit"] + 1, format="array")
     has_more = len(tuples) > config["display.limit"]

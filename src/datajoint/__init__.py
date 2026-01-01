@@ -45,8 +45,11 @@ __all__ = [
     "kill",
     "MatCell",
     "MatStruct",
-    "AttributeAdapter",
+    "AttributeType",
+    "register_type",
+    "list_types",
     "errors",
+    "migrate",
     "DataJointError",
     "key",
     "key_hash",
@@ -56,8 +59,9 @@ __all__ = [
 ]
 
 from . import errors
+from . import migrate
 from .admin import kill
-from .attribute_adapter import AttributeAdapter
+from .attribute_type import AttributeType, list_types, register_type
 from .blob import MatCell, MatStruct
 from .cli import cli
 from .connection import Connection, conn
