@@ -44,6 +44,8 @@ CORE_TYPES = {
     "varchar": (r"varchar\s*\(\d+\)$", None),
     # Enumeration
     "enum": (r"enum\s*\(.+\)$", None),
+    # Fixed-point decimal
+    "decimal": (r"decimal\s*\(\d+\s*,\s*\d+\)$", None),
 }
 
 # Compile core type patterns

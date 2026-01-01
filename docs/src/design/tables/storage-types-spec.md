@@ -66,6 +66,7 @@ MySQL and PostgreSQL backends. Users should prefer these over native database ty
 | `uint64` | 64-bit unsigned | `BIGINT UNSIGNED` |
 | `float32` | 32-bit float | `FLOAT` |
 | `float64` | 64-bit float | `DOUBLE` |
+| `decimal(n,f)` | Fixed-point | `DECIMAL(n,f)` |
 
 ### String Types
 
