@@ -76,27 +76,55 @@ for portable pipelines. Using native types will generate a warning.
 
 See the [storage types spec](storage-types-spec.md) for complete mappings.
 
-## Special DataJoint-only datatypes
+## AttributeTypes (special datatypes)
 
-These types abstract certain kinds of non-database data to facilitate use
-together with DataJoint.
+AttributeTypes provide `encode()`/`decode()` semantics for complex data that doesn't
+fit native database types. They are denoted with angle brackets: `<type_name>`.
+
+### Naming conventions
+
+- **`dj` prefix**: DataJoint-specific internal serialization (`<djblob>`)
+- **`x` prefix**: External/content-addressed variant (`<xblob>`, `<xattach>`)
+- **`@store` suffix**: Specifies which configured store to use
+
+### Built-in AttributeTypes
+
+**Serialization types** - for Python objects:
 
 - `<djblob>`: DataJoint's native serialization format for Python objects. Supports
-NumPy arrays, dicts, lists, datetime objects, and nested structures. Compatible with
-MATLAB. See [custom types](customtype.md) for details.
+  NumPy arrays, dicts, lists, datetime objects, and nested structures. Stores in
+  database. Compatible with MATLAB. See [custom types](customtype.md) for details.
 
-- `object`: managed [file and folder storage](object.md) with support for direct writes
-(Zarr, HDF5) and fsspec integration. Recommended for new pipelines.
+- `<xblob>` / `<xblob@store>`: Like `<djblob>` but stores externally with content-
+  addressed deduplication. Use for large arrays that may be duplicated across rows.
 
-- `attach`: a [file attachment](attach.md) similar to email attachments facillitating
-sending/receiving an opaque data file to/from a DataJoint pipeline.
+**File storage types** - for managed files:
 
-- `filepath@store`: a [filepath](filepath.md) used to link non-DataJoint managed files
-into a DataJoint pipeline.
+- `<object>` / `<object@store>`: Managed file and folder storage with path derived
+  from primary key. Supports Zarr, HDF5, and direct writes via fsspec. Returns
+  `ObjectRef` for lazy access. See [object storage](object.md).
 
-- `<custom_type>`: a [custom attribute type](customtype.md) that defines bidirectional
-conversion between Python objects and database storage formats. Use this to store
-complex data types like graphs, domain-specific objects, or custom data structures.
+- `<content>` / `<content@store>`: Content-addressed storage for raw bytes with
+  SHA256 deduplication. Use via `<xblob>` or `<xattach>` rather than directly.
+
+**File attachment types** - for file transfer:
+
+- `<attach>`: File attachment stored in database with filename preserved. Similar
+  to email attachments. Good for small files (<16MB). See [attachments](attach.md).
+
+- `<xattach>` / `<xattach@store>`: Like `<attach>` but stores externally with
+  deduplication. Use for large files.
+
+**File reference types** - for external files:
+
+- `<filepath@store>`: Reference to existing file in a configured store. No file
+  copying occurs. Returns `ObjectRef` for lazy access. See [filepath](filepath.md).
+
+### User-defined AttributeTypes
+
+- `<custom_type>`: Define your own [custom attribute type](customtype.md) with
+  bidirectional conversion between Python objects and database storage. Use for
+  graphs, domain-specific objects, or custom data structures.
 
 ## Core type aliases
 
@@ -125,7 +153,7 @@ Example usage:
 @schema
 class Measurement(dj.Manual):
     definition = """
-    measurement_id : int
+    measurement_id : int32
     ---
     temperature : float32       # single-precision temperature reading
     precise_value : float64     # double-precision measurement
@@ -133,6 +161,7 @@ class Measurement(dj.Manual):
     sensor_flags : uint8        # 8-bit status flags
     is_valid : bool             # boolean flag
     raw_data : bytes            # raw binary data
+    processed : <djblob>        # serialized Python object
     """
 ```
 

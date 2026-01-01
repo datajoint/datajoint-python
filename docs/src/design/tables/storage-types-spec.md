@@ -652,11 +652,11 @@ def garbage_collect(project):
 8. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
 9. **Content type**: Single-blob, content-addressed, deduplicated storage
 10. **Parameterized types**: `<type@param>` passes store parameter
-11. **Naming convention**:
-    - `<djblob>` = internal serialized (database)
-    - `<xblob>` = external serialized (content-addressed)
-    - `<attach>` = internal file (single file)
-    - `<xattach>` = external file (single file)
+11. **Naming conventions**:
+    - `dj` prefix = DataJoint-specific internal serialization (`<djblob>`)
+    - `x` prefix = external/content-addressed variant (`<xblob>`, `<xattach>`)
+    - `@store` suffix = specifies which configured store to use
+    - Types without prefix: core storage mechanisms (`<object>`, `<content>`, `<attach>`, `<filepath>`)
 12. **Transparent access**: AttributeTypes return Python objects or file paths
 13. **Lazy access**: `<object>`, `<object@store>`, and `<filepath@store>` return ObjectRef
 
@@ -668,7 +668,7 @@ def garbage_collect(project):
 | `blob@store` | `<xblob@store>` |
 | `attach` | `<attach>` |
 | `attach@store` | `<xattach@store>` |
-| `filepath@store` (copy-based) | `filepath@store` (ObjectRef-based, upgraded) |
+| `filepath@store` (copy-based) | `<filepath@store>` (ObjectRef-based, upgraded) |
 
 ### Migration from Legacy `~external_*` Stores
 
