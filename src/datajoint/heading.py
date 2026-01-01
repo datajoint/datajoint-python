@@ -283,7 +283,7 @@ class Heading:
                 autoincrement=bool(re.search(r"auto_increment", attr["Extra"], flags=re.I)),
                 numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "INTEGER", "FLOAT")),
                 string=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("ENUM", "TEMPORAL", "STRING")),
-                is_blob=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BLOB", "NATIVE_BLOB")),
+                is_blob=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BYTES", "NATIVE_BLOB")),
                 uuid=False,
                 json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
                 adapter=None,
@@ -329,8 +329,8 @@ class Heading:
                     attr["type"] = attr["adapter"].dtype
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):
                         raise DataJointError(f"Invalid dtype '{attr['type']}' in attribute type <{adapter_name}>.")
-                    # Update is_blob based on resolved dtype (check both BLOB and NATIVE_BLOB patterns)
-                    attr["is_blob"] = any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BLOB", "NATIVE_BLOB"))
+                    # Update is_blob based on resolved dtype (check both BYTES and NATIVE_BLOB patterns)
+                    attr["is_blob"] = any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BYTES", "NATIVE_BLOB"))
 
             # Handle core type aliases (uuid, float32, etc.)
             if special:

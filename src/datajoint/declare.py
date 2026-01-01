@@ -70,12 +70,12 @@ TYPE_PATTERN = {
         **{name.upper(): pattern for name, (pattern, _) in CORE_TYPES.items()},
         # Native SQL types (passthrough with warning for non-standard use)
         INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
-        DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
+        NUMERIC=r"numeric(\s*\(.+\))?(\s+unsigned)?$",  # numeric is SQL alias, use decimal instead
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
         STRING=r"(var)?char\s*\(.+\)$",  # Catches char/varchar not matched by core types
         TEMPORAL=r"(time|timestamp|year)(\s*\(.+\))?$",  # time, timestamp, year (not date/datetime)
         NATIVE_BLOB=r"(tiny|small|medium|long)blob$",  # Specific blob variants
-        TEXT=r"(tiny|small|medium|long)?text$",  # Text types
+        NATIVE_TEXT=r"(tiny|small|medium|long)text$",  # Text variants (use plain 'text' instead)
         # AttributeTypes use angle brackets
         ADAPTED=r"<.+>$",
     ).items()
