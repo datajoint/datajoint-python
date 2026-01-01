@@ -108,7 +108,7 @@ The `@` character indicates **external storage** (object store vs database):
   `ObjectRef` for lazy access. External only. See [object storage](object.md).
 
 - `<hash@>` / `<hash@store>`: Hash-addressed storage for raw bytes with
-  SHA256 deduplication. External only. Use via `<blob@>` or `<attach@>` rather than directly.
+  MD5 deduplication. External only. Use via `<blob@>` or `<attach@>` rather than directly.
 
 **File attachment types** - for file transfer:
 

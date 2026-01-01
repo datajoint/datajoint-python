@@ -39,7 +39,7 @@ This document defines a three-layer type architecture:
 | Region | Path Pattern | Addressing | Use Case |
 |--------|--------------|------------|----------|
 | Object | `{schema}/{table}/{pk}/` | Primary key | Large objects, Zarr, HDF5 |
-| Hash | `_hash/{hash}` | SHA256 hash | Deduplicated blobs/files |
+| Hash | `_hash/{hash}` | MD5 hash | Deduplicated blobs/files |
 
 ### External References
 
@@ -314,18 +314,14 @@ class HashType(AttributeType):
 
     def encode(self, data: bytes, *, key=None, store_name=None) -> dict:
         """Store content, return metadata as JSON."""
-        hash_id = hashlib.sha256(data).hexdigest()
+        hash_id = hashlib.md5(data).hexdigest()  # 32-char hex
         store = get_store(store_name or dj.config['stores']['default'])
         path = f"_hash/{hash_id[:2]}/{hash_id[2:4]}/{hash_id}"
 
         if not store.exists(path):
             store.put(path, data)
-            HashRegistry().insert1({
-                'hash_id': hash_id,
-                'store': store_name,
-                'size': len(data)
-            }, skip_duplicates=True)
 
+        # Metadata stored in JSON column (no separate registry)
         return {"hash": hash_id, "store": store_name, "size": len(data)}
 
     def decode(self, stored: dict, *, key=None) -> bytes:
@@ -681,6 +677,41 @@ def garbage_collect(store_name):
 13. **External-only types**: `<object@>`, `<hash@>`, `<filepath@>` require `@`
 14. **Transparent access**: AttributeTypes return Python objects or file paths
 15. **Lazy access**: `<object@>` and `<filepath@store>` return ObjectRef
+16. **MD5 for content hashing**: See [Hash Algorithm Choice](#hash-algorithm-choice) below
+17. **No separate registry**: Hash metadata stored in JSON columns, not a separate table
+
+### Hash Algorithm Choice
+
+Content-addressed storage uses **MD5** (128-bit, 32-char hex) rather than SHA256 (256-bit, 64-char hex).
+
+**Rationale:**
+
+1. **Practical collision resistance is sufficient**: The birthday bound for MD5 is ~2^64 operations
+   before 50% collision probability. No scientific project will store anywhere near 10^19 files.
+   For content deduplication (not cryptographic verification), MD5 provides adequate uniqueness.
+
+2. **Storage efficiency**: 32-char hashes vs 64-char hashes in every JSON metadata field.
+   With millions of records, this halves the storage overhead for hash identifiers.
+
+3. **Performance**: MD5 is ~2-3x faster than SHA256 for large files. While both are fast,
+   the difference is measurable when hashing large scientific datasets.
+
+4. **Legacy compatibility**: DataJoint's existing `uuid_from_buffer()` function uses MD5.
+   The new system changes only the storage format (hex string in JSON vs binary UUID),
+   not the underlying hash algorithm. This simplifies migration.
+
+5. **Consistency with existing codebase**: The `dj.hash` module already uses MD5 for
+   `key_hash()` (job reservation) and `uuid_from_buffer()` (query caching).
+
+**Why not SHA256?**
+
+SHA256 is the modern standard for content-addressable storage (Git, Docker, IPFS). However:
+- These systems prioritize cryptographic security against adversarial collision attacks
+- Scientific data pipelines face no adversarial threat model
+- The practical benefits (storage, speed, compatibility) outweigh theoretical security gains
+
+**Note**: If cryptographic verification is ever needed (e.g., for compliance or reproducibility
+audits), SHA256 checksums can be computed on-demand without changing the storage addressing scheme.
 
 ## Migration from Legacy Types
 
@@ -694,8 +725,8 @@ def garbage_collect(store_name):
 
 ### Migration from Legacy `~external_*` Stores
 
-Legacy external storage used per-schema `~external_{store}` tables. Migration to the new
-per-project `HashRegistry` requires:
+Legacy external storage used per-schema `~external_{store}` tables with UUID references.
+Migration to the new JSON-based hash storage requires:
 
 ```python
 def migrate_external_store(schema, store_name):
@@ -705,10 +736,9 @@ def migrate_external_store(schema, store_name):
     1. Read all entries from ~external_{store}
     2. For each entry:
        - Fetch content from legacy location
-       - Compute SHA256 hash
+       - Compute MD5 hash
        - Copy to _hash/{hash}/ if not exists
-       - Update table column from UUID to hash
-       - Register in HashRegistry
+       - Update table column to new hash format
     3. After all schemas migrated, drop ~external_{store} tables
     """
     external_table = schema.external[store_name]
@@ -720,7 +750,7 @@ def migrate_external_store(schema, store_name):
         content = external_table.get(legacy_uuid)
 
         # Compute new content hash
-        hash_id = hashlib.sha256(content).hexdigest()
+        hash_id = hashlib.md5(content).hexdigest()
 
         # Store in new location if not exists
         new_path = f"_hash/{hash_id[:2]}/{hash_id[2:4]}/{hash_id}"
@@ -728,14 +758,8 @@ def migrate_external_store(schema, store_name):
         if not store.exists(new_path):
             store.put(new_path, content)
 
-        # Register in project-wide HashRegistry
-        HashRegistry().insert1({
-            'hash_id': hash_id,
-            'store': store_name,
-            'size': len(content)
-        }, skip_duplicates=True)
-
-        # Update referencing tables (UUID -> hash)
+        # Update referencing tables: convert UUID column to JSON with hash metadata
+        # The JSON column stores {"hash": hash_id, "store": store_name, "size": len(content)}
         # ... update all tables that reference this UUID ...
 
     # After migration complete for all schemas:
@@ -743,8 +767,9 @@ def migrate_external_store(schema, store_name):
 ```
 
 **Migration considerations:**
-- Legacy UUIDs were based on content hash but stored as `binary(16)`
-- New system uses `char(64)` SHA256 hex strings
+- Legacy UUIDs were based on MD5 content hash stored as `binary(16)` (UUID format)
+- New system uses `char(32)` MD5 hex strings stored in JSON
+- The hash algorithm is unchanged (MD5), only the storage format differs
 - Migration can be done incrementally per schema
 - Backward compatibility layer can read both formats during transition
 
