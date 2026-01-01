@@ -162,12 +162,13 @@ The `dtype` property specifies how data is stored in the database:
 | dtype | Use Case | Stored Format |
 |-------|----------|---------------|
 | `"bytes"` | Raw binary data (core type) | Binary (LONGBLOB/BYTEA) |
-| `"longblob"` | Complex Python objects, arrays | Serialized binary |
+| `"longblob"` | Raw binary data (native type, MySQL-specific) | Binary |
 | `"json"` | JSON-serializable data | JSON string |
 | `"varchar(N)"` | String representations | Text |
 | `"int"` | Integer identifiers | Integer |
 | `"blob@store"` | Large objects in external storage | UUID reference |
 | `"object"` | Files/folders in object storage | JSON metadata |
+| `"<djblob>"` | Serialized Python objects | DJ blob format |
 | `"<other_type>"` | Chain to another custom type | Varies |
 
 ### External Storage
