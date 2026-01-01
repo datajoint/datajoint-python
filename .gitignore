@@ -187,3 +187,4 @@ dj_local_conf.json
 !.vscode/launch.json
 # pixi environments
 .pixi
+_content/

@@ -55,19 +55,17 @@ def get_store_backend(store_name: str | None = None) -> StorageBackend:
     Get a StorageBackend for content storage.
 
     Args:
-        store_name: Name of the store to use. If None, uses the default store.
+        store_name: Name of the store to use. If None, uses the default object storage
+            configuration or the configured default_store.
 
     Returns:
         StorageBackend instance
     """
-    if store_name is None:
-        # Use default store from object_storage settings
+    # If store_name is None, check for configured default_store
+    if store_name is None and config.object_storage.default_store:
         store_name = config.object_storage.default_store
-        if store_name is None:
-            raise DataJointError(
-                "No default store configured. Set object_storage.default_store " "or specify a store name explicitly."
-            )
 
+    # get_object_store_spec handles None by returning default object_storage config
     spec = config.get_object_store_spec(store_name)
     return StorageBackend(spec)
 

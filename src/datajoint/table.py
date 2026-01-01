@@ -272,10 +272,6 @@ class Table(QueryExpression):
         return self._log_
 
     @property
-    def external(self):
-        return self.connection.schemas[self.database].external
-
-    @property
     def object_storage(self) -> StorageBackend | None:
         """Get the default object storage backend for this table."""
         return self.get_object_storage()
@@ -946,6 +942,10 @@ class Table(QueryExpression):
         # Apply adapter encoding with type chain support
         if attr.adapter:
             from .attribute_type import resolve_dtype
+
+            # Skip validation and encoding for None values (nullable columns)
+            if value is None:
+                return name, "DEFAULT", None
 
             attr.adapter.validate(value)
 

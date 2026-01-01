@@ -114,9 +114,8 @@ class StagedInsert:
         spec = config.get_object_storage_spec()
         partition_pattern = spec.get("partition_pattern")
         token_length = spec.get("token_length", 8)
-        location = spec.get("location", "")
 
-        # Build storage path
+        # Build storage path (relative - StorageBackend will add location prefix)
         relative_path, token = build_object_path(
             schema=self._table.database,
             table=self._table.class_name,
@@ -127,18 +126,14 @@ class StagedInsert:
             token_length=token_length,
         )
 
-        # Full path with location prefix
-        full_path = f"{location}/{relative_path}" if location else relative_path
-
-        # Store staged object info
+        # Store staged object info (all paths are relative, backend adds location)
         self._staged_objects[field] = {
             "relative_path": relative_path,
-            "full_path": full_path,
             "ext": ext if ext else None,
             "token": token,
         }
 
-        return full_path
+        return relative_path
 
     def store(self, field: str, ext: str = "") -> fsspec.FSMap:
         """
@@ -180,11 +175,12 @@ class StagedInsert:
             JSON-serializable metadata dict
         """
         info = self._staged_objects[field]
-        full_path = info["full_path"]
+        relative_path = info["relative_path"]
         ext = info["ext"]
 
         # Check if it's a directory (multiple files) or single file
-        full_remote_path = self._backend._full_path(full_path)
+        # _full_path adds the location prefix
+        full_remote_path = self._backend._full_path(relative_path)
 
         try:
             is_dir = self._backend.fs.isdir(full_remote_path)
@@ -218,11 +214,11 @@ class StagedInsert:
             }
 
             # Write manifest alongside folder
-            manifest_path = f"{full_path}.manifest.json"
+            manifest_path = f"{relative_path}.manifest.json"
             self._backend.put_buffer(json.dumps(manifest, indent=2).encode(), manifest_path)
 
             metadata = {
-                "path": info["relative_path"],
+                "path": relative_path,
                 "size": total_size,
                 "hash": None,
                 "ext": ext,
@@ -233,12 +229,12 @@ class StagedInsert:
         else:
             # Single file
             try:
-                size = self._backend.size(full_path)
+                size = self._backend.size(relative_path)
             except Exception:
                 size = 0
 
             metadata = {
-                "path": info["relative_path"],
+                "path": relative_path,
                 "size": size,
                 "hash": None,
                 "ext": ext,
@@ -261,8 +257,8 @@ class StagedInsert:
         # Process each staged object
         for field in list(self._staged_objects.keys()):
             metadata = self._compute_metadata(field)
-            # Store JSON metadata in the record
-            self._rec[field] = json.dumps(metadata)
+            # Store metadata dict in the record (ObjectType.encode handles it)
+            self._rec[field] = metadata
 
         # Insert the record
         self._table.insert1(self._rec)
@@ -275,15 +271,15 @@ class StagedInsert:
             return
 
         for field, info in self._staged_objects.items():
-            full_path = info["full_path"]
+            relative_path = info["relative_path"]
             try:
                 # Check if it's a directory
-                full_remote_path = self._backend._full_path(full_path)
+                full_remote_path = self._backend._full_path(relative_path)
                 if self._backend.fs.exists(full_remote_path):
                     if self._backend.fs.isdir(full_remote_path):
-                        self._backend.remove_folder(full_path)
+                        self._backend.remove_folder(relative_path)
                     else:
-                        self._backend.remove(full_path)
+                        self._backend.remove(relative_path)
             except Exception:
                 pass  # Best effort cleanup
 

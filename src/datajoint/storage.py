@@ -279,7 +279,7 @@ class StorageBackend:
 
     def _full_path(self, path: str | PurePosixPath) -> str:
         """
-        Construct full path including bucket for cloud storage.
+        Construct full path including location/bucket prefix.
 
         Args:
             path: Relative path within the storage location
@@ -290,12 +290,21 @@ class StorageBackend:
         path = str(path)
         if self.protocol == "s3":
             bucket = self.spec["bucket"]
+            location = self.spec.get("location", "")
+            if location:
+                return f"{bucket}/{location}/{path}"
             return f"{bucket}/{path}"
         elif self.protocol in ("gcs", "azure"):
             bucket = self.spec.get("bucket") or self.spec.get("container")
+            location = self.spec.get("location", "")
+            if location:
+                return f"{bucket}/{location}/{path}"
             return f"{bucket}/{path}"
         else:
-            # Local filesystem - path is already absolute or relative to cwd
+            # Local filesystem - prepend location if specified
+            location = self.spec.get("location", "")
+            if location:
+                return str(Path(location) / path)
             return path
 
     def put_file(self, local_path: str | Path, remote_path: str | PurePosixPath, metadata: dict | None = None):
@@ -446,6 +455,11 @@ class StorageBackend:
             File-like object
         """
         full_path = self._full_path(remote_path)
+
+        # For write modes on local filesystem, ensure parent directory exists
+        if self.protocol == "file" and "w" in mode:
+            Path(full_path).parent.mkdir(parents=True, exist_ok=True)
+
         return self.fs.open(full_path, mode)
 
     def put_folder(self, local_path: str | Path, remote_path: str | PurePosixPath) -> dict:

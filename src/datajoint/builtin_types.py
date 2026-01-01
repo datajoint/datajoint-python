@@ -345,23 +345,42 @@ class ObjectType(AttributeType):
         field = key.pop("_field", "data")
         primary_key = {k: v for k, v in key.items() if not k.startswith("_")}
 
+        # Check for pre-computed metadata (from staged insert)
+        if isinstance(value, dict) and "path" in value:
+            # Already encoded, pass through
+            return value
+
         # Determine content type and extension
         is_dir = False
         ext = None
         size = None
+        item_count = None
+        source_path = None
 
         if isinstance(value, bytes):
             content = value
             size = len(content)
+        elif isinstance(value, tuple) and len(value) == 2:
+            # Tuple format: (extension, data) where data is bytes or file-like
+            ext, data = value
+            if hasattr(data, "read"):
+                content = data.read()
+            else:
+                content = data
+            size = len(content)
         elif isinstance(value, (str, Path)):
             source_path = Path(value)
             if not source_path.exists():
-                raise FileNotFoundError(f"Source path does not exist: {source_path}")
+                from .errors import DataJointError
+
+                raise DataJointError(f"Source path not found: {source_path}")
             is_dir = source_path.is_dir()
             ext = source_path.suffix if not is_dir else None
             if is_dir:
                 # For directories, we'll upload later
                 content = None
+                # Count items in directory
+                item_count = sum(1 for _ in source_path.rglob("*") if _.is_file())
             else:
                 content = source_path.read_bytes()
                 size = len(content)
@@ -398,6 +417,7 @@ class ObjectType(AttributeType):
             "size": size,
             "ext": ext,
             "is_dir": is_dir,
+            "item_count": item_count,
             "timestamp": timestamp.isoformat(),
         }
 
@@ -422,12 +442,19 @@ class ObjectType(AttributeType):
         return ObjectRef.from_json(stored, backend=backend)
 
     def validate(self, value: Any) -> None:
-        """Validate that value is bytes or a valid path."""
+        """Validate that value is bytes, path, dict metadata, or (extension, data) tuple."""
         from pathlib import Path
 
         if isinstance(value, bytes):
             return
         if isinstance(value, (str, Path)):
+            # Could be a path or pre-encoded JSON string
+            return
+        if isinstance(value, tuple) and len(value) == 2:
+            # Tuple format: (extension, data)
+            return
+        if isinstance(value, dict) and "path" in value:
+            # Pre-computed metadata dict (from staged insert)
             return
         raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
 

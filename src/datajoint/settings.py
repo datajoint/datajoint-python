@@ -212,6 +212,7 @@ class ObjectStorageSettings(BaseSettings):
     secure: bool = Field(default=True, description="Use HTTPS")
 
     # Optional settings
+    default_store: str | None = Field(default=None, description="Default store name when not specified")
     partition_pattern: str | None = Field(default=None, description="Path pattern with {attribute} placeholders")
     token_length: int = Field(default=8, ge=4, le=16, description="Random suffix length for filenames")
 
@@ -647,6 +648,118 @@ class Config(BaseSettings):
                     group, attr = key_parts
                     setattr(getattr(self, group), attr, original)
 
+    @staticmethod
+    def save_template(
+        path: str | Path = "datajoint.json",
+        minimal: bool = True,
+        create_secrets_dir: bool = True,
+    ) -> Path:
+        """
+        Create a template datajoint.json configuration file.
+
+        Credentials should NOT be stored in datajoint.json. Instead, use either:
+        - Environment variables (DJ_USER, DJ_PASS, DJ_HOST, etc.)
+        - The .secrets/ directory (created alongside datajoint.json)
+
+        Args:
+            path: Where to save the template. Defaults to 'datajoint.json' in current directory.
+            minimal: If True (default), create a minimal template with just database settings.
+                    If False, create a full template with all available settings.
+            create_secrets_dir: If True (default), also create a .secrets/ directory
+                               with template files for credentials.
+
+        Returns:
+            Path to the created config file.
+
+        Raises:
+            FileExistsError: If config file already exists (won't overwrite).
+
+        Example:
+            >>> import datajoint as dj
+            >>> dj.config.save_template()  # Creates minimal template + .secrets/
+            >>> dj.config.save_template("full-config.json", minimal=False)
+        """
+        filepath = Path(path)
+        if filepath.exists():
+            raise FileExistsError(f"File already exists: {filepath}. Remove it first or choose a different path.")
+
+        if minimal:
+            template = {
+                "database": {
+                    "host": "localhost",
+                    "port": 3306,
+                },
+            }
+        else:
+            template = {
+                "database": {
+                    "host": "localhost",
+                    "port": 3306,
+                    "reconnect": True,
+                    "use_tls": None,
+                },
+                "connection": {
+                    "init_function": None,
+                    "charset": "",
+                },
+                "display": {
+                    "limit": 12,
+                    "width": 14,
+                    "show_tuple_count": True,
+                },
+                "object_storage": {
+                    "project_name": None,
+                    "protocol": None,
+                    "location": None,
+                    "bucket": None,
+                    "endpoint": None,
+                    "secure": True,
+                    "partition_pattern": None,
+                    "token_length": 8,
+                },
+                "stores": {},
+                "loglevel": "INFO",
+                "safemode": True,
+                "fetch_format": "array",
+                "enable_python_native_blobs": True,
+                "cache": None,
+                "query_cache": None,
+                "download_path": ".",
+            }
+
+        with open(filepath, "w") as f:
+            json.dump(template, f, indent=2)
+            f.write("\n")
+
+        logger.info(f"Created template configuration at {filepath.absolute()}")
+
+        # Create .secrets/ directory with template files
+        if create_secrets_dir:
+            secrets_dir = filepath.parent / SECRETS_DIRNAME
+            secrets_dir.mkdir(exist_ok=True)
+
+            # Create placeholder secret files
+            secret_templates = {
+                "database.user": "your_username",
+                "database.password": "your_password",
+            }
+            for secret_name, placeholder in secret_templates.items():
+                secret_file = secrets_dir / secret_name
+                if not secret_file.exists():
+                    secret_file.write_text(placeholder)
+
+            # Create .gitignore to prevent committing secrets
+            gitignore_path = secrets_dir / ".gitignore"
+            if not gitignore_path.exists():
+                gitignore_path.write_text("# Never commit secrets\n*\n!.gitignore\n")
+
+            logger.info(
+                f"Created {SECRETS_DIRNAME}/ directory with credential templates. "
+                f"Edit the files in {secrets_dir.absolute()}/ to set your credentials."
+            )
+
+        return filepath.absolute()
+
     # Dict-like access for convenience
     def __getitem__(self, key: str) -> Any:
         """Get setting by dot-notation key (e.g., 'database.host')."""
@@ -724,7 +837,7 @@ def _create_config() -> Config:
     else:
         warnings.warn(
             f"No {CONFIG_FILENAME} found. Using defaults and environment variables. "
-            f"Create {CONFIG_FILENAME} in your project root to configure DataJoint.",
+            f"Run `dj.config.save_template()` to create a template configuration.",
             stacklevel=2,
         )
 

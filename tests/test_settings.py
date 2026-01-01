@@ -337,3 +337,93 @@ class TestCachePaths:
             assert dj.config.cache is None
         finally:
             dj.config.cache = original
+
+
+class TestSaveTemplate:
+    """Test save_template method for creating configuration templates."""
+
+    def test_save_minimal_template(self, tmp_path):
+        """Test creating a minimal template."""
+        config_path = tmp_path / "datajoint.json"
+        result = dj.config.save_template(config_path, minimal=True, create_secrets_dir=False)
+
+        assert result == config_path.absolute()
+        assert config_path.exists()
+
+        import json
+
+        with open(config_path) as f:
+            content = json.load(f)
+
+        assert "database" in content
+        assert content["database"]["host"] == "localhost"
+        assert content["database"]["port"] == 3306
+        # Minimal template should not have credentials
+        assert "password" not in content["database"]
+        assert "user" not in content["database"]
+
+    def test_save_full_template(self, tmp_path):
+        """Test creating a full template."""
+        config_path = tmp_path / "datajoint.json"
+        result = dj.config.save_template(config_path, minimal=False, create_secrets_dir=False)
+
+        assert result == config_path.absolute()
+        assert config_path.exists()
+
+        import json
+
+        with open(config_path) as f:
+            content = json.load(f)
+
+        # Full template should have all settings groups
+        assert "database" in content
+        assert "connection" in content
+        assert "display" in content
+        assert "object_storage" in content
+        assert "stores" in content
+        assert "loglevel" in content
+        assert "safemode" in content
+        # But still no credentials
+        assert "password" not in content["database"]
+        assert "user" not in content["database"]
+
+    def test_save_template_creates_secrets_dir(self, tmp_path):
+        """Test that save_template creates .secrets/ directory."""
+        config_path = tmp_path / "datajoint.json"
+        dj.config.save_template(config_path, create_secrets_dir=True)
+
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        assert secrets_dir.exists()
+        assert secrets_dir.is_dir()
+
+        # Check placeholder files created
+        assert (secrets_dir / "database.user").exists()
+        assert (secrets_dir / "database.password").exists()
+
+        # Check .gitignore created
+        gitignore = secrets_dir / ".gitignore"
+        assert gitignore.exists()
+        assert "*" in gitignore.read_text()
+
+    def test_save_template_refuses_overwrite(self, tmp_path):
+        """Test that save_template won't overwrite existing file."""
+        config_path = tmp_path / "datajoint.json"
+        config_path.write_text("{}")
+
+        with pytest.raises(FileExistsError, match="already exists"):
+            dj.config.save_template(config_path)
+
+    def test_save_template_secrets_dir_idempotent(self, tmp_path):
+        """Test that creating secrets dir doesn't overwrite existing secrets."""
+        config_path = tmp_path / "datajoint.json"
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+
+        # Pre-populate a secret
+        password_file = secrets_dir / "database.password"
+        password_file.write_text("existing_password")
+
+        dj.config.save_template(config_path, create_secrets_dir=True)
+
+        # Original password should be preserved
+        assert password_file.read_text() == "existing_password"
