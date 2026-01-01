@@ -88,6 +88,17 @@ MySQL and PostgreSQL backends. Users should prefer these over native database ty
 | `date` | Date only | `DATE` | `DATE` |
 | `datetime` | Date and time | `DATETIME` | `TIMESTAMP` |
 
+**Timezone policy:** All `datetime` values should be stored as **UTC**. Timezone conversion is a
+presentation concern handled by the application layer, not the database. This ensures:
+- Reproducible computations regardless of server or client timezone settings
+- Simple arithmetic on temporal values (no DST ambiguity)
+- Portable data across systems and regions
+
+Use `CURRENT_TIMESTAMP` for auto-populated creation times:
+```
+created_at : datetime = CURRENT_TIMESTAMP
+```
+
 ### Binary Types
 
 The core `bytes` type stores raw bytes without any serialization. Use `<djblob>` AttributeType
