@@ -103,7 +103,7 @@ for serialized Python objects.
 |-----------|-------------|-------|------------|
 | `json` | JSON document | `JSON` | `JSONB` |
 | `uuid` | UUID | `BINARY(16)` | `UUID` |
-| `enum(...)` | Enumeration | `ENUM(...)` | `VARCHAR` + check |
+| `enum(...)` | Enumeration | `ENUM(...)` | `CREATE TYPE ... AS ENUM` |
 
 ### Native Passthrough Types
 
