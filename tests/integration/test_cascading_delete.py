@@ -2,8 +2,8 @@ import pytest
 
 import datajoint as dj
 
-from .schema import ComplexChild, ComplexParent
-from .schema_simple import A, B, D, E, G, L, Profile, Website
+from tests.schema import ComplexChild, ComplexParent
+from tests.schema_simple import A, B, D, E, G, L, Profile, Website
 
 
 @pytest.fixture

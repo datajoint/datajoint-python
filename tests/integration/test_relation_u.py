@@ -2,8 +2,8 @@ from pytest import raises
 
 import datajoint as dj
 
-from .schema import Language, TTest
-from .schema_simple import ArgmaxTest
+from tests.schema import Language, TTest
+from tests.schema_simple import ArgmaxTest
 
 
 def test_restriction(lang, languages, trial):

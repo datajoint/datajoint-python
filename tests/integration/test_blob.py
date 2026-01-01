@@ -11,7 +11,7 @@ from pytest import approx
 import datajoint as dj
 from datajoint.blob import pack, unpack
 
-from .schema import Longblob
+from tests.schema import Longblob
 
 
 @pytest.fixture

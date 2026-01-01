@@ -6,7 +6,7 @@ import pytest
 
 from datajoint.declare import CORE_TYPE_SQL, SPECIAL_TYPES, match_type
 
-from .schema_type_aliases import TypeAliasTable, TypeAliasPrimaryKey, TypeAliasNullable
+from tests.schema_type_aliases import TypeAliasTable, TypeAliasPrimaryKey, TypeAliasNullable
 
 
 class TestTypeAliasPatterns:

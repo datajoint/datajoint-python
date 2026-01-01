@@ -1,6 +1,6 @@
 from datajoint.declare import declare
 
-from .schema_advanced import (
+from tests.schema_advanced import (
     Cell,  # noqa: F401 - needed in globals for foreign key resolution
     GlobalSynapse,
     LocalSynapse,

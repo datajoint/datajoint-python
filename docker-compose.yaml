@@ -1,6 +1,11 @@
 # Development environment with MySQL and MinIO services
-# Start services: docker-compose up -d db minio
-# Run tests: pixi run test
+#
+# Quick start:
+#   docker compose up -d db minio   # Start services
+#   pytest tests/                    # Run tests (uses localhost defaults)
+#
+# Full Docker testing:
+#   docker compose --profile test up djtest --build
 services:
   db:
     image: datajoint/mysql:${MYSQL_VER:-8.0}

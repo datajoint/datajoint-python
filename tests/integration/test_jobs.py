@@ -5,7 +5,7 @@ import string
 import datajoint as dj
 from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 
-from . import schema
+from tests import schema
 
 
 def test_reserve_job(clean_jobs, subject, schema_any):

@@ -9,8 +9,24 @@ import pytest
 import datajoint as dj
 from datajoint.errors import DataJointError
 
-from .schema import Child, Ephys, Experiment, Parent, SessionA, SessionDateA, SessionStatusA, SubjectA, TTest3, Trial
-from .schema_simple import F, IJ, JI, L, A, B, D, E, DataA, DataB, KeyPK, OutfitLaunch, ReservedWord, SelectPK, TTestUpdate
+from tests.schema import Child, Ephys, Experiment, Parent, SessionA, SessionDateA, SessionStatusA, SubjectA, TTest3, Trial
+from tests.schema_simple import (
+    F,
+    IJ,
+    JI,
+    L,
+    A,
+    B,
+    D,
+    E,
+    DataA,
+    DataB,
+    KeyPK,
+    OutfitLaunch,
+    ReservedWord,
+    SelectPK,
+    TTestUpdate,
+)
 
 
 @pytest.fixture

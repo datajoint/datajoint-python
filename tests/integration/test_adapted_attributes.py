@@ -11,8 +11,8 @@ import pytest
 
 import datajoint as dj
 
-from . import schema_adapted
-from .schema_adapted import Connectivity, Layout
+from tests import schema_adapted
+from tests.schema_adapted import Connectivity, Layout
 
 
 @pytest.fixture

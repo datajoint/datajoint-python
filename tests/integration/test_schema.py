@@ -6,8 +6,8 @@ import pytest
 
 import datajoint as dj
 
-from . import schema
-from .schema import Ephys
+from tests import schema
+from tests.schema import Ephys
 
 
 def relation_selector(attr):

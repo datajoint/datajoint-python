@@ -6,8 +6,8 @@ import pytest
 import datajoint as dj
 from datajoint import DataJointError
 
-from . import schema_university
-from .schema_university import (
+from tests import schema_university
+from tests.schema_university import (
     Student,
     Department,
     StudentMajor,

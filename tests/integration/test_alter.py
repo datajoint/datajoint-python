@@ -3,8 +3,8 @@ import re
 import pytest
 
 
-from . import schema as schema_any_module
-from .schema_alter import LOCALS_ALTER, Experiment, Parent
+from tests import schema as schema_any_module
+from tests.schema_alter import LOCALS_ALTER, Experiment, Parent
 
 COMBINED_CONTEXT = {
     **schema_any_module.LOCALS_ANY,

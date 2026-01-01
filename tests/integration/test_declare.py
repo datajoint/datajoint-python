@@ -6,7 +6,7 @@ import datajoint as dj
 from datajoint.declare import declare
 from datajoint.settings import config
 
-from .schema import (
+from tests.schema import (
     Auto,
     Ephys,
     Experiment,

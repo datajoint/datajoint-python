@@ -1,4 +1,4 @@
-from .schema_simple import A, D
+from tests.schema_simple import A, D
 
 
 def test_aggr_with_proj(schema_simp):

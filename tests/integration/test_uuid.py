@@ -5,7 +5,7 @@ import pytest
 
 from datajoint import DataJointError
 
-from .schema_uuid import Basic, Item, Topic
+from tests.schema_uuid import Basic, Item, Topic
 
 
 def test_uuid(schema_uuid):

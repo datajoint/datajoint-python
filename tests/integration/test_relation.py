@@ -9,7 +9,7 @@ import pytest
 import datajoint as dj
 from datajoint.table import Table
 
-from . import schema
+from tests import schema
 
 
 def test_contents(user, subject):

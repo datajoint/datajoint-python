@@ -8,8 +8,8 @@ import pytest
 
 import datajoint as dj
 
-from .schema_aggr_regress import LOCALS_AGGR_REGRESS, A, B, Q, R, S, X
-from .schema_uuid import Item, Topic, top_level_namespace_id
+from tests.schema_aggr_regress import LOCALS_AGGR_REGRESS, A, B, Q, R, S, X
+from tests.schema_uuid import Item, Topic, top_level_namespace_id
 
 
 @pytest.fixture(scope="function")

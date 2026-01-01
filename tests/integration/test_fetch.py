@@ -10,7 +10,7 @@ import pytest
 
 import datajoint as dj
 
-from . import schema
+from tests import schema
 
 
 def test_getattribute(subject):

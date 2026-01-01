@@ -146,61 +146,68 @@ DataJoint (<https://datajoint.com>).
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) for running MySQL and MinIO services
-- [pixi](https://prefix.dev/docs/pixi/overview) package manager (or pip/conda)
-
-### Setting Up the Development Environment
-
-1. Clone the repository and install dependencies:
-
-   ```bash
-   git clone https://github.com/datajoint/datajoint-python.git
-   cd datajoint-python
-   pixi install
-   ```
-
-2. Start the required services (MySQL and MinIO):
-
-   ```bash
-   docker compose up -d db minio
-   ```
+- [Docker](https://docs.docker.com/get-docker/) for MySQL and MinIO services
+- Python 3.10+
 
 ### Running Tests
 
-Run tests with pytest using the test environment:
+Tests are organized into `unit/` (no external services) and `integration/` (requires MySQL + MinIO):
 
 ```bash
-DJ_HOST=localhost DJ_PORT=3306 S3_ENDPOINT=localhost:9000 python -m pytest tests/
+# Install dependencies
+pip install -e ".[test]"
+
+# Run unit tests only (fast, no Docker needed)
+pytest tests/unit/
+
+# Start MySQL and MinIO for integration tests
+docker compose up -d db minio
+
+# Run all tests
+pytest tests/
+
+# Run specific test file
+pytest tests/integration/test_blob.py -v
+
+# Stop services when done
+docker compose down
 ```
 
-Or run specific test files:
+### Alternative: Full Docker
+
+Run tests entirely in Docker (no local Python needed):
 
 ```bash
-DJ_HOST=localhost DJ_PORT=3306 S3_ENDPOINT=localhost:9000 python -m pytest tests/test_blob.py -v
+docker compose --profile test up djtest --build
 ```
 
-### Running Pre-commit Checks
+### Alternative: Using pixi
 
-Pre-commit hooks ensure code quality before commits. Install and run them:
+[pixi](https://pixi.sh) users can run tests with automatic service management:
 
 ```bash
-# Install pre-commit hooks
-pre-commit install
+pixi install        # First time setup
+pixi run test       # Starts services and runs tests
+pixi run services-down  # Stop services
+```
 
-# Run all pre-commit checks manually
-pre-commit run --all-files
+### Pre-commit Hooks
 
-# Run specific hooks
-pre-commit run ruff --all-files
-pre-commit run mypy --all-files
+```bash
+pre-commit install          # Install hooks (first time)
+pre-commit run --all-files  # Run all checks
 ```
 
 ### Environment Variables
 
+Tests use these defaults (configured in `pyproject.toml`):
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DJ_HOST` | `localhost` | MySQL server hostname |
-| `DJ_PORT` | `3306` | MySQL server port |
-| `DJ_USER` | `datajoint` | MySQL username |
-| `DJ_PASS` | `datajoint` | MySQL password |
-| `S3_ENDPOINT` | `localhost:9000` | MinIO/S3 endpoint |
+| `DJ_HOST` | `localhost` | MySQL hostname |
+| `DJ_PORT` | `3306` | MySQL port |
+| `DJ_USER` | `root` | MySQL username |
+| `DJ_PASS` | `password` | MySQL password |
+| `S3_ENDPOINT` | `localhost:9000` | MinIO endpoint |
+
+For Docker-based testing (devcontainer, djtest), set `DJ_HOST=db` and `S3_ENDPOINT=minio:9000`.

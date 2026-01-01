@@ -1,6 +1,6 @@
 import datajoint as dj
 
-from .schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L
+from tests.schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L
 
 
 def test_decorator(schema_simp):

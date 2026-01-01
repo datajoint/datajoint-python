@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 
-from .schema_external import Attach
+from tests.schema_external import Attach
 
 
 def test_attach_attributes(schema_ext, minio_client, tmpdir_factory):

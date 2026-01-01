@@ -2,7 +2,7 @@ import pytest
 
 import datajoint as dj
 
-from . import schema, schema_privileges
+from tests import schema, schema_privileges
 
 namespace = locals()
 
