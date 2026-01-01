@@ -1,7 +1,5 @@
 import hashlib
-import io
 import uuid
-from pathlib import Path
 
 
 def key_hash(mapping):
@@ -16,24 +14,14 @@ def key_hash(mapping):
     return hashed.hexdigest()
 
 
-def uuid_from_stream(stream, *, init_string=""):
+def uuid_from_buffer(buffer=b"", *, init_string=""):
     """
-    :return: 16-byte digest of stream data
-    :stream: stream object or open file handle
-    :init_string: string to initialize the checksum
+    Compute MD5 hash of buffer data, returned as UUID.
+
+    :param buffer: bytes to hash
+    :param init_string: string to initialize the checksum (for namespacing)
+    :return: UUID based on MD5 digest
     """
     hashed = hashlib.md5(init_string.encode())
-    chunk = True
-    chunk_size = 1 << 14
-    while chunk:
-        chunk = stream.read(chunk_size)
-        hashed.update(chunk)
+    hashed.update(buffer)
     return uuid.UUID(bytes=hashed.digest())
-
-
-def uuid_from_buffer(buffer=b"", *, init_string=""):
-    return uuid_from_stream(io.BytesIO(buffer), init_string=init_string)
-
-
-def uuid_from_file(filepath, *, init_string=""):
-    return uuid_from_stream(Path(filepath).open("rb"), init_string=init_string)
