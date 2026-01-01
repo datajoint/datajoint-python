@@ -827,10 +827,10 @@ class Config(BaseSettings):
 
     def __delitem__(self, key: str) -> None:
         """Reset setting to default by dot-notation key."""
-        # Get the default value from the model fields
+        # Get the default value from the model fields (access from class, not instance)
         parts = key.split(".")
         if len(parts) == 1:
-            field_info = self.model_fields.get(key)
+            field_info = type(self).model_fields.get(key)
             if field_info is not None:
                 default = field_info.default
                 if default is not None:
