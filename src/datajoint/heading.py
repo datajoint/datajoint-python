@@ -18,13 +18,11 @@ from .errors import DataJointError
 class _MissingType(Codec, register=False):
     """Placeholder for missing/unregistered codecs. Raises error on use."""
 
-    name = None  # Don't auto-register
-
     def __init__(self, codec_name: str):
         self._codec_name = codec_name
 
     @property
-    def type_name(self) -> str:
+    def name(self) -> str:
         return self._codec_name
 
     def get_dtype(self, is_external: bool) -> str:

@@ -758,7 +758,7 @@ class Table(QueryExpression):
             attr.codec.validate(value)
 
             # Resolve full type chain
-            _, type_chain, resolved_store = resolve_dtype(f"<{attr.codec.type_name}>", store_name=attr.store)
+            _, type_chain, resolved_store = resolve_dtype(f"<{attr.codec.name}>", store_name=attr.store)
 
             # Apply encoders from outermost to innermost
             for attr_type in type_chain:

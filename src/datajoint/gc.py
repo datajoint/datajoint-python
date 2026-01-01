@@ -56,15 +56,15 @@ def _uses_content_storage(attr) -> bool:
         return False
 
     # Check if this type uses content storage
-    type_name = getattr(attr.codec, "type_name", "")
+    codec_name = getattr(attr.codec, "name", "")
     store = getattr(attr, "store", None)
 
     # <hash> always uses content storage (external only)
-    if type_name == "hash":
+    if codec_name == "hash":
         return True
 
     # <blob@> and <attach@> use content storage when external (has store)
-    if type_name in ("blob", "attach") and store is not None:
+    if codec_name in ("blob", "attach") and store is not None:
         return True
 
     return False
@@ -83,8 +83,8 @@ def _uses_object_storage(attr) -> bool:
     if not attr.codec:
         return False
 
-    type_name = getattr(attr.codec, "type_name", "")
-    return type_name == "object"
+    codec_name = getattr(attr.codec, "name", "")
+    return codec_name == "object"
 
 
 def _extract_content_refs(value: Any) -> list[tuple[str, str | None]]:

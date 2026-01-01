@@ -64,9 +64,9 @@ def _get(connection, attr, data, squeeze, download_path):
         # Include store if present to get correct chain for external storage
         store = getattr(attr, "store", None)
         if store is not None:
-            dtype_spec = f"<{attr.codec.type_name}@{store}>"
+            dtype_spec = f"<{attr.codec.name}@{store}>"
         else:
-            dtype_spec = f"<{attr.codec.type_name}>"
+            dtype_spec = f"<{attr.codec.name}>"
         final_dtype, type_chain, _ = resolve_dtype(dtype_spec)
 
         # First, process the final dtype (what's stored in the database)

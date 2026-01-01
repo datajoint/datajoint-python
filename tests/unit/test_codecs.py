@@ -6,37 +6,36 @@ import pytest
 
 import datajoint as dj
 from datajoint.codecs import (
-    AttributeType,
+    Codec,
     _codec_registry,
-    get_type,
-    is_type_registered,
-    list_types,
-    register_type,
+    get_codec,
+    is_codec_registered,
+    list_codecs,
     resolve_dtype,
-    unregister_type,
+    unregister_codec,
 )
 from datajoint.errors import DataJointError
 
 
-class TestAttributeTypeRegistry:
-    """Tests for the type registry functionality."""
+class TestCodecRegistry:
+    """Tests for the codec registry functionality."""
 
     def setup_method(self):
-        """Clear any test types from registry before each test."""
+        """Clear any test codecs from registry before each test."""
         for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
                 del _codec_registry[name]
 
     def teardown_method(self):
-        """Clean up test types after each test."""
+        """Clean up test codecs after each test."""
         for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
                 del _codec_registry[name]
 
-    def test_register_type_auto(self):
+    def test_register_codec_auto(self):
         """Test auto-registration via __init_subclass__."""
 
-        class TestType(AttributeType):
+        class TestCodec(Codec):
             name = "test_decorator"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -48,14 +47,14 @@ class TestAttributeTypeRegistry:
             def decode(self, stored, *, key=None):
                 return stored
 
-        assert is_type_registered("test_decorator")
-        assert get_type("test_decorator").type_name == "test_decorator"
+        assert is_codec_registered("test_decorator")
+        assert get_codec("test_decorator").name == "test_decorator"
 
-    def test_register_type_direct(self):
-        """Test registering a type by calling register_type directly."""
+    def test_register_codec_skip(self):
+        """Test skipping registration with register=False."""
 
-        class TestType(AttributeType, register=False):
-            name = "test_direct"
+        class TestCodec(Codec, register=False):
+            name = "test_skip"
 
             def get_dtype(self, is_external: bool) -> str:
                 return "varchar(255)"
@@ -66,13 +65,12 @@ class TestAttributeTypeRegistry:
             def decode(self, stored, *, key=None):
                 return stored
 
-        register_type(TestType)
-        assert is_type_registered("test_direct")
+        assert not is_codec_registered("test_skip")
 
-    def test_register_type_idempotent(self):
-        """Test that registering the same type twice is idempotent."""
+    def test_register_codec_idempotent(self):
+        """Test that defining the same codec class twice is idempotent."""
 
-        class TestType(AttributeType):
+        class TestCodec(Codec):
             name = "test_idempotent"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -84,14 +82,13 @@ class TestAttributeTypeRegistry:
             def decode(self, stored, *, key=None):
                 return stored
 
-        # Second registration should not raise
-        register_type(TestType)
-        assert is_type_registered("test_idempotent")
+        # Redefine the same name should not raise (same class)
+        assert is_codec_registered("test_idempotent")
 
     def test_register_duplicate_name_different_class(self):
         """Test that registering different classes with same name raises error."""
 
-        class TestType1(AttributeType):
+        class TestCodec1(Codec):
             name = "test_duplicate"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -103,25 +100,24 @@ class TestAttributeTypeRegistry:
             def decode(self, stored, *, key=None):
                 return stored
 
-        class TestType2(AttributeType, register=False):
-            name = "test_duplicate"
-
-            def get_dtype(self, is_external: bool) -> str:
-                return "varchar(100)"
-
-            def encode(self, value, *, key=None, store_name=None):
-                return str(value)
-
-            def decode(self, stored, *, key=None):
-                return stored
-
         with pytest.raises(DataJointError, match="already registered"):
-            register_type(TestType2)
 
-    def test_unregister_type(self):
-        """Test unregistering a type."""
+            class TestCodec2(Codec):
+                name = "test_duplicate"
 
-        class TestType(AttributeType):
+                def get_dtype(self, is_external: bool) -> str:
+                    return "varchar(100)"
+
+                def encode(self, value, *, key=None, store_name=None):
+                    return str(value)
+
+                def decode(self, stored, *, key=None):
+                    return stored
+
+    def test_unregister_codec(self):
+        """Test unregistering a codec."""
+
+        class TestCodec(Codec):
             name = "test_unregister"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -133,19 +129,19 @@ class TestAttributeTypeRegistry:
             def decode(self, stored, *, key=None):
                 return stored
 
-        assert is_type_registered("test_unregister")
-        unregister_type("test_unregister")
-        assert not is_type_registered("test_unregister")
+        assert is_codec_registered("test_unregister")
+        unregister_codec("test_unregister")
+        assert not is_codec_registered("test_unregister")
 
-    def test_get_type_not_found(self):
-        """Test that getting an unregistered type raises error."""
+    def test_get_codec_not_found(self):
+        """Test that getting an unregistered codec raises error."""
         with pytest.raises(DataJointError, match="Unknown codec"):
-            get_type("nonexistent_type")
+            get_codec("nonexistent_codec")
 
-    def test_list_types(self):
-        """Test listing registered types."""
+    def test_list_codecs(self):
+        """Test listing registered codecs."""
 
-        class TestType(AttributeType):
+        class TestCodec(Codec):
             name = "test_list"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -157,14 +153,14 @@ class TestAttributeTypeRegistry:
             def decode(self, stored, *, key=None):
                 return stored
 
-        types = list_types()
-        assert "test_list" in types
-        assert types == sorted(types)  # Should be sorted
+        codecs = list_codecs()
+        assert "test_list" in codecs
+        assert codecs == sorted(codecs)  # Should be sorted
 
-    def test_get_type_strips_brackets(self):
-        """Test that get_type accepts names with or without angle brackets."""
+    def test_get_codec_strips_brackets(self):
+        """Test that get_codec accepts names with or without angle brackets."""
 
-        class TestType(AttributeType):
+        class TestCodec(Codec):
             name = "test_brackets"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -176,10 +172,10 @@ class TestAttributeTypeRegistry:
             def decode(self, stored, *, key=None):
                 return stored
 
-        assert get_type("test_brackets") is get_type("<test_brackets>")
+        assert get_codec("test_brackets") is get_codec("<test_brackets>")
 
 
-class TestAttributeTypeValidation:
+class TestCodecValidation:
     """Tests for the validate method."""
 
     def setup_method(self):
@@ -195,7 +191,7 @@ class TestAttributeTypeValidation:
     def test_validate_called_default(self):
         """Test that default validate accepts any value."""
 
-        class TestType(AttributeType):
+        class TestCodec(Codec):
             name = "test_validate_default"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -207,7 +203,7 @@ class TestAttributeTypeValidation:
             def decode(self, stored, *, key=None):
                 return stored
 
-        t = get_type("test_validate_default")
+        t = get_codec("test_validate_default")
         # Default validate should not raise for any value
         t.validate(None)
         t.validate(42)
@@ -217,7 +213,7 @@ class TestAttributeTypeValidation:
     def test_validate_custom(self):
         """Test custom validation logic."""
 
-        class PositiveIntType(AttributeType):
+        class PositiveIntCodec(Codec):
             name = "test_positive_int"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -235,7 +231,7 @@ class TestAttributeTypeValidation:
                 if value < 0:
                     raise ValueError("Value must be positive")
 
-        t = get_type("test_positive_int")
+        t = get_codec("test_positive_int")
         t.validate(42)  # Should pass
 
         with pytest.raises(TypeError):
@@ -245,8 +241,8 @@ class TestAttributeTypeValidation:
             t.validate(-1)
 
 
-class TestTypeChaining:
-    """Tests for type chaining (dtype referencing another custom type)."""
+class TestCodecChaining:
+    """Tests for codec chaining (dtype referencing another codec)."""
 
     def setup_method(self):
         for name in list(_codec_registry.keys()):
@@ -268,7 +264,7 @@ class TestTypeChaining:
     def test_resolve_custom_dtype(self):
         """Test resolving a custom dtype."""
 
-        class TestType(AttributeType):
+        class TestCodec(Codec):
             name = "test_resolve"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -283,13 +279,13 @@ class TestTypeChaining:
         final_dtype, chain, store = resolve_dtype("<test_resolve>")
         assert final_dtype == "varchar(100)"
         assert len(chain) == 1
-        assert chain[0].type_name == "test_resolve"
+        assert chain[0].name == "test_resolve"
         assert store is None
 
     def test_resolve_chained_dtype(self):
         """Test resolving a chained dtype."""
 
-        class InnerType(AttributeType):
+        class InnerCodec(Codec):
             name = "test_inner"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -301,7 +297,7 @@ class TestTypeChaining:
             def decode(self, stored, *, key=None):
                 return stored
 
-        class OuterType(AttributeType):
+        class OuterCodec(Codec):
             name = "test_outer"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -316,14 +312,14 @@ class TestTypeChaining:
         final_dtype, chain, store = resolve_dtype("<test_outer>")
         assert final_dtype == "bytes"
         assert len(chain) == 2
-        assert chain[0].type_name == "test_outer"
-        assert chain[1].type_name == "test_inner"
+        assert chain[0].name == "test_outer"
+        assert chain[1].name == "test_inner"
         assert store is None
 
     def test_circular_reference_detection(self):
-        """Test that circular type references are detected."""
+        """Test that circular codec references are detected."""
 
-        class TypeA(AttributeType):
+        class CodecA(Codec):
             name = "test_circular_a"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -335,7 +331,7 @@ class TestTypeChaining:
             def decode(self, stored, *, key=None):
                 return stored
 
-        class TypeB(AttributeType):
+        class CodecB(Codec):
             name = "test_circular_b"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -355,10 +351,10 @@ class TestExportsAndAPI:
     """Test that the public API is properly exported."""
 
     def test_exports_from_datajoint(self):
-        """Test that AttributeType and helpers are exported from datajoint."""
-        assert hasattr(dj, "AttributeType")
-        assert hasattr(dj, "register_type")
-        assert hasattr(dj, "list_types")
+        """Test that Codec and helpers are exported from datajoint."""
+        assert hasattr(dj, "Codec")
+        assert hasattr(dj, "get_codec")
+        assert hasattr(dj, "list_codecs")
 
 
 class TestBlobCodec:
@@ -366,20 +362,20 @@ class TestBlobCodec:
 
     def test_blob_is_registered(self):
         """Test that blob is automatically registered."""
-        assert is_type_registered("blob")
+        assert is_codec_registered("blob")
 
     def test_blob_properties(self):
         """Test BlobCodec properties."""
-        blob_type = get_type("blob")
-        assert blob_type.type_name == "blob"
-        assert blob_type.get_dtype(is_external=False) == "bytes"
-        assert blob_type.get_dtype(is_external=True) == "<hash>"
+        blob_codec = get_codec("blob")
+        assert blob_codec.name == "blob"
+        assert blob_codec.get_dtype(is_external=False) == "bytes"
+        assert blob_codec.get_dtype(is_external=True) == "<hash>"
 
     def test_blob_encode_decode_roundtrip(self):
         """Test that encode/decode is a proper roundtrip."""
         import numpy as np
 
-        blob_type = get_type("blob")
+        blob_codec = get_codec("blob")
 
         # Test with various data types
         test_data = [
@@ -392,9 +388,9 @@ class TestBlobCodec:
         ]
 
         for original in test_data:
-            encoded = blob_type.encode(original)
+            encoded = blob_codec.encode(original)
             assert isinstance(encoded, bytes)
-            decoded = blob_type.decode(encoded)
+            decoded = blob_codec.decode(encoded)
             if isinstance(original, np.ndarray):
                 np.testing.assert_array_equal(decoded, original)
             else:
@@ -402,17 +398,17 @@ class TestBlobCodec:
 
     def test_blob_encode_produces_valid_blob_format(self):
         """Test that encoded data has valid blob protocol header."""
-        blob_type = get_type("blob")
-        encoded = blob_type.encode({"test": "data"})
+        blob_codec = get_codec("blob")
+        encoded = blob_codec.encode({"test": "data"})
 
         # Should start with compression prefix or protocol header
         valid_prefixes = (b"ZL123\0", b"mYm\0", b"dj0\0")
         assert any(encoded.startswith(p) for p in valid_prefixes)
 
-    def test_blob_in_list_types(self):
-        """Test that blob appears in list_types."""
-        types = list_types()
-        assert "blob" in types
+    def test_blob_in_list_codecs(self):
+        """Test that blob appears in list_codecs."""
+        codecs = list_codecs()
+        assert "blob" in codecs
 
     def test_blob_handles_serialization(self):
         """Test that BlobCodec handles serialization internally.
@@ -421,13 +417,13 @@ class TestBlobCodec:
         - Plain bytes columns store/return raw bytes (no serialization)
         - <blob> handles pack/unpack in encode/decode
         """
-        blob_type = get_type("blob")
+        blob_codec = get_codec("blob")
 
         # BlobCodec.encode() should produce packed bytes
         data = {"key": "value"}
-        encoded = blob_type.encode(data)
+        encoded = blob_codec.encode(data)
         assert isinstance(encoded, bytes)
 
         # BlobCodec.decode() should unpack back to original
-        decoded = blob_type.decode(encoded)
+        decoded = blob_codec.decode(encoded)
         assert decoded == data

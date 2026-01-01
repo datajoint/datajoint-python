@@ -6,7 +6,7 @@ and similar type chains.
 """
 
 from datajoint.codecs import (
-    AttributeType,
+    Codec,
     _codec_registry,
     resolve_dtype,
 )
@@ -30,7 +30,7 @@ class TestTypeChainResolution:
     def test_single_type_chain(self):
         """Test resolving a single-type chain."""
 
-        class TestSingle(AttributeType):
+        class TestSingle(Codec):
             name = "test_single"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -46,13 +46,13 @@ class TestTypeChainResolution:
 
         assert final_dtype == "varchar(100)"
         assert len(chain) == 1
-        assert chain[0].type_name == "test_single"
+        assert chain[0].name == "test_single"
         assert store is None
 
     def test_two_type_chain(self):
         """Test resolving a two-type chain."""
 
-        class TestInner(AttributeType):
+        class TestInner(Codec):
             name = "test_inner"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -64,7 +64,7 @@ class TestTypeChainResolution:
             def decode(self, stored, *, key=None):
                 return stored
 
-        class TestOuter(AttributeType):
+        class TestOuter(Codec):
             name = "test_outer"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -80,13 +80,13 @@ class TestTypeChainResolution:
 
         assert final_dtype == "bytes"
         assert len(chain) == 2
-        assert chain[0].type_name == "test_outer"
-        assert chain[1].type_name == "test_inner"
+        assert chain[0].name == "test_outer"
+        assert chain[1].name == "test_inner"
 
     def test_three_type_chain(self):
         """Test resolving a three-type chain."""
 
-        class TestBase(AttributeType):
+        class TestBase(Codec):
             name = "test_base"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -98,7 +98,7 @@ class TestTypeChainResolution:
             def decode(self, stored, *, key=None):
                 return stored
 
-        class TestMiddle(AttributeType):
+        class TestMiddle(Codec):
             name = "test_middle"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -110,7 +110,7 @@ class TestTypeChainResolution:
             def decode(self, stored, *, key=None):
                 return stored
 
-        class TestTop(AttributeType):
+        class TestTop(Codec):
             name = "test_top"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -126,9 +126,9 @@ class TestTypeChainResolution:
 
         assert final_dtype == "json"
         assert len(chain) == 3
-        assert chain[0].type_name == "test_top"
-        assert chain[1].type_name == "test_middle"
-        assert chain[2].type_name == "test_base"
+        assert chain[0].name == "test_top"
+        assert chain[1].name == "test_middle"
+        assert chain[2].name == "test_base"
 
 
 class TestTypeChainEncodeDecode:
@@ -150,7 +150,7 @@ class TestTypeChainEncodeDecode:
         """Test that encode is applied outer → inner."""
         encode_order = []
 
-        class TestInnerEnc(AttributeType):
+        class TestInnerEnc(Codec):
             name = "test_inner_enc"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -163,7 +163,7 @@ class TestTypeChainEncodeDecode:
             def decode(self, stored, *, key=None):
                 return stored
 
-        class TestOuterEnc(AttributeType):
+        class TestOuterEnc(Codec):
             name = "test_outer_enc"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -190,7 +190,7 @@ class TestTypeChainEncodeDecode:
         """Test that decode is applied inner → outer (reverse of encode)."""
         decode_order = []
 
-        class TestInnerDec(AttributeType):
+        class TestInnerDec(Codec):
             name = "test_inner_dec"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -203,7 +203,7 @@ class TestTypeChainEncodeDecode:
                 decode_order.append("inner")
                 return stored.replace(b"_inner", b"")
 
-        class TestOuterDec(AttributeType):
+        class TestOuterDec(Codec):
             name = "test_outer_dec"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -229,7 +229,7 @@ class TestTypeChainEncodeDecode:
     def test_roundtrip(self):
         """Test encode/decode roundtrip through a type chain."""
 
-        class TestInnerRt(AttributeType):
+        class TestInnerRt(Codec):
             name = "test_inner_rt"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -243,7 +243,7 @@ class TestTypeChainEncodeDecode:
                 # Decompress
                 return stored.replace(b"COMPRESSED:", b"")
 
-        class TestOuterRt(AttributeType):
+        class TestOuterRt(Codec):
             name = "test_outer_rt"
 
             def get_dtype(self, is_external: bool) -> str:
@@ -286,7 +286,7 @@ class TestBuiltinTypeComposition:
 
         assert final_dtype == "bytes"
         assert len(chain) == 1
-        assert chain[0].type_name == "blob"
+        assert chain[0].name == "blob"
 
     def test_blob_external_resolves_to_json(self):
         """Test that <blob@store> → <hash> → json."""
@@ -294,8 +294,8 @@ class TestBuiltinTypeComposition:
 
         assert final_dtype == "json"
         assert len(chain) == 2
-        assert chain[0].type_name == "blob"
-        assert chain[1].type_name == "hash"
+        assert chain[0].name == "blob"
+        assert chain[1].name == "hash"
         assert store == "store"
 
     def test_attach_internal_resolves_to_bytes(self):
@@ -304,7 +304,7 @@ class TestBuiltinTypeComposition:
 
         assert final_dtype == "bytes"
         assert len(chain) == 1
-        assert chain[0].type_name == "attach"
+        assert chain[0].name == "attach"
 
     def test_attach_external_resolves_to_json(self):
         """Test that <attach@store> → <hash> → json."""
@@ -312,8 +312,8 @@ class TestBuiltinTypeComposition:
 
         assert final_dtype == "json"
         assert len(chain) == 2
-        assert chain[0].type_name == "attach"
-        assert chain[1].type_name == "hash"
+        assert chain[0].name == "attach"
+        assert chain[1].name == "hash"
         assert store == "store"
 
     def test_hash_external_resolves_to_json(self):
@@ -322,7 +322,7 @@ class TestBuiltinTypeComposition:
 
         assert final_dtype == "json"
         assert len(chain) == 1
-        assert chain[0].type_name == "hash"
+        assert chain[0].name == "hash"
         assert store == "store"
 
     def test_object_external_resolves_to_json(self):
@@ -331,7 +331,7 @@ class TestBuiltinTypeComposition:
 
         assert final_dtype == "json"
         assert len(chain) == 1
-        assert chain[0].type_name == "object"
+        assert chain[0].name == "object"
         assert store == "store"
 
     def test_filepath_external_resolves_to_json(self):
@@ -340,7 +340,7 @@ class TestBuiltinTypeComposition:
 
         assert final_dtype == "json"
         assert len(chain) == 1
-        assert chain[0].type_name == "filepath"
+        assert chain[0].name == "filepath"
         assert store == "store"
 
 

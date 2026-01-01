@@ -36,7 +36,6 @@ Example:
 from __future__ import annotations
 
 import logging
-import warnings
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -179,78 +178,8 @@ class Codec(ABC):
         """
         pass
 
-    # =========================================================================
-    # Backward compatibility properties
-    # =========================================================================
-
-    @property
-    def type_name(self) -> str | None:
-        """Backward compatibility alias for `name`."""
-        return self.name
-
-    @property
-    def dtype(self) -> str:
-        """
-        Backward compatibility property.
-
-        Deprecated: Use get_dtype(is_external) instead.
-        """
-        warnings.warn(
-            "Codec.dtype property is deprecated. Use get_dtype(is_external) instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.get_dtype(is_external=False)
-
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self.name!r})>"
-
-
-# Backward compatibility alias
-AttributeType = Codec
-
-
-def register_type(cls: type[Codec]) -> type[Codec]:
-    """
-    Register a codec with DataJoint.
-
-    Deprecated: Codecs now auto-register when subclassed. This function
-    is kept for backward compatibility but is no longer needed.
-
-    Args:
-        cls: A Codec subclass to register.
-
-    Returns:
-        The same class, unmodified.
-    """
-    warnings.warn(
-        "@dj.register_type is deprecated. Codecs auto-register when subclassed. "
-        "Just inherit from dj.Codec and set the 'name' class attribute.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    if not isinstance(cls, type) or not issubclass(cls, Codec):
-        raise TypeError(f"register_type requires a Codec subclass, got {cls!r}")
-
-    # Check if already registered
-    if cls.name and cls.name in _codec_registry:
-        existing = _codec_registry[cls.name]
-        if type(existing) is not cls:
-            raise DataJointError(
-                f"Codec <{cls.name}> already registered by " f"{type(existing).__module__}.{type(existing).__name__}"
-            )
-        return cls  # Same class, idempotent
-
-    # Manual registration for classes that didn't auto-register
-    if cls.name:
-        _codec_registry[cls.name] = cls()
-
-    return cls
-
-
-# Backward compatibility alias
-codec = register_type
 
 
 def parse_type_spec(spec: str) -> tuple[str, str | None]:
@@ -299,10 +228,6 @@ def unregister_codec(name: str) -> None:
     del _codec_registry[name]
 
 
-# Backward compatibility alias
-unregister_type = unregister_codec
-
-
 def get_codec(name: str) -> Codec:
     """
     Retrieve a registered codec by name.
@@ -338,10 +263,6 @@ def get_codec(name: str) -> Codec:
     )
 
 
-# Backward compatibility alias
-get_type = get_codec
-
-
 def list_codecs() -> list[str]:
     """
     List all registered codec names.
@@ -351,10 +272,6 @@ def list_codecs() -> list[str]:
     """
     _load_entry_points()
     return sorted(_codec_registry.keys())
-
-
-# Backward compatibility alias
-list_types = list_codecs
 
 
 def is_codec_registered(name: str) -> bool:
@@ -372,10 +289,6 @@ def is_codec_registered(name: str) -> bool:
         return True
     _load_entry_points()
     return type_name in _codec_registry
-
-
-# Backward compatibility alias
-is_type_registered = is_codec_registered
 
 
 def _load_entry_points() -> None:

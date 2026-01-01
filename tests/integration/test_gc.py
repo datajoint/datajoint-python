@@ -24,7 +24,7 @@ class TestUsesContentStorage:
         """Test that True is returned for <hash@> type."""
         attr = MagicMock()
         attr.codec = MagicMock()
-        attr.codec.type_name = "hash"
+        attr.codec.name = "hash"
         attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
@@ -33,7 +33,7 @@ class TestUsesContentStorage:
         """Test that True is returned for <blob@> type (external)."""
         attr = MagicMock()
         attr.codec = MagicMock()
-        attr.codec.type_name = "blob"
+        attr.codec.name = "blob"
         attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
@@ -42,7 +42,7 @@ class TestUsesContentStorage:
         """Test that True is returned for <attach@> type (external)."""
         attr = MagicMock()
         attr.codec = MagicMock()
-        attr.codec.type_name = "attach"
+        attr.codec.name = "attach"
         attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
@@ -51,7 +51,7 @@ class TestUsesContentStorage:
         """Test that False is returned for <blob> internal storage."""
         attr = MagicMock()
         attr.codec = MagicMock()
-        attr.codec.type_name = "blob"
+        attr.codec.name = "blob"
         attr.store = None
 
         assert gc._uses_content_storage(attr) is False
@@ -103,7 +103,7 @@ class TestUsesObjectStorage:
         """Test that True is returned for <object> type."""
         attr = MagicMock()
         attr.codec = MagicMock()
-        attr.codec.type_name = "object"
+        attr.codec.name = "object"
 
         assert gc._uses_object_storage(attr) is True
 
@@ -111,7 +111,7 @@ class TestUsesObjectStorage:
         """Test that False is returned for non-object types."""
         attr = MagicMock()
         attr.codec = MagicMock()
-        attr.codec.type_name = "blob"
+        attr.codec.name = "blob"
 
         assert gc._uses_object_storage(attr) is False
 

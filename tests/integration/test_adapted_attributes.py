@@ -1,7 +1,7 @@
 """
 Tests for adapted/custom attribute types.
 
-These tests verify the AttributeType system for custom data types.
+These tests verify the Codec system for custom data types.
 """
 
 from itertools import zip_longest
@@ -29,7 +29,7 @@ def schema_ad(
     schema_name,
 ):
     dj.config["stores"] = {"repo-s3": dict(s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir))}
-    # Types are registered globally via @dj.register_type decorator in schema_adapted
+    # Codecs are auto-registered via __init_subclass__ in schema_adapted
     context = {**schema_adapted.LOCALS_ADAPTED}
     schema = dj.schema(schema_name, context=context, connection=connection_test)
     schema(schema_adapted.Connectivity)
