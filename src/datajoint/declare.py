@@ -106,14 +106,14 @@ def build_foreign_key_parser_old():
     left = pp.Literal("(").suppress()
     right = pp.Literal(")").suppress()
     attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]"))
-    new_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName("new_attrs")
+    new_attrs = pp.Optional(left + pp.DelimitedList(attribute_name) + right).set_results_name("new_attrs")
     arrow = pp.Literal("->").suppress()
     lbracket = pp.Literal("[").suppress()
     rbracket = pp.Literal("]").suppress()
     option = pp.Word(pp.srange("[a-zA-Z]"))
-    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket).setResultsName("options")
-    ref_table = pp.Word(pp.alphas, pp.alphanums + "._").setResultsName("ref_table")
-    ref_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName("ref_attrs")
+    options = pp.Optional(lbracket + pp.DelimitedList(option) + rbracket).set_results_name("options")
+    ref_table = pp.Word(pp.alphas, pp.alphanums + "._").set_results_name("ref_table")
+    ref_attrs = pp.Optional(left + pp.DelimitedList(attribute_name) + right).set_results_name("ref_attrs")
     return new_attrs + arrow + options + ref_table + ref_attrs
 
 
@@ -122,21 +122,21 @@ def build_foreign_key_parser():
     lbracket = pp.Literal("[").suppress()
     rbracket = pp.Literal("]").suppress()
     option = pp.Word(pp.srange("[a-zA-Z]"))
-    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket).setResultsName("options")
-    ref_table = pp.restOfLine.setResultsName("ref_table")
+    options = pp.Optional(lbracket + pp.DelimitedList(option) + rbracket).set_results_name("options")
+    ref_table = pp.restOfLine.set_results_name("ref_table")
     return arrow + options + ref_table
 
 
 def build_attribute_parser():
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).setResultsName("name")
+    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
-        ^ pp.QuotedString("<", endQuoteChar=">", unquoteResults=False)
-    ).setResultsName("type")
-    default = pp.Literal("=").suppress() + pp.SkipTo(colon, ignore=quoted).setResultsName("default")
-    comment = pp.Literal("#").suppress() + pp.restOfLine.setResultsName("comment")
+        ^ pp.QuotedString("<", end_quote_char=">", unquote_results=False)
+    ).set_results_name("type")
+    default = pp.Literal("=").suppress() + pp.SkipTo(colon, ignore=quoted).set_results_name("default")
+    comment = pp.Literal("#").suppress() + pp.restOfLine.set_results_name("comment")
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
 
@@ -171,7 +171,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     from .table import Table
 
     try:
-        result = foreign_key_parser.parseString(line)
+        result = foreign_key_parser.parse_string(line)
     except pp.ParseException as err:
         raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
 
@@ -494,7 +494,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     :returns: (name, sql, store) -- attribute name, sql code for its declaration, and optional store name
     """
     try:
-        match = attribute_parser.parseString(line + "#", parseAll=True)
+        match = attribute_parser.parse_string(line + "#", parse_all=True)
     except pp.ParseException as err:
         raise DataJointError(
             "Declaration error in position {pos} in line:\n  {line}\n{msg}".format(
