@@ -89,25 +89,26 @@ into a DataJoint pipeline.
 conversion between Python objects and database storage formats. Use this to store
 complex data types like graphs, domain-specific objects, or custom data structures.
 
-## Numeric type aliases
+## Core type aliases
 
-DataJoint provides convenient type aliases that map to standard MySQL numeric types.
+DataJoint provides convenient type aliases that map to standard database types.
 These aliases use familiar naming conventions from NumPy and other numerical computing
-libraries, making table definitions more readable and explicit about data precision.
+libraries, making table definitions more readable and portable across database backends.
 
-| Alias | MySQL Type | Description |
-|-------|------------|-------------|
-| `bool` | `tinyint` | Boolean value (0 or 1) |
-| `int8` | `tinyint` | 8-bit signed integer (-128 to 127) |
-| `uint8` | `tinyint unsigned` | 8-bit unsigned integer (0 to 255) |
-| `int16` | `smallint` | 16-bit signed integer (-32,768 to 32,767) |
-| `uint16` | `smallint unsigned` | 16-bit unsigned integer (0 to 65,535) |
-| `int32` | `int` | 32-bit signed integer |
-| `uint32` | `int unsigned` | 32-bit unsigned integer |
-| `int64` | `bigint` | 64-bit signed integer |
-| `uint64` | `bigint unsigned` | 64-bit unsigned integer |
-| `float32` | `float` | 32-bit single-precision floating point |
-| `float64` | `double` | 64-bit double-precision floating point |
+| Alias | MySQL | PostgreSQL | Description |
+|-------|-------|------------|-------------|
+| `bool` | `TINYINT` | `BOOLEAN` | Boolean value (0 or 1) |
+| `int8` | `TINYINT` | `SMALLINT` | 8-bit signed integer (-128 to 127) |
+| `uint8` | `TINYINT UNSIGNED` | `SMALLINT` | 8-bit unsigned integer (0 to 255) |
+| `int16` | `SMALLINT` | `SMALLINT` | 16-bit signed integer |
+| `uint16` | `SMALLINT UNSIGNED` | `INTEGER` | 16-bit unsigned integer |
+| `int32` | `INT` | `INTEGER` | 32-bit signed integer |
+| `uint32` | `INT UNSIGNED` | `BIGINT` | 32-bit unsigned integer |
+| `int64` | `BIGINT` | `BIGINT` | 64-bit signed integer |
+| `uint64` | `BIGINT UNSIGNED` | `NUMERIC(20)` | 64-bit unsigned integer |
+| `float32` | `FLOAT` | `REAL` | 32-bit single-precision float |
+| `float64` | `DOUBLE` | `DOUBLE PRECISION` | 64-bit double-precision float |
+| `bytes` | `LONGBLOB` | `BYTEA` | Raw binary data |
 
 Example usage:
 
@@ -122,6 +123,7 @@ class Measurement(dj.Manual):
     sample_count : uint32       # unsigned 32-bit counter
     sensor_flags : uint8        # 8-bit status flags
     is_valid : bool             # boolean flag
+    raw_data : bytes            # raw binary data
     """
 ```
 

@@ -50,8 +50,8 @@ CORE_TYPES = {
     "uuid": (r"uuid$", "binary(16)"),
     # JSON
     "json": (r"json$", None),
-    # Binary (blob maps to longblob)
-    "blob": (r"blob$", "longblob"),
+    # Binary (bytes maps to longblob in MySQL, bytea in PostgreSQL)
+    "bytes": (r"bytes$", "longblob"),
     # Temporal
     "date": (r"date$", None),
     "datetime": (r"datetime$", None),

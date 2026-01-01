@@ -18,8 +18,8 @@ This document defines a three-layer type architecture:
 │                 Core DataJoint Types (Layer 2)                     │
 │                                                                    │
 │  float32  float64  int64  uint64  int32  uint32  int16  uint16    │
-│  int8  uint8  bool  uuid  json  blob  date  datetime              │
-│  char(n)  varchar(n)  enum(...)                                    │
+│  int8  uint8  bool  uuid  json  bytes  date  datetime             │
+│  char(n)  varchar(n)  enum(...)  decimal(n,f)                      │
 ├───────────────────────────────────────────────────────────────────┤
 │               Native Database Types (Layer 1)                      │
 │                                                                    │
@@ -54,56 +54,56 @@ MySQL and PostgreSQL backends. Users should prefer these over native database ty
 
 ### Numeric Types
 
-| Core Type | Description | MySQL |
-|-----------|-------------|-------|
-| `int8` | 8-bit signed | `TINYINT` |
-| `int16` | 16-bit signed | `SMALLINT` |
-| `int32` | 32-bit signed | `INT` |
-| `int64` | 64-bit signed | `BIGINT` |
-| `uint8` | 8-bit unsigned | `TINYINT UNSIGNED` |
-| `uint16` | 16-bit unsigned | `SMALLINT UNSIGNED` |
-| `uint32` | 32-bit unsigned | `INT UNSIGNED` |
-| `uint64` | 64-bit unsigned | `BIGINT UNSIGNED` |
-| `float32` | 32-bit float | `FLOAT` |
-| `float64` | 64-bit float | `DOUBLE` |
-| `decimal(n,f)` | Fixed-point | `DECIMAL(n,f)` |
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `int8` | 8-bit signed | `TINYINT` | `SMALLINT` |
+| `int16` | 16-bit signed | `SMALLINT` | `SMALLINT` |
+| `int32` | 32-bit signed | `INT` | `INTEGER` |
+| `int64` | 64-bit signed | `BIGINT` | `BIGINT` |
+| `uint8` | 8-bit unsigned | `TINYINT UNSIGNED` | `SMALLINT` |
+| `uint16` | 16-bit unsigned | `SMALLINT UNSIGNED` | `INTEGER` |
+| `uint32` | 32-bit unsigned | `INT UNSIGNED` | `BIGINT` |
+| `uint64` | 64-bit unsigned | `BIGINT UNSIGNED` | `NUMERIC(20)` |
+| `float32` | 32-bit float | `FLOAT` | `REAL` |
+| `float64` | 64-bit float | `DOUBLE` | `DOUBLE PRECISION` |
+| `decimal(n,f)` | Fixed-point | `DECIMAL(n,f)` | `NUMERIC(n,f)` |
 
 ### String Types
 
-| Core Type | Description | MySQL |
-|-----------|-------------|-------|
-| `char(n)` | Fixed-length | `CHAR(n)` |
-| `varchar(n)` | Variable-length | `VARCHAR(n)` |
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `char(n)` | Fixed-length | `CHAR(n)` | `CHAR(n)` |
+| `varchar(n)` | Variable-length | `VARCHAR(n)` | `VARCHAR(n)` |
 
 ### Boolean
 
-| Core Type | Description | MySQL |
-|-----------|-------------|-------|
-| `bool` | True/False | `TINYINT` |
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `bool` | True/False | `TINYINT` | `BOOLEAN` |
 
 ### Date/Time Types
 
-| Core Type | Description | MySQL |
-|-----------|-------------|-------|
-| `date` | Date only | `DATE` |
-| `datetime` | Date and time | `DATETIME` |
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `date` | Date only | `DATE` | `DATE` |
+| `datetime` | Date and time | `DATETIME` | `TIMESTAMP` |
 
 ### Binary Types
 
-The core `blob` type stores raw bytes without any serialization. Use `<djblob>` AttributeType
+The core `bytes` type stores raw bytes without any serialization. Use `<djblob>` AttributeType
 for serialized Python objects.
 
-| Core Type | Description | MySQL |
-|-----------|-------------|-------|
-| `blob` | Raw bytes | `LONGBLOB` |
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `bytes` | Raw bytes | `LONGBLOB` | `BYTEA` |
 
 ### Other Types
 
-| Core Type | Description | MySQL |
-|-----------|-------------|-------|
-| `json` | JSON document | `JSON` |
-| `uuid` | UUID | `BINARY(16)` |
-| `enum(...)` | Enumeration | `ENUM(...)` |
+| Core Type | Description | MySQL | PostgreSQL |
+|-----------|-------------|-------|------------|
+| `json` | JSON document | `JSON` | `JSONB` |
+| `uuid` | UUID | `BINARY(16)` | `UUID` |
+| `enum(...)` | Enumeration | `ENUM(...)` | `VARCHAR` + check |
 
 ### Native Passthrough Types
 

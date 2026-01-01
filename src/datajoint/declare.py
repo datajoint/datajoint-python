@@ -34,8 +34,8 @@ CORE_TYPES = {
     "uuid": (r"uuid$", "binary(16)"),
     # JSON
     "json": (r"json$", None),  # json passes through as-is
-    # Binary (blob maps to longblob)
-    "blob": (r"blob$", "longblob"),
+    # Binary (bytes maps to longblob in MySQL, bytea in PostgreSQL)
+    "bytes": (r"bytes$", "longblob"),
     # Temporal
     "date": (r"date$", None),
     "datetime": (r"datetime$", None),
@@ -456,7 +456,7 @@ def substitute_special_type(match, category, foreign_key_sql, context):
     Substitute special types with their native SQL equivalents.
 
     Special types are:
-    - Core DataJoint types (float32 → float, uuid → binary(16), blob → longblob, etc.)
+    - Core DataJoint types (float32 → float, uuid → binary(16), bytes → longblob, etc.)
     - ADAPTED types (AttributeTypes in angle brackets)
 
     :param match: dict containing with keys "type" and "comment" -- will be modified in place
