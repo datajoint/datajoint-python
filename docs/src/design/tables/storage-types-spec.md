@@ -12,7 +12,7 @@ This document defines a three-layer type architecture:
 ┌───────────────────────────────────────────────────────────────────┐
 │                     AttributeTypes (Layer 3)                       │
 │                                                                    │
-│  Built-in:  <blob>  <attach>  <object@>  <content@>  <filepath@>  │
+│  Built-in:  <blob>  <attach>  <object@>  <hash@>  <filepath@>  │
 │  User:      <custom>  <mytype>   ...                               │
 ├───────────────────────────────────────────────────────────────────┤
 │                 Core DataJoint Types (Layer 2)                     │
@@ -39,7 +39,7 @@ This document defines a three-layer type architecture:
 | Region | Path Pattern | Addressing | Use Case |
 |--------|--------------|------------|----------|
 | Object | `{schema}/{table}/{pk}/` | Primary key | Large objects, Zarr, HDF5 |
-| Content | `_content/{hash}` | Content hash | Deduplicated blobs/files |
+| Hash | `_hash/{hash}` | SHA256 hash | Deduplicated blobs/files |
 
 ### External References
 
@@ -193,7 +193,7 @@ The `@` character in AttributeType syntax indicates **external storage** (object
 - **`@` alone**: Use default store - e.g., `<blob@>`
 - **`@name`**: Use named store - e.g., `<blob@cold>`
 
-Some types support both modes (`<blob>`, `<attach>`), others are external-only (`<object@>`, `<content@>`, `<filepath@>`).
+Some types support both modes (`<blob>`, `<attach>`), others are external-only (`<object@>`, `<hash@>`, `<filepath@>`).
 
 ### Type Resolution and Chaining
 
@@ -204,16 +204,16 @@ returns the appropriate dtype based on storage mode:
 Resolution at declaration time:
 
 <blob>         → get_dtype(False) → "bytes"     → LONGBLOB/BYTEA
-<blob@>        → get_dtype(True)  → "<content>" → json → JSON/JSONB
-<blob@cold>    → get_dtype(True)  → "<content>" → json (store=cold)
+<blob@>        → get_dtype(True)  → "<hash>" → json → JSON/JSONB
+<blob@cold>    → get_dtype(True)  → "<hash>" → json (store=cold)
 
 <attach>       → get_dtype(False) → "bytes"     → LONGBLOB/BYTEA
-<attach@>      → get_dtype(True)  → "<content>" → json → JSON/JSONB
+<attach@>      → get_dtype(True)  → "<hash>" → json → JSON/JSONB
 
 <object@>      → get_dtype(True)  → "json"      → JSON/JSONB
 <object>       → get_dtype(False) → ERROR (external only)
 
-<content@>     → get_dtype(True)  → "json"      → JSON/JSONB
+<hash@>     → get_dtype(True)  → "json"      → JSON/JSONB
 <filepath@s>   → get_dtype(True)  → "json"      → JSON/JSONB
 ```
 
@@ -262,15 +262,15 @@ class ObjectType(AttributeType):
         return ObjectRef(store=get_store(stored["store"]), path=stored["path"])
 ```
 
-### `<content@>` / `<content@store>` - Content-Addressed Storage
+### `<hash@>` / `<hash@store>` - Hash-Addressed Storage
 
 **Built-in AttributeType. External only.**
 
-Content-addressed storage with deduplication:
+Hash-addressed storage with deduplication:
 
 - **Single blob only**: stores a single file or serialized object (not folders)
 - **Per-project scope**: content is shared across all schemas in a project (not per-schema)
-- Path derived from content hash: `_content/{hash[:2]}/{hash[2:4]}/{hash}`
+- Path derived from content hash: `_hash/{hash[:2]}/{hash[2:4]}/{hash}`
 - Many-to-one: multiple rows (even across schemas) can reference same content
 - Reference counted for garbage collection
 - Deduplication: identical content stored once across the entire project
@@ -282,48 +282,48 @@ store_root/
 ├── {schema}/{table}/{pk}/     # object storage (path-addressed by PK)
 │   └── {attribute}/
 │
-└── _content/                   # content storage (content-addressed)
+└── _hash/                   # content storage (hash-addressed)
     └── {hash[:2]}/{hash[2:4]}/{hash}
 ```
 
 #### Implementation
 
 ```python
-class ContentType(AttributeType):
-    """Content-addressed storage. External only."""
-    type_name = "content"
+class HashType(AttributeType):
+    """Hash-addressed storage. External only."""
+    type_name = "hash"
 
     def get_dtype(self, is_external: bool) -> str:
         if not is_external:
-            raise DataJointError("<content> requires @ (external storage only)")
+            raise DataJointError("<hash> requires @ (external storage only)")
         return "json"
 
     def encode(self, data: bytes, *, key=None, store_name=None) -> dict:
         """Store content, return metadata as JSON."""
-        content_hash = hashlib.sha256(data).hexdigest()
+        hash_id = hashlib.sha256(data).hexdigest()
         store = get_store(store_name or dj.config['stores']['default'])
-        path = f"_content/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
+        path = f"_hash/{hash_id[:2]}/{hash_id[2:4]}/{hash_id}"
 
         if not store.exists(path):
             store.put(path, data)
-            ContentRegistry().insert1({
-                'content_hash': content_hash,
+            HashRegistry().insert1({
+                'hash_id': hash_id,
                 'store': store_name,
                 'size': len(data)
             }, skip_duplicates=True)
 
-        return {"hash": content_hash, "store": store_name, "size": len(data)}
+        return {"hash": hash_id, "store": store_name, "size": len(data)}
 
     def decode(self, stored: dict, *, key=None) -> bytes:
         """Retrieve content by hash."""
         store = get_store(stored["store"])
-        path = f"_content/{stored['hash'][:2]}/{stored['hash'][2:4]}/{stored['hash']}"
+        path = f"_hash/{stored['hash'][:2]}/{stored['hash'][2:4]}/{stored['hash']}"
         return store.get(path)
 ```
 
 #### Database Column
 
-The `<content@>` type stores JSON metadata:
+The `<hash@>` type stores JSON metadata:
 
 ```sql
 -- content column (MySQL)
@@ -442,7 +442,7 @@ column_name JSONB NOT NULL
 ```
 
 The `json` database type:
-- Used as dtype by built-in AttributeTypes (`<object@>`, `<content@>`, `<filepath@store>`)
+- Used as dtype by built-in AttributeTypes (`<object@>`, `<hash@>`, `<filepath@store>`)
 - Stores arbitrary JSON-serializable data
 - Automatically uses appropriate type for database backend
 - Supports JSON path queries where available
@@ -457,7 +457,7 @@ Serializes Python objects (NumPy arrays, dicts, lists, etc.) using DataJoint's
 blob format. Compatible with MATLAB.
 
 - **`<blob>`**: Stored in database (`bytes` → `LONGBLOB`/`BYTEA`)
-- **`<blob@>`**: Stored externally via `<content@>` with deduplication
+- **`<blob@>`**: Stored externally via `<hash@>` with deduplication
 - **`<blob@store>`**: Stored in specific named store
 
 ```python
@@ -467,7 +467,7 @@ class BlobType(AttributeType):
     type_name = "blob"
 
     def get_dtype(self, is_external: bool) -> str:
-        return "<content>" if is_external else "bytes"
+        return "<hash>" if is_external else "bytes"
 
     def encode(self, value, *, key=None, store_name=None) -> bytes:
         from . import blob
@@ -497,7 +497,7 @@ class ProcessedData(dj.Computed):
 Stores files with filename preserved. On fetch, extracts to configured download path.
 
 - **`<attach>`**: Stored in database (`bytes` → `LONGBLOB`/`BYTEA`)
-- **`<attach@>`**: Stored externally via `<content@>` with deduplication
+- **`<attach@>`**: Stored externally via `<hash@>` with deduplication
 - **`<attach@store>`**: Stored in specific named store
 
 ```python
@@ -507,7 +507,7 @@ class AttachType(AttributeType):
     type_name = "attach"
 
     def get_dtype(self, is_external: bool) -> str:
-        return "<content>" if is_external else "bytes"
+        return "<hash>" if is_external else "bytes"
 
     def encode(self, filepath, *, key=None, store_name=None) -> bytes:
         path = Path(filepath)
@@ -567,7 +567,7 @@ class ImageType(AttributeType):
     type_name = "image"
 
     def get_dtype(self, is_external: bool) -> str:
-        return "<content>" if is_external else "bytes"
+        return "<hash>" if is_external else "bytes"
 
     def encode(self, image, *, key=None, store_name=None) -> bytes:
         # Convert PIL Image to PNG bytes
@@ -584,31 +584,31 @@ class ImageType(AttributeType):
 | Type | get_dtype | Resolves To | Storage Location | Dedup | Returns |
 |------|-----------|-------------|------------------|-------|---------|
 | `<blob>` | `bytes` | `LONGBLOB`/`BYTEA` | Database | No | Python object |
-| `<blob@>` | `<content>` | `json` | `_content/{hash}` | Yes | Python object |
-| `<blob@s>` | `<content>` | `json` | `_content/{hash}` | Yes | Python object |
+| `<blob@>` | `<hash>` | `json` | `_hash/{hash}` | Yes | Python object |
+| `<blob@s>` | `<hash>` | `json` | `_hash/{hash}` | Yes | Python object |
 | `<attach>` | `bytes` | `LONGBLOB`/`BYTEA` | Database | No | Local file path |
-| `<attach@>` | `<content>` | `json` | `_content/{hash}` | Yes | Local file path |
-| `<attach@s>` | `<content>` | `json` | `_content/{hash}` | Yes | Local file path |
+| `<attach@>` | `<hash>` | `json` | `_hash/{hash}` | Yes | Local file path |
+| `<attach@s>` | `<hash>` | `json` | `_hash/{hash}` | Yes | Local file path |
 | `<object@>` | `json` | `JSON`/`JSONB` | `{schema}/{table}/{pk}/` | No | ObjectRef |
 | `<object@s>` | `json` | `JSON`/`JSONB` | `{schema}/{table}/{pk}/` | No | ObjectRef |
-| `<content@>` | `json` | `JSON`/`JSONB` | `_content/{hash}` | Yes | bytes |
-| `<content@s>` | `json` | `JSON`/`JSONB` | `_content/{hash}` | Yes | bytes |
+| `<hash@>` | `json` | `JSON`/`JSONB` | `_hash/{hash}` | Yes | bytes |
+| `<hash@s>` | `json` | `JSON`/`JSONB` | `_hash/{hash}` | Yes | bytes |
 | `<filepath@s>` | `json` | `JSON`/`JSONB` | Configured store | No | ObjectRef |
 
-## Reference Counting for Content Type
+## Reference Counting for Hash Type
 
-The `ContentRegistry` is a **project-level** table that tracks content-addressed objects
+The `HashRegistry` is a **project-level** table that tracks hash-addressed objects
 across all schemas. This differs from the legacy `~external_*` tables which were per-schema.
 
 ```python
-class ContentRegistry:
+class HashRegistry:
     """
-    Project-level content registry.
-    Stored in a designated database (e.g., `{project}_content`).
+    Project-level hash registry.
+    Stored in a designated database (e.g., `{project}_hash`).
     """
     definition = """
-    # Content-addressed object registry (project-wide)
-    content_hash : char(64)          # SHA256 hex
+    # Hash-addressed object registry (project-wide)
+    hash_id : char(64)          # SHA256 hex
     ---
     store        : varchar(64)       # Store name
     size         : bigint unsigned   # Size in bytes
@@ -620,34 +620,34 @@ Garbage collection scans **all schemas** in the project:
 
 ```python
 def garbage_collect(project):
-    """Remove content not referenced by any table in any schema."""
+    """Remove data not referenced by any table in any schema."""
     # Get all registered hashes
-    registered = set(ContentRegistry().fetch('content_hash', 'store'))
+    registered = set(HashRegistry().fetch('hash_id', 'store'))
 
     # Get all referenced hashes from ALL schemas in the project
     referenced = set()
     for schema in project.schemas:
         for table in schema.tables:
             for attr in table.heading.attributes:
-                if attr.type in ('content', 'content@...'):
+                if attr.type in ('hash', 'hash@...'):
                     hashes = table.fetch(attr.name)
                     referenced.update((h, attr.store) for h in hashes)
 
-    # Delete orphaned content
-    for content_hash, store in (registered - referenced):
+    # Delete orphaned data
+    for hash_id, store in (registered - referenced):
         store_backend = get_store(store)
-        store_backend.delete(content_path(content_hash))
-        (ContentRegistry() & {'content_hash': content_hash}).delete()
+        store_backend.delete(hash_path(hash_id))
+        (HashRegistry() & {'hash_id': hash_id}).delete()
 ```
 
 ## Built-in AttributeType Comparison
 
-| Feature | `<blob>` | `<attach>` | `<object@>` | `<content@>` | `<filepath@>` |
+| Feature | `<blob>` | `<attach>` | `<object@>` | `<hash@>` | `<filepath@>` |
 |---------|----------|------------|-------------|--------------|---------------|
 | Storage modes | Both | Both | External only | External only | External only |
 | Internal dtype | `bytes` | `bytes` | N/A | N/A | N/A |
-| External dtype | `<content>` | `<content>` | `json` | `json` | `json` |
-| Addressing | Content hash | Content hash | Primary key | Content hash | Relative path |
+| External dtype | `<hash>` | `<hash>` | `json` | `json` | `json` |
+| Addressing | Hash | Hash | Primary key | Hash | Relative path |
 | Deduplication | Yes (external) | Yes (external) | No | Yes | No |
 | Structure | Single blob | Single file | Files, folders | Single blob | Any |
 | Returns | Python object | Local path | ObjectRef | bytes | ObjectRef |
@@ -657,7 +657,7 @@ def garbage_collect(project):
 - **`<blob>`**: Serialized Python objects (NumPy arrays, dicts). Use `<blob@>` for large/duplicated data
 - **`<attach>`**: File attachments with filename preserved. Use `<attach@>` for large files
 - **`<object@>`**: Large/complex file structures (Zarr, HDF5) where DataJoint controls organization
-- **`<content@>`**: Raw bytes with deduplication (typically used via `<blob@>` or `<attach@>`)
+- **`<hash@>`**: Raw bytes with deduplication (typically used via `<blob@>` or `<attach@>`)
 - **`<filepath@store>`**: Portable references to externally-managed files
 - **`varchar`**: Arbitrary URLs/paths where ObjectRef semantics aren't needed
 
@@ -671,9 +671,9 @@ def garbage_collect(project):
 3. **AttributeTypes use angle brackets**: `<blob>`, `<object@store>`, `<filepath@main>` - distinguishes from core types
 4. **`@` indicates external storage**: No `@` = database, `@` present = object store
 5. **`get_dtype(is_external)` method**: Types resolve dtype at declaration time based on storage mode
-6. **AttributeTypes are composable**: `<blob@>` uses `<content@>`, which uses `json`
+6. **AttributeTypes are composable**: `<blob@>` uses `<hash@>`, which uses `json`
 7. **Built-in external types use JSON dtype**: Stores metadata (path, hash, store name, etc.)
-8. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
+8. **Two OAS regions**: object (PK-addressed) and hash (hash-addressed) within managed stores
 9. **Filepath for portability**: `<filepath@store>` uses relative paths within stores for environment portability
 10. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
 11. **Naming conventions**:
@@ -682,7 +682,7 @@ def garbage_collect(project):
     - `@` alone = default store
     - `@name` = named store
 12. **Dual-mode types**: `<blob>` and `<attach>` support both internal and external storage
-13. **External-only types**: `<object@>`, `<content@>`, `<filepath@>` require `@`
+13. **External-only types**: `<object@>`, `<hash@>`, `<filepath@>` require `@`
 14. **Transparent access**: AttributeTypes return Python objects or file paths
 15. **Lazy access**: `<object@>` and `<filepath@store>` return ObjectRef
 
@@ -699,20 +699,20 @@ def garbage_collect(project):
 ### Migration from Legacy `~external_*` Stores
 
 Legacy external storage used per-schema `~external_{store}` tables. Migration to the new
-per-project `ContentRegistry` requires:
+per-project `HashRegistry` requires:
 
 ```python
 def migrate_external_store(schema, store_name):
     """
-    Migrate legacy ~external_{store} to new ContentRegistry.
+    Migrate legacy ~external_{store} to new HashRegistry.
 
     1. Read all entries from ~external_{store}
     2. For each entry:
        - Fetch content from legacy location
        - Compute SHA256 hash
-       - Copy to _content/{hash}/ if not exists
+       - Copy to _hash/{hash}/ if not exists
        - Update table column from UUID to hash
-       - Register in ContentRegistry
+       - Register in HashRegistry
     3. After all schemas migrated, drop ~external_{store} tables
     """
     external_table = schema.external[store_name]
@@ -724,17 +724,17 @@ def migrate_external_store(schema, store_name):
         content = external_table.get(legacy_uuid)
 
         # Compute new content hash
-        content_hash = hashlib.sha256(content).hexdigest()
+        hash_id = hashlib.sha256(content).hexdigest()
 
         # Store in new location if not exists
-        new_path = f"_content/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}"
+        new_path = f"_hash/{hash_id[:2]}/{hash_id[2:4]}/{hash_id}"
         store = get_store(store_name)
         if not store.exists(new_path):
             store.put(new_path, content)
 
-        # Register in project-wide ContentRegistry
-        ContentRegistry().insert1({
-            'content_hash': content_hash,
+        # Register in project-wide HashRegistry
+        HashRegistry().insert1({
+            'hash_id': hash_id,
             'store': store_name,
             'size': len(content)
         }, skip_duplicates=True)
@@ -755,4 +755,4 @@ def migrate_external_store(schema, store_name):
 ## Open Questions
 
 1. How long should the backward compatibility layer support legacy `~external_*` format?
-2. Should `<content@>` (without store name) use a default store or require explicit store name?
+2. Should `<hash@>` (without store name) use a default store or require explicit store name?

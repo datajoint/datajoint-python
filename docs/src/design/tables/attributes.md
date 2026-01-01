@@ -98,7 +98,7 @@ The `@` character indicates **external storage** (object store vs database):
   NumPy arrays, dicts, lists, datetime objects, and nested structures. Stores in
   database. Compatible with MATLAB. See [custom types](customtype.md) for details.
 
-- `<blob@>` / `<blob@store>`: Like `<blob>` but stores externally with content-
+- `<blob@>` / `<blob@store>`: Like `<blob>` but stores externally with hash-
   addressed deduplication. Use for large arrays that may be duplicated across rows.
 
 **File storage types** - for managed files:
@@ -107,7 +107,7 @@ The `@` character indicates **external storage** (object store vs database):
   from primary key. Supports Zarr, HDF5, and direct writes via fsspec. Returns
   `ObjectRef` for lazy access. External only. See [object storage](object.md).
 
-- `<content@>` / `<content@store>`: Content-addressed storage for raw bytes with
+- `<hash@>` / `<hash@store>`: Hash-addressed storage for raw bytes with
   SHA256 deduplication. External only. Use via `<blob@>` or `<attach@>` rather than directly.
 
 **File attachment types** - for file transfer:
