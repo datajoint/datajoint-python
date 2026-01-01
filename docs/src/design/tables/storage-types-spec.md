@@ -611,8 +611,8 @@ class HashRegistry:
     hash_id : char(64)          # SHA256 hex
     ---
     store        : varchar(64)       # Store name
-    size         : bigint unsigned   # Size in bytes
-    created      : timestamp DEFAULT CURRENT_TIMESTAMP
+    size         : uint64            # Size in bytes
+    created = CURRENT_TIMESTAMP : datetime
     """
 ```
 
