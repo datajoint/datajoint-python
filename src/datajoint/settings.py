@@ -28,6 +28,7 @@ Project structure:
 
 import json
 import logging
+import os
 import warnings
 from contextlib import contextmanager
 from copy import deepcopy
@@ -44,6 +45,18 @@ CONFIG_FILENAME = "datajoint.json"
 SECRETS_DIRNAME = ".secrets"
 SYSTEM_SECRETS_DIR = Path("/run/secrets/datajoint")
 DEFAULT_SUBFOLDING = (2, 2)
+
+# Mapping of config keys to environment variables
+# Environment variables take precedence over config file values
+ENV_VAR_MAPPING = {
+    "database.host": "DJ_HOST",
+    "database.user": "DJ_USER",
+    "database.password": "DJ_PASS",
+    "database.port": "DJ_PORT",
+    "external.aws_access_key_id": "DJ_AWS_ACCESS_KEY_ID",
+    "external.aws_secret_access_key": "DJ_AWS_SECRET_ACCESS_KEY",
+    "loglevel": "DJ_LOG_LEVEL",
+}
 
 Role = Enum("Role", "manual lookup imported computed job")
 role_to_prefix = {
@@ -541,13 +554,24 @@ class Config(BaseSettings):
         self._config_path = filepath
 
     def _update_from_flat_dict(self, data: dict[str, Any]) -> None:
-        """Update settings from a dict (flat dot-notation or nested)."""
+        """
+        Update settings from a dict (flat dot-notation or nested).
+
+        Environment variables take precedence over config file values.
+        If an env var is set for a setting, the file value is skipped.
+        """
         for key, value in data.items():
             # Handle nested dicts by recursively updating
             if isinstance(value, dict) and hasattr(self, key):
                 group_obj = getattr(self, key)
                 for nested_key, nested_value in value.items():
                     if hasattr(group_obj, nested_key):
+                        # Check if env var is set for this nested key
+                        full_key = f"{key}.{nested_key}"
+                        env_var = ENV_VAR_MAPPING.get(full_key)
+                        if env_var and os.environ.get(env_var):
+                            logger.debug(f"Skipping {full_key} from file (env var {env_var} takes precedence)")
+                            continue
                         setattr(group_obj, nested_key, nested_value)
                 continue
 
@@ -555,12 +579,22 @@ class Config(BaseSettings):
             parts = key.split(".")
             if len(parts) == 1:
                 if hasattr(self, key) and not key.startswith("_"):
+                    # Check if env var is set for this key
+                    env_var = ENV_VAR_MAPPING.get(key)
+                    if env_var and os.environ.get(env_var):
+                        logger.debug(f"Skipping {key} from file (env var {env_var} takes precedence)")
+                        continue
                     setattr(self, key, value)
             elif len(parts) == 2:
                 group, attr = parts
                 if hasattr(self, group):
                     group_obj = getattr(self, group)
                     if hasattr(group_obj, attr):
+                        # Check if env var is set for this key
+                        env_var = ENV_VAR_MAPPING.get(key)
+                        if env_var and os.environ.get(env_var):
+                            logger.debug(f"Skipping {key} from file (env var {env_var} takes precedence)")
+                            continue
                         setattr(group_obj, attr, value)
             elif len(parts) == 4:
                 # Handle object_storage.stores.<name>.<attr> pattern

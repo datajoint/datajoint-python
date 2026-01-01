@@ -249,15 +249,45 @@ class TestContextManager:
 class TestLoad:
     """Test loading configuration."""
 
-    def test_load_config_file(self, tmp_path):
-        """Test loading configuration from file."""
+    def test_load_config_file(self, tmp_path, monkeypatch):
+        """Test loading configuration from file.
+
+        Note: Environment variables take precedence over config file values.
+        We need to clear DJ_HOST to test file loading.
+        """
         filename = tmp_path / "test_config.json"
         filename.write_text('{"database": {"host": "loaded_host"}}')
         original_host = dj.config.database.host
 
+        # Clear env var so file value takes effect
+        monkeypatch.delenv("DJ_HOST", raising=False)
+
         try:
             dj.config.load(filename)
             assert dj.config.database.host == "loaded_host"
+        finally:
+            dj.config.database.host = original_host
+
+    def test_env_var_overrides_config_file(self, tmp_path, monkeypatch):
+        """Test that environment variables take precedence over config file.
+
+        When DJ_HOST is set, loading a config file should NOT override the value.
+        The env var value should be preserved.
+        """
+        filename = tmp_path / "test_config.json"
+        filename.write_text('{"database": {"host": "file_host"}}')
+        original_host = dj.config.database.host
+
+        # Set env var - it should take precedence over file
+        monkeypatch.setenv("DJ_HOST", "env_host")
+        # Reset config to pick up new env var
+        dj.config.database.host = "env_host"
+
+        try:
+            dj.config.load(filename)
+            # File value should be skipped because DJ_HOST is set
+            # The env var value should be preserved
+            assert dj.config.database.host == "env_host"
         finally:
             dj.config.database.host = original_host
 
