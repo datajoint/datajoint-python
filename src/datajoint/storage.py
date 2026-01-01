@@ -484,9 +484,13 @@ class StorageBackend:
         files = []
         total_size = 0
 
-        for root, dirs, filenames in local_path.walk():
+        # Use os.walk for Python 3.10 compatibility (Path.walk() requires 3.12+)
+        import os
+
+        for root, dirs, filenames in os.walk(local_path):
+            root_path = Path(root)
             for filename in filenames:
-                file_path = root / filename
+                file_path = root_path / filename
                 rel_path = file_path.relative_to(local_path).as_posix()
                 file_size = file_path.stat().st_size
                 files.append({"path": rel_path, "size": file_size})

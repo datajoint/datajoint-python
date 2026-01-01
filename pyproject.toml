@@ -16,7 +16,6 @@ dependencies = [
   "tqdm",
   "networkx",
   "pydot",
-  "minio>=7.0.0",
   "fsspec>=2023.1.0",
   "matplotlib",
   "faker",
@@ -87,13 +86,20 @@ test = [
   "pytest-cov",
   "pytest-env",
   "requests",
-  "graphviz"
+  "graphviz",
 ]
 
 [project.optional-dependencies]
 s3 = ["s3fs>=2023.1.0"]
 gcs = ["gcsfs>=2023.1.0"]
 azure = ["adlfs>=2023.1.0"]
+test = [
+  "pytest",
+  "pytest-cov",
+  "pytest-env",
+  "requests",
+  "s3fs>=2023.1.0",
+]
 dev = [
   "pre-commit",
   "ruff",

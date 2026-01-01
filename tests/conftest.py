@@ -19,7 +19,6 @@ from os import remove
 from typing import Dict, List
 
 import certifi
-import minio
 import pytest
 import urllib3
 from packaging import version
@@ -276,33 +275,41 @@ def http_client():
 
 
 @pytest.fixture(scope="session")
-def minio_client_bare(s3_creds):
-    """Initialize MinIO client."""
-    return minio.Minio(
-        endpoint=s3_creds["endpoint"],
-        access_key=s3_creds["access_key"],
-        secret_key=s3_creds["secret_key"],
-        secure=False,
+def s3fs_client(s3_creds):
+    """Initialize s3fs filesystem for MinIO."""
+    import s3fs
+
+    return s3fs.S3FileSystem(
+        endpoint_url=f"http://{s3_creds['endpoint']}",
+        key=s3_creds["access_key"],
+        secret=s3_creds["secret_key"],
     )
 
 
 @pytest.fixture(scope="session")
-def minio_client(s3_creds, minio_client_bare, teardown=False):
-    """MinIO client with test bucket created."""
-    aws_region = "us-east-1"
-    try:
-        minio_client_bare.make_bucket(s3_creds["bucket"], location=aws_region)
-    except minio.error.S3Error as e:
-        if e.code != "BucketAlreadyOwnedByYou":
-            raise e
+def minio_client(s3_creds, s3fs_client, teardown=False):
+    """S3 filesystem with test bucket created (legacy name for compatibility)."""
+    bucket = s3_creds["bucket"]
 
-    yield minio_client_bare
+    # Create bucket if it doesn't exist
+    try:
+        s3fs_client.mkdir(bucket)
+    except Exception:
+        # Bucket may already exist
+        pass
+
+    yield s3fs_client
 
     if not teardown:
         return
-    objs = list(minio_client_bare.list_objects(s3_creds["bucket"], recursive=True))
-    objs = [minio_client_bare.remove_object(s3_creds["bucket"], o.object_name.encode("utf-8")) for o in objs]
-    minio_client_bare.remove_bucket(s3_creds["bucket"])
+    # Clean up objects and bucket
+    try:
+        files = s3fs_client.ls(bucket, detail=False)
+        for f in files:
+            s3fs_client.rm(f)
+        s3fs_client.rmdir(bucket)
+    except Exception:
+        pass
 
 
 # --- Utility fixtures ---

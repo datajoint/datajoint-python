@@ -157,21 +157,26 @@ class TestSettingsAccess:
 
     def test_attribute_access(self):
         """Test accessing settings via attributes."""
-        assert dj.config.database.host == "localhost"
+        # Host can be localhost or db (docker), just verify it's a string
+        assert isinstance(dj.config.database.host, str)
+        assert len(dj.config.database.host) > 0
         assert dj.config.database.port == 3306
         # safemode may be modified by conftest fixtures
         assert isinstance(dj.config.safemode, bool)
 
     def test_dict_style_access(self):
         """Test accessing settings via dict-style notation."""
-        assert dj.config["database.host"] == "localhost"
+        # Host can be localhost or db (docker), just verify it's a string
+        assert isinstance(dj.config["database.host"], str)
+        assert len(dj.config["database.host"]) > 0
         assert dj.config["database.port"] == 3306
         # safemode may be modified by conftest fixtures
         assert isinstance(dj.config["safemode"], bool)
 
     def test_get_with_default(self):
         """Test get() method with default values."""
-        assert dj.config.get("database.host") == "localhost"
+        # Host can be localhost or db (docker), just verify it exists
+        assert dj.config.get("database.host") is not None
         assert dj.config.get("nonexistent.key", "default") == "default"
         assert dj.config.get("nonexistent.key") is None
 

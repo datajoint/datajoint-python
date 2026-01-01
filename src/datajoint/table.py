@@ -938,11 +938,13 @@ class Table(QueryExpression):
 
             # Apply encoders from outermost to innermost
             for attr_type in type_chain:
-                # Pass store_name to encoders that support it
-                try:
+                # Pass store_name to encoders that support it (check via introspection)
+                import inspect
+
+                sig = inspect.signature(attr_type.encode)
+                if "store_name" in sig.parameters:
                     value = attr_type.encode(value, key=None, store_name=resolved_store)
-                except TypeError:
-                    # Encoder doesn't accept store_name parameter
+                else:
                     value = attr_type.encode(value, key=None)
 
         # Handle NULL values
