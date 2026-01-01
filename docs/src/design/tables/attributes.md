@@ -34,6 +34,7 @@ Use these portable, scientist-friendly types for cross-database compatibility.
 
 -  `char(n)`: fixed-length string of exactly *n* characters.
 -  `varchar(n)`: variable-length string up to *n* characters.
+-  `text`: unlimited-length text for long-form content (notes, descriptions, abstracts).
 -  `enum(...)`: one of several enumerated values, e.g., `enum("low", "medium", "high")`.
    Do not use enums in primary keys due to difficulty changing definitions.
 
@@ -65,9 +66,9 @@ for portable pipelines. Using native types will generate a warning.
 -  `tinyint`, `smallint`, `int`, `bigint` (with optional `unsigned`)
 -  `float`, `double`, `real`
 -  `tinyblob`, `blob`, `mediumblob`, `longblob`
--  `text`, `mediumtext`, `longtext`
+-  `tinytext`, `mediumtext`, `longtext` (size variants)
 -  `time`, `timestamp`, `year`
--  `mediumint`, `serial`
+-  `mediumint`, `serial`, `int auto_increment`
 
 See the [storage types spec](storage-types-spec.md) for complete mappings.
 
@@ -133,10 +134,9 @@ class Measurement(dj.Manual):
 
 ## Datatypes not (yet) supported
 
--  `binary`
--  `text`
--  `longtext`
--  `bit`
+-  `binary(n)` / `varbinary(n)` - use `bytes` instead
+-  `bit(n)` - use `int` types with bitwise operations
+-  `set(...)` - use `json` for multiple selections
 
 For additional information about these datatypes, see
 http://dev.mysql.com/doc/refman/5.6/en/data-types.html

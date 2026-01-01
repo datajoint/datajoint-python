@@ -18,7 +18,7 @@ This document defines a three-layer type architecture:
 │                 Core DataJoint Types (Layer 2)                     │
 │                                                                    │
 │  float32  float64  int64  uint64  int32  uint32  int16  uint16    │
-│  int8  uint8  bool  uuid  json  bytes  date  datetime             │
+│  int8  uint8  bool  uuid  json  bytes  date  datetime  text       │
 │  char(n)  varchar(n)  enum(...)  decimal(n,f)                      │
 ├───────────────────────────────────────────────────────────────────┤
 │               Native Database Types (Layer 1)                      │
@@ -74,6 +74,7 @@ MySQL and PostgreSQL backends. Users should prefer these over native database ty
 |-----------|-------------|-------|------------|
 | `char(n)` | Fixed-length | `CHAR(n)` | `CHAR(n)` |
 | `varchar(n)` | Variable-length | `VARCHAR(n)` | `VARCHAR(n)` |
+| `text` | Unlimited text | `TEXT` | `TEXT` |
 
 ### Boolean
 
@@ -118,9 +119,33 @@ for serialized Python objects.
 
 ### Native Passthrough Types
 
-Users may use native database types directly (e.g., `text`, `mediumint auto_increment`),
+Users may use native database types directly (e.g., `mediumint`, `tinyblob`),
 but these will generate a warning about non-standard usage. Native types are not recorded
 in field comments and may have portability issues across database backends.
+
+### Type Modifiers Policy
+
+DataJoint table definitions have their own syntax for constraints and metadata. SQL type
+modifiers are **not allowed** in type specifications because they conflict with DataJoint's
+declarative syntax:
+
+| Modifier | Status | DataJoint Alternative |
+|----------|--------|----------------------|
+| `NOT NULL` / `NULL` | ❌ Not allowed | Position above/below `---` determines nullability |
+| `DEFAULT value` | ❌ Not allowed | Use `= value` syntax after type |
+| `PRIMARY KEY` | ❌ Not allowed | Position above `---` line |
+| `UNIQUE` | ❌ Not allowed | Use DataJoint index syntax |
+| `COMMENT 'text'` | ❌ Not allowed | Use `# comment` syntax |
+| `AUTO_INCREMENT` | ⚠️ Discouraged | Allowed with native types only, generates warning |
+| `UNSIGNED` | ✅ Allowed | Part of type semantics (use `uint*` core types) |
+
+**Auto-increment policy:** DataJoint discourages `AUTO_INCREMENT` / `SERIAL` because:
+- Breaks reproducibility (IDs depend on insertion order)
+- Makes pipelines non-deterministic
+- Complicates data migration and replication
+- Primary keys should be meaningful, not arbitrary
+
+If required, use native types: `int auto_increment` or `serial` (with warning).
 
 ## AttributeTypes (Layer 3)
 

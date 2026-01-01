@@ -42,6 +42,8 @@ CORE_TYPES = {
     # String types (with parameters)
     "char": (r"char\s*\(\d+\)$", None),
     "varchar": (r"varchar\s*\(\d+\)$", None),
+    # Unlimited text
+    "text": (r"text$", None),
     # Enumeration
     "enum": (r"enum\s*\(.+\)$", None),
     # Fixed-point decimal
