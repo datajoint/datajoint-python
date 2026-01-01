@@ -9,7 +9,7 @@ from hashlib import sha1
 
 import pyparsing as pp
 
-from .attribute_type import get_adapter
+from .codecs import lookup_codec
 from .condition import translate_attribute
 from .errors import DataJointError
 from .settings import config
@@ -464,16 +464,16 @@ def substitute_special_type(match, category, foreign_key_sql, context):
     :param match: dict containing with keys "type" and "comment" -- will be modified in place
     :param category: attribute type category from TYPE_PATTERN
     :param foreign_key_sql: list of foreign key declarations to add to
-    :param context: context for looking up user-defined attribute_type adapters
+    :param context: context for looking up user-defined codecs (unused, kept for compatibility)
     """
     if category == "ADAPTED":
-        # AttributeType - resolve to underlying dtype
-        attr_type, store_name = get_adapter(context, match["type"])
+        # Codec - resolve to underlying dtype
+        codec, store_name = lookup_codec(match["type"])
         if store_name is not None:
             match["store"] = store_name
         # Determine if external storage is used (store_name is present, even if empty string for default)
         is_external = store_name is not None
-        inner_dtype = attr_type.get_dtype(is_external=is_external)
+        inner_dtype = codec.get_dtype(is_external=is_external)
 
         # If inner dtype is a codec without store, propagate the store from outer type
         # e.g., <attach@mystore> returns <hash>, we need to resolve as <hash@mystore>

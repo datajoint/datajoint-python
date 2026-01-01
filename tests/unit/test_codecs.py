@@ -1,11 +1,11 @@
 """
-Tests for the new AttributeType system.
+Tests for the Codec system.
 """
 
 import pytest
 
 import datajoint as dj
-from datajoint.attribute_type import (
+from datajoint.codecs import (
     AttributeType,
     _codec_registry,
     get_type,

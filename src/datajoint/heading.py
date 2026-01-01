@@ -5,8 +5,8 @@ from itertools import chain
 
 import numpy as np
 
-from .attribute_type import get_adapter
-from .attribute_type import AttributeType
+from .codecs import lookup_codec
+from .codecs import Codec
 from .declare import (
     CORE_TYPE_NAMES,
     SPECIAL_TYPES,
@@ -15,33 +15,31 @@ from .declare import (
 from .errors import DataJointError
 
 
-class _MissingType(AttributeType):
-    """Placeholder for missing/unregistered attribute types. Raises error on use."""
+class _MissingType(Codec, register=False):
+    """Placeholder for missing/unregistered codecs. Raises error on use."""
 
-    def __init__(self, name: str):
-        self._name = name
+    name = None  # Don't auto-register
+
+    def __init__(self, codec_name: str):
+        self._codec_name = codec_name
 
     @property
     def type_name(self) -> str:
-        return self._name
+        return self._codec_name
 
-    @property
-    def dtype(self) -> str:
+    def get_dtype(self, is_external: bool) -> str:
         raise DataJointError(
-            f"Attribute type <{self._name}> is not registered. "
-            "Register it with @dj.register_type or include it in the schema context."
+            f"Codec <{self._codec_name}> is not registered. " f"Define a Codec subclass with name='{self._codec_name}'."
         )
 
-    def encode(self, value, *, key=None):
+    def encode(self, value, *, key=None, store_name=None):
         raise DataJointError(
-            f"Attribute type <{self._name}> is not registered. "
-            "Register it with @dj.register_type or include it in the schema context."
+            f"Codec <{self._codec_name}> is not registered. " f"Define a Codec subclass with name='{self._codec_name}'."
         )
 
     def decode(self, stored, *, key=None):
         raise DataJointError(
-            f"Attribute type <{self._name}> is not registered. "
-            "Register it with @dj.register_type or include it in the schema context."
+            f"Codec <{self._codec_name}> is not registered. " f"Define a Codec subclass with name='{self._codec_name}'."
         )
 
 
@@ -62,7 +60,7 @@ default_attribute_properties = dict(  # these default values are set in computed
     json=None,
     is_blob=False,
     is_hidden=False,
-    adapter=None,
+    codec=None,
     store=None,
     unsupported=False,
     attribute_expression=None,
@@ -286,7 +284,7 @@ class Heading:
                 is_blob=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BYTES", "NATIVE_BLOB")),
                 uuid=False,
                 json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
-                adapter=None,
+                codec=None,
                 store=None,
                 attribute_expression=None,
                 is_hidden=attr["name"].startswith("_"),
@@ -311,26 +309,24 @@ class Heading:
                     # Store the original type name for display but keep db_type for SQL
                     attr["original_type"] = special["type"]
 
-            # process AttributeTypes (adapted types in angle brackets)
+            # process Codecs (adapted types in angle brackets)
             if special and TYPE_PATTERN["ADAPTED"].match(attr["type"]):
                 # Context can be None for built-in types that are globally registered
-                adapter_name = special["type"]
+                codec_spec = special["type"]
                 try:
-                    adapter_result = get_adapter(context, adapter_name)
-                    # get_adapter returns (adapter, store_name) tuple
-                    if isinstance(adapter_result, tuple):
-                        attr["adapter"], attr["store"] = adapter_result
-                    else:
-                        attr["adapter"] = adapter_result
+                    codec_instance, codec_store = lookup_codec(codec_spec)
+                    attr["codec"] = codec_instance
+                    if codec_store is not None:
+                        attr["store"] = codec_store
                 except DataJointError:
-                    # if no adapter, then delay the error until the first invocation
-                    attr["adapter"] = _MissingType(adapter_name)
+                    # if no codec, then delay the error until the first invocation
+                    attr["codec"] = _MissingType(codec_spec)
                 else:
                     # Determine if external storage based on store presence
                     is_external = attr.get("store") is not None
-                    attr["type"] = attr["adapter"].get_dtype(is_external=is_external)
+                    attr["type"] = attr["codec"].get_dtype(is_external=is_external)
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):
-                        raise DataJointError(f"Invalid dtype '{attr['type']}' in attribute type <{adapter_name}>.")
+                        raise DataJointError(f"Invalid dtype '{attr['type']}' in codec <{codec_spec}>.")
                     # Update is_blob based on resolved dtype (check both BYTES and NATIVE_BLOB patterns)
                     attr["is_blob"] = any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BYTES", "NATIVE_BLOB"))
 
@@ -367,7 +363,7 @@ class Heading:
 
             # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
             attr["dtype"] = object
-            if attr["numeric"] and not attr["adapter"]:
+            if attr["numeric"] and not attr["codec"]:
                 is_integer = TYPE_PATTERN["INTEGER"].match(attr["type"])
                 is_float = TYPE_PATTERN["FLOAT"].match(attr["type"])
                 if is_integer and not attr["nullable"] or is_float:
@@ -377,9 +373,9 @@ class Heading:
                     assert (t, is_unsigned) in numeric_types, "dtype not found for type %s" % t
                     attr["dtype"] = numeric_types[(t, is_unsigned)]
 
-            if attr["adapter"]:
-                # restore adapted type name for display
-                attr["type"] = adapter_name
+            if attr["codec"]:
+                # restore codec type name for display
+                attr["type"] = codec_spec
 
         self._attributes = dict(((q["name"], Attribute(**q)) for q in attributes))
 

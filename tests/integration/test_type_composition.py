@@ -5,7 +5,7 @@ This tests the <blob@> → <hash> → json composition pattern
 and similar type chains.
 """
 
-from datajoint.attribute_type import (
+from datajoint.codecs import (
     AttributeType,
     _codec_registry,
     resolve_dtype,

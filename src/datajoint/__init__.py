@@ -66,7 +66,7 @@ __all__ = [
 from . import errors
 from . import migrate
 from .admin import kill
-from .attribute_type import (
+from .codecs import (
     AttributeType,
     Codec,
     get_codec,

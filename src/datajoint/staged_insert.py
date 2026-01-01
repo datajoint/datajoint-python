@@ -99,7 +99,7 @@ class StagedInsert:
 
         attr = self._table.heading[field]
         # Check if this is an object AttributeType (has adapter with "object" in type_name)
-        if not (attr.adapter and hasattr(attr.adapter, "type_name") and "object" in attr.adapter.type_name):
+        if not (attr.codec and hasattr(attr.codec, "type_name") and "object" in attr.codec.type_name):
             raise DataJointError(f"Attribute '{field}' is not an <object> type")
 
         # Extract primary key from rec

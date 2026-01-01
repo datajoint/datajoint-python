@@ -52,11 +52,11 @@ def _uses_content_storage(attr) -> bool:
     Returns:
         True if the attribute stores content hashes
     """
-    if not attr.adapter:
+    if not attr.codec:
         return False
 
     # Check if this type uses content storage
-    type_name = getattr(attr.adapter, "type_name", "")
+    type_name = getattr(attr.codec, "type_name", "")
     store = getattr(attr, "store", None)
 
     # <hash> always uses content storage (external only)
@@ -80,10 +80,10 @@ def _uses_object_storage(attr) -> bool:
     Returns:
         True if the attribute stores object paths
     """
-    if not attr.adapter:
+    if not attr.codec:
         return False
 
-    type_name = getattr(attr.adapter, "type_name", "")
+    type_name = getattr(attr.codec, "type_name", "")
     return type_name == "object"
 
 

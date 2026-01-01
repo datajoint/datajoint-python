@@ -58,7 +58,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .attribute_type import Codec
+from .codecs import Codec
 from .errors import DataJointError
 
 

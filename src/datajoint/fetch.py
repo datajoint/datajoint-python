@@ -39,8 +39,8 @@ def _get(connection, attr, data, squeeze, download_path):
     - Native types pass through unchanged
     - JSON types are parsed
     - UUID types are converted from bytes
-    - Blob types return raw bytes (unless an adapter handles them)
-    - Adapters (AttributeTypes) handle all custom encoding/decoding via type chains
+    - Blob types return raw bytes (unless a codec handles them)
+    - Codecs handle all custom encoding/decoding via type chains
 
     For composed types (e.g., <blob@> using <hash>), decoders are applied
     in reverse order: innermost first, then outermost.
@@ -57,16 +57,16 @@ def _get(connection, attr, data, squeeze, download_path):
     if data is None:
         return None
 
-    # Get the final storage type and type chain if adapter present
-    if attr.adapter:
-        from .attribute_type import resolve_dtype
+    # Get the final storage type and type chain if codec present
+    if attr.codec:
+        from .codecs import resolve_dtype
 
         # Include store if present to get correct chain for external storage
         store = getattr(attr, "store", None)
         if store is not None:
-            dtype_spec = f"<{attr.adapter.type_name}@{store}>"
+            dtype_spec = f"<{attr.codec.type_name}@{store}>"
         else:
-            dtype_spec = f"<{attr.adapter.type_name}>"
+            dtype_spec = f"<{attr.codec.type_name}>"
         final_dtype, type_chain, _ = resolve_dtype(dtype_spec)
 
         # First, process the final dtype (what's stored in the database)
@@ -93,7 +93,7 @@ def _get(connection, attr, data, squeeze, download_path):
 
         return data
 
-    # No adapter - handle native types
+    # No codec - handle native types
     if attr.json:
         return json.loads(data)
 

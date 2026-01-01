@@ -748,17 +748,17 @@ class Table(QueryExpression):
         attr = self.heading[name]
 
         # Apply adapter encoding with type chain support
-        if attr.adapter:
-            from .attribute_type import resolve_dtype
+        if attr.codec:
+            from .codecs import resolve_dtype
 
             # Skip validation and encoding for None values (nullable columns)
             if value is None:
                 return name, "DEFAULT", None
 
-            attr.adapter.validate(value)
+            attr.codec.validate(value)
 
             # Resolve full type chain
-            _, type_chain, resolved_store = resolve_dtype(f"<{attr.adapter.type_name}>", store_name=attr.store)
+            _, type_chain, resolved_store = resolve_dtype(f"<{attr.codec.type_name}>", store_name=attr.store)
 
             # Apply encoders from outermost to innermost
             for attr_type in type_chain:

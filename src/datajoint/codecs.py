@@ -503,16 +503,16 @@ def resolve_dtype(
     return dtype, chain, store_name
 
 
-def get_adapter(context: dict | None, adapter_name: str) -> tuple[Codec, str | None]:
+def lookup_codec(codec_spec: str) -> tuple[Codec, str | None]:
     """
-    Get a codec by name.
+    Look up a codec from a type specification string.
 
-    This is a compatibility function used by heading and declare modules.
+    Parses a codec specification (e.g., "<blob@store>") and returns
+    the codec instance along with any store name.
 
     Args:
-        context: Ignored (legacy parameter, kept for API compatibility).
-        adapter_name: The codec name, with or without angle brackets.
-                      May include store parameter (e.g., "<blob@cold>").
+        codec_spec: The codec specification, with or without angle brackets.
+                    May include store parameter (e.g., "<blob@cold>").
 
     Returns:
         Tuple of (Codec instance, store_name or None).
@@ -520,7 +520,7 @@ def get_adapter(context: dict | None, adapter_name: str) -> tuple[Codec, str | N
     Raises:
         DataJointError: If the codec is not found.
     """
-    type_name, store_name = parse_type_spec(adapter_name)
+    type_name, store_name = parse_type_spec(codec_spec)
 
     if is_codec_registered(type_name):
         return get_codec(type_name), store_name
@@ -532,6 +532,6 @@ def get_adapter(context: dict | None, adapter_name: str) -> tuple[Codec, str | N
 # Auto-register built-in codecs
 # =============================================================================
 
-# Import builtin_types module to register built-in codecs
+# Import builtin_codecs module to register built-in codecs
 # This import has a side effect: it registers the codecs via __init_subclass__
-from . import builtin_types as _builtin_types  # noqa: F401, E402
+from . import builtin_codecs as _builtin_codecs  # noqa: F401, E402

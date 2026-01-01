@@ -50,7 +50,7 @@ def local_schema(schema_ad, schema_name):
 @pytest.fixture
 def schema_virtual_module(schema_ad, schema_name):
     """Fixture for testing virtual modules"""
-    # Types are registered globally, no need to add_objects for adapters
+    # Types are registered globally, no need to add_objects for codecs
     schema_virtual_module = dj.VirtualModule("virtual_module", schema_name, connection=schema_ad.connection)
     return schema_virtual_module
 

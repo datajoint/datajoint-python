@@ -29,7 +29,7 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
 
     This function identifies blob columns that:
     1. Have a MySQL blob type (tinyblob, blob, mediumblob, longblob)
-    2. Do NOT already have an adapter/type specified in their comment
+    2. Do NOT already have a codec/type specified in their comment
 
     All blob size variants are included in the analysis.
 
@@ -80,8 +80,8 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
         columns = connection.query(columns_query, args=(schema.database, table_name)).fetchall()
 
         for column_name, column_type, comment in columns:
-            # Check if comment already has an adapter type (starts with :type:)
-            has_adapter = comment and comment.startswith(":")
+            # Check if comment already has a codec type (starts with :type:)
+            has_codec = comment and comment.startswith(":")
 
             results.append(
                 {
@@ -89,7 +89,7 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
                     "column_name": column_name,
                     "column_type": column_type,
                     "current_comment": comment or "",
-                    "needs_migration": not has_adapter,
+                    "needs_migration": not has_codec,
                 }
             )
 
