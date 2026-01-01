@@ -204,7 +204,7 @@ class Ephys(dj.Imported):
         current = null : <djblob>   # optional current to test null handling
         """
 
-    def _make_tuples(self, key):
+    def make(self, key):
         """
         populate with random data
         """
@@ -261,7 +261,7 @@ class SigIntTable(dj.Computed):
     -> SimpleSource
     """
 
-    def _make_tuples(self, key):
+    def make(self, key):
         raise KeyboardInterrupt
 
 

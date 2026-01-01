@@ -38,7 +38,7 @@ CORE_TYPES = {
     "blob": (r"blob$", "longblob"),
     # Temporal
     "date": (r"date$", None),
-    "datetime": (r"datetime$", None),
+    "datetime": (r"datetime(\s*\(\d+\))?$", None),
     # String types (with parameters)
     "char": (r"char\s*\(\d+\)$", None),
     "varchar": (r"varchar\s*\(\d+\)$", None),

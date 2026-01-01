@@ -349,7 +349,8 @@ def clean_autopopulate(experiment, trial, ephys):
 def clean_jobs(schema_any):
     """Cleanup fixture for jobs tests."""
     try:
-        schema_any.jobs.delete()
+        for jobs_table in schema_any.jobs:
+            jobs_table.delete()
     except DataJointError:
         pass
     yield
@@ -375,7 +376,8 @@ def schema_any(connection_test, prefix):
     schema_any = dj.Schema(prefix + "_test1", schema.LOCALS_ANY, connection=connection_test)
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
     try:
-        schema_any.jobs.delete()
+        for jobs_table in schema_any.jobs:
+            jobs_table.delete()
     except DataJointError:
         pass
     schema_any(schema.TTest)
@@ -418,9 +420,10 @@ def schema_any(connection_test, prefix):
     schema_any(schema.Longblob)
     yield schema_any
     try:
-        schema_any.jobs.delete()
-    except DataJointError:
-        pass
+        for jobs_table in schema_any.jobs:
+            jobs_table.delete()
+    except Exception:
+        pass  # Ignore cleanup errors (connection may be closed)
     schema_any.drop()
 
 
@@ -430,7 +433,8 @@ def schema_any_fresh(connection_test, prefix):
     schema_any = dj.Schema(prefix + "_test1_fresh", schema.LOCALS_ANY, connection=connection_test)
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
     try:
-        schema_any.jobs.delete()
+        for jobs_table in schema_any.jobs:
+            jobs_table.delete()
     except DataJointError:
         pass
     schema_any(schema.TTest)
@@ -473,9 +477,10 @@ def schema_any_fresh(connection_test, prefix):
     schema_any(schema.Longblob)
     yield schema_any
     try:
-        schema_any.jobs.delete()
-    except DataJointError:
-        pass
+        for jobs_table in schema_any.jobs:
+            jobs_table.delete()
+    except Exception:
+        pass  # Ignore cleanup errors (connection may be closed)
     schema_any.drop()
 
 

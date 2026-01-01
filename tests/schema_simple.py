@@ -103,7 +103,7 @@ class D(dj.Computed):
     -> L
     """
 
-    def _make_tuples(self, key):
+    def make(self, key):
         # make reference to a random tuple from L
         random.seed(str(key))
         lookup = list(L().fetch("KEY"))

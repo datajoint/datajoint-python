@@ -30,6 +30,7 @@ class TestJobsTableStructure:
     def test_jobs_table_primary_key(self, schema_any):
         """Test that jobs table has FK-derived primary key."""
         jobs = schema.SigIntTable().jobs
+        jobs._ensure_declared()
         # SigIntTable depends on SimpleSource with pk 'id'
         assert "id" in jobs.primary_key
 

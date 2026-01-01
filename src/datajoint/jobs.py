@@ -211,10 +211,14 @@ version=""      : varchar(255)    # Code version
 
     def delete(self) -> None:
         """Delete jobs without confirmation (inherits from delete_quick)."""
+        if not self.is_declared:
+            return  # Nothing to delete if table doesn't exist
         self.delete_quick()
 
     def drop(self) -> None:
         """Drop the jobs table without confirmation."""
+        if not self.is_declared:
+            return  # Nothing to drop if table doesn't exist
         self.drop_quick()
 
     def refresh(
@@ -420,8 +424,8 @@ version=""      : varchar(255)    # Code version
         """
         Mark a key to be ignored (skipped during populate).
 
-        Only inserts new records. Existing job entries cannot be converted to
-        ignore status - they must be cleared first.
+        If the job already exists, updates its status to "ignore".
+        If the job doesn't exist, creates a new job with "ignore" status.
 
         Args:
             key: Primary key dict for the job
@@ -434,7 +438,8 @@ version=""      : varchar(255)    # Code version
         try:
             self._insert_job_with_status(job_key, "ignore")
         except DuplicateError:
-            pass  # Already tracked
+            # Update existing job to ignore status
+            self.update1({**job_key, "status": "ignore"})
 
     def _insert_job_with_status(self, key: dict, status: str) -> None:
         """Insert a new job with the given status."""
