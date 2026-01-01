@@ -886,9 +886,11 @@ class Table(QueryExpression):
                             attributes_declared.update(fk_props["attr_map"])
             if do_include:
                 attributes_declared.add(attr.name)
+                # Use original_type (core type alias) if available, otherwise use type
+                display_type = attr.original_type or attr.type
                 definition += "%-20s : %-28s %s\n" % (
                     (attr.name if attr.default is None else "%s=%s" % (attr.name, attr.default)),
-                    "%s%s" % (attr.type, " auto_increment" if attr.autoincrement else ""),
+                    "%s%s" % (display_type, " auto_increment" if attr.autoincrement else ""),
                     "# " + attr.comment if attr.comment else "",
                 )
         # add remaining indexes
