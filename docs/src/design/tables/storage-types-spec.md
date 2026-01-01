@@ -209,6 +209,119 @@ The `@` character in codec syntax indicates **external storage** (object store):
 
 Some codecs support both modes (`<blob>`, `<attach>`), others are external-only (`<object@>`, `<hash@>`, `<filepath@>`).
 
+### Codec Base Class
+
+Codecs auto-register when subclassed using Python's `__init_subclass__` mechanism.
+No decorator is needed.
+
+```python
+from abc import ABC, abstractmethod
+from typing import Any
+
+# Global codec registry
+_codec_registry: dict[str, "Codec"] = {}
+
+
+class Codec(ABC):
+    """
+    Base class for codec types. Subclasses auto-register by name.
+
+    Requires Python 3.10+.
+    """
+    name: str | None = None  # Must be set by concrete subclasses
+
+    def __init_subclass__(cls, *, register: bool = True, **kwargs):
+        """Auto-register concrete codecs when subclassed."""
+        super().__init_subclass__(**kwargs)
+
+        if not register:
+            return  # Skip registration for abstract bases
+
+        if cls.name is None:
+            return  # Skip registration if no name (abstract)
+
+        if cls.name in _codec_registry:
+            existing = _codec_registry[cls.name]
+            if type(existing) is not cls:
+                raise DataJointError(
+                    f"Codec <{cls.name}> already registered by {type(existing).__name__}"
+                )
+            return  # Same class, idempotent
+
+        _codec_registry[cls.name] = cls()
+
+    def get_dtype(self, is_external: bool) -> str:
+        """
+        Return the storage dtype for this codec.
+
+        Args:
+            is_external: True if @ modifier present (external storage)
+
+        Returns:
+            A core type (e.g., "bytes", "json") or another codec (e.g., "<hash>")
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> Any:
+        """Encode Python value for storage."""
+        ...
+
+    @abstractmethod
+    def decode(self, stored: Any, *, key: dict | None = None) -> Any:
+        """Decode stored value back to Python."""
+        ...
+
+    def validate(self, value: Any) -> None:
+        """Optional validation before encoding. Override to add constraints."""
+        pass
+
+
+def list_codecs() -> list[str]:
+    """Return list of registered codec names."""
+    return sorted(_codec_registry.keys())
+
+
+def get_codec(name: str) -> Codec:
+    """Get codec by name. Raises DataJointError if not found."""
+    if name not in _codec_registry:
+        raise DataJointError(f"Unknown codec: <{name}>")
+    return _codec_registry[name]
+```
+
+**Usage - no decorator needed:**
+
+```python
+class GraphCodec(dj.Codec):
+    """Auto-registered as <graph>."""
+    name = "graph"
+
+    def get_dtype(self, is_external: bool) -> str:
+        return "<blob>"
+
+    def encode(self, graph, *, key=None, store_name=None):
+        return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
+
+    def decode(self, stored, *, key=None):
+        import networkx as nx
+        G = nx.Graph()
+        G.add_nodes_from(stored['nodes'])
+        G.add_edges_from(stored['edges'])
+        return G
+```
+
+**Skip registration for abstract bases:**
+
+```python
+class ExternalOnlyCodec(dj.Codec, register=False):
+    """Abstract base for external-only codecs. Not registered."""
+
+    def get_dtype(self, is_external: bool) -> str:
+        if not is_external:
+            raise DataJointError(f"<{self.name}> requires @ (external only)")
+        return "json"
+```
+
 ### Codec Resolution and Chaining
 
 Codecs resolve to core types through chaining. The `get_dtype(is_external)` method
@@ -471,7 +584,6 @@ blob format. Compatible with MATLAB.
 - **`<blob@store>`**: Stored in specific named store
 
 ```python
-@dj.codec
 class BlobCodec(dj.Codec):
     """Serialized Python objects. Supports internal and external."""
     name = "blob"
@@ -511,7 +623,6 @@ Stores files with filename preserved. On fetch, extracts to configured download 
 - **`<attach@store>`**: Stored in specific named store
 
 ```python
-@dj.codec
 class AttachCodec(dj.Codec):
     """File attachment with filename. Supports internal and external."""
     name = "attach"
@@ -548,7 +659,6 @@ class Attachments(dj.Manual):
 Users can define custom codecs for domain-specific data:
 
 ```python
-@dj.codec
 class GraphCodec(dj.Codec):
     """Store NetworkX graphs. Internal only (no external support)."""
     name = "graph"
@@ -562,6 +672,7 @@ class GraphCodec(dj.Codec):
         return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
 
     def decode(self, stored, *, key=None):
+        import networkx as nx
         G = nx.Graph()
         G.add_nodes_from(stored['nodes'])
         G.add_edges_from(stored['edges'])
@@ -571,7 +682,6 @@ class GraphCodec(dj.Codec):
 Custom codecs can support both modes by returning different dtypes:
 
 ```python
-@dj.codec
 class ImageCodec(dj.Codec):
     """Store images. Supports both internal and external."""
     name = "image"
@@ -679,6 +789,7 @@ def garbage_collect(store_name):
 15. **Lazy access**: `<object@>` and `<filepath@store>` return ObjectRef
 16. **MD5 for content hashing**: See [Hash Algorithm Choice](#hash-algorithm-choice) below
 17. **No separate registry**: Hash metadata stored in JSON columns, not a separate table
+18. **Auto-registration via `__init_subclass__`**: Codecs register automatically when subclassed—no decorator needed. Use `register=False` for abstract bases. Requires Python 3.10+.
 
 ### Hash Algorithm Choice
 
