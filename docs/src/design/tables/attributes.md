@@ -55,7 +55,7 @@ reproducible computations regardless of server location or timezone settings.
 ### Binary
 
 -  `bytes`: raw binary data (up to 4 GiB). Stores and returns raw bytes without
-   serialization. For serialized Python objects (arrays, dicts, etc.), use `<djblob>`.
+   serialization. For serialized Python objects (arrays, dicts, etc.), use `<blob>`.
 
 ### Other
 
@@ -81,44 +81,47 @@ See the [storage types spec](storage-types-spec.md) for complete mappings.
 AttributeTypes provide `encode()`/`decode()` semantics for complex data that doesn't
 fit native database types. They are denoted with angle brackets: `<type_name>`.
 
-### Naming conventions
+### Storage mode: `@` convention
 
-- **`dj` prefix**: DataJoint-specific internal serialization (`<djblob>`)
-- **`x` prefix**: External/content-addressed variant (`<xblob>`, `<xattach>`)
-- **`@store` suffix**: Specifies which configured store to use
+The `@` character indicates **external storage** (object store vs database):
+
+- **No `@`**: Internal storage (database) - e.g., `<blob>`, `<attach>`
+- **`@` present**: External storage (object store) - e.g., `<blob@>`, `<attach@store>`
+- **`@` alone**: Use default store - e.g., `<blob@>`
+- **`@name`**: Use named store - e.g., `<blob@cold>`
 
 ### Built-in AttributeTypes
 
 **Serialization types** - for Python objects:
 
-- `<djblob>`: DataJoint's native serialization format for Python objects. Supports
+- `<blob>`: DataJoint's native serialization format for Python objects. Supports
   NumPy arrays, dicts, lists, datetime objects, and nested structures. Stores in
   database. Compatible with MATLAB. See [custom types](customtype.md) for details.
 
-- `<xblob>` / `<xblob@store>`: Like `<djblob>` but stores externally with content-
+- `<blob@>` / `<blob@store>`: Like `<blob>` but stores externally with content-
   addressed deduplication. Use for large arrays that may be duplicated across rows.
 
 **File storage types** - for managed files:
 
-- `<object>` / `<object@store>`: Managed file and folder storage with path derived
+- `<object@>` / `<object@store>`: Managed file and folder storage with path derived
   from primary key. Supports Zarr, HDF5, and direct writes via fsspec. Returns
-  `ObjectRef` for lazy access. See [object storage](object.md).
+  `ObjectRef` for lazy access. External only. See [object storage](object.md).
 
-- `<content>` / `<content@store>`: Content-addressed storage for raw bytes with
-  SHA256 deduplication. Use via `<xblob>` or `<xattach>` rather than directly.
+- `<content@>` / `<content@store>`: Content-addressed storage for raw bytes with
+  SHA256 deduplication. External only. Use via `<blob@>` or `<attach@>` rather than directly.
 
 **File attachment types** - for file transfer:
 
 - `<attach>`: File attachment stored in database with filename preserved. Similar
   to email attachments. Good for small files (<16MB). See [attachments](attach.md).
 
-- `<xattach>` / `<xattach@store>`: Like `<attach>` but stores externally with
+- `<attach@>` / `<attach@store>`: Like `<attach>` but stores externally with
   deduplication. Use for large files.
 
 **File reference types** - for external files:
 
 - `<filepath@store>`: Reference to existing file in a configured store. No file
-  copying occurs. Returns `ObjectRef` for lazy access. See [filepath](filepath.md).
+  copying occurs. Returns `ObjectRef` for lazy access. External only. See [filepath](filepath.md).
 
 ### User-defined AttributeTypes
 
@@ -161,7 +164,8 @@ class Measurement(dj.Manual):
     sensor_flags : uint8        # 8-bit status flags
     is_valid : bool             # boolean flag
     raw_data : bytes            # raw binary data
-    processed : <djblob>        # serialized Python object
+    processed : <blob>          # serialized Python object
+    large_array : <blob@>       # external storage with deduplication
     """
 ```
 

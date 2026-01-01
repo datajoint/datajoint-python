@@ -12,7 +12,7 @@ This document defines a three-layer type architecture:
 ┌───────────────────────────────────────────────────────────────────┐
 │                     AttributeTypes (Layer 3)                       │
 │                                                                    │
-│  Built-in:  <djblob>  <object>  <content>  <filepath@s>  <xblob>  │
+│  Built-in:  <blob>  <attach>  <object@>  <content@>  <filepath@>  │
 │  User:      <custom>  <mytype>   ...                               │
 ├───────────────────────────────────────────────────────────────────┤
 │                 Core DataJoint Types (Layer 2)                     │
@@ -31,7 +31,8 @@ This document defines a three-layer type architecture:
 
 **Syntax distinction:**
 - Core types: `int32`, `float64`, `varchar(255)` - no brackets
-- AttributeTypes: `<object>`, `<djblob>`, `<filepath@main>` - angle brackets
+- AttributeTypes: `<blob>`, `<object@store>`, `<filepath@main>` - angle brackets
+- The `@` character indicates external storage (object store vs database)
 
 ### OAS Storage Regions
 
@@ -105,7 +106,7 @@ created_at : datetime = CURRENT_TIMESTAMP
 
 ### Binary Types
 
-The core `bytes` type stores raw bytes without any serialization. Use `<djblob>` AttributeType
+The core `bytes` type stores raw bytes without any serialization. Use `<blob>` AttributeType
 for serialized Python objects.
 
 | Core Type | Description | MySQL | PostgreSQL |
@@ -183,9 +184,44 @@ definitions. This ensures consistent behavior across all tables and simplifies p
 AttributeTypes provide `encode()`/`decode()` semantics on top of core types. They are
 composable and can be built-in or user-defined.
 
-### `<object>` / `<object@store>` - Path-Addressed Storage
+### Storage Mode: `@` Convention
 
-**Built-in AttributeType.** OAS (Object-Augmented Schema) storage:
+The `@` character in AttributeType syntax indicates **external storage** (object store):
+
+- **No `@`**: Internal storage (database) - e.g., `<blob>`, `<attach>`
+- **`@` present**: External storage (object store) - e.g., `<blob@>`, `<attach@store>`
+- **`@` alone**: Use default store - e.g., `<blob@>`
+- **`@name`**: Use named store - e.g., `<blob@cold>`
+
+Some types support both modes (`<blob>`, `<attach>`), others are external-only (`<object@>`, `<content@>`, `<filepath@>`).
+
+### Type Resolution and Chaining
+
+AttributeTypes resolve to core types through chaining. The `get_dtype(is_external)` method
+returns the appropriate dtype based on storage mode:
+
+```
+Resolution at declaration time:
+
+<blob>         → get_dtype(False) → "bytes"     → LONGBLOB/BYTEA
+<blob@>        → get_dtype(True)  → "<content>" → json → JSON/JSONB
+<blob@cold>    → get_dtype(True)  → "<content>" → json (store=cold)
+
+<attach>       → get_dtype(False) → "bytes"     → LONGBLOB/BYTEA
+<attach@>      → get_dtype(True)  → "<content>" → json → JSON/JSONB
+
+<object@>      → get_dtype(True)  → "json"      → JSON/JSONB
+<object>       → get_dtype(False) → ERROR (external only)
+
+<content@>     → get_dtype(True)  → "json"      → JSON/JSONB
+<filepath@s>   → get_dtype(True)  → "json"      → JSON/JSONB
+```
+
+### `<object@>` / `<object@store>` - Path-Addressed Storage
+
+**Built-in AttributeType. External only.**
+
+OAS (Object-Augmented Schema) storage for files and folders:
 
 - Path derived from primary key: `{schema}/{table}/{pk}/{attribute}/`
 - One-to-one relationship with table row
@@ -199,7 +235,7 @@ class Analysis(dj.Computed):
     definition = """
     -> Recording
     ---
-    results : <object>          # default store
+    results : <object@>         # default store
     archive : <object@cold>     # specific store
     """
 ```
@@ -208,30 +244,29 @@ class Analysis(dj.Computed):
 
 ```python
 class ObjectType(AttributeType):
-    """Built-in AttributeType for path-addressed OAS storage."""
+    """Path-addressed OAS storage. External only."""
     type_name = "object"
-    dtype = "json"
+
+    def get_dtype(self, is_external: bool) -> str:
+        if not is_external:
+            raise DataJointError("<object> requires @ (external storage only)")
+        return "json"
 
     def encode(self, value, *, key=None, store_name=None) -> dict:
         store = get_store(store_name or dj.config['stores']['default'])
         path = self._compute_path(key)  # {schema}/{table}/{pk}/{attr}/
         store.put(path, value)
-        return {
-            "path": path,
-            "store": store_name,
-            # Additional metadata (size, timestamps, etc.)
-        }
+        return {"path": path, "store": store_name, ...}
 
     def decode(self, stored: dict, *, key=None) -> ObjectRef:
-        return ObjectRef(
-            store=get_store(stored["store"]),
-            path=stored["path"]
-        )
+        return ObjectRef(store=get_store(stored["store"]), path=stored["path"])
 ```
 
-### `<content>` / `<content@store>` - Content-Addressed Storage
+### `<content@>` / `<content@store>` - Content-Addressed Storage
 
-**Built-in AttributeType.** Content-addressed storage with deduplication:
+**Built-in AttributeType. External only.**
+
+Content-addressed storage with deduplication:
 
 - **Single blob only**: stores a single file or serialized object (not folders)
 - **Per-project scope**: content is shared across all schemas in a project (not per-schema)
@@ -255,9 +290,13 @@ store_root/
 
 ```python
 class ContentType(AttributeType):
-    """Built-in AttributeType for content-addressed storage."""
+    """Content-addressed storage. External only."""
     type_name = "content"
-    dtype = "json"
+
+    def get_dtype(self, is_external: bool) -> str:
+        if not is_external:
+            raise DataJointError("<content> requires @ (external storage only)")
+        return "json"
 
     def encode(self, data: bytes, *, key=None, store_name=None) -> dict:
         """Store content, return metadata as JSON."""
@@ -273,11 +312,7 @@ class ContentType(AttributeType):
                 'size': len(data)
             }, skip_duplicates=True)
 
-        return {
-            "hash": content_hash,
-            "store": store_name,
-            "size": len(data)
-        }
+        return {"hash": content_hash, "store": store_name, "size": len(data)}
 
     def decode(self, stored: dict, *, key=None) -> bytes:
         """Retrieve content by hash."""
@@ -288,7 +323,7 @@ class ContentType(AttributeType):
 
 #### Database Column
 
-The `<content>` type stores JSON metadata:
+The `<content@>` type stores JSON metadata:
 
 ```sql
 -- content column (MySQL)
@@ -301,7 +336,9 @@ features JSONB NOT NULL
 
 ### `<filepath@store>` - Portable External Reference
 
-**Built-in AttributeType.** Relative path references within configured stores:
+**Built-in AttributeType. External only (store required).**
+
+Relative path references within configured stores:
 
 - **Relative paths**: paths within a configured store (portable across environments)
 - **Store-aware**: resolves paths against configured store backend
@@ -351,31 +388,22 @@ just use `varchar`. A string is simpler and more transparent.
 
 ```python
 class FilepathType(AttributeType):
-    """Built-in AttributeType for store-relative file references."""
+    """Store-relative file references. External only."""
     type_name = "filepath"
-    dtype = "json"
 
-    def encode(self, relative_path: str, *, key=None, store_name=None,
-               compute_checksum: bool = False) -> dict:
+    def get_dtype(self, is_external: bool) -> str:
+        if not is_external:
+            raise DataJointError("<filepath> requires @store")
+        return "json"
+
+    def encode(self, relative_path: str, *, key=None, store_name=None) -> dict:
         """Register reference to file in store."""
         store = get_store(store_name)  # store_name required for filepath
-        metadata = {'path': relative_path, 'store': store_name}
-
-        if compute_checksum:
-            full_path = store.resolve(relative_path)
-            if store.exists(full_path):
-                metadata['checksum'] = compute_file_checksum(store, full_path)
-                metadata['size'] = store.size(full_path)
-
-        return metadata
+        return {'path': relative_path, 'store': store_name}
 
     def decode(self, stored: dict, *, key=None) -> ObjectRef:
         """Return ObjectRef for lazy access."""
-        return ObjectRef(
-            store=get_store(stored['store']),
-            path=stored['path'],
-            checksum=stored.get('checksum')  # optional verification
-        )
+        return ObjectRef(store=get_store(stored['store']), path=stored['path'])
 ```
 
 #### Database Column
@@ -419,64 +447,29 @@ The `json` database type:
 - Automatically uses appropriate type for database backend
 - Supports JSON path queries where available
 
-## Parameterized AttributeTypes
+## Built-in AttributeTypes
 
-AttributeTypes can be parameterized with `<type@param>` syntax. The parameter specifies
-which store to use:
+### `<blob>` / `<blob@>` - Serialized Python Objects
 
-```python
-class AttributeType:
-    type_name: str      # Name used in <brackets> or as bare type
-    dtype: str          # Database type or built-in AttributeType
+**Supports both internal and external storage.**
 
-    # When user writes type_name@param, resolved store becomes param
-```
+Serializes Python objects (NumPy arrays, dicts, lists, etc.) using DataJoint's
+blob format. Compatible with MATLAB.
 
-**Resolution examples:**
-```
-<xblob>        → uses <content> type   → default store
-<xblob@cold>   → uses <content> type   → cold store
-<djblob>       → dtype = "longblob"    → database (no store)
-<object@cold>  → uses <object> type    → cold store
-```
-
-AttributeTypes can use other AttributeTypes as their dtype (composition):
-- `<xblob>` uses `<content>` - adds djblob serialization on top of content-addressed storage
-- `<xattach>` uses `<content>` - adds filename preservation on top of content-addressed storage
-
-## User-Defined AttributeTypes
-
-### `<djblob>` - Internal Serialized Blob
-
-Serialized Python object stored in database.
+- **`<blob>`**: Stored in database (`bytes` → `LONGBLOB`/`BYTEA`)
+- **`<blob@>`**: Stored externally via `<content@>` with deduplication
+- **`<blob@store>`**: Stored in specific named store
 
 ```python
 @dj.register_type
-class DJBlobType(AttributeType):
-    type_name = "djblob"
-    dtype = "longblob"  # MySQL type
+class BlobType(AttributeType):
+    """Serialized Python objects. Supports internal and external."""
+    type_name = "blob"
 
-    def encode(self, value, *, key=None) -> bytes:
-        from . import blob
-        return blob.pack(value, compress=True)
+    def get_dtype(self, is_external: bool) -> str:
+        return "<content>" if is_external else "bytes"
 
-    def decode(self, stored, *, key=None) -> Any:
-        from . import blob
-        return blob.unpack(stored)
-```
-
-### `<xblob>` / `<xblob@store>` - External Serialized Blob
-
-Serialized Python object stored in content-addressed storage.
-
-```python
-@dj.register_type
-class XBlobType(AttributeType):
-    type_name = "xblob"
-    dtype = "content"  # Core type - uses default store
-    # dtype = "content@store" for specific store
-
-    def encode(self, value, *, key=None) -> bytes:
+    def encode(self, value, *, key=None, store_name=None) -> bytes:
         from . import blob
         return blob.pack(value, compress=True)
 
@@ -491,23 +484,32 @@ class ProcessedData(dj.Computed):
     definition = """
     -> RawData
     ---
-    small_result : <djblob>        # internal (in database)
-    large_result : <xblob>         # external (default store)
-    archive_result : <xblob@cold>  # external (specific store)
+    small_result : <blob>          # internal (in database)
+    large_result : <blob@>         # external (default store)
+    archive_result : <blob@cold>   # external (specific store)
     """
 ```
 
-### `<attach>` - Internal File Attachment
+### `<attach>` / `<attach@>` - File Attachments
 
-File stored in database with filename preserved.
+**Supports both internal and external storage.**
+
+Stores files with filename preserved. On fetch, extracts to configured download path.
+
+- **`<attach>`**: Stored in database (`bytes` → `LONGBLOB`/`BYTEA`)
+- **`<attach@>`**: Stored externally via `<content@>` with deduplication
+- **`<attach@store>`**: Stored in specific named store
 
 ```python
 @dj.register_type
 class AttachType(AttributeType):
+    """File attachment with filename. Supports internal and external."""
     type_name = "attach"
-    dtype = "longblob"
 
-    def encode(self, filepath, *, key=None) -> bytes:
+    def get_dtype(self, is_external: bool) -> str:
+        return "<content>" if is_external else "bytes"
+
+    def encode(self, filepath, *, key=None, store_name=None) -> bytes:
         path = Path(filepath)
         return path.name.encode() + b"\0" + path.read_bytes()
 
@@ -515,31 +517,6 @@ class AttachType(AttributeType):
         filename, contents = stored.split(b"\0", 1)
         filename = filename.decode()
         download_path = Path(dj.config['download_path']) / filename
-        download_path.parent.mkdir(parents=True, exist_ok=True)
-        download_path.write_bytes(contents)
-        return str(download_path)
-```
-
-### `<xattach>` / `<xattach@store>` - External File Attachment
-
-File stored in content-addressed storage with filename preserved.
-
-```python
-@dj.register_type
-class XAttachType(AttributeType):
-    type_name = "xattach"
-    dtype = "content"  # Core type
-
-    def encode(self, filepath, *, key=None) -> bytes:
-        path = Path(filepath)
-        # Include filename in stored data
-        return path.name.encode() + b"\0" + path.read_bytes()
-
-    def decode(self, stored, *, key=None) -> str:
-        filename, contents = stored.split(b"\0", 1)
-        filename = filename.decode()
-        download_path = Path(dj.config['download_path']) / filename
-        download_path.parent.mkdir(parents=True, exist_ok=True)
         download_path.write_bytes(contents)
         return str(download_path)
 ```
@@ -548,29 +525,75 @@ Usage:
 ```python
 class Attachments(dj.Manual):
     definition = """
-    attachment_id : int
+    attachment_id : int32
     ---
     config : <attach>           # internal (small file in DB)
-    data_file : <xattach>       # external (default store)
-    archive : <xattach@cold>    # external (specific store)
+    data_file : <attach@>       # external (default store)
+    archive : <attach@cold>     # external (specific store)
     """
+```
+
+## User-Defined AttributeTypes
+
+Users can define custom AttributeTypes for domain-specific data:
+
+```python
+@dj.register_type
+class GraphType(AttributeType):
+    """Store NetworkX graphs. Internal only (no external support)."""
+    type_name = "graph"
+
+    def get_dtype(self, is_external: bool) -> str:
+        if is_external:
+            raise DataJointError("<graph> does not support external storage")
+        return "<blob>"  # Chain to blob for serialization
+
+    def encode(self, graph, *, key=None, store_name=None):
+        return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
+
+    def decode(self, stored, *, key=None):
+        G = nx.Graph()
+        G.add_nodes_from(stored['nodes'])
+        G.add_edges_from(stored['edges'])
+        return G
+```
+
+Custom types can support both modes by returning different dtypes:
+
+```python
+@dj.register_type
+class ImageType(AttributeType):
+    """Store images. Supports both internal and external."""
+    type_name = "image"
+
+    def get_dtype(self, is_external: bool) -> str:
+        return "<content>" if is_external else "bytes"
+
+    def encode(self, image, *, key=None, store_name=None) -> bytes:
+        # Convert PIL Image to PNG bytes
+        buffer = io.BytesIO()
+        image.save(buffer, format='PNG')
+        return buffer.getvalue()
+
+    def decode(self, stored: bytes, *, key=None):
+        return PIL.Image.open(io.BytesIO(stored))
 ```
 
 ## Storage Comparison
 
-| Type | dtype | Storage Location | Dedup | Returns |
-|------|-------|------------------|-------|---------|
-| `<object>` | `json` | `{schema}/{table}/{pk}/` | No | ObjectRef |
-| `<object@s>` | `json` | `{schema}/{table}/{pk}/` | No | ObjectRef |
-| `<content>` | `json` | `_content/{hash}` | Yes | bytes |
-| `<content@s>` | `json` | `_content/{hash}` | Yes | bytes |
-| `<filepath@s>` | `json` | Configured store (relative path) | No | ObjectRef |
-| `<djblob>` | `longblob` | Database | No | Python object |
-| `<xblob>` | `<content>` | `_content/{hash}` | Yes | Python object |
-| `<xblob@s>` | `<content@s>` | `_content/{hash}` | Yes | Python object |
-| `<attach>` | `longblob` | Database | No | Local file path |
-| `<xattach>` | `<content>` | `_content/{hash}` | Yes | Local file path |
-| `<xattach@s>` | `<content@s>` | `_content/{hash}` | Yes | Local file path |
+| Type | get_dtype | Resolves To | Storage Location | Dedup | Returns |
+|------|-----------|-------------|------------------|-------|---------|
+| `<blob>` | `bytes` | `LONGBLOB`/`BYTEA` | Database | No | Python object |
+| `<blob@>` | `<content>` | `json` | `_content/{hash}` | Yes | Python object |
+| `<blob@s>` | `<content>` | `json` | `_content/{hash}` | Yes | Python object |
+| `<attach>` | `bytes` | `LONGBLOB`/`BYTEA` | Database | No | Local file path |
+| `<attach@>` | `<content>` | `json` | `_content/{hash}` | Yes | Local file path |
+| `<attach@s>` | `<content>` | `json` | `_content/{hash}` | Yes | Local file path |
+| `<object@>` | `json` | `JSON`/`JSONB` | `{schema}/{table}/{pk}/` | No | ObjectRef |
+| `<object@s>` | `json` | `JSON`/`JSONB` | `{schema}/{table}/{pk}/` | No | ObjectRef |
+| `<content@>` | `json` | `JSON`/`JSONB` | `_content/{hash}` | Yes | bytes |
+| `<content@s>` | `json` | `JSON`/`JSONB` | `_content/{hash}` | Yes | bytes |
+| `<filepath@s>` | `json` | `JSON`/`JSONB` | Configured store | No | ObjectRef |
 
 ## Reference Counting for Content Type
 
@@ -619,22 +642,23 @@ def garbage_collect(project):
 
 ## Built-in AttributeType Comparison
 
-| Feature | `<object>` | `<content>` | `<filepath@store>` |
-|---------|------------|-------------|---------------------|
-| dtype | `json` | `json` | `json` |
-| Location | OAS store | OAS store | Configured store |
-| Addressing | Primary key | Content hash | Relative path |
-| Path control | DataJoint | DataJoint | User |
-| Deduplication | No | Yes | No |
-| Structure | Files, folders, Zarr | Single blob only | Any (via fsspec) |
-| Access | ObjectRef (lazy) | Transparent (bytes) | ObjectRef (lazy) |
-| GC | Deleted with row | Reference counted | N/A (user managed) |
-| Integrity | DataJoint managed | DataJoint managed | User managed |
+| Feature | `<blob>` | `<attach>` | `<object@>` | `<content@>` | `<filepath@>` |
+|---------|----------|------------|-------------|--------------|---------------|
+| Storage modes | Both | Both | External only | External only | External only |
+| Internal dtype | `bytes` | `bytes` | N/A | N/A | N/A |
+| External dtype | `<content>` | `<content>` | `json` | `json` | `json` |
+| Addressing | Content hash | Content hash | Primary key | Content hash | Relative path |
+| Deduplication | Yes (external) | Yes (external) | No | Yes | No |
+| Structure | Single blob | Single file | Files, folders | Single blob | Any |
+| Returns | Python object | Local path | ObjectRef | bytes | ObjectRef |
+| GC | Ref counted | Ref counted | With row | Ref counted | User managed |
 
 **When to use each:**
-- **`<object>`**: Large/complex objects where DataJoint controls organization (Zarr, HDF5)
-- **`<content>`**: Deduplicated serialized data or file attachments via `<xblob>`, `<xattach>`
-- **`<filepath@store>`**: Portable references to files in configured stores
+- **`<blob>`**: Serialized Python objects (NumPy arrays, dicts). Use `<blob@>` for large/duplicated data
+- **`<attach>`**: File attachments with filename preserved. Use `<attach@>` for large files
+- **`<object@>`**: Large/complex file structures (Zarr, HDF5) where DataJoint controls organization
+- **`<content@>`**: Raw bytes with deduplication (typically used via `<blob@>` or `<attach@>`)
+- **`<filepath@store>`**: Portable references to externally-managed files
 - **`varchar`**: Arbitrary URLs/paths where ObjectRef semantics aren't needed
 
 ## Key Design Decisions
@@ -643,32 +667,34 @@ def garbage_collect(project):
    - Layer 1: Native database types (backend-specific, discouraged)
    - Layer 2: Core DataJoint types (standardized, scientist-friendly)
    - Layer 3: AttributeTypes (encode/decode, composable)
-2. **Core types are scientist-friendly**: `float32`, `uint8`, `bool` instead of `FLOAT`, `TINYINT UNSIGNED`, `TINYINT(1)`
-3. **AttributeTypes use angle brackets**: `<object>`, `<djblob>`, `<filepath@store>` - distinguishes from core types
-4. **AttributeTypes are composable**: `<xblob>` uses `<content>`, which uses `json`
-5. **Built-in AttributeTypes use JSON dtype**: Stores metadata (path, hash, store name, etc.)
-6. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
-7. **Filepath for portability**: `<filepath@store>` uses relative paths within stores for environment portability
-8. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
-9. **Content type**: Single-blob, content-addressed, deduplicated storage
-10. **Parameterized types**: `<type@param>` passes store parameter
+2. **Core types are scientist-friendly**: `float32`, `uint8`, `bool`, `bytes` instead of `FLOAT`, `TINYINT UNSIGNED`, `LONGBLOB`
+3. **AttributeTypes use angle brackets**: `<blob>`, `<object@store>`, `<filepath@main>` - distinguishes from core types
+4. **`@` indicates external storage**: No `@` = database, `@` present = object store
+5. **`get_dtype(is_external)` method**: Types resolve dtype at declaration time based on storage mode
+6. **AttributeTypes are composable**: `<blob@>` uses `<content@>`, which uses `json`
+7. **Built-in external types use JSON dtype**: Stores metadata (path, hash, store name, etc.)
+8. **Two OAS regions**: object (PK-addressed) and content (hash-addressed) within managed stores
+9. **Filepath for portability**: `<filepath@store>` uses relative paths within stores for environment portability
+10. **No `uri` type**: For arbitrary URLs, use `varchar`—simpler and more transparent
 11. **Naming conventions**:
-    - `dj` prefix = DataJoint-specific internal serialization (`<djblob>`)
-    - `x` prefix = external/content-addressed variant (`<xblob>`, `<xattach>`)
-    - `@store` suffix = specifies which configured store to use
-    - Types without prefix: core storage mechanisms (`<object>`, `<content>`, `<attach>`, `<filepath>`)
-12. **Transparent access**: AttributeTypes return Python objects or file paths
-13. **Lazy access**: `<object>`, `<object@store>`, and `<filepath@store>` return ObjectRef
+    - `@` = external storage (object store)
+    - No `@` = internal storage (database)
+    - `@` alone = default store
+    - `@name` = named store
+12. **Dual-mode types**: `<blob>` and `<attach>` support both internal and external storage
+13. **External-only types**: `<object@>`, `<content@>`, `<filepath@>` require `@`
+14. **Transparent access**: AttributeTypes return Python objects or file paths
+15. **Lazy access**: `<object@>` and `<filepath@store>` return ObjectRef
 
 ## Migration from Legacy Types
 
 | Legacy | New Equivalent |
 |--------|----------------|
-| `longblob` (auto-serialized) | `<djblob>` |
-| `blob@store` | `<xblob@store>` |
+| `longblob` (auto-serialized) | `<blob>` |
+| `blob@store` | `<blob@store>` |
 | `attach` | `<attach>` |
-| `attach@store` | `<xattach@store>` |
-| `filepath@store` (copy-based) | `<filepath@store>` (ObjectRef-based, upgraded) |
+| `attach@store` | `<attach@store>` |
+| `filepath@store` (copy-based) | `<filepath@store>` (ObjectRef-based) |
 
 ### Migration from Legacy `~external_*` Stores
 
@@ -728,6 +754,5 @@ def migrate_external_store(schema, store_name):
 
 ## Open Questions
 
-1. Should `content` without `@store` use a default store, or require explicit store?
-2. Should we support `<xblob>` without `@store` syntax (implying default store)?
-3. How long should the backward compatibility layer support legacy `~external_*` format?
+1. How long should the backward compatibility layer support legacy `~external_*` format?
+2. Should `<content@>` (without store name) use a default store or require explicit store name?
