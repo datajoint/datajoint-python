@@ -25,14 +25,14 @@ Semantic matching is enabled by default in DataJoint 2.0. For most well-designed
 # Two tables with generic 'id' attribute
 class Student(dj.Manual):
     definition = """
-    id : int
+    id : uint32
     ---
     name : varchar(100)
     """
 
 class Course(dj.Manual):
     definition = """
-    id : int
+    id : uint32
     ---
     title : varchar(100)
     """
@@ -57,7 +57,7 @@ Student().join(Course(), semantic_check=False)  # OK, but be careful!
 ```python
 class Student(dj.Manual):
     definition = """
-    student_id : int
+    student_id : uint32
     ---
     name : varchar(100)
     """
@@ -235,15 +235,15 @@ schema_name.table_name.attribute_name
 ```python
 class Session(dj.Manual):         # table: session
     definition = """
-    session_id : int
+    session_id : uint32
     ---
-    date : date
+    session_date : date
     """
 
 class Trial(dj.Manual):           # table: trial
     definition = """
     -> Session
-    trial_num : int
+    trial_num : uint16
     ---
     stimulus : varchar(100)
     """
@@ -251,7 +251,7 @@ class Trial(dj.Manual):           # table: trial
 
 Lineages:
 - `Session.session_id` → `myschema.session.session_id` (native PK)
-- `Session.date` → `None` (native secondary)
+- `Session.session_date` → `None` (native secondary)
 - `Trial.session_id` → `myschema.session.session_id` (inherited via FK)
 - `Trial.trial_num` → `myschema.trial.trial_num` (native PK)
 - `Trial.stimulus` → `None` (native secondary)
@@ -385,7 +385,7 @@ run schema.rebuild_lineage() on this schema to correct the lineage.
 ```python
 class Student(dj.Manual):
     definition = """
-    student_id : int
+    student_id : uint32
     ---
     name : varchar(100)
     """
@@ -407,16 +407,16 @@ Student() * Enrollment()
 ```python
 class TableA(dj.Manual):
     definition = """
-    id : int
+    id : uint32
     ---
-    value_a : int
+    value_a : int32
     """
 
 class TableB(dj.Manual):
     definition = """
-    id : int
+    id : uint32
     ---
-    value_b : int
+    value_b : int32
     """
 
 # Error: 'id' has different lineages
@@ -434,22 +434,22 @@ TableA().join(TableB(), semantic_check=False)
 ```python
 class Session(dj.Manual):
     definition = """
-    session_id : int
+    session_id : uint32
     ---
-    date : date
+    session_date : date
     """
 
 class Trial(dj.Manual):
     definition = """
     -> Session
-    trial_num : int
+    trial_num : uint16
     """
 
 class Response(dj.Computed):
     definition = """
     -> Trial
     ---
-    response_time : float
+    response_time : float64
     """
 
 # All work: session_id traces back to Session in all tables
@@ -463,21 +463,21 @@ Trial() * Response()
 ```python
 class Course(dj.Manual):
     definition = """
-    course_id : int
+    course_id : int unsigned
     ---
     title : varchar(100)
     """
 
 class FavoriteCourse(dj.Manual):
     definition = """
-    student_id : int
+    student_id : int unsigned
     ---
     -> Course
     """
 
 class RequiredCourse(dj.Manual):
     definition = """
-    major_id : int
+    major_id : int unsigned
     ---
     -> Course
     """
@@ -491,9 +491,9 @@ FavoriteCourse() * RequiredCourse()
 ```python
 class Person(dj.Manual):
     definition = """
-    person_id : int
+    person_id : int unsigned
     ---
-    name : varchar(100)
+    full_name : varchar(100)
     """
 
 class Marriage(dj.Manual):
@@ -501,7 +501,7 @@ class Marriage(dj.Manual):
     -> Person.proj(husband='person_id')
     -> Person.proj(wife='person_id')
     ---
-    date : date
+    marriage_date : date
     """
 
 # husband and wife both have lineage: schema.person.person_id

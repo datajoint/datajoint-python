@@ -674,10 +674,9 @@ class Table(QueryExpression):
         """
         if self.is_declared:
             # Clean up lineage entries for this table
-            from .lineage import delete_table_lineages, lineage_table_exists
+            from .lineage import delete_table_lineages
 
-            if lineage_table_exists(self.connection, self.database):
-                delete_table_lineages(self.connection, self.database, self.table_name)
+            delete_table_lineages(self.connection, self.database, self.table_name)
 
             query = "DROP TABLE %s" % self.full_table_name
             self.connection.query(query)
