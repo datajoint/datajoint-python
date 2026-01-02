@@ -330,12 +330,6 @@ def enable_adapted_types():
     yield
 
 
-@pytest.fixture
-def enable_filepath_feature():
-    """Legacy fixture - filepath feature is now always enabled."""
-    yield
-
-
 # --- Cleanup fixtures ---
 
 
@@ -550,7 +544,7 @@ def schema_adv(connection_test, prefix):
 
 
 @pytest.fixture
-def schema_ext(connection_test, enable_filepath_feature, mock_stores, mock_cache, prefix):
+def schema_ext(connection_test, mock_stores, mock_cache, prefix):
     schema = dj.Schema(
         prefix + "_extern",
         context=schema_external.LOCALS_EXTERNAL,

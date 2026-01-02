@@ -57,7 +57,7 @@ def schema_update1(connection_test, prefix):
     schema.drop()
 
 
-def test_update1(tmpdir, enable_filepath_feature, schema_update1, mock_stores_update):
+def test_update1(tmpdir, schema_update1, mock_stores_update):
     """Test normal updates"""
     # CHECK 1 -- initial insert
     key = dict(thing=1)
@@ -128,19 +128,19 @@ def test_update1(tmpdir, enable_filepath_feature, schema_update1, mock_stores_up
     assert original_file_data == final_file_data
 
 
-def test_update1_nonexistent(enable_filepath_feature, schema_update1, mock_stores_update):
+def test_update1_nonexistent(schema_update1, mock_stores_update):
     with pytest.raises(DataJointError):
         # updating a non-existent entry
         Thing.update1(dict(thing=100, frac=0.5))
 
 
-def test_update1_noprimary(enable_filepath_feature, schema_update1, mock_stores_update):
+def test_update1_noprimary(schema_update1, mock_stores_update):
     with pytest.raises(DataJointError):
         # missing primary key
         Thing.update1(dict(number=None))
 
 
-def test_update1_misspelled_attribute(enable_filepath_feature, schema_update1, mock_stores_update):
+def test_update1_misspelled_attribute(schema_update1, mock_stores_update):
     key = dict(thing=17)
     Thing.insert1(dict(key, frac=1.5))
     with pytest.raises(DataJointError):

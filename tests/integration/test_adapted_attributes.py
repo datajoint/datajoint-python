@@ -23,7 +23,6 @@ def schema_name(prefix):
 @pytest.fixture
 def schema_ad(
     connection_test,
-    enable_filepath_feature,
     s3_creds,
     tmpdir,
     schema_name,
