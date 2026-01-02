@@ -5,13 +5,13 @@ import networkx as nx
 import datajoint as dj
 
 
-class GraphType(dj.Codec):
+class GraphCodec(dj.Codec):
     """Custom codec for storing NetworkX graphs as edge lists."""
 
     name = "graph"
 
     def get_dtype(self, is_external: bool) -> str:
-        """Chain to djblob for serialization."""
+        """Chain to blob for serialization."""
         return "<blob>"
 
     def encode(self, obj, *, key=None, store_name=None):
@@ -24,22 +24,22 @@ class GraphType(dj.Codec):
         return nx.Graph(stored)
 
 
-class LayoutToFilepathType(dj.Codec):
-    """Custom codec that saves a graph layout as serialized JSON blob."""
+class LayoutCodec(dj.Codec):
+    """Custom codec that saves a graph layout as serialized blob."""
 
-    name = "layout_to_filepath"
+    name = "layout"
 
     def get_dtype(self, is_external: bool) -> str:
-        """Chain to djblob for serialization."""
+        """Chain to blob for serialization."""
         return "<blob>"
 
     def encode(self, layout, *, key=None, store_name=None):
         """Serialize layout dict."""
-        return layout  # djblob handles serialization
+        return layout  # blob handles serialization
 
     def decode(self, stored, *, key=None):
         """Deserialize layout dict."""
-        return stored  # djblob handles deserialization
+        return stored  # blob handles deserialization
 
 
 class Connectivity(dj.Manual):
@@ -55,9 +55,9 @@ class Layout(dj.Manual):
     # stores graph layout
     -> Connectivity
     ---
-    layout: <layout_to_filepath>
+    layout: <layout>
     """
 
 
-LOCALS_ADAPTED = {k: v for k, v in locals().items() if inspect.isclass(v)}
-__all__ = list(LOCALS_ADAPTED)
+LOCALS_CODECS = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_CODECS)

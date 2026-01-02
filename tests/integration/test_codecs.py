@@ -1,5 +1,5 @@
 """
-Tests for adapted/custom attribute types.
+Tests for custom codecs.
 
 These tests verify the Codec system for custom data types.
 """
@@ -11,50 +11,51 @@ import pytest
 
 import datajoint as dj
 
-from tests import schema_adapted
-from tests.schema_adapted import Connectivity, Layout
+from tests import schema_codecs
+from tests.schema_codecs import Connectivity, Layout
 
 
 @pytest.fixture
 def schema_name(prefix):
-    return prefix + "_test_custom_datatype"
+    return prefix + "_test_codecs"
 
 
 @pytest.fixture
-def schema_ad(
+def schema_codec(
     connection_test,
     s3_creds,
     tmpdir,
     schema_name,
 ):
-    dj.config["stores"] = {"repo-s3": dict(s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir))}
-    # Codecs are auto-registered via __init_subclass__ in schema_adapted
-    context = {**schema_adapted.LOCALS_ADAPTED}
+    dj.config["stores"] = {"repo-s3": dict(s3_creds, protocol="s3", location="codecs/repo", stage=str(tmpdir))}
+    # Codecs are auto-registered via __init_subclass__ in schema_codecs
+    context = {**schema_codecs.LOCALS_CODECS}
     schema = dj.schema(schema_name, context=context, connection=connection_test)
-    schema(schema_adapted.Connectivity)
-    schema(schema_adapted.Layout)
+    schema(schema_codecs.Connectivity)
+    schema(schema_codecs.Layout)
     yield schema
     schema.drop()
 
 
 @pytest.fixture
-def local_schema(schema_ad, schema_name):
+def local_schema(schema_codec, schema_name):
     """Fixture for testing spawned classes"""
-    local_schema = dj.Schema(schema_name, connection=schema_ad.connection)
+    local_schema = dj.Schema(schema_name, connection=schema_codec.connection)
     local_schema.spawn_missing_classes()
     yield local_schema
-    # Don't drop - schema_ad fixture handles cleanup
+    # Don't drop - schema_codec fixture handles cleanup
 
 
 @pytest.fixture
-def schema_virtual_module(schema_ad, schema_name):
+def schema_virtual_module(schema_codec, schema_name):
     """Fixture for testing virtual modules"""
-    # Types are registered globally, no need to add_objects for codecs
-    schema_virtual_module = dj.VirtualModule("virtual_module", schema_name, connection=schema_ad.connection)
+    # Codecs are registered globally, no need to add_objects
+    schema_virtual_module = dj.VirtualModule("virtual_module", schema_name, connection=schema_codec.connection)
     return schema_virtual_module
 
 
-def test_adapted_type(schema_ad):
+def test_codec_graph(schema_codec):
+    """Test basic codec encode/decode with graph type."""
     c = Connectivity()
     graphs = [
         nx.lollipop_graph(4, 2),
@@ -71,8 +72,8 @@ def test_adapted_type(schema_ad):
     c.delete()
 
 
-def test_adapted_filepath_type(schema_ad, minio_client):
-    """https://github.com/datajoint/datajoint-python/issues/684"""
+def test_codec_chained(schema_codec, minio_client):
+    """Test codec chaining (layout -> blob)."""
     c = Connectivity()
     c.delete()
     c.insert1((0, nx.lollipop_graph(4, 2)))
@@ -88,7 +89,8 @@ def test_adapted_filepath_type(schema_ad, minio_client):
     c.delete()
 
 
-def test_adapted_spawned(local_schema):
+def test_codec_spawned(local_schema):
+    """Test codecs work with spawned classes."""
     c = Connectivity()  # a spawned class
     graphs = [
         nx.lollipop_graph(4, 2),
@@ -105,7 +107,8 @@ def test_adapted_spawned(local_schema):
     c.delete()
 
 
-def test_adapted_virtual(schema_virtual_module):
+def test_codec_virtual_module(schema_virtual_module):
+    """Test codecs work with virtual modules."""
     c = schema_virtual_module.Connectivity()
     graphs = [
         nx.lollipop_graph(4, 2),

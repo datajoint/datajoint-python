@@ -1,8 +1,8 @@
 """
-Tests for type composition (type chain encoding/decoding).
+Tests for codec chaining (composition).
 
 This tests the <blob@> → <hash> → json composition pattern
-and similar type chains.
+and similar codec chains.
 """
 
 from datajoint.codecs import (
@@ -12,23 +12,23 @@ from datajoint.codecs import (
 )
 
 
-class TestTypeChainResolution:
-    """Tests for resolving type chains."""
+class TestCodecChainResolution:
+    """Tests for resolving codec chains."""
 
     def setup_method(self):
-        """Clear test types from registry before each test."""
+        """Clear test codecs from registry before each test."""
         for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
                 del _codec_registry[name]
 
     def teardown_method(self):
-        """Clean up test types after each test."""
+        """Clean up test codecs after each test."""
         for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
                 del _codec_registry[name]
 
-    def test_single_type_chain(self):
-        """Test resolving a single-type chain."""
+    def test_single_codec_chain(self):
+        """Test resolving a single-codec chain."""
 
         class TestSingle(Codec):
             name = "test_single"
@@ -49,8 +49,8 @@ class TestTypeChainResolution:
         assert chain[0].name == "test_single"
         assert store is None
 
-    def test_two_type_chain(self):
-        """Test resolving a two-type chain."""
+    def test_two_codec_chain(self):
+        """Test resolving a two-codec chain."""
 
         class TestInner(Codec):
             name = "test_inner"
@@ -83,8 +83,8 @@ class TestTypeChainResolution:
         assert chain[0].name == "test_outer"
         assert chain[1].name == "test_inner"
 
-    def test_three_type_chain(self):
-        """Test resolving a three-type chain."""
+    def test_three_codec_chain(self):
+        """Test resolving a three-codec chain."""
 
         class TestBase(Codec):
             name = "test_base"
@@ -131,17 +131,17 @@ class TestTypeChainResolution:
         assert chain[2].name == "test_base"
 
 
-class TestTypeChainEncodeDecode:
-    """Tests for encode/decode through type chains."""
+class TestCodecChainEncodeDecode:
+    """Tests for encode/decode through codec chains."""
 
     def setup_method(self):
-        """Clear test types from registry before each test."""
+        """Clear test codecs from registry before each test."""
         for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
                 del _codec_registry[name]
 
     def teardown_method(self):
-        """Clean up test types after each test."""
+        """Clean up test codecs after each test."""
         for name in list(_codec_registry.keys()):
             if name.startswith("test_"):
                 del _codec_registry[name]
@@ -180,8 +180,8 @@ class TestTypeChainEncodeDecode:
 
         # Apply encode in order: outer first, then inner
         value = b"start"
-        for attr_type in chain:
-            value = attr_type.encode(value)
+        for codec in chain:
+            value = codec.encode(value)
 
         assert encode_order == ["outer", "inner"]
         assert value == b"start_outer_inner"
@@ -220,14 +220,14 @@ class TestTypeChainEncodeDecode:
 
         # Apply decode in reverse order: inner first, then outer
         value = b"start_outer_inner"
-        for attr_type in reversed(chain):
-            value = attr_type.decode(value)
+        for codec in reversed(chain):
+            value = codec.decode(value)
 
         assert decode_order == ["inner", "outer"]
         assert value == b"start"
 
     def test_roundtrip(self):
-        """Test encode/decode roundtrip through a type chain."""
+        """Test encode/decode roundtrip through a codec chain."""
 
         class TestInnerRt(Codec):
             name = "test_inner_rt"
@@ -264,21 +264,21 @@ class TestTypeChainEncodeDecode:
 
         # Encode: outer → inner
         encoded = original
-        for attr_type in chain:
-            encoded = attr_type.encode(encoded)
+        for codec in chain:
+            encoded = codec.encode(encoded)
 
         assert encoded == b"COMPRESSED:test data"
 
         # Decode: inner → outer (reversed)
         decoded = encoded
-        for attr_type in reversed(chain):
-            decoded = attr_type.decode(decoded)
+        for codec in reversed(chain):
+            decoded = codec.decode(decoded)
 
         assert decoded == original
 
 
-class TestBuiltinTypeComposition:
-    """Tests for built-in type composition."""
+class TestBuiltinCodecChains:
+    """Tests for built-in codec chains."""
 
     def test_blob_internal_resolves_to_bytes(self):
         """Test that <blob> (internal) → bytes."""
@@ -345,17 +345,17 @@ class TestBuiltinTypeComposition:
 
 
 class TestStoreNameParsing:
-    """Tests for store name parsing in type specs."""
+    """Tests for store name parsing in codec specs."""
 
-    def test_type_with_store(self):
-        """Test parsing type with store name."""
+    def test_codec_with_store(self):
+        """Test parsing codec with store name."""
         final_dtype, chain, store = resolve_dtype("<blob@mystore>")
 
         assert final_dtype == "json"
         assert store == "mystore"
 
-    def test_type_without_store(self):
-        """Test parsing type without store name."""
+    def test_codec_without_store(self):
+        """Test parsing codec without store name."""
         final_dtype, chain, store = resolve_dtype("<blob>")
 
         assert store is None
