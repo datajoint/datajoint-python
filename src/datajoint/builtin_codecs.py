@@ -119,9 +119,6 @@ class BlobCodec(Codec):
         return blob.unpack(stored, squeeze=False)
 
 
-# Note: DJBlobType is defined at end of file as DJBlobCodec (not BlobCodec)
-
-
 # =============================================================================
 # Hash-Addressed Storage Codec
 # =============================================================================
@@ -201,9 +198,6 @@ class HashCodec(Codec):
         """Validate that value is bytes."""
         if not isinstance(value, bytes):
             raise TypeError(f"<hash> expects bytes, got {type(value).__name__}")
-
-
-# Note: ContentType is defined at end of file as ContentCodec (not HashCodec)
 
 
 # =============================================================================
@@ -419,10 +413,6 @@ class ObjectCodec(Codec):
         raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
 
 
-# Backward compatibility alias
-ObjectType = ObjectCodec
-
-
 # =============================================================================
 # File Attachment Codecs
 # =============================================================================
@@ -544,11 +534,6 @@ class AttachCodec(Codec):
             raise TypeError(f"<attach> expects a file path, got {type(value).__name__}")
 
 
-# Backward compatibility aliases
-AttachType = AttachCodec
-XAttachType = AttachCodec  # <attach@> is now just AttachCodec with external storage
-
-
 # =============================================================================
 # Filepath Reference Codec
 # =============================================================================
@@ -664,7 +649,3 @@ class FilepathCodec(Codec):
 
         if not isinstance(value, (str, Path)):
             raise TypeError(f"<filepath> expects a path string or Path, got {type(value).__name__}")
-
-
-# Backward compatibility alias
-FilepathType = FilepathCodec

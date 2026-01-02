@@ -2,7 +2,7 @@
 Migration utilities for DataJoint schema updates.
 
 This module provides tools for migrating existing schemas to use the new
-AttributeType system, particularly for upgrading blob columns to use
+Codec system, particularly for upgrading blob columns to use
 explicit `<blob>` type declarations.
 """
 

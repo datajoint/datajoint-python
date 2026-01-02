@@ -307,8 +307,8 @@ class Heading:
                     # Store the original type name for display but keep db_type for SQL
                     attr["original_type"] = special["type"]
 
-            # process Codecs (adapted types in angle brackets)
-            if special and TYPE_PATTERN["ADAPTED"].match(attr["type"]):
+            # process Codecs (types in angle brackets)
+            if special and TYPE_PATTERN["CODEC"].match(attr["type"]):
                 # Context can be None for built-in types that are globally registered
                 codec_spec = special["type"]
                 try:

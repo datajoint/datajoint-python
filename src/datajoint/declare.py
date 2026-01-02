@@ -76,8 +76,8 @@ TYPE_PATTERN = {
         TEMPORAL=r"(time|timestamp|year)(\s*\(.+\))?$",  # time, timestamp, year (not date/datetime)
         NATIVE_BLOB=r"(tiny|small|medium|long)blob$",  # Specific blob variants
         NATIVE_TEXT=r"(tiny|small|medium|long)text$",  # Text variants (use plain 'text' instead)
-        # AttributeTypes use angle brackets
-        ADAPTED=r"<.+>$",
+        # Codecs use angle brackets
+        CODEC=r"<.+>$",
     ).items()
 }
 
@@ -85,7 +85,7 @@ TYPE_PATTERN = {
 CORE_TYPE_NAMES = {name.upper() for name in CORE_TYPES}
 
 # Special types that need comment storage (core types + adapted)
-SPECIAL_TYPES = CORE_TYPE_NAMES | {"ADAPTED"}
+SPECIAL_TYPES = CORE_TYPE_NAMES | {"CODEC"}
 
 # Native SQL types that pass through (with optional warning)
 NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
@@ -102,23 +102,6 @@ def match_type(attribute_type):
 
 
 logger = logging.getLogger(__name__.split(".")[0])
-
-
-def build_foreign_key_parser_old():
-    # old-style foreign key parser. Superseded by expression-based syntax. See issue #436
-    # This will be deprecated in a future release.
-    left = pp.Literal("(").suppress()
-    right = pp.Literal(")").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]"))
-    new_attrs = pp.Optional(left + pp.DelimitedList(attribute_name) + right).set_results_name("new_attrs")
-    arrow = pp.Literal("->").suppress()
-    lbracket = pp.Literal("[").suppress()
-    rbracket = pp.Literal("]").suppress()
-    option = pp.Word(pp.srange("[a-zA-Z]"))
-    options = pp.Optional(lbracket + pp.DelimitedList(option) + rbracket).set_results_name("options")
-    ref_table = pp.Word(pp.alphas, pp.alphanums + "._").set_results_name("ref_table")
-    ref_attrs = pp.Optional(left + pp.DelimitedList(attribute_name) + right).set_results_name("ref_attrs")
-    return new_attrs + arrow + options + ref_table + ref_attrs
 
 
 def build_foreign_key_parser():
@@ -144,7 +127,6 @@ def build_attribute_parser():
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
 
-foreign_key_parser_old = build_foreign_key_parser_old()
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
 
@@ -459,14 +441,14 @@ def substitute_special_type(match, category, foreign_key_sql, context):
 
     Special types are:
     - Core DataJoint types (float32 → float, uuid → binary(16), bytes → longblob, etc.)
-    - ADAPTED types (AttributeTypes in angle brackets)
+    - CODEC types (Codecs in angle brackets)
 
     :param match: dict containing with keys "type" and "comment" -- will be modified in place
     :param category: attribute type category from TYPE_PATTERN
     :param foreign_key_sql: list of foreign key declarations to add to
     :param context: context for looking up user-defined codecs (unused, kept for compatibility)
     """
-    if category == "ADAPTED":
+    if category == "CODEC":
         # Codec - resolve to underlying dtype
         codec, store_name = lookup_codec(match["type"])
         if store_name is not None:
@@ -540,7 +522,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     category = match_type(match["type"])
 
     if category in SPECIAL_TYPES:
-        # Core types and AttributeTypes are recorded in comment for reconstruction
+        # Core types and Codecs are recorded in comment for reconstruction
         match["comment"] = ":{type}:{comment}".format(**match)
         substitute_special_type(match, category, foreign_key_sql, context)
     elif category in NATIVE_TYPES:

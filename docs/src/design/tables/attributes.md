@@ -96,7 +96,7 @@ The `@` character indicates **external storage** (object store vs database):
 
 - `<blob>`: DataJoint's native serialization format for Python objects. Supports
   NumPy arrays, dicts, lists, datetime objects, and nested structures. Stores in
-  database. Compatible with MATLAB. See [custom types](customtype.md) for details.
+  database. Compatible with MATLAB. See [custom codecs](codecs.md) for details.
 
 - `<blob@>` / `<blob@store>`: Like `<blob>` but stores externally with hash-
   addressed deduplication. Use for large arrays that may be duplicated across rows.
@@ -125,7 +125,7 @@ The `@` character indicates **external storage** (object store vs database):
 
 ### User-defined codecs
 
-- `<custom_type>`: Define your own [custom codec](customtype.md) with
+- `<custom_type>`: Define your own [custom codec](codecs.md) with
   bidirectional conversion between Python objects and database storage. Use for
   graphs, domain-specific objects, or custom data structures.
 

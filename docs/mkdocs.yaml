@@ -33,7 +33,7 @@ nav:
       - Blobs: design/tables/blobs.md
       - Attachments: design/tables/attach.md
       - Filepaths: design/tables/filepath.md
-      - Custom Datatypes: design/tables/customtype.md
+      - Custom Codecs: design/tables/codecs.md
       - Dependencies: design/tables/dependencies.md
       - Indexes: design/tables/indexes.md
       - Master-Part Relationships: design/tables/master-part.md

@@ -732,7 +732,7 @@ class Table(QueryExpression):
         processing by mysql API.
 
         In the simplified type system:
-        - Adapters (AttributeTypes) handle all custom encoding via type chains
+        - Codecs handle all custom encoding via type chains
         - UUID values are converted to bytes
         - JSON values are serialized
         - Blob values pass through as bytes

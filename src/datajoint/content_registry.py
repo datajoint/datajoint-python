@@ -2,8 +2,8 @@
 Content-addressed storage registry for DataJoint.
 
 This module provides content-addressed storage with deduplication for the <hash>
-AttributeType. Content is identified by its SHA256 hash and stored in a hierarchical
-directory structure: _content/{hash[:2]}/{hash[2:4]}/{hash}
+Codec. Content is identified by its MD5 hash and stored in a hierarchical
+directory structure: _hash/{hash[:2]}/{hash[2:4]}/{hash}
 
 The ContentRegistry tracks stored content for garbage collection purposes.
 """

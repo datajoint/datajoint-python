@@ -24,10 +24,7 @@ import urllib3
 from packaging import version
 
 import datajoint as dj
-from datajoint.errors import (
-    FILEPATH_FEATURE_SWITCH,
-    DataJointError,
-)
+from datajoint.errors import DataJointError
 
 from . import schema, schema_advanced, schema_external, schema_object, schema_simple
 from . import schema_uuid as schema_uuid_module
@@ -334,10 +331,9 @@ def enable_adapted_types():
 
 
 @pytest.fixture
-def enable_filepath_feature(monkeypatch):
-    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, "TRUE")
+def enable_filepath_feature():
+    """Legacy fixture - filepath feature is now always enabled."""
     yield
-    monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
 
 # --- Cleanup fixtures ---
