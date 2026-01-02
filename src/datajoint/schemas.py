@@ -333,6 +333,18 @@ class Schema:
         self._assert_exists()
         return lineage_table_exists(self.connection, self.database)
 
+    @property
+    def lineage(self):
+        """
+        Get all lineages for tables in this schema.
+
+        :return: A dict mapping 'schema.table.attribute' to its lineage
+        """
+        from .lineage import get_schema_lineages
+
+        self._assert_exists()
+        return get_schema_lineages(self.connection, self.database)
+
     def rebuild_lineage(self):
         """
         Rebuild the ~lineage table for all tables in this schema.

@@ -128,6 +128,19 @@ if schema.lineage_table_exists:
 
 **Returns**: `bool` - `True` if `~lineage` table exists, `False` otherwise.
 
+#### `schema.lineage`
+
+Property returning all lineage entries for the schema.
+
+```python
+schema.lineage
+# {'myschema.session.session_id': 'myschema.session.session_id',
+#  'myschema.trial.session_id': 'myschema.session.session_id',
+#  'myschema.trial.trial_num': 'myschema.trial.trial_num'}
+```
+
+**Returns**: `dict` - Maps `'schema.table.attribute'` to its lineage origin
+
 ### Join Methods
 
 #### `expr.join(other, semantic_check=True)`
@@ -173,6 +186,8 @@ Equivalent to `A.restrict(B, semantic_check=True)`.
 #### `A - B` (Anti-restriction)
 
 Restriction with negation. Semantic checking applies.
+
+To bypass semantic checking: `A.restrict(dj.Not(B), semantic_check=False)`
 
 #### `A + B` (Union)
 

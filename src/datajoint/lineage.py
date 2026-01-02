@@ -109,6 +109,26 @@ def get_table_lineages(connection, database, table_name):
     return {row[0]: row[1] for row in results}
 
 
+def get_schema_lineages(connection, database):
+    """
+    Get all lineages for a schema from the ~lineage table.
+
+    :param connection: A DataJoint connection object
+    :param database: The schema/database name
+    :return: A dict mapping 'schema.table.attribute' to its lineage
+    """
+    if not lineage_table_exists(connection, database):
+        return {}
+
+    results = connection.query(
+        """
+        SELECT table_name, attribute_name, lineage FROM `{database}`.`~lineage`
+        """.format(database=database),
+    ).fetchall()
+
+    return {f"{database}.{table}.{attr}": lineage for table, attr, lineage in results}
+
+
 def insert_lineages(connection, database, entries):
     """
     Insert multiple lineage entries in the ~lineage table as a single transaction.
