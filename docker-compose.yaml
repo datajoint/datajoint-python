@@ -1,10 +1,15 @@
 # Development environment with MySQL and MinIO services
 #
-# Quick start:
-#   docker compose up -d db minio   # Start services
-#   pytest tests/                    # Run tests (uses localhost defaults)
+# NOTE: docker-compose is OPTIONAL for running tests.
+# Tests use testcontainers to automatically manage containers.
+# Just run: pytest tests/
 #
-# Full Docker testing:
+# Use docker-compose for development/debugging when you want
+# persistent containers that survive test runs:
+#   docker compose up -d db minio   # Start services manually
+#   pytest tests/                    # Tests will use these containers
+#
+# Full Docker testing (CI):
 #   docker compose --profile test up djtest --build
 services:
   db:

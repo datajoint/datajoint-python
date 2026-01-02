@@ -1,16 +1,12 @@
 """
 Pytest configuration for DataJoint tests.
 
-Expects MySQL and MinIO services to be running via docker-compose:
-    docker-compose up -d db minio
+Containers are automatically started via testcontainers - no manual setup required.
+Just run: pytest tests/
 
-Environment variables (with defaults from docker-compose.yaml):
-    DJ_HOST=db          MySQL host
-    DJ_USER=root        MySQL root user
-    DJ_PASS=password    MySQL root password
-    S3_ENDPOINT=minio:9000   MinIO endpoint
-    S3_ACCESS_KEY=datajoint  MinIO access key
-    S3_SECRET_KEY=datajoint  MinIO secret key
+To use external containers instead (e.g., docker-compose), set:
+    DJ_USE_EXTERNAL_CONTAINERS=1
+    DJ_HOST=localhost DJ_PORT=3306 S3_ENDPOINT=localhost:9000 pytest
 """
 
 import logging
@@ -21,7 +17,6 @@ from typing import Dict, List
 import certifi
 import pytest
 import urllib3
-from packaging import version
 
 import datajoint as dj
 from datajoint.errors import DataJointError
@@ -33,7 +28,74 @@ from . import schema_type_aliases as schema_type_aliases_module
 logger = logging.getLogger(__name__)
 
 
-# --- Database connection fixtures ---
+# =============================================================================
+# Container Fixtures - Auto-start MySQL and MinIO via testcontainers
+# =============================================================================
+
+# Check if we should use external containers (for CI or manual docker-compose)
+USE_EXTERNAL_CONTAINERS = os.environ.get("DJ_USE_EXTERNAL_CONTAINERS", "").lower() in ("1", "true", "yes")
+
+
+@pytest.fixture(scope="session")
+def mysql_container():
+    """Start MySQL container for the test session (or use external)."""
+    if USE_EXTERNAL_CONTAINERS:
+        # Use external container - return None, credentials come from env
+        logger.info("Using external MySQL container")
+        yield None
+        return
+
+    from testcontainers.mysql import MySqlContainer
+
+    container = MySqlContainer(
+        image="mysql:8.0",
+        username="root",
+        password="password",
+        dbname="test",
+    )
+    container.start()
+
+    host = container.get_container_host_ip()
+    port = container.get_exposed_port(3306)
+    logger.info(f"MySQL container started at {host}:{port}")
+
+    yield container
+
+    container.stop()
+    logger.info("MySQL container stopped")
+
+
+@pytest.fixture(scope="session")
+def minio_container():
+    """Start MinIO container for the test session (or use external)."""
+    if USE_EXTERNAL_CONTAINERS:
+        # Use external container - return None, credentials come from env
+        logger.info("Using external MinIO container")
+        yield None
+        return
+
+    from testcontainers.minio import MinioContainer
+
+    container = MinioContainer(
+        image="minio/minio:latest",
+        access_key="datajoint",
+        secret_key="datajoint",
+    )
+    container.start()
+
+    host = container.get_container_host_ip()
+    port = container.get_exposed_port(9000)
+    logger.info(f"MinIO container started at {host}:{port}")
+
+    yield container
+
+    container.stop()
+    logger.info("MinIO container stopped")
+
+
+# =============================================================================
+# Credential Fixtures - Derived from containers or environment
+# =============================================================================
 
 
 @pytest.fixture(scope="session")
@@ -42,51 +104,99 @@ def prefix():
 
 
 @pytest.fixture(scope="session")
-def db_creds_root() -> Dict:
-    """Root database credentials from environment."""
-    host = os.environ.get("DJ_HOST", "db")
-    port = os.environ.get("DJ_PORT", "3306")
-    return dict(
-        host=f"{host}:{port}" if port else host,
-        user=os.environ.get("DJ_USER", "root"),
-        password=os.environ.get("DJ_PASS", "password"),
-    )
+def db_creds_root(mysql_container) -> Dict:
+    """Root database credentials from container or environment."""
+    if mysql_container is not None:
+        # From testcontainer
+        host = mysql_container.get_container_host_ip()
+        port = mysql_container.get_exposed_port(3306)
+        return dict(
+            host=f"{host}:{port}",
+            user="root",
+            password="password",
+        )
+    else:
+        # From environment (external container)
+        host = os.environ.get("DJ_HOST", "localhost")
+        port = os.environ.get("DJ_PORT", "3306")
+        return dict(
+            host=f"{host}:{port}" if port else host,
+            user=os.environ.get("DJ_USER", "root"),
+            password=os.environ.get("DJ_PASS", "password"),
+        )
 
 
 @pytest.fixture(scope="session")
-def db_creds_test() -> Dict:
-    """Test user database credentials from environment."""
-    host = os.environ.get("DJ_HOST", "db")
-    port = os.environ.get("DJ_PORT", "3306")
-    return dict(
-        host=f"{host}:{port}" if port else host,
-        user=os.environ.get("DJ_TEST_USER", "datajoint"),
-        password=os.environ.get("DJ_TEST_PASSWORD", "datajoint"),
-    )
+def db_creds_test(mysql_container) -> Dict:
+    """Test user database credentials from container or environment."""
+    if mysql_container is not None:
+        # From testcontainer
+        host = mysql_container.get_container_host_ip()
+        port = mysql_container.get_exposed_port(3306)
+        return dict(
+            host=f"{host}:{port}",
+            user="datajoint",
+            password="datajoint",
+        )
+    else:
+        # From environment (external container)
+        host = os.environ.get("DJ_HOST", "localhost")
+        port = os.environ.get("DJ_PORT", "3306")
+        return dict(
+            host=f"{host}:{port}" if port else host,
+            user=os.environ.get("DJ_TEST_USER", "datajoint"),
+            password=os.environ.get("DJ_TEST_PASSWORD", "datajoint"),
+        )
 
 
 @pytest.fixture(scope="session")
-def s3_creds() -> Dict:
-    """S3/MinIO credentials from environment."""
-    return dict(
-        endpoint=os.environ.get("S3_ENDPOINT", "minio:9000"),
-        access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
-        secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
-        bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
-    )
+def s3_creds(minio_container) -> Dict:
+    """S3/MinIO credentials from container or environment."""
+    if minio_container is not None:
+        # From testcontainer
+        host = minio_container.get_container_host_ip()
+        port = minio_container.get_exposed_port(9000)
+        return dict(
+            endpoint=f"{host}:{port}",
+            access_key="datajoint",
+            secret_key="datajoint",
+            bucket="datajoint.test",
+        )
+    else:
+        # From environment (external container)
+        return dict(
+            endpoint=os.environ.get("S3_ENDPOINT", "localhost:9000"),
+            access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
+            secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
+            bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
+        )
+
+
+# =============================================================================
+# DataJoint Configuration
+# =============================================================================
 
 
 @pytest.fixture(scope="session", autouse=True)
 def configure_datajoint(db_creds_root):
-    """Configure DataJoint to use docker-compose services."""
-    host = os.environ.get("DJ_HOST", "db")
-    port = os.environ.get("DJ_PORT", "3306")
+    """Configure DataJoint to use test database."""
+    # Parse host:port from credentials
+    host_port = db_creds_root["host"]
+    if ":" in host_port:
+        host, port = host_port.rsplit(":", 1)
+    else:
+        host, port = host_port, "3306"
 
     dj.config["database.host"] = host
     dj.config["database.port"] = int(port)
     dj.config["safemode"] = False
 
     logger.info(f"Configured DataJoint to use MySQL at {host}:{port}")
+
+
+# =============================================================================
+# Connection Fixtures
+# =============================================================================
 
 
 @pytest.fixture(scope="session")
@@ -101,45 +211,29 @@ def connection_root(connection_root_bare, prefix):
     """Root database connection with test users created."""
     conn_root = connection_root_bare
 
-    # Create MySQL users
-    if version.parse(conn_root.query("select @@version;").fetchone()[0]) >= version.parse("8.0.0"):
-        conn_root.query(
-            """
-            CREATE USER IF NOT EXISTS 'datajoint'@'%%'
-            IDENTIFIED BY 'datajoint';
-            """
-        )
-        conn_root.query(
-            """
-            CREATE USER IF NOT EXISTS 'djview'@'%%'
-            IDENTIFIED BY 'djview';
-            """
-        )
-        conn_root.query(
-            """
-            CREATE USER IF NOT EXISTS 'djssl'@'%%'
-            IDENTIFIED BY 'djssl'
-            REQUIRE SSL;
-            """
-        )
-        conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
-        conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
-        conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
-    else:
-        conn_root.query(
-            """
-            GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
-            IDENTIFIED BY 'datajoint';
-            """
-        )
-        conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';")
-        conn_root.query(
-            """
-            GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
-            IDENTIFIED BY 'djssl'
-            REQUIRE SSL;
-            """
-        )
+    # Create MySQL users (MySQL 8.0+ syntax - we only support 8.0+)
+    conn_root.query(
+        """
+        CREATE USER IF NOT EXISTS 'datajoint'@'%%'
+        IDENTIFIED BY 'datajoint';
+        """
+    )
+    conn_root.query(
+        """
+        CREATE USER IF NOT EXISTS 'djview'@'%%'
+        IDENTIFIED BY 'djview';
+        """
+    )
+    conn_root.query(
+        """
+        CREATE USER IF NOT EXISTS 'djssl'@'%%'
+        IDENTIFIED BY 'djssl'
+        REQUIRE SSL;
+        """
+    )
+    conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
+    conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
+    conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
 
     yield conn_root
 
@@ -164,27 +258,19 @@ def connection_test(connection_root, prefix, db_creds_test):
     database = f"{prefix}%%"
     permission = "ALL PRIVILEGES"
 
-    if version.parse(connection_root.query("select @@version;").fetchone()[0]) >= version.parse("8.0.0"):
-        connection_root.query(
-            f"""
-            CREATE USER IF NOT EXISTS '{db_creds_test["user"]}'@'%%'
-            IDENTIFIED BY '{db_creds_test["password"]}';
-            """
-        )
-        connection_root.query(
-            f"""
-            GRANT {permission} ON `{database}`.*
-            TO '{db_creds_test["user"]}'@'%%';
-            """
-        )
-    else:
-        connection_root.query(
-            f"""
-            GRANT {permission} ON `{database}`.*
-            TO '{db_creds_test["user"]}'@'%%'
-            IDENTIFIED BY '{db_creds_test["password"]}';
-            """
-        )
+    # MySQL 8.0+ syntax
+    connection_root.query(
+        f"""
+        CREATE USER IF NOT EXISTS '{db_creds_test["user"]}'@'%%'
+        IDENTIFIED BY '{db_creds_test["password"]}';
+        """
+    )
+    connection_root.query(
+        f"""
+        GRANT {permission} ON `{database}`.*
+        TO '{db_creds_test["user"]}'@'%%';
+        """
+    )
 
     connection = dj.Connection(**db_creds_test)
     yield connection
@@ -192,7 +278,9 @@ def connection_test(connection_root, prefix, db_creds_test):
     connection.close()
 
 
-# --- S3/MinIO fixtures ---
+# =============================================================================
+# S3/MinIO Fixtures
+# =============================================================================
 
 
 @pytest.fixture(scope="session")
@@ -309,7 +397,9 @@ def minio_client(s3_creds, s3fs_client, teardown=False):
         pass
 
 
-# --- Utility fixtures ---
+# =============================================================================
+# Utility Fixtures
+# =============================================================================
 
 
 @pytest.fixture(scope="session")
@@ -330,7 +420,9 @@ def enable_adapted_types():
     yield
 
 
-# --- Cleanup fixtures ---
+# =============================================================================
+# Cleanup Fixtures
+# =============================================================================
 
 
 @pytest.fixture
@@ -364,7 +456,9 @@ def clean_test_tables(test, test_extra, test_no_extra):
     test_no_extra.delete()
 
 
-# --- Schema fixtures ---
+# =============================================================================
+# Schema Fixtures
+# =============================================================================
 
 
 @pytest.fixture(scope="module")
@@ -591,7 +685,9 @@ def schema_type_aliases(connection_test, prefix):
     schema.drop()
 
 
-# --- Table fixtures ---
+# =============================================================================
+# Table Fixtures
+# =============================================================================
 
 
 @pytest.fixture
@@ -667,7 +763,9 @@ def trash(schema_any):
     return schema.UberTrash()
 
 
-# --- Object storage fixtures ---
+# =============================================================================
+# Object Storage Fixtures
+# =============================================================================
 
 
 @pytest.fixture
