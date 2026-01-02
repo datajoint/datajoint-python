@@ -183,7 +183,7 @@ def test_project(schema_simp_pop):
 def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop, prefix):
     schema = prefix + "_test1"
     connection_test.query(f"CREATE TABLE {schema}.test_table (oldID int PRIMARY KEY)").fetchall()
-    mySchema = dj.VirtualModule(schema, schema)
+    mySchema = dj.VirtualModule(schema, schema, connection=connection_test)
     assert (
         "oldID" not in mySchema.TestTable.proj(new_name="oldID").heading.attributes.keys()
     ), "Failed to rename attribute correctly"
@@ -193,7 +193,8 @@ def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_po
 def test_union(schema_simp_pop):
     x = set(zip(*IJ.fetch("i", "j")))
     y = set(zip(*JI.fetch("i", "j")))
-    assert len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x)  # ensure the IJ and JI are non-trivial
+    # IJ and JI have attributes i,j from different origins, so use semantic_check=False
+    assert len(x) > 0 and len(y) > 0 and len(IJ().join(JI(), semantic_check=False)) < len(x)
     z = set(zip(*(IJ + JI).fetch("i", "j")))  # union
     assert x.union(y) == z
     assert len(IJ + JI) == len(z)
@@ -296,14 +297,15 @@ def test_semijoin(schema_simp_pop):
     """
     x = IJ()
     y = JI()
+    # IJ and JI have i,j from different origins - use semantic_check=False
     n = len(x & y.fetch(as_dict=True))
     m = len(x - y.fetch(as_dict=True))
     assert n > 0 and m > 0
     assert len(x) == m + n
     assert len(x & y.fetch()) == n
     assert len(x - y.fetch()) == m
-    semi = x & y
-    anti = x - y
+    semi = x.restrict(y, semantic_check=False)
+    anti = x.restrict(dj.Not(y), semantic_check=False)
     assert len(semi) == n
     assert len(anti) == m
 
@@ -388,7 +390,8 @@ def test_date(schema_simp_pop):
 
 def test_join_project(schema_simp_pop):
     """Test join of projected relations with matching non-primary key"""
-    q = DataA.proj() * DataB.proj()
+    # DataA and DataB have 'idx' from different origins, so use semantic_check=False
+    q = DataA.proj().join(DataB.proj(), semantic_check=False)
     assert len(q) == len(DataA()) == len(DataB()), "Join of projected relations does not work"
 
 
@@ -459,13 +462,15 @@ def test_reserved_words2(schema_simp_pop):
 
 
 def test_permissive_join_basic(schema_any_pop):
-    """Verify join compatibility check is skipped for join"""
-    Child @ Parent
+    """Verify join compatibility check can be skipped with semantic_check=False"""
+    # The @ operator has been removed in 2.0, use .join(semantic_check=False) instead
+    Child().join(Parent(), semantic_check=False)
 
 
 def test_permissive_restriction_basic(schema_any_pop):
-    """Verify join compatibility check is skipped for restriction"""
-    Child ^ Parent
+    """Verify restriction compatibility check can be skipped with semantic_check=False"""
+    # The ^ operator has been removed in 2.0, use .restrict(semantic_check=False) instead
+    Child().restrict(Parent(), semantic_check=False)
 
 
 def test_complex_date_restriction(schema_simp_pop):

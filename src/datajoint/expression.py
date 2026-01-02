@@ -7,7 +7,6 @@ from itertools import count
 from .condition import (
     AndList,
     Not,
-    PromiscuousOperand,
     Top,
     assert_join_compatibility,
     extract_column_names,
@@ -152,13 +151,22 @@ class QueryExpression:
         result._heading = self.heading.make_subquery_heading()
         return result
 
-    def restrict(self, restriction):
+    def restrict(self, restriction, semantic_check=True):
         """
         Produces a new expression with the new restriction applied.
-        rel.restrict(restriction)  is equivalent to  rel & restriction.
-        rel.restrict(Not(restriction))  is equivalent to  rel - restriction
+
+        :param restriction: a sequence or an array (treated as OR list), another QueryExpression,
+            an SQL condition string, or an AndList.
+        :param semantic_check: If True (default), use semantic matching - only match on
+            homologous namesakes and error on non-homologous namesakes.
+            If False, use natural matching on all namesakes (no lineage checking).
+        :return: A new QueryExpression with the restriction applied.
+
+        rel.restrict(restriction) is equivalent to rel & restriction.
+        rel.restrict(Not(restriction)) is equivalent to rel - restriction
+
         The primary key of the result is unaffected.
-        Successive restrictions are combined as logical AND:   r & a & b  is equivalent to r & AndList((a, b))
+        Successive restrictions are combined as logical AND: r & a & b is equivalent to r & AndList((a, b))
         Any QueryExpression, collection, or sequence other than an AndList are treated as OrLists
         (logical disjunction of conditions)
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.
@@ -185,17 +193,14 @@ class QueryExpression:
         rel - None                          rel
         rel - any_empty_entity_set          rel
 
-        When arg is another QueryExpression, the restriction  rel & arg  restricts rel to elements that match at least
+        When arg is another QueryExpression, the restriction rel & arg restricts rel to elements that match at least
         one element in arg (hence arg is treated as an OrList).
-        Conversely,  rel - arg  restricts rel to elements that do not match any elements in arg.
+        Conversely, rel - arg restricts rel to elements that do not match any elements in arg.
         Two elements match when their common attributes have equal values or when they have no common attributes.
         All shared attributes must be in the primary key of either rel or arg or both or an error will be raised.
 
         QueryExpression.restrict is the only access point that modifies restrictions. All other operators must
         ultimately call restrict()
-
-        :param restriction: a sequence or an array (treated as OR list), another QueryExpression, an SQL condition
-        string, or an AndList.
         """
         attributes = set()
         if isinstance(restriction, Top):
@@ -204,7 +209,7 @@ class QueryExpression:
             )  # make subquery to avoid overwriting existing Top
             result._top = restriction
             return result
-        new_condition = make_condition(self, restriction, attributes)
+        new_condition = make_condition(self, restriction, attributes, semantic_check=semantic_check)
         if new_condition is True:
             return self  # restriction has no effect, return the same object
         # check that all attributes in condition are present in the query
@@ -240,14 +245,11 @@ class QueryExpression:
         return self.restrict(restriction)
 
     def __xor__(self, restriction):
-        """
-        Permissive restriction operator ignoring compatibility check  e.g. ``q1 ^ q2``.
-        """
-        if inspect.isclass(restriction) and issubclass(restriction, QueryExpression):
-            restriction = restriction()
-        if isinstance(restriction, Not):
-            return self.restrict(Not(PromiscuousOperand(restriction.restriction)))
-        return self.restrict(PromiscuousOperand(restriction))
+        """The ^ operator has been removed in DataJoint 2.0."""
+        raise DataJointError(
+            "The ^ operator has been removed in DataJoint 2.0. "
+            "Use .restrict(other, semantic_check=False) for restrictions without semantic checking."
+        )
 
     def __sub__(self, restriction):
         """
@@ -274,30 +276,37 @@ class QueryExpression:
         return self.join(other)
 
     def __matmul__(self, other):
-        """
-        Permissive join of query expressions `self` and `other` ignoring compatibility check
-            e.g. ``q1 @ q2``.
-        """
-        if inspect.isclass(other) and issubclass(other, QueryExpression):
-            other = other()  # instantiate
-        return self.join(other, semantic_check=False)
+        """The @ operator has been removed in DataJoint 2.0."""
+        raise DataJointError(
+            "The @ operator has been removed in DataJoint 2.0. "
+            "Use .join(other, semantic_check=False) for joins without semantic checking."
+        )
 
     def join(self, other, semantic_check=True, left=False):
         """
-        create the joined QueryExpression.
-        a * b  is short for A.join(B)
-        a @ b  is short for A.join(B, semantic_check=False)
-        Additionally, left=True will retain the rows of self, effectively performing a left join.
+        Create the joined QueryExpression.
+
+        :param other: QueryExpression to join with
+        :param semantic_check: If True (default), use semantic matching - only match on
+            homologous namesakes (same lineage) and error on non-homologous namesakes.
+            If False, use natural join on all namesakes (no lineage checking).
+        :param left: If True, perform a left join (retain all rows from self)
+        :return: The joined QueryExpression
+
+        a * b is short for a.join(b)
         """
-        # trigger subqueries if joining on renamed attributes
+        # Joining with U is no longer supported
         if isinstance(other, U):
-            return other * self
+            raise DataJointError(
+                "table * dj.U(...) is no longer supported in DataJoint 2.0. "
+                "This pattern is no longer necessary with the new semantic matching system."
+            )
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
         if not isinstance(other, QueryExpression):
             raise DataJointError("The argument of join must be a QueryExpression")
-        if semantic_check:
-            assert_join_compatibility(self, other)
+        assert_join_compatibility(self, other, semantic_check=semantic_check)
+        # Always natural join on all namesakes
         join_attributes = set(n for n in self.heading.names if n in other.heading.names)
         # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
@@ -826,8 +835,18 @@ class U:
         return result
 
     def __mul__(self, other):
-        """shorthand for join"""
-        return self.join(other)
+        """The * operator with dj.U has been removed in DataJoint 2.0."""
+        raise DataJointError(
+            "dj.U(...) * table is no longer supported in DataJoint 2.0. "
+            "This pattern is no longer necessary with the new semantic matching system."
+        )
+
+    def __sub__(self, other):
+        """Anti-restriction with dj.U produces an infinite set."""
+        raise DataJointError(
+            "dj.U(...) - table produces an infinite set and is not supported. "
+            "Consider using a different approach for your query."
+        )
 
     def aggr(self, group, **named_attributes):
         """

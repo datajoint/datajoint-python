@@ -100,13 +100,78 @@ class Table(QueryExpression):
                 "Table class name `{name}` is invalid. Please use CamelCase. ".format(name=self.class_name)
                 + "Classes defining tables should be formatted in strict CamelCase."
             )
-        sql, _external_stores = declare(self.full_table_name, self.definition, context)
+        sql, _external_stores, primary_key, fk_attribute_map = declare(self.full_table_name, self.definition, context)
         sql = sql.format(database=self.database)
         try:
             self.connection.query(sql)
         except AccessError:
             # skip if no create privilege
-            pass
+            return
+
+        # Populate lineage table for this table's attributes
+        self._populate_lineage(primary_key, fk_attribute_map)
+
+    def _populate_lineage(self, primary_key, fk_attribute_map):
+        """
+        Populate the ~lineage table with lineage information for this table's attributes.
+
+        Lineage is stored for:
+        - All FK attributes (traced to their origin)
+        - Native primary key attributes (lineage = self)
+
+        :param primary_key: list of primary key attribute names
+        :param fk_attribute_map: dict mapping child_attr -> (parent_table, parent_attr)
+        """
+        from .lineage import (
+            ensure_lineage_table,
+            get_lineage,
+            delete_table_lineages,
+            insert_lineages,
+        )
+
+        # Ensure the ~lineage table exists
+        ensure_lineage_table(self.connection, self.database)
+
+        # Delete any existing lineage entries for this table (for idempotent re-declaration)
+        delete_table_lineages(self.connection, self.database, self.table_name)
+
+        entries = []
+
+        # FK attributes: copy lineage from parent (whether in PK or not)
+        for attr, (parent_table, parent_attr) in fk_attribute_map.items():
+            # Parse parent table name: `schema`.`table` -> (schema, table)
+            parent_clean = parent_table.replace("`", "")
+            if "." in parent_clean:
+                parent_db, parent_tbl = parent_clean.split(".", 1)
+            else:
+                parent_db = self.database
+                parent_tbl = parent_clean
+
+            # Get parent's lineage for this attribute
+            parent_lineage = get_lineage(self.connection, parent_db, parent_tbl, parent_attr)
+            if parent_lineage:
+                # Copy parent's lineage
+                entries.append((self.table_name, attr, parent_lineage))
+            else:
+                # Parent doesn't have lineage entry - use parent as origin
+                # This can happen for legacy/external schemas without lineage tracking
+                lineage = f"{parent_db}.{parent_tbl}.{parent_attr}"
+                entries.append((self.table_name, attr, lineage))
+                logger.warning(
+                    f"Lineage for `{parent_db}`.`{parent_tbl}`.`{parent_attr}` not found "
+                    f"(parent schema's ~lineage table may be missing or incomplete). "
+                    f"Using it as origin. Once the parent schema's lineage is rebuilt, "
+                    f"run schema.rebuild_lineage() on this schema to correct the lineage."
+                )
+
+        # Native PK attributes (in PK but not FK): this table is the origin
+        for attr in primary_key:
+            if attr not in fk_attribute_map:
+                lineage = f"{self.database}.{self.table_name}.{attr}"
+                entries.append((self.table_name, attr, lineage))
+
+        if entries:
+            insert_lineages(self.connection, self.database, entries)
 
     def alter(self, prompt=True, context=None):
         """
@@ -608,6 +673,12 @@ class Table(QueryExpression):
         Drops the table without cascading to dependent tables and without user prompt.
         """
         if self.is_declared:
+            # Clean up lineage entries for this table
+            from .lineage import delete_table_lineages, lineage_table_exists
+
+            if lineage_table_exists(self.connection, self.database):
+                delete_table_lineages(self.connection, self.database, self.table_name)
+
             query = "DROP TABLE %s" % self.full_table_name
             self.connection.query(query)
             logger.info("Dropped table %s" % self.full_table_name)

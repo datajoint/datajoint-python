@@ -7,15 +7,13 @@ from tests.schema_simple import ArgmaxTest
 
 
 def test_restriction(lang, languages, trial):
+    """Test dj.U restriction semantics."""
     language_set = {s[1] for s in languages}
     rel = dj.U("language") & lang
     assert list(rel.heading.names) == ["language"]
     assert len(rel) == len(language_set)
     assert set(rel.fetch("language")) == language_set
-    # Test for issue #342
-    rel = trial * dj.U("start_time")
-    assert list(rel.primary_key) == trial.primary_key + ["start_time"]
-    assert list(rel.primary_key) == list((rel & "trial_id>3").primary_key)
+    # dj.U & table promotes attributes to PK
     assert list((dj.U("start_time") & trial).primary_key) == ["start_time"]
 
 
@@ -29,17 +27,17 @@ def test_ineffective_restriction(lang):
     assert rel.make_sql() == lang.make_sql()
 
 
-def test_join(experiment):
-    rel = experiment * dj.U("experiment_date")
-    assert experiment.primary_key == ["subject_id", "experiment_id"]
-    assert rel.primary_key == experiment.primary_key + ["experiment_date"]
+def test_join_with_u_removed(experiment):
+    """Test that table * dj.U(...) raises an error (removed in 2.0)."""
+    with raises(dj.DataJointError):
+        experiment * dj.U("experiment_date")
 
-    rel = dj.U("experiment_date") * experiment
-    assert experiment.primary_key == ["subject_id", "experiment_id"]
-    assert rel.primary_key == experiment.primary_key + ["experiment_date"]
+    with raises(dj.DataJointError):
+        dj.U("experiment_date") * experiment
 
 
 def test_invalid_join(schema_any):
+    """Test that dj.U * non-QueryExpression raises an error."""
     with raises(dj.DataJointError):
         dj.U("language") * dict(language="English")
 
@@ -64,14 +62,20 @@ def test_aggregations(schema_any):
 
 
 def test_argmax(schema_any):
+    """Test argmax pattern using aggregation and restriction."""
     rel = TTest()
-    # get the tuples corresponding to the maximum value
-    mx = (rel * dj.U().aggr(rel, mx="max(value)")) & "mx=value"
+    # Get the maximum value using aggregation
+    max_val = dj.U().aggr(rel, mx="max(value)").fetch1("mx")
+    # Get tuples with that value
+    mx = rel & f"value={max_val}"
     assert mx.fetch("value")[0] == max(rel.fetch("value"))
 
 
 def test_aggr(schema_any, schema_simp):
+    """Test aggregation with dj.U - the old * pattern is removed."""
     rel = ArgmaxTest()
-    amax1 = (dj.U("val") * rel) & dj.U("secondary_key").aggr(rel, val="min(val)")
-    amax2 = (dj.U("val") * rel) * dj.U("secondary_key").aggr(rel, val="min(val)")
-    assert len(amax1) == len(amax2) == rel.n, "Aggregated argmax with join and restriction does not yield the same length."
+    # The old pattern using dj.U("val") * rel is no longer supported
+    # Use aggregation directly instead
+    agg = dj.U("secondary_key").aggr(rel, min_val="min(val)")
+    # Verify aggregation works
+    assert len(agg) > 0

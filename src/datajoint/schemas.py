@@ -324,6 +324,35 @@ class Schema:
         )
 
     @property
+    def lineage_table_exists(self):
+        """
+        :return: true if the ~lineage table exists in this schema
+        """
+        from .lineage import lineage_table_exists
+
+        self._assert_exists()
+        return lineage_table_exists(self.connection, self.database)
+
+    def rebuild_lineage(self):
+        """
+        Rebuild the ~lineage table for all tables in this schema.
+
+        This recomputes lineage for all attributes by querying FK relationships
+        from the information_schema. Use this to restore lineage for schemas
+        that predate the lineage system or after corruption.
+
+        After rebuilding, restart the Python kernel and reimport to pick up
+        the new lineage information.
+
+        Note: Upstream schemas (referenced via cross-schema foreign keys) must
+        have their lineage rebuilt first.
+        """
+        from .lineage import rebuild_schema_lineage
+
+        self._assert_exists()
+        rebuild_schema_lineage(self.connection, self.database)
+
+    @property
     def jobs(self):
         """
         schema.jobs provides a view of the job reservation table for the schema

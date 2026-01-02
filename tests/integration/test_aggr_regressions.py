@@ -59,8 +59,9 @@ def test_issue449(schema_aggr_reg):
     """
     ---------------- ISSUE 449 ------------------
     Issue 449 arises from incorrect group by attributes after joining with a dj.U()
+    Note: dj.U() * table pattern is no longer supported in 2.0, use dj.U() & table instead
     """
-    result = dj.U("n") * R.aggr(S, n="max(s)")
+    result = dj.U("n") & R.aggr(S, n="max(s)")
     result.fetch()
 
 
