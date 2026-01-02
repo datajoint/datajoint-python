@@ -158,7 +158,11 @@ skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
 # astroid -- Python library name (not "asteroid")
 ignore-words-list = "rever,numer,astroid"
 
-# pytest-env removed - testcontainers handles container lifecycle automatically
+[tool.pytest.ini_options]
+markers = [
+    "requires_mysql: marks tests as requiring MySQL database (deselect with '-m \"not requires_mysql\"')",
+    "requires_minio: marks tests as requiring MinIO object storage (deselect with '-m \"not requires_minio\"')",
+]
 
 
 [tool.pixi.workspace]

@@ -1,12 +1,19 @@
 """
 Pytest configuration for DataJoint tests.
 
-Containers are automatically started via testcontainers - no manual setup required.
+Tests are organized by their dependencies:
+- Unit tests: No external dependencies, run with `pytest -m "not requires_mysql"`
+- Integration tests: Require MySQL/MinIO, marked with @pytest.mark.requires_mysql
+
+Containers are automatically started via testcontainers when needed.
 Just run: pytest tests/
 
 To use external containers instead (e.g., docker-compose), set:
     DJ_USE_EXTERNAL_CONTAINERS=1
     DJ_HOST=localhost DJ_PORT=3306 S3_ENDPOINT=localhost:9000 pytest
+
+To run only unit tests (no Docker required):
+    pytest -m "not requires_mysql"
 """
 
 import logging
@@ -26,6 +33,52 @@ from . import schema_uuid as schema_uuid_module
 from . import schema_type_aliases as schema_type_aliases_module
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Pytest Hooks
+# =============================================================================
+
+
+def pytest_collection_modifyitems(config, items):
+    """Auto-mark integration tests based on their fixtures."""
+    # Tests that use these fixtures require MySQL
+    mysql_fixtures = {
+        "connection_root",
+        "connection_root_bare",
+        "connection_test",
+        "schema_any",
+        "schema_any_fresh",
+        "schema_simp",
+        "schema_adv",
+        "schema_ext",
+        "schema_uuid",
+        "schema_type_aliases",
+        "schema_obj",
+        "db_creds_root",
+        "db_creds_test",
+    }
+    # Tests that use these fixtures require MinIO
+    minio_fixtures = {
+        "minio_client",
+        "s3fs_client",
+        "s3_creds",
+        "stores_config",
+        "mock_stores",
+    }
+
+    for item in items:
+        # Get all fixtures this test uses (directly or indirectly)
+        try:
+            fixturenames = set(item.fixturenames)
+        except AttributeError:
+            continue
+
+        # Auto-add marks based on fixture usage
+        if fixturenames & mysql_fixtures:
+            item.add_marker(pytest.mark.requires_mysql)
+        if fixturenames & minio_fixtures:
+            item.add_marker(pytest.mark.requires_minio)
 
 
 # =============================================================================
@@ -177,9 +230,13 @@ def s3_creds(minio_container) -> Dict:
 # =============================================================================
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def configure_datajoint(db_creds_root):
-    """Configure DataJoint to use test database."""
+    """Configure DataJoint to use test database.
+
+    This fixture is NOT autouse - it only runs when a test requests
+    a fixture that depends on it (e.g., connection_root_bare).
+    """
     # Parse host:port from credentials
     host_port = db_creds_root["host"]
     if ":" in host_port:
@@ -200,7 +257,7 @@ def configure_datajoint(db_creds_root):
 
 
 @pytest.fixture(scope="session")
-def connection_root_bare(db_creds_root):
+def connection_root_bare(db_creds_root, configure_datajoint):
     """Bare root connection without user setup."""
     connection = dj.Connection(**db_creds_root)
     yield connection
