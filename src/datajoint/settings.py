@@ -201,6 +201,25 @@ class ExternalSettings(BaseSettings):
     aws_secret_access_key: SecretStr | None = Field(default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY")
 
 
+class JobsSettings(BaseSettings):
+    """Job queue configuration for AutoPopulate 2.0."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="DJ_JOBS_",
+        case_sensitive=False,
+        extra="forbid",
+        validate_assignment=True,
+    )
+
+    auto_refresh: bool = Field(default=True, description="Auto-refresh jobs queue on populate")
+    keep_completed: bool = Field(default=False, description="Keep success records in jobs table")
+    stale_timeout: int = Field(default=3600, ge=0, description="Seconds before pending job is checked for staleness")
+    default_priority: int = Field(default=5, ge=0, le=255, description="Default priority for new jobs (lower = more urgent)")
+    version_method: Literal["git", "none"] | None = Field(
+        default=None, description="Method to obtain version: 'git' (commit hash), 'none' (empty), or None (disabled)"
+    )
+
+
 class ObjectStorageSettings(BaseSettings):
     """Object storage configuration for the object type."""
 
@@ -264,6 +283,7 @@ class Config(BaseSettings):
     connection: ConnectionSettings = Field(default_factory=ConnectionSettings)
     display: DisplaySettings = Field(default_factory=DisplaySettings)
     external: ExternalSettings = Field(default_factory=ExternalSettings)
+    jobs: JobsSettings = Field(default_factory=JobsSettings)
     object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
 
     # Top-level settings

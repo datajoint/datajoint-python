@@ -6,7 +6,6 @@ def key_hash(mapping):
     """
     32-byte hash of the mapping's key values sorted by the key name.
     This is often used to convert a long primary key value into a shorter hash.
-    For example, the JobTable in datajoint.jobs uses this function to hash the primary key of autopopulated tables.
     """
     hashed = hashlib.md5()
     for k, v in sorted(mapping.items()):
