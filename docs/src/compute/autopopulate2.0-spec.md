@@ -46,7 +46,7 @@ The existing `~jobs` table has significant limitations:
 
 ### Jobs Table Structure
 
-Each `dj.Imported` or `dj.Computed` table `MyTable` will have an associated hidden jobs table `~my_table__jobs` with the following structure:
+Each `dj.Imported` or `dj.Computed` table `MyTable` will have an associated hidden jobs table `~~my_table` with the following structure:
 
 ```
 # Job queue for MyTable
@@ -55,7 +55,7 @@ session_id : int
 ...                           # Only FK-derived primary key attributes (NO foreign key constraints)
 ---
 status          : enum('pending', 'reserved', 'success', 'error', 'ignore')
-priority=5      : uint8       # Lower = more urgent (0 = highest priority)
+priority        : uint8       # Lower = more urgent (0 = highest), set by refresh()
 created_time=CURRENT_TIMESTAMP : timestamp  # When job was added to queue
 scheduled_time=CURRENT_TIMESTAMP : timestamp  # Process on or after this time
 reserved_time=null  : timestamp  # When job was reserved
@@ -386,9 +386,11 @@ MyTable.jobs.refresh(Subject & 'priority="urgent"', priority=0)
 
 ### Table Naming Convention
 
-Jobs tables follow the existing hidden table naming pattern:
+Jobs tables use the `~~` prefix (double tilde):
 - Table `FilteredImage` (stored as `__filtered_image`)
-- Jobs table: `~filtered_image__jobs` (stored as `_filtered_image__jobs`)
+- Jobs table: `~~filtered_image` (stored as `~~filtered_image`)
+
+The `~~` prefix distinguishes jobs tables from other hidden tables (`~jobs`, `~lineage`) while keeping names short.
 
 ### Primary Key Constraint
 
@@ -500,7 +502,7 @@ FilteredImage.jobs.refresh()  # Re-adds as pending if key still in key_source
 When an auto-populated table is **dropped**, its associated jobs table is automatically dropped:
 
 ```python
-# Dropping FilteredImage also drops ~filtered_image__jobs
+# Dropping FilteredImage also drops ~~filtered_image
 FilteredImage.drop()
 ```
 
@@ -522,7 +524,7 @@ Jobs tables are created automatically on first use:
 ```python
 # First call to populate with reserve_jobs=True creates the jobs table
 FilteredImage.populate(reserve_jobs=True)
-# Creates ~filtered_image__jobs if it doesn't exist, then populates
+# Creates ~~filtered_image if it doesn't exist, then populates
 
 # Alternatively, explicitly create/refresh the jobs table
 FilteredImage.jobs.refresh()
