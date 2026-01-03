@@ -147,3 +147,36 @@ def test_left_join_valid(schema_uuid):
     assert len(q) == len(qf)
     # All Items should have matching Topics since they were populated from Topics
     assert len(q) == len(Item())
+
+
+def test_extend_valid(schema_uuid):
+    """extend() is an alias for join(left=True) when A → B."""
+    # Clean up from previous tests
+    Item().delete_quick()
+    Topic().delete_quick()
+
+    Topic().add("alice")
+    Item.populate()
+    # Item → Topic (topic_id is in Item), so extend is valid
+    q_extend = Item.extend(Topic)
+    q_left_join = Item.join(Topic, left=True)
+    # Should produce identical results
+    assert len(q_extend) == len(q_left_join)
+    assert set(q_extend.heading.names) == set(q_left_join.heading.names)
+    assert q_extend.primary_key == q_left_join.primary_key
+
+
+def test_extend_invalid_raises_error(schema_uuid):
+    """extend() requires A → B. Topic ↛ Item, so this should raise an error."""
+    from datajoint.errors import DataJointError
+
+    # Clean up from previous tests
+    Item().delete_quick()
+    Topic().delete_quick()
+
+    Topic().add("bob")
+    Item.populate()
+    # Topic ↛ Item (item_id not in Topic), so extend should fail
+    with pytest.raises(DataJointError) as exc_info:
+        Topic.extend(Item)
+    assert "left operand to determine" in str(exc_info.value).lower()

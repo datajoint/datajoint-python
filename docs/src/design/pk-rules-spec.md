@@ -38,6 +38,7 @@ In the examples below, `*` marks primary key attributes:
 | `A - B` (anti-restriction) | PK(A) — preserved from left operand |
 | `A.proj(...)` (projection) | PK(A) — preserved from left operand |
 | `A.aggr(B, ...)` (aggregation) | PK(A) — preserved from left operand |
+| `A.extend(B)` (extension) | PK(A) — requires A → B |
 | `A * B` (join) | Depends on functional dependencies (see below) |
 
 ### Join Primary Key Rule
@@ -202,6 +203,47 @@ DataJointError: Left join requires the left operand to determine the right opera
 The following attributes from the right operand's primary key are not determined by
 the left operand: ['z']. Use an inner join or restructure the query.
 ```
+
+### Conceptual Note: Left Join as Extension
+
+When `A → B`, the left join `A.join(B, left=True)` is conceptually distinct from the general join operator `A * B`. It is better understood as an **extension** operation rather than a join:
+
+| Aspect | General Join (A * B) | Left Join when A → B |
+|--------|---------------------|----------------------|
+| Conceptual model | Cartesian product restricted to matching rows | Extend A with attributes from B |
+| Row count | May increase, decrease, or stay same | Always equals len(A) |
+| Primary key | Depends on functional dependencies | Always PK(A) |
+| Relation to projection | Different operation | Variation of projection |
+
+**The extension perspective:**
+
+The operation `A.join(B, left=True)` when `A → B` is closer to **projection** than to **join**:
+- It adds new attributes to A (like `A.proj(..., new_attr=...)`)
+- It preserves all rows of A
+- It preserves A's primary key
+- It lacks the Cartesian product aspect that defines joins
+
+DataJoint provides an explicit `extend()` method for this pattern:
+
+```python
+# These are equivalent when A → B:
+A.join(B, left=True)
+A.extend(B)           # clearer intent: extend A with B's attributes
+```
+
+The `extend()` method:
+- Requires `A → B` (raises `DataJointError` otherwise)
+- Does not expose `allow_nullable_pk` (that's an internal mechanism)
+- Expresses the semantic intent: "add B's attributes to A's entities"
+
+**Relationship to aggregation:**
+
+A similar argument applies to `A.aggr(B, ...)`:
+- It preserves A's primary key
+- It adds computed attributes derived from B
+- It's conceptually a variation of projection with grouping
+
+Both `A.join(B, left=True)` (when A → B) and `A.aggr(B, ...)` can be viewed as **projection-like operations** that extend A's attributes while preserving its entity identity.
 
 ### Bypassing the Left Join Constraint
 

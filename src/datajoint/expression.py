@@ -360,6 +360,45 @@ class QueryExpression:
         assert len(result.support) == len(result._left) + 1
         return result
 
+    def extend(self, other, semantic_check=True):
+        """
+        Extend self with attributes from other.
+
+        The extend operation adds attributes from `other` to `self` while preserving
+        self's entity identity. It is semantically equivalent to `self.join(other, left=True)`
+        but expresses a clearer intent: extending an entity set with additional attributes
+        rather than combining two entity sets.
+
+        Requirements:
+            self → other: Every attribute in other's primary key must exist in self.
+            This ensures:
+            - All rows of self are preserved (no filtering)
+            - Self's primary key remains the result's primary key (no NULL PKs)
+            - The operation is a true extension, not a Cartesian product
+
+        Conceptual model:
+            Unlike a general join (Cartesian product restricted by matching attributes),
+            extend is closer to projection—it adds new attributes to existing entities
+            without changing which entities are in the result.
+
+        Example:
+            # Session determines Trial (session_id is in Trial's PK)
+            # But Trial does NOT determine Session (trial_num not in Session)
+
+            # Valid: extend trials with session info
+            Trial.extend(Session)  # Adds 'date' from Session to each Trial
+
+            # Invalid: Session cannot extend to Trial
+            Session.extend(Trial)  # Error: trial_num not in Session
+
+        :param other: QueryExpression whose attributes will extend self
+        :param semantic_check: If True (default), require homologous namesakes.
+            If False, match on all namesakes without lineage checking.
+        :return: Extended QueryExpression with self's PK and combined attributes
+        :raises DataJointError: If self does not determine other
+        """
+        return self.join(other, semantic_check=semantic_check, left=True)
+
     def __add__(self, other):
         """union e.g. ``q1 + q2``."""
         return Union.create(self, other)
