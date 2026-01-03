@@ -282,7 +282,7 @@ class QueryExpression:
             "Use .join(other, semantic_check=False) for joins without semantic checking."
         )
 
-    def join(self, other, semantic_check=True, left=False):
+    def join(self, other, semantic_check=True, left=False, allow_nullable_pk=False):
         """
         Create the joined QueryExpression.
 
@@ -291,6 +291,10 @@ class QueryExpression:
             homologous namesakes (same lineage) and error on non-homologous namesakes.
             If False, use natural join on all namesakes (no lineage checking).
         :param left: If True, perform a left join (retain all rows from self)
+        :param allow_nullable_pk: If True, bypass the left join constraint that requires
+            self to determine other. When bypassed, the result PK is the union of both
+            operands' PKs, and PK attributes from the right operand could be NULL.
+            Used internally by aggregation with keep_all_rows=True.
         :return: The joined QueryExpression
 
         a * b is short for a.join(b)
@@ -306,6 +310,22 @@ class QueryExpression:
         if not isinstance(other, QueryExpression):
             raise DataJointError("The argument of join must be a QueryExpression")
         assert_join_compatibility(self, other, semantic_check=semantic_check)
+
+        # Left join constraint: requires self → other (left operand determines right)
+        # This ensures the result's PK (which is PK(self) for left joins) can't have NULLs
+        nullable_pk = False
+        if left and not self.heading.determines(other.heading):
+            if allow_nullable_pk:
+                nullable_pk = True
+            else:
+                undetermined = [attr for attr in other.heading.primary_key if attr not in self.heading.names]
+                raise DataJointError(
+                    "Left join requires the left operand to determine the right operand (A → B). "
+                    f"The following attributes from the right operand's primary key are not "
+                    f"in the left operand: {undetermined}. "
+                    "Use an inner join or restructure the query."
+                )
+
         # Always natural join on all namesakes
         join_attributes = set(n for n in self.heading.names if n in other.heading.names)
         # needs subquery if self's FROM clause has common attributes with other's FROM clause
@@ -333,10 +353,10 @@ class QueryExpression:
         result._connection = self.connection
         result._support = self.support + other.support
         result._left = self._left + [left] + other._left
-        result._heading = self.heading.join(other.heading)
+        result._heading = self.heading.join(other.heading, nullable_pk=nullable_pk)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
-        result._original_heading = self.original_heading.join(other.original_heading)
+        result._original_heading = self.original_heading.join(other.original_heading, nullable_pk=nullable_pk)
         assert len(result.support) == len(result._left) + 1
         return result
 
@@ -627,16 +647,37 @@ class Aggregation(QueryExpression):
     _subquery_alias_count = count()
 
     @classmethod
-    def create(cls, arg, group, keep_all_rows=False):
+    def create(cls, groupby, group, keep_all_rows=False):
+        """
+        Create an aggregation expression.
+
+        :param groupby: The expression to GROUP BY (determines the result's primary key)
+        :param group: The expression to aggregate over
+        :param keep_all_rows: If True, use left join to keep all rows from groupby
+        """
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()  # instantiate if a class
         assert isinstance(group, QueryExpression)
+
+        # Aggregation requires group → groupby: every attribute in groupby's PK
+        # must be in group, so we can GROUP BY groupby's PK.
+        # Skip check for U (universal set) which doesn't have a heading until joined.
+        if not isinstance(groupby, U) and not group.heading.determines(groupby.heading):
+            missing = [attr for attr in groupby.heading.primary_key if attr not in group.heading.names]
+            raise DataJointError(
+                "Aggregation requires the group expression to contain all primary key "
+                f"attributes of the grouping expression. Missing attributes: {missing}."
+            )
+
         if keep_all_rows and len(group.support) > 1 or group.heading.new_attributes:
             group = group.make_subquery()  # subquery if left joining a join
-        join = arg.join(group, left=keep_all_rows)  # reuse the join logic
+        # When keep_all_rows=True, we use a left join which normally requires A → B.
+        # Aggregation has the opposite requirement (B → A). We bypass the left join
+        # constraint because GROUP BY resets the PK to groupby's PK (never NULL).
+        join = groupby.join(group, left=keep_all_rows, allow_nullable_pk=keep_all_rows)
         result = cls()
         result._connection = join.connection
-        result._heading = join.heading.set_primary_key(arg.primary_key)  # use left operand's primary key
+        result._heading = join.heading.set_primary_key(groupby.primary_key)
         result._support = join.support
         result._left = join._left
         result._left_restrict = join.restriction  # WHERE clause applied before GROUP BY
@@ -809,31 +850,6 @@ class U:
         result = result.proj()
         return result
 
-    def join(self, other, left=False):
-        """
-        Joining U with a query expression has the effect of promoting the attributes of U to
-        the primary key of the other query expression.
-
-        :param other: the other query expression to join with.
-        :param left: ignored. dj.U always acts as if left=False
-        :return: a copy of the other query expression with the primary key extended.
-        """
-        if inspect.isclass(other) and issubclass(other, QueryExpression):
-            other = other()  # instantiate if a class
-        if not isinstance(other, QueryExpression):
-            raise DataJointError("Set U can only be joined with a QueryExpression.")
-        try:
-            raise DataJointError(
-                "Attribute `%s` not found" % next(k for k in self.primary_key if k not in other.heading.names)
-            )
-        except StopIteration:
-            pass  # all ok
-        result = copy.copy(other)
-        result._heading = result.heading.set_primary_key(
-            other.primary_key + [k for k in self.primary_key if k not in other.primary_key]
-        )
-        return result
-
     def __mul__(self, other):
         """The * operator with dj.U has been removed in DataJoint 2.0."""
         raise DataJointError(
@@ -859,7 +875,27 @@ class U:
         """
         if named_attributes.get("keep_all_rows", False):
             raise DataJointError("Cannot set keep_all_rows=True when aggregating on a universal set.")
-        return Aggregation.create(self, group=group, keep_all_rows=False).proj(**named_attributes)
+
+        if inspect.isclass(group) and issubclass(group, QueryExpression):
+            group = group()
+        if not isinstance(group, QueryExpression):
+            raise DataJointError("dj.U.aggr requires a QueryExpression as the group argument.")
+
+        # Verify U's primary key attributes exist in group
+        missing = [attr for attr in self.primary_key if attr not in group.heading.names]
+        if missing:
+            raise DataJointError(f"Attributes {missing} not found in the group expression.")
+
+        # Create Aggregation directly without join - just group by U's primary key
+        result = Aggregation()
+        result._connection = group.connection
+        result._heading = group.heading.set_primary_key(list(self.primary_key))
+        result._support = group.support
+        result._left = group._left
+        result._left_restrict = group.restriction
+        result._grouping_attributes = list(self.primary_key)
+
+        return result.proj(**named_attributes)
 
     aggregate = aggr  # alias for aggr
 

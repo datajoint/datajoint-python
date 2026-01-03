@@ -2,14 +2,12 @@
 Regression tests for issues 386, 449, 484, and 558 — all related to processing complex aggregations and projections.
 """
 
-import uuid
-
 import pytest
 
 import datajoint as dj
 
 from tests.schema_aggr_regress import LOCALS_AGGR_REGRESS, A, B, Q, R, S, X
-from tests.schema_uuid import Item, Topic, top_level_namespace_id
+from tests.schema_uuid import Item, Topic
 
 
 @pytest.fixture(scope="function")
@@ -119,11 +117,33 @@ class TestIssue558:
         assert len(X & d) == len((X & d).proj(id2="3"))
 
 
-def test_left_join_len(schema_uuid):
+def test_left_join_invalid_raises_error(schema_uuid):
+    """Left join requires A → B. Topic ↛ Item, so this should raise an error."""
+    from datajoint.errors import DataJointError
+
+    # Clean up from previous tests
+    Item().delete_quick()
+    Topic().delete_quick()
+
     Topic().add("jeff")
     Item.populate()
-    Topic().add("jeff2")
-    Topic().add("jeff3")
-    q = Topic.join(Item - dict(topic_id=uuid.uuid5(top_level_namespace_id, "jeff")), left=True)
+    with pytest.raises(DataJointError) as exc_info:
+        Topic.join(Item, left=True)
+    assert "left operand to determine" in str(exc_info.value).lower()
+
+
+def test_left_join_valid(schema_uuid):
+    """Left join where A → B: Item → Topic (topic_id is in Item)."""
+    # Clean up from previous tests
+    Item().delete_quick()
+    Topic().delete_quick()
+
+    Topic().add("jeff")
+    Item.populate()
+    Topic().add("jeff2")  # Topic without Items
+    # Item.join(Topic, left=True) is valid because Item → Topic
+    q = Item.join(Topic, left=True)
     qf = q.fetch()
     assert len(q) == len(qf)
+    # All Items should have matching Topics since they were populated from Topics
+    assert len(q) == len(Item())
