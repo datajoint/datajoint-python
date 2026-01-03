@@ -5,7 +5,6 @@ import datetime
 import inspect
 import logging
 import multiprocessing as mp
-import random
 import signal
 import traceback
 
@@ -14,7 +13,6 @@ from tqdm import tqdm
 
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
-from .hash import key_hash
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -55,6 +53,51 @@ class AutoPopulate:
 
     _key_source = None
     _allow_insert = False
+    _jobs = None
+
+    @property
+    def jobs(self):
+        """
+        Access the job table for this auto-populated table.
+
+        The job table (~~table_name) is created lazily on first access.
+        It tracks job status, priority, scheduling, and error information
+        for distributed populate operations.
+
+        :return: Job object for this table
+        """
+        if self._jobs is None:
+            from .jobs import Job
+
+            self._jobs = Job(self)
+            if not self._jobs.is_declared:
+                self._jobs.declare()
+        return self._jobs
+
+    def _declare_check(self, primary_key, fk_attribute_map):
+        """
+        Validate FK-only primary key constraint for auto-populated tables.
+
+        Auto-populated tables (Computed/Imported) must derive all primary key
+        attributes from foreign key references. This ensures proper job granularity
+        for distributed populate operations.
+
+        :param primary_key: list of primary key attribute names
+        :param fk_attribute_map: dict mapping child_attr -> (parent_table, parent_attr)
+        :raises DataJointError: if native PK attributes are found
+        """
+        # Check for native (non-FK) primary key attributes
+        native_pk_attrs = [attr for attr in primary_key if attr not in fk_attribute_map]
+
+        if native_pk_attrs:
+            raise DataJointError(
+                f"Auto-populated table `{self.full_table_name}` has non-FK primary key "
+                f"attribute(s): {', '.join(native_pk_attrs)}. "
+                f"Computed and Imported tables must derive all primary key attributes "
+                f"from foreign key references. The make() method is called once per entity "
+                f"(row) in the table. If you need to compute multiple entities per job, "
+                f"define a Part table to store them."
+            )
 
     @property
     def key_source(self):
@@ -160,14 +203,6 @@ class AutoPopulate:
         """
         return self
 
-    def _job_key(self, key):
-        """
-        :param key:  they key returned for the job from the key source
-        :return: the dict to use to generate the job reservation hash
-        This method allows subclasses to control the job reservation granularity.
-        """
-        return key
-
     def _jobs_to_do(self, restrictions):
         """
         :return: the query yielding the keys to be computed (derived from self.key_source)
@@ -199,71 +234,87 @@ class AutoPopulate:
     def populate(
         self,
         *restrictions,
-        keys=None,
         suppress_errors=False,
         return_exception_objects=False,
         reserve_jobs=False,
-        order="original",
-        limit=None,
         max_calls=None,
         display_progress=False,
         processes=1,
         make_kwargs=None,
+        priority=None,
+        refresh=None,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
         ``self.key_source`` for which there is not already a tuple in table.
 
-        :param restrictions: a list of restrictions each restrict
-            (table.key_source - target.proj())
-        :param keys: The list of keys (dicts) to send to self.make().
-            If None (default), then use self.key_source to query they keys.
-        :param suppress_errors: if True, do not terminate execution.
+        Two execution modes:
+
+        **Direct mode** (reserve_jobs=False, default):
+            Keys computed directly from: (key_source & restrictions) - target
+            No job table involvement. Suitable for single-worker scenarios,
+            development, and debugging.
+
+        **Distributed mode** (reserve_jobs=True):
+            Uses the job table (~~table_name) for multi-worker coordination.
+            Supports priority, scheduling, and status tracking.
+
+        :param restrictions: conditions to filter key_source
+        :param suppress_errors: if True, collect errors instead of raising
         :param return_exception_objects: return error objects instead of just error messages
-        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
-        :param order: "original"|"reverse"|"random"  - the order of execution
-        :param limit: if not None, check at most this many keys
-        :param max_calls: if not None, populate at most this many keys
-        :param display_progress: if True, report progress_bar
-        :param processes: number of processes to use. Set to None to use all cores
-        :param make_kwargs: Keyword arguments which do not affect the result of computation
-            to be passed down to each ``make()`` call. Computation arguments should be
-            specified within the pipeline e.g. using a `dj.Lookup` table.
-        :type make_kwargs: dict, optional
-        :return: a dict with two keys
-            "success_count": the count of successful ``make()`` calls in this ``populate()`` call
-            "error_list": the error list that is filled if `suppress_errors` is True
+        :param reserve_jobs: if True, use job table for distributed processing
+        :param max_calls: maximum number of make() calls (total across all processes)
+        :param display_progress: if True, show progress bar
+        :param processes: number of worker processes
+        :param make_kwargs: keyword arguments passed to each make() call
+        :param priority: (reserve_jobs only) only process jobs at this priority or more urgent
+        :param refresh: (reserve_jobs only) refresh job queue before processing.
+            Default from config.jobs.auto_refresh
+        :return: dict with "success_count" and "error_list"
         """
         if self.connection.in_transaction:
             raise DataJointError("Populate cannot be called during a transaction.")
 
-        valid_order = ["original", "reverse", "random"]
-        if order not in valid_order:
-            raise DataJointError("The order argument must be one of %s" % str(valid_order))
-        jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
-
         if reserve_jobs:
-            # Define a signal handler for SIGTERM
-            def handler(signum, frame):
-                logger.info("Populate terminated by SIGTERM")
-                raise SystemExit("SIGTERM received")
+            return self._populate_distributed(
+                *restrictions,
+                suppress_errors=suppress_errors,
+                return_exception_objects=return_exception_objects,
+                max_calls=max_calls,
+                display_progress=display_progress,
+                processes=processes,
+                make_kwargs=make_kwargs,
+                priority=priority,
+                refresh=refresh,
+            )
+        else:
+            return self._populate_direct(
+                *restrictions,
+                suppress_errors=suppress_errors,
+                return_exception_objects=return_exception_objects,
+                max_calls=max_calls,
+                display_progress=display_progress,
+                processes=processes,
+                make_kwargs=make_kwargs,
+            )
 
-            old_handler = signal.signal(signal.SIGTERM, handler)
+    def _populate_direct(
+        self,
+        *restrictions,
+        suppress_errors,
+        return_exception_objects,
+        max_calls,
+        display_progress,
+        processes,
+        make_kwargs,
+    ):
+        """
+        Populate without job table coordination.
 
-        if keys is None:
-            keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
-
-        # exclude "error", "ignore" or "reserved" jobs
-        if reserve_jobs:
-            exclude_key_hashes = (
-                jobs & {"table_name": self.target.table_name} & 'status in ("error", "ignore", "reserved")'
-            ).fetch("key_hash")
-            keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
-
-        if order == "reverse":
-            keys.reverse()
-        elif order == "random":
-            random.shuffle(keys)
+        Computes keys directly from key_source, suitable for single-worker
+        execution, development, and debugging.
+        """
+        keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY")
 
         logger.debug("Found %d keys to populate" % len(keys))
 
@@ -284,7 +335,7 @@ class AutoPopulate:
 
             if processes == 1:
                 for key in tqdm(keys, desc=self.__class__.__name__) if display_progress else keys:
-                    status = self._populate1(key, jobs, **populate_kwargs)
+                    status = self._populate1(key, jobs=None, **populate_kwargs)
                     if status is True:
                         success_list.append(1)
                     elif isinstance(status, tuple):
@@ -293,10 +344,10 @@ class AutoPopulate:
                         assert status is False
             else:
                 # spawn multiple processes
-                self.connection.close()  # disconnect parent process from MySQL server
+                self.connection.close()
                 del self.connection._conn.ctx  # SSLContext is not pickleable
                 with (
-                    mp.Pool(processes, _initialize_populate, (self, jobs, populate_kwargs)) as pool,
+                    mp.Pool(processes, _initialize_populate, (self, None, populate_kwargs)) as pool,
                     tqdm(desc="Processes: ", total=nkeys) if display_progress else contextlib.nullcontext() as progress_bar,
                 ):
                     for status in pool.imap(_call_populate1, keys, chunksize=1):
@@ -308,34 +359,126 @@ class AutoPopulate:
                             assert status is False
                         if display_progress:
                             progress_bar.update()
-                self.connection.connect()  # reconnect parent process to MySQL server
-
-        # restore original signal handler:
-        if reserve_jobs:
-            signal.signal(signal.SIGTERM, old_handler)
+                self.connection.connect()
 
         return {
             "success_count": sum(success_list),
             "error_list": error_list,
         }
 
+    def _populate_distributed(
+        self,
+        *restrictions,
+        suppress_errors,
+        return_exception_objects,
+        max_calls,
+        display_progress,
+        processes,
+        make_kwargs,
+        priority,
+        refresh,
+    ):
+        """
+        Populate with job table coordination.
+
+        Uses job table for multi-worker coordination, priority scheduling,
+        and status tracking.
+        """
+        from .settings import config
+
+        # Define a signal handler for SIGTERM
+        def handler(signum, frame):
+            logger.info("Populate terminated by SIGTERM")
+            raise SystemExit("SIGTERM received")
+
+        old_handler = signal.signal(signal.SIGTERM, handler)
+
+        try:
+            # Refresh job queue if configured
+            if refresh is None:
+                refresh = config.jobs.auto_refresh
+            if refresh:
+                self.jobs.refresh(*restrictions, priority=priority)
+
+            # Fetch pending jobs ordered by priority
+            pending_query = self.jobs.pending & "scheduled_time <= NOW()"
+            if priority is not None:
+                pending_query = pending_query & f"priority <= {priority}"
+
+            keys = pending_query.fetch("KEY", order_by="priority ASC, scheduled_time ASC", limit=max_calls)
+
+            logger.debug("Found %d pending jobs to populate" % len(keys))
+
+            nkeys = len(keys)
+            error_list = []
+            success_list = []
+
+            if nkeys:
+                processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
+
+                populate_kwargs = dict(
+                    suppress_errors=suppress_errors,
+                    return_exception_objects=return_exception_objects,
+                    make_kwargs=make_kwargs,
+                )
+
+                if processes == 1:
+                    for key in tqdm(keys, desc=self.__class__.__name__) if display_progress else keys:
+                        status = self._populate1(key, jobs=self.jobs, **populate_kwargs)
+                        if status is True:
+                            success_list.append(1)
+                        elif isinstance(status, tuple):
+                            error_list.append(status)
+                        # status is False means job was already reserved
+                else:
+                    # spawn multiple processes
+                    self.connection.close()
+                    del self.connection._conn.ctx  # SSLContext is not pickleable
+                    with (
+                        mp.Pool(processes, _initialize_populate, (self, self.jobs, populate_kwargs)) as pool,
+                        tqdm(desc="Processes: ", total=nkeys)
+                        if display_progress
+                        else contextlib.nullcontext() as progress_bar,
+                    ):
+                        for status in pool.imap(_call_populate1, keys, chunksize=1):
+                            if status is True:
+                                success_list.append(1)
+                            elif isinstance(status, tuple):
+                                error_list.append(status)
+                            if display_progress:
+                                progress_bar.update()
+                    self.connection.connect()
+
+            return {
+                "success_count": sum(success_list),
+                "error_list": error_list,
+            }
+        finally:
+            signal.signal(signal.SIGTERM, old_handler)
+
     def _populate1(self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None):
         """
-        populates table for one source key, calling self.make inside a transaction.
-        :param jobs: the jobs table or None if not reserve_jobs
+        Populate table for one source key, calling self.make inside a transaction.
+
         :param key: dict specifying job to populate
-        :param suppress_errors: bool if errors should be suppressed and returned
-        :param return_exception_objects: if True, errors must be returned as objects
+        :param jobs: the Job object or None if not reserve_jobs
+        :param suppress_errors: if True, errors are suppressed and returned
+        :param return_exception_objects: if True, errors returned as objects
         :return: (key, error) when suppress_errors=True,
-            True if successfully invoke one `make()` call, otherwise False
+            True if successfully invoke one make() call, otherwise False
         """
+        import time
+
         # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
-        if jobs is not None and not jobs.reserve(self.target.table_name, self._job_key(key)):
+        # Try to reserve the job (distributed mode only)
+        if jobs is not None and not jobs.reserve(key):
             return False
 
-        # if make is a generator, it transaction can be delayed until the final stage
+        start_time = time.time()
+
+        # if make is a generator, transaction can be delayed until the final stage
         is_generator = inspect.isgeneratorfunction(make)
         if not is_generator:
             self.connection.start_transaction()
@@ -344,7 +487,7 @@ class AutoPopulate:
             if not is_generator:
                 self.connection.cancel_transaction()
             if jobs is not None:
-                jobs.complete(self.target.table_name, self._job_key(key))
+                jobs.complete(key)
             return False
 
         logger.debug(f"Making {key} -> {self.target.full_table_name}")
@@ -380,13 +523,7 @@ class AutoPopulate:
             )
             logger.debug(f"Error making {key} -> {self.target.full_table_name} - {error_message}")
             if jobs is not None:
-                # show error name and error message (if any)
-                jobs.error(
-                    self.target.table_name,
-                    self._job_key(key),
-                    error_message=error_message,
-                    error_stack=traceback.format_exc(),
-                )
+                jobs.error(key, error_message=error_message, error_stack=traceback.format_exc())
             if not suppress_errors or isinstance(error, SystemExit):
                 raise
             else:
@@ -394,9 +531,10 @@ class AutoPopulate:
                 return key, error if return_exception_objects else error_message
         else:
             self.connection.commit_transaction()
+            duration = time.time() - start_time
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
             if jobs is not None:
-                jobs.complete(self.target.table_name, self._job_key(key))
+                jobs.complete(key, duration=duration)
             return True
         finally:
             self.__class__._allow_insert = False
