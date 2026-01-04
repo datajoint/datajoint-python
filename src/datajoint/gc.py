@@ -185,9 +185,9 @@ def scan_references(
                         logger.info(f"  Scanning {table_name}.{attr_name}")
 
                     # Fetch all values for this attribute
-                    # Use raw fetch to get JSON strings
+                    # Use to_arrays to get attribute values
                     try:
-                        values = table.fetch(attr_name)
+                        values = table.to_arrays(attr_name)
                         for value in values:
                             for content_hash, ref_store in _extract_content_refs(value):
                                 # Filter by store if specified
@@ -243,7 +243,7 @@ def scan_object_references(
 
                     # Fetch all values for this attribute
                     try:
-                        values = table.fetch(attr_name)
+                        values = table.to_arrays(attr_name)
                         for value in values:
                             for path, ref_store in _extract_object_refs(value):
                                 # Filter by store if specified

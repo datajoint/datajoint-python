@@ -19,7 +19,7 @@ def test_reserve_job(clean_jobs, subject, experiment):
     assert pending_count > 0, "no pending jobs created"
 
     # Reserve all pending jobs
-    keys = experiment.jobs.pending.fetch("KEY")
+    keys = experiment.jobs.pending.keys()
     for key in keys:
         assert experiment.jobs.reserve(key), "failed to reserve a job"
 
@@ -39,7 +39,7 @@ def test_reserve_job(clean_jobs, subject, experiment):
 
     # Refresh again to create new pending jobs
     experiment.jobs.refresh()
-    keys = experiment.jobs.pending.fetch("KEY")
+    keys = experiment.jobs.pending.keys()
 
     # Reserve and mark as error
     for key in keys:
@@ -68,7 +68,7 @@ def test_job_status_filters(clean_jobs, subject, experiment):
     assert len(experiment.jobs.errors) == 0
 
     # Reserve some jobs
-    keys = experiment.jobs.pending.fetch("KEY", limit=2)
+    keys = experiment.jobs.pending.keys(limit=2)
     for key in keys:
         experiment.jobs.reserve(key)
 
@@ -123,7 +123,7 @@ def test_long_error_message(clean_jobs, subject, experiment):
 
     # Refresh to create pending jobs
     experiment.jobs.refresh()
-    key = experiment.jobs.pending.fetch("KEY", limit=1)[0]
+    key = experiment.jobs.pending.keys(limit=1)[0]
 
     # Test long error message truncation
     experiment.jobs.reserve(key)
@@ -135,7 +135,7 @@ def test_long_error_message(clean_jobs, subject, experiment):
 
     # Refresh and test short error message (not truncated)
     experiment.jobs.refresh()
-    key = experiment.jobs.pending.fetch("KEY", limit=1)[0]
+    key = experiment.jobs.pending.keys(limit=1)[0]
     experiment.jobs.reserve(key)
     experiment.jobs.error(key, short_error_message)
     error_message = experiment.jobs.errors.fetch1("error_message")
@@ -151,7 +151,7 @@ def test_long_error_stack(clean_jobs, subject, experiment):
 
     # Refresh to create pending jobs
     experiment.jobs.refresh()
-    key = experiment.jobs.pending.fetch("KEY", limit=1)[0]
+    key = experiment.jobs.pending.keys(limit=1)[0]
 
     # Test long error stack
     experiment.jobs.reserve(key)

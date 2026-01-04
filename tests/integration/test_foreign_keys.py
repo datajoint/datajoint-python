@@ -22,7 +22,7 @@ def test_aliased_fk(schema_adv):
     link = person.proj(parent_name="full_name", parent="person_id")
     parents = person * parent * link
     parents &= dict(full_name="May K. Hall")
-    assert set(parents.fetch("parent_name")) == {"Hanna R. Walters", "Russel S. James"}
+    assert set(parents.to_arrays("parent_name")) == {"Hanna R. Walters", "Russel S. James"}
     delete_count = person.delete()
     assert delete_count == 16
 

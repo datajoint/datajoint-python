@@ -87,18 +87,24 @@ test = [
   "requests",
   "graphviz",
   "testcontainers[mysql,minio]>=4.0",
+  "polars>=0.20.0",
+  "pyarrow>=14.0.0",
 ]
 
 [project.optional-dependencies]
 s3 = ["s3fs>=2023.1.0"]
 gcs = ["gcsfs>=2023.1.0"]
 azure = ["adlfs>=2023.1.0"]
+polars = ["polars>=0.20.0"]
+arrow = ["pyarrow>=14.0.0"]
 test = [
   "pytest",
   "pytest-cov",
   "requests",
   "s3fs>=2023.1.0",
   "testcontainers[mysql,minio]>=4.0",
+  "polars>=0.20.0",
+  "pyarrow>=14.0.0",
 ]
 dev = [
   "pre-commit",
@@ -107,6 +113,8 @@ dev = [
   # including test
   "pytest",
   "pytest-cov",
+  "polars>=0.20.0",
+  "pyarrow>=14.0.0",
 ]
 
 [tool.ruff]

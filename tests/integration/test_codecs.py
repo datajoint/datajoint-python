@@ -64,7 +64,7 @@ def test_codec_graph(schema_codec):
         nx.cycle_graph(5),
     ]
     c.insert((i, g) for i, g in enumerate(graphs))
-    returned_graphs = c.fetch("conn_graph", order_by="connid")
+    returned_graphs = c.to_arrays("conn_graph", order_by="connid")
     for g1, g2 in zip(graphs, returned_graphs):
         assert isinstance(g2, nx.Graph)
         assert len(g1.edges) == len(g2.edges)
@@ -99,7 +99,7 @@ def test_codec_spawned(local_schema):
         nx.cycle_graph(5),
     ]
     c.insert((i, g) for i, g in enumerate(graphs))
-    returned_graphs = c.fetch("conn_graph", order_by="connid")
+    returned_graphs = c.to_arrays("conn_graph", order_by="connid")
     for g1, g2 in zip(graphs, returned_graphs):
         assert isinstance(g2, nx.Graph)
         assert len(g1.edges) == len(g2.edges)
@@ -118,7 +118,7 @@ def test_codec_virtual_module(schema_virtual_module):
     ]
     c.insert((i, g) for i, g in enumerate(graphs))
     c.insert1({"connid": 100})  # test work with NULLs
-    returned_graphs = c.fetch("conn_graph", order_by="connid")
+    returned_graphs = c.to_arrays("conn_graph", order_by="connid")
     for g1, g2 in zip_longest(graphs, returned_graphs):
         if g1 is None:
             assert g2 is None

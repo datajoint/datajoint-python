@@ -50,7 +50,7 @@ def test_issue386(schema_aggr_reg):
     """
     result = R.aggr(S, n="count(*)") & "n=10"
     result = Q & result
-    result.fetch()
+    result.to_dicts()
 
 
 def test_issue449(schema_aggr_reg):
@@ -60,7 +60,7 @@ def test_issue449(schema_aggr_reg):
     Note: dj.U() * table pattern is no longer supported in 2.0, use dj.U() & table instead
     """
     result = dj.U("n") & R.aggr(S, n="max(s)")
-    result.fetch()
+    result.to_dicts()
 
 
 def test_issue484(schema_aggr_reg):
@@ -69,11 +69,11 @@ def test_issue484(schema_aggr_reg):
     Issue 484
     """
     q = dj.U().aggr(S, n="max(s)")
-    q.fetch("n")
+    q.to_arrays("n")
     q.fetch1("n")
     q = dj.U().aggr(S, n="avg(s)")
     result = dj.U().aggr(q, m="max(n)")
-    result.fetch()
+    result.to_dicts()
 
 
 def test_union_join(schema_aggr_reg_with_abx):
@@ -98,7 +98,7 @@ def test_union_join(schema_aggr_reg_with_abx):
         {"id": 400, "id2": 44},
     ]
 
-    assert ((q1 + q2) * A).fetch(as_dict=True) == expected_data
+    assert ((q1 + q2) * A).to_dicts() == expected_data
 
 
 class TestIssue558:
@@ -143,7 +143,7 @@ def test_left_join_valid(schema_uuid):
     Topic().add("jeff2")  # Topic without Items
     # Item.join(Topic, left=True) is valid because Item → Topic
     q = Item.join(Topic, left=True)
-    qf = q.fetch()
+    qf = q.to_arrays()
     assert len(q) == len(qf)
     # All Items should have matching Topics since they were populated from Topics
     assert len(q) == len(Item())

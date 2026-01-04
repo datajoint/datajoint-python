@@ -97,7 +97,7 @@ def test_cli_schemas(prefix, connection_root, db_creds_root):
 
     process.stdin.write("test_schema.__dict__['__name__']\n")
     process.stdin.write("test_schema.__dict__['schema']\n")
-    process.stdin.write("test_schema.IJ.fetch(as_dict=True)\n")
+    process.stdin.write("test_schema.IJ.to_dicts()\n")
     process.stdin.flush()
 
     stdout, stderr = process.communicate()

@@ -14,7 +14,7 @@ def test_populate(clean_autopopulate, trial, subject, experiment, ephys, channel
 
     # test restricted populate
     assert not trial, "table already filled?"
-    restriction = subject.proj(animal="subject_id").fetch("KEY")[0]
+    restriction = subject.proj(animal="subject_id").keys()[0]
     d = trial.connection.dependencies
     d.load()
     trial.populate(restriction)
@@ -41,7 +41,7 @@ def test_populate_with_success_count(clean_autopopulate, subject, experiment, tr
 
     # test restricted populate
     assert not trial, "table already filled?"
-    restriction = subject.proj(animal="subject_id").fetch("KEY")[0]
+    restriction = subject.proj(animal="subject_id").keys()[0]
     d = trial.connection.dependencies
     d.load()
     ret = trial.populate(restriction, suppress_errors=True)
@@ -68,7 +68,7 @@ def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, subject, exp
     # Refresh jobs to create pending entries
     experiment.jobs.refresh()
 
-    keys = experiment.jobs.pending.fetch("KEY", limit=2)
+    keys = experiment.jobs.pending.keys(limit=2)
     for idx, key in enumerate(keys):
         if idx == 0:
             experiment.jobs.ignore(key)
@@ -84,7 +84,7 @@ def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, subject, exp
 
 def test_allow_direct_insert(clean_autopopulate, subject, experiment):
     assert subject, "root tables are empty"
-    key = subject.fetch("KEY", limit=1)[0]
+    key = subject.keys(limit=1)[0]
     key["experiment_id"] = 1000
     key["experiment_date"] = "2018-10-30"
     experiment.insert1(key, allow_direct_insert=True)
@@ -104,7 +104,7 @@ def test_multi_processing(clean_autopopulate, subject, experiment, processes):
 
 def test_allow_insert(clean_autopopulate, subject, experiment):
     assert subject, "root tables are empty"
-    key = subject.fetch("KEY")[0]
+    key = subject.keys()[0]
     key["experiment_id"] = 1001
     key["experiment_date"] = "2018-10-30"
     with pytest.raises(DataJointError):

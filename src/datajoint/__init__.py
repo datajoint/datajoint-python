@@ -73,7 +73,6 @@ from .connection import Connection, conn
 from .diagram import Diagram
 from .errors import DataJointError
 from .expression import AndList, Not, Top, U
-from .fetch import key
 from .hash import key_hash
 from .logging import logger
 from .objectref import ObjectRef

@@ -291,7 +291,7 @@ class Job(Table):
         from .condition import Not
 
         new_keys = (key_source - self._target).restrict(Not(self), semantic_check=False).proj()
-        new_key_list = new_keys.fetch("KEY")
+        new_key_list = new_keys.keys()
 
         if new_key_list:
             scheduled_time = now + timedelta(seconds=delay) if delay > 0 else now
@@ -313,7 +313,7 @@ class Job(Table):
             # Success jobs whose keys are in key_source but not in target
             # Disable semantic_check for Job table operations
             success_to_repend = self.completed.restrict(key_source, semantic_check=False) - self._target
-            repend_keys = success_to_repend.fetch("KEY")
+            repend_keys = success_to_repend.keys()
             for key in repend_keys:
                 (self & key).delete_quick()
                 self.insert1({**key, "status": "pending", "priority": priority})
@@ -324,7 +324,7 @@ class Job(Table):
             stale_cutoff = now - timedelta(seconds=stale_timeout)
             old_jobs = self & f'created_time < "{stale_cutoff}"' & 'status != "ignore"'
 
-            for key in old_jobs.fetch("KEY"):
+            for key in old_jobs.keys():
                 # Check if key still in key_source
                 if not (key_source & key):
                     (self & key).delete_quick()
@@ -335,7 +335,7 @@ class Job(Table):
             orphan_cutoff = now - timedelta(seconds=orphan_timeout)
             orphaned_jobs = self.reserved & f'reserved_time < "{orphan_cutoff}"'
 
-            for key in orphaned_jobs.fetch("KEY"):
+            for key in orphaned_jobs.keys():
                 (self & key).delete_quick()
                 self.insert1({**key, "status": "pending", "priority": priority})
                 result["orphaned"] += 1
@@ -358,7 +358,7 @@ class Job(Table):
 
         # Check if job is pending and scheduled
         now = datetime.now()
-        job = (self & key & 'status="pending"' & f'scheduled_time <= "{now}"').fetch(as_dict=True)
+        job = (self & key & 'status="pending"' & f'scheduled_time <= "{now}"').to_dicts()
 
         if not job:
             return False

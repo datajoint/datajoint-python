@@ -611,7 +611,7 @@ class Table(QueryExpression):
                         master._restriction = [
                             make_condition(  # &= may cause in target tables in subquery
                                 master,
-                                (master.proj() & child.proj()).fetch(),
+                                (master.proj() & child.proj()).to_arrays(),
                                 master._restriction_attributes,
                             )
                         ]

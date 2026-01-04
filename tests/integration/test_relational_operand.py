@@ -165,7 +165,7 @@ def test_issue_376(schema_any_pop):
 
 
 def test_issue_463(schema_simp_pop):
-    assert ((A & B) * B).fetch().size == len(A * B)
+    assert ((A & B) * B).to_arrays().size == len(A * B)
 
 
 def test_project(schema_simp_pop):
@@ -191,11 +191,11 @@ def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_po
 
 
 def test_union(schema_simp_pop):
-    x = set(zip(*IJ.fetch("i", "j")))
-    y = set(zip(*JI.fetch("i", "j")))
+    x = set(zip(*IJ.to_arrays("i", "j")))
+    y = set(zip(*JI.to_arrays("i", "j")))
     # IJ and JI have attributes i,j from different origins, so use semantic_check=False
     assert len(x) > 0 and len(y) > 0 and len(IJ().join(JI(), semantic_check=False)) < len(x)
-    z = set(zip(*(IJ + JI).fetch("i", "j")))  # union
+    z = set(zip(*(IJ + JI).to_arrays("i", "j")))  # union
     assert x.union(y) == z
     assert len(IJ + JI) == len(z)
 
@@ -209,7 +209,7 @@ def test_outer_union_fail_1(schema_simp_pop):
 def test_outer_union_fail_2(schema_any_pop):
     """Union of two tables with different primary keys raises an error."""
     t = Trial + Ephys
-    t.fetch()
+    t.to_arrays()
     assert set(t.heading.names) == set(Trial.heading.names) | set(Ephys.heading.names)
     len(t)
 
@@ -236,7 +236,7 @@ def test_aggregate(schema_simp_pop):
     x = B().aggregate(B.C(), keep_all_rows=True)
     assert len(x) == len(B())  # test LEFT join
 
-    assert len((x & "id_b=0").fetch()) == len(B() & "id_b=0")  # test restricted aggregation
+    assert len((x & "id_b=0").to_arrays()) == len(B() & "id_b=0")  # test restricted aggregation
 
     x = B().aggregate(
         B.C(),
@@ -249,10 +249,10 @@ def test_aggregate(schema_simp_pop):
     assert len(x) == len(B())
     y = x & "mean>0"  # restricted aggregation
     assert len(y) > 0
-    assert all(y.fetch("mean") > 0)
-    for n, count, mean, max_, key in zip(*x.fetch("n", "count", "mean", "max", dj.key)):
+    assert all(y.to_arrays("mean") > 0)
+    for n, count, mean, max_, key in zip(*x.to_arrays("n", "count", "mean", "max"), x.keys()):
         assert n == count, "aggregation failed (count)"
-        values = (B.C() & key).fetch("value")
+        values = (B.C() & key).to_arrays("value")
         assert bool(len(values)) == bool(n), "aggregation failed (restriction)"
         if n:
             assert np.isclose(mean, values.mean(), rtol=1e-4, atol=1e-5), "aggregation failed (mean)"
@@ -268,7 +268,7 @@ def test_aggr(schema_simp_pop):
     x = B().aggr(B.C(), keep_all_rows=True)
     assert len(x) == len(B())  # test LEFT join
 
-    assert len((x & "id_b=0").fetch()) == len(B() & "id_b=0")  # test restricted aggregation
+    assert len((x & "id_b=0").to_arrays()) == len(B() & "id_b=0")  # test restricted aggregation
 
     x = B().aggr(
         B.C(),
@@ -281,10 +281,10 @@ def test_aggr(schema_simp_pop):
     assert len(x) == len(B())
     y = x & "mean>0"  # restricted aggregation
     assert len(y) > 0
-    assert all(y.fetch("mean") > 0)
-    for n, count, mean, max_, key in zip(*x.fetch("n", "count", "mean", "max", dj.key)):
+    assert all(y.to_arrays("mean") > 0)
+    for n, count, mean, max_, key in zip(*x.to_arrays("n", "count", "mean", "max"), x.keys()):
         assert n == count, "aggregation failed (count)"
-        values = (B.C() & key).fetch("value")
+        values = (B.C() & key).to_arrays("value")
         assert bool(len(values)) == bool(n), "aggregation failed (restriction)"
         if n:
             assert np.isclose(mean, values.mean(), rtol=1e-4, atol=1e-5), "aggregation failed (mean)"
@@ -298,12 +298,12 @@ def test_semijoin(schema_simp_pop):
     x = IJ()
     y = JI()
     # IJ and JI have i,j from different origins - use semantic_check=False
-    n = len(x & y.fetch(as_dict=True))
-    m = len(x - y.fetch(as_dict=True))
+    n = len(x & y.to_dicts())
+    m = len(x - y.to_dicts())
     assert n > 0 and m > 0
     assert len(x) == m + n
-    assert len(x & y.fetch()) == n
-    assert len(x - y.fetch()) == m
+    assert len(x & y.to_arrays()) == n
+    assert len(x - y.to_arrays()) == m
     semi = x.restrict(y, semantic_check=False)
     anti = x.restrict(dj.Not(y), semantic_check=False)
     assert len(semi) == n
@@ -312,7 +312,7 @@ def test_semijoin(schema_simp_pop):
 
 def test_pandas_fetch_and_restriction(schema_simp_pop):
     q = L & "cond_in_l = 0"
-    df = q.fetch(format="frame")  # pandas dataframe
+    df = q.to_pandas()  # pandas dataframe
     assert isinstance(df, pandas.DataFrame)
     assert len(E & q) == len(E & df)
 
@@ -352,8 +352,8 @@ def test_restrictions_by_lists(schema_simp_pop):
     assert len(x - {}) == 0, "incorrect restriction by a tuple with no attributes"
     assert len(x & {"foo": 0}) == lenx, "incorrect restriction by a tuple with no matching attributes"
     assert len(x - {"foo": 0}) == 0, "incorrect restriction by a tuple with no matching attributes"
-    assert len(x & y) == len(x & y.fetch()), "incorrect restriction by a list"
-    assert len(x - y) == len(x - y.fetch()), "incorrect restriction by a list"
+    assert len(x & y) == len(x & y.to_arrays()), "incorrect restriction by a list"
+    assert len(x - y) == len(x - y.to_arrays()), "incorrect restriction by a list"
     w = A()
     assert len(w) > 0, "incorrect test setup: w is empty"
     assert (
@@ -365,7 +365,7 @@ def test_restrictions_by_lists(schema_simp_pop):
 
 def test_datetime(schema_any_pop):
     """Test date retrieval"""
-    date = Experiment().fetch("experiment_date")[0]
+    date = Experiment().to_arrays("experiment_date")[0]
     e1 = Experiment() & dict(experiment_date=str(date))
     e2 = Experiment() & dict(experiment_date=date)
     assert len(e1) == len(e2) > 0, "Two date restriction do not yield the same result"
@@ -396,7 +396,8 @@ def test_join_project(schema_simp_pop):
 
 
 def test_ellipsis(schema_any_pop):
-    r = Experiment.proj(..., "- data_path").head(1, as_dict=True)
+    # head() now returns list of dicts by default
+    r = Experiment.proj(..., "- data_path").head(1)
     assert set(Experiment.heading).difference(r[0]) == {"data_path"}
 
 
@@ -433,7 +434,8 @@ def test_update_numeric_attribute(schema_simp_pop):
     TTestUpdate.update1(dict(rel.fetch1("KEY"), num_attr=s))
     assert s == rel.fetch1("num_attr"), "Updated integer does not match"
     TTestUpdate.update1(dict(rel.fetch1("KEY"), num_attr=None))
-    assert np.isnan(rel.fetch1("num_attr")), "Numeric value is not NaN"
+    # NULL values are returned as None
+    assert rel.fetch1("num_attr") is None, "Numeric value is not None/NULL"
 
 
 def test_update_blob_attribute(schema_simp_pop):
@@ -458,7 +460,7 @@ def test_reserved_words2(schema_simp_pop):
     rel = ReservedWord()
     rel.insert1({"key": 1, "in": "ouch", "from": "bummer", "int": 3, "select": "major pain"})
     with pytest.raises(dj.DataJointError):
-        (rel & "key=1").fetch("in")  # error because reserved word `key` is not in backquotes. See issue #249
+        (rel & "key=1").to_arrays("in")  # error because reserved word `key` is not in backquotes. See issue #249
 
 
 def test_permissive_join_basic(schema_any_pop):
@@ -521,10 +523,10 @@ def test_union_multiple(schema_simp_pop):
     # https://github.com/datajoint/datajoint-python/issues/926
     q1 = IJ & dict(j=2)
     q2 = (IJ & dict(j=2, i=0)) + (IJ & dict(j=2, i=1)) + (IJ & dict(j=2, i=2))
-    x = set(zip(*q1.fetch("i", "j")))
-    y = set(zip(*q2.fetch("i", "j")))
+    x = set(zip(*q1.to_arrays("i", "j")))
+    y = set(zip(*q2.to_arrays("i", "j")))
     assert x == y
-    assert q1.fetch(as_dict=True) == q2.fetch(as_dict=True)
+    assert q1.to_dicts() == q2.to_dicts()
 
 
 class TestDjTop:
@@ -546,21 +548,21 @@ class TestDjTop:
         assert len(x) == 1
         assert len(y) == 5
         assert len(z) == 2
-        assert a.fetch(as_dict=True) == [
+        assert a.to_dicts() == [
             {"id_l": 0, "cond_in_l": 1},
         ]
-        assert b.fetch(as_dict=True) == [
+        assert b.to_dicts() == [
             {"id_l": 3, "cond_in_l": 0},
         ]
-        assert x.fetch(as_dict=True) == [{"id_l": 25, "cond_in_l": 1}]
-        assert y.fetch(as_dict=True) == [
+        assert x.to_dicts() == [{"id_l": 25, "cond_in_l": 1}]
+        assert y.to_dicts() == [
             {"id_l": 16, "cond_in_l": 1},
             {"id_l": 15, "cond_in_l": 1},
             {"id_l": 11, "cond_in_l": 1},
             {"id_l": 10, "cond_in_l": 1},
             {"id_l": 5, "cond_in_l": 1},
         ]
-        assert z.fetch(as_dict=True) == [
+        assert z.to_dicts() == [
             {"id_l": 17, "cond_in_l": 1},
             {"id_l": 20, "cond_in_l": 1},
         ]
@@ -570,7 +572,7 @@ class TestDjTop:
         select = SelectPK() & dj.Top(limit=9, order_by=["select desc"])
         key = KeyPK() & dj.Top(limit=9, order_by="key desc")
         # Convert to sets of tuples for order-independent comparison
-        select_result = {tuple(sorted(d.items())) for d in select.fetch(as_dict=True)}
+        select_result = {tuple(sorted(d.items())) for d in select.to_dicts()}
         select_expected = {
             tuple(sorted(d.items()))
             for d in [
@@ -586,7 +588,7 @@ class TestDjTop:
             ]
         }
         assert select_result == select_expected
-        key_result = {tuple(sorted(d.items())) for d in key.fetch(as_dict=True)}
+        key_result = {tuple(sorted(d.items())) for d in key.to_dicts()}
         key_expected = {
             tuple(sorted(d.items()))
             for d in [

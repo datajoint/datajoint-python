@@ -26,7 +26,12 @@ supported_class_attrs = {
     "aggr",
     "join",
     "extend",
-    "fetch",
+    "to_dicts",
+    "to_pandas",
+    "to_polars",
+    "to_arrow",
+    "to_arrays",
+    "keys",
     "fetch1",
     "head",
     "tail",
@@ -48,7 +53,7 @@ supported_class_attrs = {
 class TableMeta(type):
     """
     TableMeta subclasses allow applying some instance methods and properties directly
-    at class level. For example, this allows Table.fetch() instead of Table().fetch().
+    at class level. For example, this allows Table.to_dicts() instead of Table().to_dicts().
     """
 
     def __getattribute__(cls, name):

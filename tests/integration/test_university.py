@@ -23,7 +23,7 @@ from tests.schema_university import (
 
 def _hash4(table):
     """Hash of table contents"""
-    data = table.fetch(order_by="KEY", as_dict=True)
+    data = table.to_dicts(order_by="KEY")
     blob = dj.blob.pack(data, compress=False)
     return hashlib.md5(blob).digest().hex()[:4]
 
@@ -91,17 +91,17 @@ def test_restrict(schema_uni):
     """
     utahns1 = Student & {"home_state": "UT"}
     utahns2 = Student & 'home_state="UT"'
-    assert len(utahns1) == len(utahns2.fetch("KEY")) == 7
+    assert len(utahns1) == len(utahns2.keys()) == 7
 
     # male nonutahns
-    sex1, state1 = ((Student & 'sex="M"') - {"home_state": "UT"}).fetch("sex", "home_state", order_by="student_id")
-    sex2, state2 = ((Student & 'sex="M"') - {"home_state": "UT"}).fetch("sex", "home_state", order_by="student_id")
+    sex1, state1 = ((Student & 'sex="M"') - {"home_state": "UT"}).to_arrays("sex", "home_state", order_by="student_id")
+    sex2, state2 = ((Student & 'sex="M"') - {"home_state": "UT"}).to_arrays("sex", "home_state", order_by="student_id")
     assert len(set(state1)) == len(set(state2)) == 44
     assert set(sex1).pop() == set(sex2).pop() == "M"
 
     # students from OK, NM, TX
-    s1 = (Student & [{"home_state": s} for s in ("OK", "NM", "TX")]).fetch("KEY", order_by="student_id")
-    s2 = (Student & 'home_state in ("OK", "NM", "TX")').fetch("KEY", order_by="student_id")
+    s1 = (Student & [{"home_state": s} for s in ("OK", "NM", "TX")]).keys(order_by="student_id")
+    s2 = (Student & 'home_state in ("OK", "NM", "TX")').keys(order_by="student_id")
     assert len(s1) == 11
     assert s1 == s2
 
@@ -143,19 +143,19 @@ def test_aggr(schema_uni):
 
     # GPA
     student_gpa = Student.aggr(Course * Grade * LetterGrade, gpa="round(sum(points*credits)/sum(credits), 2)")
-    gpa = student_gpa.fetch("gpa")
+    gpa = student_gpa.to_arrays("gpa")
     assert len(gpa) == 261
     assert 2 < gpa.mean() < 3
 
     # Sections in biology department with zero students in them
     section = (Section & {"dept": "BIOL"}).aggr(Enroll, n="count(student_id)", keep_all_rows=True) & "n=0"
-    assert len(set(section.fetch("dept"))) == 1
+    assert len(set(section.to_arrays("dept"))) == 1
     assert len(section) == 17
     assert bool(section)
 
     # Test correct use of ellipses in a similar query
     section = (Section & {"dept": "BIOL"}).aggr(Grade, ..., n="count(student_id)", keep_all_rows=True) & "n>1"
     assert not any(name in section.heading.names for name in Grade.heading.secondary_attributes)
-    assert len(set(section.fetch("dept"))) == 1
+    assert len(set(section.to_arrays("dept"))) == 1
     assert len(section) == 168
     assert bool(section)
