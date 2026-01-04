@@ -31,8 +31,12 @@ def ensure_lineage_table(connection, database):
     """
     Create the ~lineage table in the schema if it doesn't exist.
 
-    :param connection: A DataJoint connection object
-    :param database: The schema/database name
+    Parameters
+    ----------
+    connection : Connection
+        A DataJoint connection object.
+    database : str
+        The schema/database name.
     """
     connection.query(
         """
@@ -50,9 +54,17 @@ def lineage_table_exists(connection, database):
     """
     Check if the ~lineage table exists in the schema.
 
-    :param connection: A DataJoint connection object
-    :param database: The schema/database name
-    :return: True if the table exists, False otherwise
+    Parameters
+    ----------
+    connection : Connection
+        A DataJoint connection object.
+    database : str
+        The schema/database name.
+
+    Returns
+    -------
+    bool
+        True if the table exists, False otherwise.
     """
     result = connection.query(
         """
@@ -68,11 +80,21 @@ def get_lineage(connection, database, table_name, attribute_name):
     """
     Get the lineage for an attribute from the ~lineage table.
 
-    :param connection: A DataJoint connection object
-    :param database: The schema/database name
-    :param table_name: The table name
-    :param attribute_name: The attribute name
-    :return: The lineage string, or None if not found
+    Parameters
+    ----------
+    connection : Connection
+        A DataJoint connection object.
+    database : str
+        The schema/database name.
+    table_name : str
+        The table name.
+    attribute_name : str
+        The attribute name.
+
+    Returns
+    -------
+    str or None
+        The lineage string, or None if not found.
     """
     if not lineage_table_exists(connection, database):
         return None
@@ -91,10 +113,19 @@ def get_table_lineages(connection, database, table_name):
     """
     Get all lineages for a table from the ~lineage table.
 
-    :param connection: A DataJoint connection object
-    :param database: The schema/database name
-    :param table_name: The table name
-    :return: A dict mapping attribute names to lineage strings
+    Parameters
+    ----------
+    connection : Connection
+        A DataJoint connection object.
+    database : str
+        The schema/database name.
+    table_name : str
+        The table name.
+
+    Returns
+    -------
+    dict[str, str]
+        Dict mapping attribute names to lineage strings.
     """
     if not lineage_table_exists(connection, database):
         return {}
@@ -113,9 +144,17 @@ def get_schema_lineages(connection, database):
     """
     Get all lineages for a schema from the ~lineage table.
 
-    :param connection: A DataJoint connection object
-    :param database: The schema/database name
-    :return: A dict mapping 'schema.table.attribute' to its lineage
+    Parameters
+    ----------
+    connection : Connection
+        A DataJoint connection object.
+    database : str
+        The schema/database name.
+
+    Returns
+    -------
+    dict[str, str]
+        Dict mapping 'schema.table.attribute' to its lineage.
     """
     if not lineage_table_exists(connection, database):
         return {}
@@ -133,9 +172,14 @@ def insert_lineages(connection, database, entries):
     """
     Insert multiple lineage entries in the ~lineage table as a single transaction.
 
-    :param connection: A DataJoint connection object
-    :param database: The schema/database name
-    :param entries: A list of (table_name, attribute_name, lineage) tuples
+    Parameters
+    ----------
+    connection : Connection
+        A DataJoint connection object.
+    database : str
+        The schema/database name.
+    entries : list[tuple[str, str, str]]
+        List of (table_name, attribute_name, lineage) tuples.
     """
     if not entries:
         return
@@ -158,9 +202,14 @@ def delete_table_lineages(connection, database, table_name):
     """
     Delete all lineage entries for a table.
 
-    :param connection: A DataJoint connection object
-    :param database: The schema/database name
-    :param table_name: The table name
+    Parameters
+    ----------
+    connection : Connection
+        A DataJoint connection object.
+    database : str
+        The schema/database name.
+    table_name : str
+        The table name.
     """
     if not lineage_table_exists(connection, database):
         return
@@ -187,8 +236,17 @@ def rebuild_schema_lineage(connection, database):
     If a referenced attribute in another schema has no lineage entry,
     a DataJointError is raised.
 
-    :param connection: A DataJoint connection object
-    :param database: The schema/database name
+    Parameters
+    ----------
+    connection : Connection
+        A DataJoint connection object.
+    database : str
+        The schema/database name.
+
+    Raises
+    ------
+    DataJointError
+        If a referenced attribute in another schema has no lineage entry.
     """
     # Ensure the lineage table exists
     ensure_lineage_table(connection, database)

@@ -46,11 +46,15 @@ def _uses_content_storage(attr) -> bool:
     - <blob@store> (chains to <hash>)
     - <attach@store> (chains to <hash>)
 
-    Args:
-        attr: Attribute from table heading
+    Parameters
+    ----------
+    attr : Attribute
+        Attribute from table heading.
 
-    Returns:
-        True if the attribute stores content hashes
+    Returns
+    -------
+    bool
+        True if the attribute stores content hashes.
     """
     if not attr.codec:
         return False
@@ -74,11 +78,15 @@ def _uses_object_storage(attr) -> bool:
     """
     Check if an attribute uses path-addressed object storage.
 
-    Args:
-        attr: Attribute from table heading
+    Parameters
+    ----------
+    attr : Attribute
+        Attribute from table heading.
 
-    Returns:
-        True if the attribute stores object paths
+    Returns
+    -------
+    bool
+        True if the attribute stores object paths.
     """
     if not attr.codec:
         return False
@@ -91,11 +99,15 @@ def _extract_content_refs(value: Any) -> list[tuple[str, str | None]]:
     """
     Extract content references from a stored value.
 
-    Args:
-        value: The stored value (could be JSON string or dict)
+    Parameters
+    ----------
+    value : Any
+        The stored value (could be JSON string or dict).
 
-    Returns:
-        List of (content_hash, store_name) tuples
+    Returns
+    -------
+    list[tuple[str, str | None]]
+        List of (content_hash, store_name) tuples.
     """
     refs = []
 
@@ -120,11 +132,15 @@ def _extract_object_refs(value: Any) -> list[tuple[str, str | None]]:
     """
     Extract object path references from a stored value.
 
-    Args:
-        value: The stored value (could be JSON string or dict)
+    Parameters
+    ----------
+    value : Any
+        The stored value (could be JSON string or dict).
 
-    Returns:
-        List of (path, store_name) tuples
+    Returns
+    -------
+    list[tuple[str, str | None]]
+        List of (path, store_name) tuples.
     """
     refs = []
 
@@ -156,13 +172,19 @@ def scan_references(
     Examines all tables in the given schemas and extracts content hashes
     from columns that use content-addressed storage (<hash@>, <blob@>, <attach@>).
 
-    Args:
-        *schemas: Schema instances to scan
-        store_name: Only include references to this store (None = all stores)
-        verbose: Print progress information
+    Parameters
+    ----------
+    *schemas : Schema
+        Schema instances to scan.
+    store_name : str, optional
+        Only include references to this store (None = all stores).
+    verbose : bool, optional
+        Print progress information.
 
-    Returns:
-        Set of content hashes that are referenced
+    Returns
+    -------
+    set[str]
+        Set of content hashes that are referenced.
     """
     referenced: set[str] = set()
 
@@ -213,13 +235,19 @@ def scan_object_references(
     Examines all tables in the given schemas and extracts object paths
     from columns that use path-addressed storage (<object>).
 
-    Args:
-        *schemas: Schema instances to scan
-        store_name: Only include references to this store (None = all stores)
-        verbose: Print progress information
+    Parameters
+    ----------
+    *schemas : Schema
+        Schema instances to scan.
+    store_name : str, optional
+        Only include references to this store (None = all stores).
+    verbose : bool, optional
+        Print progress information.
 
-    Returns:
-        Set of object paths that are referenced
+    Returns
+    -------
+    set[str]
+        Set of object paths that are referenced.
     """
     referenced: set[str] = set()
 
@@ -265,11 +293,15 @@ def list_stored_content(store_name: str | None = None) -> dict[str, int]:
     Scans the _content/ directory in the specified store and returns
     all content hashes found.
 
-    Args:
-        store_name: Store to scan (None = default store)
+    Parameters
+    ----------
+    store_name : str, optional
+        Store to scan (None = default store).
 
-    Returns:
-        Dict mapping content_hash to size in bytes
+    Returns
+    -------
+    dict[str, int]
+        Dict mapping content_hash to size in bytes.
     """
     backend = get_store_backend(store_name)
     stored: dict[str, int] = {}
@@ -315,11 +347,15 @@ def list_stored_objects(store_name: str | None = None) -> dict[str, int]:
     Scans for directories matching the object storage pattern:
     {schema}/{table}/objects/{pk}/{field}_{token}/
 
-    Args:
-        store_name: Store to scan (None = default store)
+    Parameters
+    ----------
+    store_name : str, optional
+        Store to scan (None = default store).
 
-    Returns:
-        Dict mapping object_path to size in bytes
+    Returns
+    -------
+    dict[str, int]
+        Dict mapping object_path to size in bytes.
     """
     backend = get_store_backend(store_name)
     stored: dict[str, int] = {}
@@ -364,12 +400,17 @@ def delete_object(path: str, store_name: str | None = None) -> bool:
     """
     Delete an object directory from storage.
 
-    Args:
-        path: Object path (relative to store root)
-        store_name: Store name (None = default store)
+    Parameters
+    ----------
+    path : str
+        Object path (relative to store root).
+    store_name : str, optional
+        Store name (None = default store).
 
-    Returns:
-        True if deleted, False if not found
+    Returns
+    -------
+    bool
+        True if deleted, False if not found.
     """
     backend = get_store_backend(store_name)
 
@@ -397,13 +438,20 @@ def scan(
     Scans both content-addressed storage (for <hash@>, <blob@>, <attach@>)
     and path-addressed storage (for <object>).
 
-    Args:
-        *schemas: Schema instances to scan
-        store_name: Store to check (None = default store)
-        verbose: Print progress information
+    Parameters
+    ----------
+    *schemas : Schema
+        Schema instances to scan.
+    store_name : str, optional
+        Store to check (None = default store).
+    verbose : bool, optional
+        Print progress information.
 
-    Returns:
+    Returns
+    -------
+    dict[str, Any]
         Dict with scan statistics:
+
         - content_referenced: Number of content items referenced in database
         - content_stored: Number of content items in storage
         - content_orphaned: Number of unreferenced content items
@@ -463,14 +511,22 @@ def collect(
     Scans the given schemas for content and object references, then removes any
     storage items that are not referenced.
 
-    Args:
-        *schemas: Schema instances to scan
-        store_name: Store to clean (None = default store)
-        dry_run: If True, report what would be deleted without deleting
-        verbose: Print progress information
+    Parameters
+    ----------
+    *schemas : Schema
+        Schema instances to scan.
+    store_name : str, optional
+        Store to clean (None = default store).
+    dry_run : bool, optional
+        If True, report what would be deleted without deleting. Default True.
+    verbose : bool, optional
+        Print progress information.
 
-    Returns:
+    Returns
+    -------
+    dict[str, Any]
         Dict with collection statistics:
+
         - referenced: Total items referenced in database
         - stored: Total items in storage
         - orphaned: Total unreferenced items
@@ -541,11 +597,15 @@ def format_stats(stats: dict[str, Any]) -> str:
     """
     Format GC statistics as a human-readable string.
 
-    Args:
-        stats: Statistics dict from scan() or collect()
+    Parameters
+    ----------
+    stats : dict[str, Any]
+        Statistics dict from scan() or collect().
 
-    Returns:
-        Formatted string
+    Returns
+    -------
+    str
+        Formatted string.
     """
     lines = ["External Storage Statistics:"]
 

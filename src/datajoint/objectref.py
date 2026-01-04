@@ -66,12 +66,17 @@ class ObjectRef:
         """
         Create an ObjectRef from JSON metadata stored in the database.
 
-        Args:
-            json_data: JSON string or dict containing object metadata
-            backend: StorageBackend instance for file operations
+        Parameters
+        ----------
+        json_data : dict or str
+            JSON string or dict containing object metadata.
+        backend : StorageBackend, optional
+            StorageBackend instance for file operations.
 
-        Returns:
-            ObjectRef instance
+        Returns
+        -------
+        ObjectRef
+            ObjectRef instance.
         """
         if isinstance(json_data, str):
             data = json.loads(json_data)
@@ -100,8 +105,10 @@ class ObjectRef:
         """
         Convert ObjectRef to JSON-serializable dict for database storage.
 
-        Returns:
-            Dict suitable for JSON serialization
+        Returns
+        -------
+        dict
+            Dict suitable for JSON serialization.
         """
         data = {
             "path": self.path,
@@ -129,18 +136,21 @@ class ObjectRef:
         any storage backend operations. The returned dict matches the JSON
         structure stored in the database.
 
-        Returns:
+        Returns
+        -------
+        dict
             Dict containing the object metadata:
-                - path: Relative storage path within the store
-                - url: Full URI (e.g., 's3://bucket/path') (optional)
-                - store: Store name (optional, None for default store)
-                - size: File/folder size in bytes (or None)
-                - hash: Content hash (or None)
-                - ext: File extension (or None)
-                - is_dir: True if folder
-                - timestamp: Upload timestamp
-                - mime_type: MIME type (files only, optional)
-                - item_count: Number of files (folders only, optional)
+
+            - path: Relative storage path within the store
+            - url: Full URI (e.g., 's3://bucket/path') (optional)
+            - store: Store name (optional, None for default store)
+            - size: File/folder size in bytes (or None)
+            - hash: Content hash (or None)
+            - ext: File extension (or None)
+            - is_dir: True if folder
+            - timestamp: Upload timestamp
+            - mime_type: MIME type (files only, optional)
+            - item_count: Number of files (folders only, optional)
         """
         return self.to_json()
 
@@ -205,11 +215,15 @@ class ObjectRef:
         """
         Read entire file content as bytes.
 
-        Returns:
-            File contents as bytes
+        Returns
+        -------
+        bytes
+            File contents as bytes.
 
-        Raises:
-            DataJointError: If object is a directory
+        Raises
+        ------
+        DataJointError
+            If object is a directory.
         """
         if self.is_dir:
             raise DataJointError("Cannot read() a directory. Use listdir() or walk() instead.")
@@ -220,12 +234,17 @@ class ObjectRef:
         """
         Open file for reading.
 
-        Args:
-            subpath: Optional path within directory (for folder objects)
-            mode: File mode ('rb' for binary read, 'r' for text)
+        Parameters
+        ----------
+        subpath : str, optional
+            Path within directory (for folder objects).
+        mode : str, optional
+            File mode ('rb' for binary read, 'r' for text). Default 'rb'.
 
-        Returns:
-            File-like object
+        Returns
+        -------
+        IO
+            File-like object.
         """
         self._ensure_backend()
         path = self.path
@@ -239,11 +258,15 @@ class ObjectRef:
         """
         List contents of directory.
 
-        Args:
-            subpath: Optional subdirectory path
+        Parameters
+        ----------
+        subpath : str, optional
+            Subdirectory path. Default empty string (root).
 
-        Returns:
-            List of filenames/directory names
+        Returns
+        -------
+        list[str]
+            List of filenames/directory names.
         """
         if not self.is_dir:
             raise DataJointError("Cannot listdir() on a file. Use read() or open() instead.")
@@ -258,8 +281,10 @@ class ObjectRef:
         """
         Walk directory tree, similar to os.walk().
 
-        Yields:
-            Tuples of (dirpath, dirnames, filenames)
+        Yields
+        ------
+        tuple[str, list[str], list[str]]
+            Tuples of (dirpath, dirnames, filenames).
         """
         if not self.is_dir:
             raise DataJointError("Cannot walk() on a file.")
@@ -274,12 +299,17 @@ class ObjectRef:
         """
         Download object to local filesystem.
 
-        Args:
-            destination: Local directory or file path
-            subpath: Optional path within directory (for folder objects)
+        Parameters
+        ----------
+        destination : Path or str
+            Local directory or file path.
+        subpath : str, optional
+            Path within directory (for folder objects).
 
-        Returns:
-            Path to downloaded file/directory
+        Returns
+        -------
+        Path
+            Path to downloaded file/directory.
         """
         self._ensure_backend()
         destination = Path(destination)
@@ -310,11 +340,15 @@ class ObjectRef:
         """
         Check if object (or subpath within it) exists.
 
-        Args:
-            subpath: Optional path within directory
+        Parameters
+        ----------
+        subpath : str, optional
+            Path within directory.
 
-        Returns:
-            True if exists
+        Returns
+        -------
+        bool
+            True if exists.
         """
         self._ensure_backend()
         path = f"{self.path}/{subpath}" if subpath else self.path
@@ -327,11 +361,15 @@ class ObjectRef:
         For files: checks size matches, and hash if available.
         For folders: validates manifest (all files exist with correct sizes).
 
-        Returns:
-            True if valid
+        Returns
+        -------
+        bool
+            True if valid.
 
-        Raises:
-            IntegrityError: If verification fails with details
+        Raises
+        ------
+        IntegrityError
+            If verification fails with details.
         """
         self._ensure_backend()
 

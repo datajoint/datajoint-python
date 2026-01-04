@@ -28,29 +28,36 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
     Analyze a schema to find blob columns that could be migrated to <blob>.
 
     This function identifies blob columns that:
+
     1. Have a MySQL blob type (tinyblob, blob, mediumblob, longblob)
     2. Do NOT already have a codec/type specified in their comment
 
     All blob size variants are included in the analysis.
 
-    Args:
-        schema: The DataJoint schema to analyze.
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to analyze.
 
-    Returns:
+    Returns
+    -------
+    list[dict]
         List of dicts with keys:
-            - table_name: Full table name (database.table)
-            - column_name: Name of the blob column
-            - column_type: MySQL column type (tinyblob, blob, mediumblob, longblob)
-            - current_comment: Current column comment
-            - needs_migration: True if column should be migrated
 
-    Example:
-        >>> import datajoint as dj
-        >>> schema = dj.schema('my_database')
-        >>> columns = dj.migrate.analyze_blob_columns(schema)
-        >>> for col in columns:
-        ...     if col['needs_migration']:
-        ...         print(f"{col['table_name']}.{col['column_name']} ({col['column_type']})")
+        - table_name: Full table name (database.table)
+        - column_name: Name of the blob column
+        - column_type: MySQL column type (tinyblob, blob, mediumblob, longblob)
+        - current_comment: Current column comment
+        - needs_migration: True if column should be migrated
+
+    Examples
+    --------
+    >>> import datajoint as dj
+    >>> schema = dj.schema('my_database')
+    >>> columns = dj.migrate.analyze_blob_columns(schema)
+    >>> for col in columns:
+    ...     if col['needs_migration']:
+    ...         print(f"{col['table_name']}.{col['column_name']} ({col['column_type']})")
     """
     results = []
 
@@ -108,23 +115,31 @@ def generate_migration_sql(
     include the `:<blob>:` prefix, marking them as using explicit
     DataJoint blob serialization.
 
-    Args:
-        schema: The DataJoint schema to migrate.
-        target_type: The type name to migrate to (default: "blob").
-        dry_run: If True, only return SQL without executing.
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to migrate.
+    target_type : str, optional
+        The type name to migrate to. Default "blob".
+    dry_run : bool, optional
+        If True, only return SQL without executing.
 
-    Returns:
+    Returns
+    -------
+    list[str]
         List of SQL ALTER TABLE statements.
 
-    Example:
-        >>> sql_statements = dj.migrate.generate_migration_sql(schema)
-        >>> for sql in sql_statements:
-        ...     print(sql)
+    Examples
+    --------
+    >>> sql_statements = dj.migrate.generate_migration_sql(schema)
+    >>> for sql in sql_statements:
+    ...     print(sql)
 
-    Note:
-        This is a metadata-only migration. The actual blob data format
-        remains unchanged - only the column comments are updated to
-        indicate explicit type handling.
+    Notes
+    -----
+    This is a metadata-only migration. The actual blob data format
+    remains unchanged - only the column comments are updated to
+    indicate explicit type handling.
     """
     columns = analyze_blob_columns(schema)
     sql_statements = []
@@ -165,31 +180,40 @@ def migrate_blob_columns(
     This updates column comments in the database to include the type
     declaration. The data format remains unchanged.
 
-    Args:
-        schema: The DataJoint schema to migrate.
-        target_type: The type name to migrate to (default: "blob").
-        dry_run: If True, only preview changes without applying.
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to migrate.
+    target_type : str, optional
+        The type name to migrate to. Default "blob".
+    dry_run : bool, optional
+        If True, only preview changes without applying. Default True.
 
-    Returns:
+    Returns
+    -------
+    dict
         Dict with keys:
-            - analyzed: Number of blob columns analyzed
-            - needs_migration: Number of columns that need migration
-            - migrated: Number of columns migrated (0 if dry_run)
-            - sql_statements: List of SQL statements (executed or to be executed)
 
-    Example:
-        >>> # Preview migration
-        >>> result = dj.migrate.migrate_blob_columns(schema, dry_run=True)
-        >>> print(f"Would migrate {result['needs_migration']} columns")
+        - analyzed: Number of blob columns analyzed
+        - needs_migration: Number of columns that need migration
+        - migrated: Number of columns migrated (0 if dry_run)
+        - sql_statements: List of SQL statements (executed or to be executed)
 
-        >>> # Apply migration
-        >>> result = dj.migrate.migrate_blob_columns(schema, dry_run=False)
-        >>> print(f"Migrated {result['migrated']} columns")
+    Examples
+    --------
+    >>> # Preview migration
+    >>> result = dj.migrate.migrate_blob_columns(schema, dry_run=True)
+    >>> print(f"Would migrate {result['needs_migration']} columns")
 
-    Warning:
-        After migration, table definitions should be updated to use
-        `<blob>` instead of `longblob` for consistency. The migration
-        only updates database metadata; source code changes are manual.
+    >>> # Apply migration
+    >>> result = dj.migrate.migrate_blob_columns(schema, dry_run=False)
+    >>> print(f"Migrated {result['migrated']} columns")
+
+    Warnings
+    --------
+    After migration, table definitions should be updated to use
+    ``<blob>`` instead of ``longblob`` for consistency. The migration
+    only updates database metadata; source code changes are manual.
     """
     columns = analyze_blob_columns(schema)
     sql_statements = generate_migration_sql(schema, target_type=target_type)
@@ -226,19 +250,25 @@ def check_migration_status(schema: Schema) -> dict:
     """
     Check the migration status of blob columns in a schema.
 
-    Args:
-        schema: The DataJoint schema to check.
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to check.
 
-    Returns:
+    Returns
+    -------
+    dict
         Dict with keys:
-            - total_blob_columns: Total number of blob columns
-            - migrated: Number of columns with explicit type
-            - pending: Number of columns using implicit serialization
-            - columns: List of column details
 
-    Example:
-        >>> status = dj.migrate.check_migration_status(schema)
-        >>> print(f"Migration progress: {status['migrated']}/{status['total_blob_columns']}")
+        - total_blob_columns: Total number of blob columns
+        - migrated: Number of columns with explicit type
+        - pending: Number of columns using implicit serialization
+        - columns: List of column details
+
+    Examples
+    --------
+    >>> status = dj.migrate.check_migration_status(schema)
+    >>> print(f"Migration progress: {status['migrated']}/{status['total_blob_columns']}")
     """
     columns = analyze_blob_columns(schema)
 
@@ -296,36 +326,44 @@ def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
     _job_version) to tables that were created before config.jobs.add_job_metadata
     was enabled.
 
-    Args:
-        target: Either a table class/instance (dj.Computed or dj.Imported) or
-                a Schema object. If a Schema, all Computed/Imported tables in
-                the schema will be processed.
-        dry_run: If True (default), only preview changes without applying.
+    Parameters
+    ----------
+    target : Table or Schema
+        Either a table class/instance (dj.Computed or dj.Imported) or
+        a Schema object. If a Schema, all Computed/Imported tables in
+        the schema will be processed.
+    dry_run : bool, optional
+        If True, only preview changes without applying. Default True.
 
-    Returns:
+    Returns
+    -------
+    dict
         Dict with keys:
-            - tables_analyzed: Number of tables checked
-            - tables_modified: Number of tables that were/would be modified
-            - columns_added: Total columns added across all tables
-            - details: List of dicts with per-table information
 
-    Example:
-        >>> import datajoint as dj
-        >>> from datajoint.migrate import add_job_metadata_columns
-        >>>
-        >>> # Preview migration for a single table
-        >>> result = add_job_metadata_columns(MyComputedTable, dry_run=True)
-        >>> print(f"Would add {result['columns_added']} columns")
-        >>>
-        >>> # Apply migration to all tables in a schema
-        >>> result = add_job_metadata_columns(schema, dry_run=False)
-        >>> print(f"Modified {result['tables_modified']} tables")
+        - tables_analyzed: Number of tables checked
+        - tables_modified: Number of tables that were/would be modified
+        - columns_added: Total columns added across all tables
+        - details: List of dicts with per-table information
 
-    Note:
-        - Only Computed and Imported tables are modified (not Manual, Lookup, or Part tables)
-        - Existing rows will have NULL values for _job_start_time and _job_duration
-        - Future populate() calls will fill in metadata for new rows
-        - This does NOT retroactively populate metadata for existing rows
+    Examples
+    --------
+    >>> import datajoint as dj
+    >>> from datajoint.migrate import add_job_metadata_columns
+    >>>
+    >>> # Preview migration for a single table
+    >>> result = add_job_metadata_columns(MyComputedTable, dry_run=True)
+    >>> print(f"Would add {result['columns_added']} columns")
+    >>>
+    >>> # Apply migration to all tables in a schema
+    >>> result = add_job_metadata_columns(schema, dry_run=False)
+    >>> print(f"Modified {result['tables_modified']} tables")
+
+    Notes
+    -----
+    - Only Computed and Imported tables are modified (not Manual, Lookup, or Part)
+    - Existing rows will have NULL values for _job_start_time and _job_duration
+    - Future populate() calls will fill in metadata for new rows
+    - This does NOT retroactively populate metadata for existing rows
     """
     from .schemas import Schema
     from .table import Table

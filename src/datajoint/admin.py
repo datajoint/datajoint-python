@@ -9,18 +9,24 @@ logger = logging.getLogger(__name__.split(".")[0])
 
 def kill(restriction=None, connection=None, order_by=None):
     """
-    view and kill database connections.
+    View and kill database connections interactively.
 
-    :param restriction: restriction to be applied to processlist
-    :param connection: a datajoint.Connection object. Default calls datajoint.conn()
-    :param order_by: order by a single attribute or the list of attributes. defaults to 'id'.
+    Displays a list of active connections and prompts for connections to kill.
 
-    Restrictions are specified as strings and can involve any of the attributes of
-    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+    Parameters
+    ----------
+    restriction : str, optional
+        SQL WHERE clause to filter connections. Can use any attribute from
+        information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+    connection : Connection, optional
+        A datajoint.Connection object. Defaults to datajoint.conn().
+    order_by : str or list[str], optional
+        Attribute(s) to order results by. Defaults to 'id'.
 
-    Examples:
-        dj.kill('HOST LIKE "%compute%"') lists only connections from hosts containing "compute".
-        dj.kill('TIME > 600') lists only connections in their current state for more than 10 minutes
+    Examples
+    --------
+    >>> dj.kill('HOST LIKE "%compute%"')  # List connections from hosts containing "compute"
+    >>> dj.kill('TIME > 600')  # List connections idle for more than 10 minutes
     """
 
     if connection is None:
@@ -61,16 +67,24 @@ def kill(restriction=None, connection=None, order_by=None):
 
 def kill_quick(restriction=None, connection=None):
     """
-    Kill database connections without prompting. Returns number of terminated connections.
+    Kill database connections without prompting.
 
-    :param restriction: restriction to be applied to processlist
-    :param connection: a datajoint.Connection object. Default calls datajoint.conn()
+    Parameters
+    ----------
+    restriction : str, optional
+        SQL WHERE clause to filter connections. Can use any attribute from
+        information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+    connection : Connection, optional
+        A datajoint.Connection object. Defaults to datajoint.conn().
 
-    Restrictions are specified as strings and can involve any of the attributes of
-    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+    Returns
+    -------
+    int
+        Number of terminated connections.
 
-    Examples:
-        dj.kill('HOST LIKE "%compute%"') terminates connections from hosts containing "compute".
+    Examples
+    --------
+    >>> dj.kill_quick('HOST LIKE "%compute%"')  # Kill connections from hosts with "compute"
     """
     if connection is None:
         connection = conn()
