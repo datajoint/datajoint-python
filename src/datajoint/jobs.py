@@ -127,10 +127,10 @@ class Job(Table):
     ---
     status          : enum('pending', 'reserved', 'success', 'error', 'ignore')
     priority        : uint8
-    created_time=CURRENT_TIMESTAMP(3) : timestamp(3)
-    scheduled_time=CURRENT_TIMESTAMP(3) : timestamp(3)
-    reserved_time=null  : timestamp(3)
-    completed_time=null : timestamp(3)
+    created_time=CURRENT_TIMESTAMP(3) : datetime(3)
+    scheduled_time=CURRENT_TIMESTAMP(3) : datetime(3)
+    reserved_time=null  : datetime(3)
+    completed_time=null : datetime(3)
     duration=null   : float64
     error_message="" : varchar({ERROR_MESSAGE_LENGTH})
     error_stack=null : <blob>
