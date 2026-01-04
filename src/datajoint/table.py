@@ -20,7 +20,6 @@ from .condition import make_condition
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from .connection import Connection
     from .expression import QueryExpression
 from .declare import alter, declare
 from .errors import (

@@ -21,7 +21,6 @@ from .errors import AccessError, DataJointError
 
 if TYPE_CHECKING:
     from .connection import Connection
-    from .table import Table
 from .heading import Heading
 from .jobs import Job
 from .settings import config

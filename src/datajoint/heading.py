@@ -26,7 +26,7 @@ from .errors import DataJointError
 from .lineage import get_table_lineages, lineage_table_exists
 
 if TYPE_CHECKING:
-    from .connection import Connection
+    pass
 
 
 class _MissingType(Codec, register=False):

@@ -1,7 +1,11 @@
 """
-This module hosts functions to convert DataJoint table definitions into mysql table definitions, and to
-declare the corresponding mysql tables.
+Table definition parsing and SQL generation.
+
+This module converts DataJoint table definitions into MySQL CREATE TABLE
+statements, handling type mapping, foreign key resolution, and index creation.
 """
+
+from __future__ import annotations
 
 import logging
 import re
@@ -92,8 +96,25 @@ NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
 assert SPECIAL_TYPES <= set(TYPE_PATTERN)
 
 
-def match_type(attribute_type):
-    """Match an attribute type string to a category."""
+def match_type(attribute_type: str) -> str:
+    """
+    Match an attribute type string to its category.
+
+    Parameters
+    ----------
+    attribute_type : str
+        The type string from the table definition (e.g., ``"float32"``, ``"varchar(255)"``).
+
+    Returns
+    -------
+    str
+        Category name from TYPE_PATTERN (e.g., ``"FLOAT32"``, ``"STRING"``, ``"CODEC"``).
+
+    Raises
+    ------
+    DataJointError
+        If the type string doesn't match any known pattern.
+    """
     try:
         return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
     except StopIteration:
@@ -103,7 +124,16 @@ def match_type(attribute_type):
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def build_foreign_key_parser():
+def build_foreign_key_parser() -> pp.ParserElement:
+    """
+    Build a pyparsing parser for foreign key definitions.
+
+    Returns
+    -------
+    pp.ParserElement
+        Parser that extracts ``options`` and ``ref_table`` from lines like
+        ``-> [nullable] ParentTable``.
+    """
     arrow = pp.Literal("->").suppress()
     lbracket = pp.Literal("[").suppress()
     rbracket = pp.Literal("]").suppress()
@@ -113,7 +143,16 @@ def build_foreign_key_parser():
     return arrow + options + ref_table
 
 
-def build_attribute_parser():
+def build_attribute_parser() -> pp.ParserElement:
+    """
+    Build a pyparsing parser for attribute definitions.
+
+    Returns
+    -------
+    pp.ParserElement
+        Parser that extracts ``name``, ``type``, ``default``, and ``comment``
+        from attribute definition lines.
+    """
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
     attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
@@ -130,27 +169,62 @@ foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
 
 
-def is_foreign_key(line):
+def is_foreign_key(line: str) -> bool:
     """
+    Check if a definition line is a foreign key reference.
 
-    :param line: a line from the table definition
-    :return: true if the line appears to be a foreign key definition
+    Parameters
+    ----------
+    line : str
+        A line from the table definition.
+
+    Returns
+    -------
+    bool
+        True if the line appears to be a foreign key definition (contains ``->``
+        not inside quotes or comments).
     """
     arrow_position = line.find("->")
     return arrow_position >= 0 and not any(c in line[:arrow_position] for c in "\"#'")
 
 
-def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql, index_sql, fk_attribute_map=None):
+def compile_foreign_key(
+    line: str,
+    context: dict,
+    attributes: list[str],
+    primary_key: list[str] | None,
+    attr_sql: list[str],
+    foreign_key_sql: list[str],
+    index_sql: list[str],
+    fk_attribute_map: dict[str, tuple[str, str]] | None = None,
+) -> None:
     """
-    :param line: a line from a table definition
-    :param context: namespace containing referenced objects
-    :param attributes: list of attribute names already in the declaration -- to be updated by this function
-    :param primary_key: None if the current foreign key is made from the dependent section. Otherwise it is the list
-        of primary key attributes thus far -- to be updated by the function
-    :param attr_sql: list of sql statements defining attributes -- to be updated by this function.
-    :param foreign_key_sql: list of sql statements specifying foreign key constraints -- to be updated by this function.
-    :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.
-    :param fk_attribute_map: dict mapping child attr -> (parent_table, parent_attr) -- to be updated by this function.
+    Parse a foreign key line and update declaration components.
+
+    Parameters
+    ----------
+    line : str
+        A foreign key line from the table definition (e.g., ``"-> Parent"``).
+    context : dict
+        Namespace containing referenced table objects.
+    attributes : list[str]
+        Attribute names already declared. Updated in place with new FK attributes.
+    primary_key : list[str] or None
+        Primary key attributes so far. None if in dependent section.
+        Updated in place with FK attributes when not None.
+    attr_sql : list[str]
+        SQL attribute definitions. Updated in place.
+    foreign_key_sql : list[str]
+        SQL FOREIGN KEY constraints. Updated in place.
+    index_sql : list[str]
+        SQL INDEX declarations. Updated in place.
+    fk_attribute_map : dict, optional
+        Mapping of ``child_attr -> (parent_table, parent_attr)``. Updated in place.
+
+    Raises
+    ------
+    DataJointError
+        If the foreign key reference cannot be resolved or options are invalid.
     """
     # Parse and validate
     from .expression import QueryExpression
@@ -214,7 +288,32 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         index_sql.append("UNIQUE INDEX ({attrs})".format(attrs=",".join("`%s`" % attr for attr in ref.primary_key)))
 
 
-def prepare_declare(definition, context):
+def prepare_declare(
+    definition: str, context: dict
+) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]]]:
+    """
+    Parse a table definition into its components.
+
+    Parameters
+    ----------
+    definition : str
+        DataJoint table definition string.
+    context : dict
+        Namespace for resolving foreign key references.
+
+    Returns
+    -------
+    tuple
+        Seven-element tuple containing:
+
+        - table_comment : str
+        - primary_key : list[str]
+        - attribute_sql : list[str]
+        - foreign_key_sql : list[str]
+        - index_sql : list[str]
+        - external_stores : list[str]
+        - fk_attribute_map : dict[str, tuple[str, str]]
+    """
     # split definition into lines
     definition = re.split(r"\s*\n\s*", definition.strip())
     # check for optional table comment
@@ -269,14 +368,35 @@ def prepare_declare(definition, context):
     )
 
 
-def declare(full_table_name, definition, context):
-    """
-    Parse declaration and generate the SQL CREATE TABLE code
+def declare(
+    full_table_name: str, definition: str, context: dict
+) -> tuple[str, list[str], list[str], dict[str, tuple[str, str]]]:
+    r"""
+    Parse a definition and generate SQL CREATE TABLE statement.
 
-    :param full_table_name: full name of the table
-    :param definition: DataJoint table definition
-    :param context: dictionary of objects that might be referred to in the table
-    :return: SQL CREATE TABLE statement, list of external stores used
+    Parameters
+    ----------
+    full_table_name : str
+        Fully qualified table name (e.g., ```\`schema\`.\`table\```).
+    definition : str
+        DataJoint table definition string.
+    context : dict
+        Namespace for resolving foreign key references.
+
+    Returns
+    -------
+    tuple
+        Four-element tuple:
+
+        - sql : str - SQL CREATE TABLE statement
+        - external_stores : list[str] - External store names used
+        - primary_key : list[str] - Primary key attribute names
+        - fk_attribute_map : dict - FK attribute lineage mapping
+
+    Raises
+    ------
+    DataJointError
+        If table name exceeds max length or has no primary key.
     """
     table_name = full_table_name.strip("`").split(".")[1]
     if len(table_name) > MAX_TABLE_NAME_LENGTH:
@@ -322,12 +442,28 @@ def declare(full_table_name, definition, context):
     return sql, external_stores, primary_key, fk_attribute_map
 
 
-def _make_attribute_alter(new, old, primary_key):
+def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]) -> list[str]:
     """
-    :param new: new attribute declarations
-    :param old: old attribute declarations
-    :param primary_key: primary key attributes
-    :return: list of SQL ALTER commands
+    Generate SQL ALTER commands for attribute changes.
+
+    Parameters
+    ----------
+    new : list[str]
+        New attribute SQL declarations.
+    old : list[str]
+        Old attribute SQL declarations.
+    primary_key : list[str]
+        Primary key attribute names (cannot be altered).
+
+    Returns
+    -------
+    list[str]
+        SQL ALTER commands (ADD, MODIFY, CHANGE, DROP).
+
+    Raises
+    ------
+    DataJointError
+        If an attribute is renamed twice or renamed from non-existent attribute.
     """
     # parse attribute names
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
@@ -391,12 +527,31 @@ def _make_attribute_alter(new, old, primary_key):
     return sql
 
 
-def alter(definition, old_definition, context):
+def alter(definition: str, old_definition: str, context: dict) -> tuple[list[str], list[str]]:
     """
-    :param definition: new table definition
-    :param old_definition: current table definition
-    :param context: the context in which to evaluate foreign key definitions
-    :return: string SQL ALTER command, list of new stores used for external storage
+    Generate SQL ALTER commands for table definition changes.
+
+    Parameters
+    ----------
+    definition : str
+        New table definition.
+    old_definition : str
+        Current table definition.
+    context : dict
+        Namespace for resolving foreign key references.
+
+    Returns
+    -------
+    tuple
+        Two-element tuple:
+
+        - sql : list[str] - SQL ALTER commands
+        - new_stores : list[str] - New external stores used
+
+    Raises
+    ------
+    NotImplementedError
+        If attempting to alter primary key, foreign keys, or indexes.
     """
     (
         table_comment,
@@ -432,7 +587,24 @@ def alter(definition, old_definition, context):
     return sql, [e for e in external_stores if e not in external_stores_]
 
 
-def compile_index(line, index_sql):
+def compile_index(line: str, index_sql: list[str]) -> None:
+    """
+    Parse an index declaration and append SQL to index_sql.
+
+    Parameters
+    ----------
+    line : str
+        Index declaration line (e.g., ``"index(attr1, attr2)"`` or
+        ``"unique index(attr)"``).
+    index_sql : list[str]
+        List of index SQL declarations. Updated in place.
+
+    Raises
+    ------
+    DataJointError
+        If the index syntax is invalid.
+    """
+
     def format_attribute(attr):
         match, attr = translate_attribute(attr)
         if match is None:
@@ -455,18 +627,25 @@ def compile_index(line, index_sql):
     )
 
 
-def substitute_special_type(match, category, foreign_key_sql, context):
+def substitute_special_type(match: dict, category: str, foreign_key_sql: list[str], context: dict) -> None:
     """
     Substitute special types with their native SQL equivalents.
 
-    Special types are:
-    - Core DataJoint types (float32 → float, uuid → binary(16), bytes → longblob, etc.)
-    - CODEC types (Codecs in angle brackets)
+    Special types include core DataJoint types (``float32`` → ``float``,
+    ``uuid`` → ``binary(16)``, ``bytes`` → ``longblob``) and codec types
+    (angle bracket syntax like ``<array>``).
 
-    :param match: dict containing with keys "type" and "comment" -- will be modified in place
-    :param category: attribute type category from TYPE_PATTERN
-    :param foreign_key_sql: list of foreign key declarations to add to
-    :param context: context for looking up user-defined codecs (unused, kept for compatibility)
+    Parameters
+    ----------
+    match : dict
+        Parsed attribute with keys ``"type"``, ``"comment"``, etc.
+        Modified in place with substituted type.
+    category : str
+        Type category from TYPE_PATTERN (e.g., ``"FLOAT32"``, ``"CODEC"``).
+    foreign_key_sql : list[str]
+        Foreign key declarations (unused, kept for API compatibility).
+    context : dict
+        Namespace for codec lookup (unused, kept for API compatibility).
     """
     if category == "CODEC":
         # Codec - resolve to underlying dtype
@@ -499,15 +678,34 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         assert False, f"Unknown special type: {category}"
 
 
-def compile_attribute(line, in_key, foreign_key_sql, context):
+def compile_attribute(line: str, in_key: bool, foreign_key_sql: list[str], context: dict) -> tuple[str, str, str | None]:
     """
-    Convert attribute definition from DataJoint format to SQL
+    Convert an attribute definition from DataJoint format to SQL.
 
-    :param line: attribution line
-    :param in_key: set to True if attribute is in primary key set
-    :param foreign_key_sql: the list of foreign key declarations to add to
-    :param context: context in which to look up user-defined attribute type adapterss
-    :returns: (name, sql, store) -- attribute name, sql code for its declaration, and optional store name
+    Parameters
+    ----------
+    line : str
+        Attribute definition line (e.g., ``"session_id : int32  # unique session"``).
+    in_key : bool
+        True if the attribute is part of the primary key.
+    foreign_key_sql : list[str]
+        Foreign key declarations (passed to type substitution).
+    context : dict
+        Namespace for codec lookup.
+
+    Returns
+    -------
+    tuple
+        Three-element tuple:
+
+        - name : str - Attribute name
+        - sql : str - SQL column declaration
+        - store : str or None - External store name if applicable
+
+    Raises
+    ------
+    DataJointError
+        If syntax is invalid, primary key is nullable, or blob has invalid default.
     """
     try:
         match = attribute_parser.parse_string(line + "#", parse_all=True)

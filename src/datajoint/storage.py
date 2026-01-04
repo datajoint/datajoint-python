@@ -5,6 +5,8 @@ This module provides a unified interface for storage operations across different
 backends (local filesystem, S3, GCS, Azure, etc.) using the fsspec library.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import secrets
@@ -30,11 +32,15 @@ def is_remote_url(path: str) -> bool:
     """
     Check if a path is a remote URL.
 
-    Args:
-        path: Path string to check
+    Parameters
+    ----------
+    path : str
+        Path string to check.
 
-    Returns:
-        True if path is a remote URL
+    Returns
+    -------
+    bool
+        True if path starts with a supported remote protocol.
     """
     if not isinstance(path, str):
         return False
@@ -45,11 +51,20 @@ def parse_remote_url(url: str) -> tuple[str, str]:
     """
     Parse a remote URL into protocol and path.
 
-    Args:
-        url: Remote URL (e.g., 's3://bucket/path/file.dat')
+    Parameters
+    ----------
+    url : str
+        Remote URL (e.g., ``'s3://bucket/path/file.dat'``).
 
-    Returns:
-        Tuple of (protocol, path) where protocol is fsspec-compatible
+    Returns
+    -------
+    tuple[str, str]
+        ``(protocol, path)`` where protocol is fsspec-compatible.
+
+    Raises
+    ------
+    DataJointError
+        If URL protocol is not supported.
     """
     url_lower = url.lower()
 
@@ -76,11 +91,15 @@ def generate_token(length: int = 8) -> str:
     """
     Generate a random token for filename collision avoidance.
 
-    Args:
-        length: Token length (4-16 characters, default 8)
+    Parameters
+    ----------
+    length : int, optional
+        Token length, clamped to 4-16 characters. Default 8.
 
-    Returns:
-        Random URL-safe string
+    Returns
+    -------
+    str
+        Random URL-safe string.
     """
     length = max(4, min(16, length))
     return "".join(secrets.choice(TOKEN_ALPHABET) for _ in range(length))
@@ -90,11 +109,15 @@ def encode_pk_value(value: Any) -> str:
     """
     Encode a primary key value for use in storage paths.
 
-    Args:
-        value: Primary key value (int, str, date, etc.)
+    Parameters
+    ----------
+    value : any
+        Primary key value (int, str, date, datetime, etc.).
 
-    Returns:
-        Path-safe string representation
+    Returns
+    -------
+    str
+        Path-safe string representation.
     """
     if isinstance(value, (int, float)):
         return str(value)
@@ -133,17 +156,27 @@ def build_object_path(
     """
     Build the storage path for an object attribute.
 
-    Args:
-        schema: Schema name
-        table: Table name
-        field: Field/attribute name
-        primary_key: Dict of primary key attribute names to values
-        ext: File extension (e.g., ".dat") or None
-        partition_pattern: Optional partition pattern with {attr} placeholders
-        token_length: Length of random token suffix
+    Parameters
+    ----------
+    schema : str
+        Schema name.
+    table : str
+        Table name.
+    field : str
+        Field/attribute name.
+    primary_key : dict[str, Any]
+        Dict of primary key attribute names to values.
+    ext : str or None
+        File extension (e.g., ``".dat"``).
+    partition_pattern : str, optional
+        Partition pattern with ``{attr}`` placeholders.
+    token_length : int, optional
+        Length of random token suffix. Default 8.
 
-    Returns:
-        Tuple of (relative_path, token)
+    Returns
+    -------
+    tuple[str, str]
+        ``(relative_path, token)``.
     """
     token = generate_token(token_length)
 
@@ -196,22 +229,36 @@ class StorageBackend:
 
     Provides a consistent interface for file operations across different storage
     backends including local filesystem and cloud object storage (S3, GCS, Azure).
+
+    Parameters
+    ----------
+    spec : dict[str, Any]
+        Storage configuration dictionary. See ``__init__`` for details.
+
+    Attributes
+    ----------
+    spec : dict
+        Storage configuration dictionary.
+    protocol : str
+        Storage protocol (``'file'``, ``'s3'``, ``'gcs'``, ``'azure'``).
     """
 
-    def __init__(self, spec: dict[str, Any]):
+    def __init__(self, spec: dict[str, Any]) -> None:
         """
         Initialize storage backend from configuration spec.
 
-        Args:
-            spec: Storage configuration dictionary containing:
-                - protocol: Storage protocol ('file', 's3', 'gcs', 'azure')
-                - location: Base path or bucket prefix
-                - bucket: Bucket name (for cloud storage)
-                - endpoint: Endpoint URL (for S3-compatible storage)
-                - access_key: Access key (for cloud storage)
-                - secret_key: Secret key (for cloud storage)
-                - secure: Use HTTPS (default: True for cloud)
-                - Additional protocol-specific options
+        Parameters
+        ----------
+        spec : dict[str, Any]
+            Storage configuration dictionary containing:
+
+            - ``protocol``: Storage protocol (``'file'``, ``'s3'``, ``'gcs'``, ``'azure'``)
+            - ``location``: Base path or bucket prefix
+            - ``bucket``: Bucket name (for cloud storage)
+            - ``endpoint``: Endpoint URL (for S3-compatible storage)
+            - ``access_key``: Access key (for cloud storage)
+            - ``secret_key``: Secret key (for cloud storage)
+            - ``secure``: Use HTTPS (default True for cloud)
         """
         self.spec = spec
         self.protocol = spec.get("protocol", "file")
@@ -281,11 +328,15 @@ class StorageBackend:
         """
         Construct full path including location/bucket prefix.
 
-        Args:
-            path: Relative path within the storage location
+        Parameters
+        ----------
+        path : str or PurePosixPath
+            Relative path within the storage location.
 
-        Returns:
-            Full path suitable for fsspec operations
+        Returns
+        -------
+        str
+            Full path suitable for fsspec operations.
         """
         path = str(path)
         if self.protocol == "s3":
@@ -307,14 +358,18 @@ class StorageBackend:
                 return str(Path(location) / path)
             return path
 
-    def put_file(self, local_path: str | Path, remote_path: str | PurePosixPath, metadata: dict | None = None):
+    def put_file(self, local_path: str | Path, remote_path: str | PurePosixPath, metadata: dict | None = None) -> None:
         """
         Upload a file from local filesystem to storage.
 
-        Args:
-            local_path: Path to local file
-            remote_path: Destination path in storage
-            metadata: Optional metadata to attach to the file
+        Parameters
+        ----------
+        local_path : str or Path
+            Path to local file.
+        remote_path : str or PurePosixPath
+            Destination path in storage.
+        metadata : dict, optional
+            Metadata to attach to the file (cloud storage only).
         """
         full_path = self._full_path(remote_path)
         logger.debug(f"put_file: {local_path} -> {self.protocol}:{full_path}")
@@ -329,13 +384,16 @@ class StorageBackend:
             # For cloud storage, use fsspec put
             self.fs.put_file(str(local_path), full_path)
 
-    def get_file(self, remote_path: str | PurePosixPath, local_path: str | Path):
+    def get_file(self, remote_path: str | PurePosixPath, local_path: str | Path) -> None:
         """
         Download a file from storage to local filesystem.
 
-        Args:
-            remote_path: Path in storage
-            local_path: Destination path on local filesystem
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
+        local_path : str or Path
+            Destination path on local filesystem.
         """
         full_path = self._full_path(remote_path)
         logger.debug(f"get_file: {self.protocol}:{full_path} -> {local_path}")
@@ -350,13 +408,16 @@ class StorageBackend:
         else:
             self.fs.get_file(full_path, str(local_path))
 
-    def put_buffer(self, buffer: bytes, remote_path: str | PurePosixPath):
+    def put_buffer(self, buffer: bytes, remote_path: str | PurePosixPath) -> None:
         """
         Write bytes to storage.
 
-        Args:
-            buffer: Bytes to write
-            remote_path: Destination path in storage
+        Parameters
+        ----------
+        buffer : bytes
+            Bytes to write.
+        remote_path : str or PurePosixPath
+            Destination path in storage.
         """
         full_path = self._full_path(remote_path)
         logger.debug(f"put_buffer: {len(buffer)} bytes -> {self.protocol}:{full_path}")
@@ -373,11 +434,20 @@ class StorageBackend:
         """
         Read bytes from storage.
 
-        Args:
-            remote_path: Path in storage
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
 
-        Returns:
-            File contents as bytes
+        Returns
+        -------
+        bytes
+            File contents.
+
+        Raises
+        ------
+        MissingExternalFile
+            If the file does not exist.
         """
         full_path = self._full_path(remote_path)
         logger.debug(f"get_buffer: {self.protocol}:{full_path}")
@@ -394,11 +464,15 @@ class StorageBackend:
         """
         Check if a file exists in storage.
 
-        Args:
-            remote_path: Path in storage
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
 
-        Returns:
-            True if file exists
+        Returns
+        -------
+        bool
+            True if file exists.
         """
         full_path = self._full_path(remote_path)
         logger.debug(f"exists: {self.protocol}:{full_path}")
@@ -408,12 +482,14 @@ class StorageBackend:
         else:
             return self.fs.exists(full_path)
 
-    def remove(self, remote_path: str | PurePosixPath):
+    def remove(self, remote_path: str | PurePosixPath) -> None:
         """
         Remove a file from storage.
 
-        Args:
-            remote_path: Path in storage
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
         """
         full_path = self._full_path(remote_path)
         logger.debug(f"remove: {self.protocol}:{full_path}")
@@ -430,11 +506,15 @@ class StorageBackend:
         """
         Get file size in bytes.
 
-        Args:
-            remote_path: Path in storage
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
 
-        Returns:
-            File size in bytes
+        Returns
+        -------
+        int
+            File size in bytes.
         """
         full_path = self._full_path(remote_path)
 
@@ -447,12 +527,17 @@ class StorageBackend:
         """
         Open a file in storage.
 
-        Args:
-            remote_path: Path in storage
-            mode: File mode ('rb', 'wb', etc.)
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
+        mode : str, optional
+            File mode (``'rb'``, ``'wb'``, etc.). Default ``'rb'``.
 
-        Returns:
-            File-like object
+        Returns
+        -------
+        file-like
+            File-like object for reading or writing.
         """
         full_path = self._full_path(remote_path)
 
@@ -466,12 +551,18 @@ class StorageBackend:
         """
         Upload a folder to storage.
 
-        Args:
-            local_path: Path to local folder
-            remote_path: Destination path in storage
+        Parameters
+        ----------
+        local_path : str or Path
+            Path to local folder.
+        remote_path : str or PurePosixPath
+            Destination path in storage.
 
-        Returns:
-            Manifest dict with file list, total_size, and item_count
+        Returns
+        -------
+        dict
+            Manifest with keys ``'files'``, ``'total_size'``, ``'item_count'``,
+            ``'created'``.
         """
         local_path = Path(local_path)
         if not local_path.is_dir():
@@ -524,12 +615,14 @@ class StorageBackend:
 
         return manifest
 
-    def remove_folder(self, remote_path: str | PurePosixPath):
+    def remove_folder(self, remote_path: str | PurePosixPath) -> None:
         """
         Remove a folder and its manifest from storage.
 
-        Args:
-            remote_path: Path to folder in storage
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path to folder in storage.
         """
         full_path = self._full_path(remote_path)
         logger.debug(f"remove_folder: {self.protocol}:{full_path}")
@@ -552,11 +645,15 @@ class StorageBackend:
         """
         Get an FSMap for a path (useful for Zarr/xarray).
 
-        Args:
-            remote_path: Path in storage
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
 
-        Returns:
-            fsspec.FSMap instance
+        Returns
+        -------
+        fsspec.FSMap
+            Mapping interface for the storage path.
         """
         full_path = self._full_path(remote_path)
         return fsspec.FSMap(full_path, self.fs)
@@ -565,12 +662,17 @@ class StorageBackend:
         """
         Copy a file from a remote URL to managed storage.
 
-        Args:
-            source_url: Remote URL (s3://, gs://, http://, etc.)
-            dest_path: Destination path in managed storage
+        Parameters
+        ----------
+        source_url : str
+            Remote URL (``s3://``, ``gs://``, ``http://``, etc.).
+        dest_path : str or PurePosixPath
+            Destination path in managed storage.
 
-        Returns:
-            Size of copied file in bytes
+        Returns
+        -------
+        int
+            Size of copied file in bytes.
         """
         protocol, source_path = parse_remote_url(source_url)
         full_dest = self._full_path(dest_path)
@@ -603,13 +705,20 @@ class StorageBackend:
         """
         Copy a folder from a remote URL to managed storage.
 
-        Args:
-            source_fs: Source filesystem
-            source_path: Path in source filesystem
-            dest_path: Destination path in managed storage
+        Parameters
+        ----------
+        source_fs : fsspec.AbstractFileSystem
+            Source filesystem.
+        source_path : str
+            Path in source filesystem.
+        dest_path : str or PurePosixPath
+            Destination path in managed storage.
 
-        Returns:
-            Manifest dict with file list, total_size, and item_count
+        Returns
+        -------
+        dict
+            Manifest with keys ``'files'``, ``'total_size'``, ``'item_count'``,
+            ``'created'``.
         """
         full_dest = self._full_path(dest_path)
         logger.debug(f"copy_folder_from_url: {source_path} -> {self.protocol}:{full_dest}")
@@ -655,11 +764,15 @@ class StorageBackend:
         """
         Check if a source path (local or remote URL) is a directory.
 
-        Args:
-            source: Local path or remote URL
+        Parameters
+        ----------
+        source : str
+            Local path or remote URL.
 
-        Returns:
-            True if source is a directory
+        Returns
+        -------
+        bool
+            True if source is a directory.
         """
         if is_remote_url(source):
             protocol, path = parse_remote_url(source)
@@ -672,11 +785,15 @@ class StorageBackend:
         """
         Check if a source path (local or remote URL) exists.
 
-        Args:
-            source: Local path or remote URL
+        Parameters
+        ----------
+        source : str
+            Local path or remote URL.
 
-        Returns:
-            True if source exists
+        Returns
+        -------
+        bool
+            True if source exists.
         """
         if is_remote_url(source):
             protocol, path = parse_remote_url(source)
@@ -689,11 +806,15 @@ class StorageBackend:
         """
         Get the size of a source file (local or remote URL).
 
-        Args:
-            source: Local path or remote URL
+        Parameters
+        ----------
+        source : str
+            Local path or remote URL.
 
-        Returns:
-            Size in bytes, or None if directory or cannot determine
+        Returns
+        -------
+        int or None
+            Size in bytes, or None if directory or cannot determine.
         """
         try:
             if is_remote_url(source):
@@ -718,11 +839,15 @@ def get_storage_backend(spec: dict[str, Any]) -> StorageBackend:
     """
     Factory function to create a storage backend from configuration.
 
-    Args:
-        spec: Storage configuration dictionary
+    Parameters
+    ----------
+    spec : dict[str, Any]
+        Storage configuration dictionary.
 
-    Returns:
-        StorageBackend instance
+    Returns
+    -------
+    StorageBackend
+        Configured storage backend instance.
     """
     return StorageBackend(spec)
 
@@ -731,18 +856,25 @@ def verify_or_create_store_metadata(backend: StorageBackend, spec: dict[str, Any
     """
     Verify or create the store metadata file at the storage root.
 
-    On first use, creates the datajoint_store.json file with project info.
-    On subsequent uses, verifies the project_name matches.
+    On first use, creates the ``datajoint_store.json`` file with project info.
+    On subsequent uses, verifies the ``project_name`` matches.
 
-    Args:
-        backend: StorageBackend instance
-        spec: Object storage configuration spec
+    Parameters
+    ----------
+    backend : StorageBackend
+        Storage backend instance.
+    spec : dict[str, Any]
+        Object storage configuration spec.
 
-    Returns:
-        Store metadata dict
+    Returns
+    -------
+    dict
+        Store metadata dictionary.
 
-    Raises:
-        DataJointError: If project_name mismatch detected
+    Raises
+    ------
+    DataJointError
+        If ``project_name`` mismatch detected.
     """
     from .version import __version__ as dj_version
 

@@ -11,7 +11,7 @@ import re
 import warnings
 from contextlib import contextmanager
 from getpass import getpass
-from typing import Any, Callable
+from typing import Callable
 
 import pymysql as client
 

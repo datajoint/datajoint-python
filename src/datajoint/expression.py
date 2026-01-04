@@ -362,7 +362,9 @@ class QueryExpression:
             "Use .join(other, semantic_check=False) for joins without semantic checking."
         )
 
-    def join(self, other: QueryExpression | type, semantic_check: bool = True, left: bool = False, allow_nullable_pk: bool = False) -> QueryExpression:
+    def join(
+        self, other: QueryExpression | type, semantic_check: bool = True, left: bool = False, allow_nullable_pk: bool = False
+    ) -> QueryExpression:
         """
         Join this expression with another.
 
@@ -636,7 +638,9 @@ class QueryExpression:
         )
         return result
 
-    def aggr(self, group: QueryExpression, *attributes: str, keep_all_rows: bool = False, **named_attributes: str) -> QueryExpression:
+    def aggr(
+        self, group: QueryExpression, *attributes: str, keep_all_rows: bool = False, **named_attributes: str
+    ) -> QueryExpression:
         """
         Aggregate data grouped by this expression's primary key.
 
@@ -707,7 +711,14 @@ class QueryExpression:
             return self.restrict(Top(limit, order_by, offset))
         return self
 
-    def to_dicts(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = ".") -> list[dict[str, Any]]:
+    def to_dicts(
+        self,
+        order_by: str | list[str] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        squeeze: bool = False,
+        download_path: str = ".",
+    ) -> list[dict[str, Any]]:
         """
         Fetch all rows as a list of dictionaries.
 
@@ -738,7 +749,14 @@ class QueryExpression:
             for row in cursor
         ]
 
-    def to_pandas(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = ".") -> pandas.DataFrame:
+    def to_pandas(
+        self,
+        order_by: str | list[str] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        squeeze: bool = False,
+        download_path: str = ".",
+    ) -> pandas.DataFrame:
         """
         Fetch all rows as a pandas DataFrame with primary key as index.
 
@@ -770,7 +788,14 @@ class QueryExpression:
             df = df.set_index(self.primary_key)
         return df
 
-    def to_polars(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = "."):
+    def to_polars(
+        self,
+        order_by: str | list[str] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        squeeze: bool = False,
+        download_path: str = ".",
+    ):
         """
         Fetch all rows as a polars DataFrame.
 
@@ -804,7 +829,14 @@ class QueryExpression:
         dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze, download_path=download_path)
         return polars.DataFrame(dicts)
 
-    def to_arrow(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = "."):
+    def to_arrow(
+        self,
+        order_by: str | list[str] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        squeeze: bool = False,
+        download_path: str = ".",
+    ):
         """
         Fetch all rows as a PyArrow Table.
 
@@ -840,7 +872,16 @@ class QueryExpression:
             return pyarrow.table({})
         return pyarrow.Table.from_pylist(dicts)
 
-    def to_arrays(self, *attrs: str, include_key: bool = False, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = ".") -> np.ndarray | tuple[np.ndarray, ...]:
+    def to_arrays(
+        self,
+        *attrs: str,
+        include_key: bool = False,
+        order_by: str | list[str] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        squeeze: bool = False,
+        download_path: str = ".",
+    ) -> np.ndarray | tuple[np.ndarray, ...]:
         """
         Fetch data as numpy arrays.
 
@@ -930,7 +971,9 @@ class QueryExpression:
                 ret[name] = list(map(partial(get, heading[name]), ret[name]))
             return ret
 
-    def keys(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None) -> list[dict[str, Any]]:
+    def keys(
+        self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None
+    ) -> list[dict[str, Any]]:
         """
         Fetch primary key values as a list of dictionaries.
 

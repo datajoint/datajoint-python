@@ -1,7 +1,12 @@
 """
-(De)serialization methods for basic datatypes and numpy.ndarrays with provisions for mutual
-compatibility with Matlab-based serialization implemented by mYm.
+Binary serialization for DataJoint blob storage.
+
+Provides (de)serialization for Python/NumPy objects with backward compatibility
+for MATLAB mYm-format blobs. Supports arrays, scalars, structs, cells, and
+Python built-in types (dict, list, tuple, set, datetime, UUID, Decimal).
 """
+
+from __future__ import annotations
 
 import collections
 import datetime
@@ -69,31 +74,74 @@ def len_u32(obj):
 
 
 class MatCell(np.ndarray):
-    """a numpy ndarray representing a Matlab cell array"""
+    """
+    NumPy ndarray subclass representing a MATLAB cell array.
+
+    Used to distinguish cell arrays from regular arrays during serialization
+    for MATLAB compatibility.
+    """
 
     pass
 
 
 class MatStruct(np.recarray):
-    """numpy.recarray representing a Matlab struct array"""
+    """
+    NumPy recarray subclass representing a MATLAB struct array.
+
+    Used to distinguish struct arrays from regular recarrays during
+    serialization for MATLAB compatibility.
+    """
 
     pass
 
 
 class Blob:
-    def __init__(self, squeeze=False):
+    """
+    Binary serializer/deserializer for DataJoint blob storage.
+
+    Handles packing Python objects into binary format and unpacking binary
+    data back to Python objects. Supports two protocols:
+
+    - ``mYm``: Original MATLAB-compatible format (default)
+    - ``dj0``: Extended format for Python-specific types
+
+    Parameters
+    ----------
+    squeeze : bool, optional
+        If True, remove singleton dimensions from arrays and convert
+        0-dimensional arrays to scalars. Default False.
+
+    Attributes
+    ----------
+    protocol : bytes or None
+        Current serialization protocol (``b"mYm\\0"`` or ``b"dj0\\0"``).
+    """
+
+    def __init__(self, squeeze: bool = False) -> None:
         self._squeeze = squeeze
         self._blob = None
         self._pos = 0
         self.protocol = None
 
-    def set_dj0(self):
+    def set_dj0(self) -> None:
+        """Switch to dj0 protocol for extended type support."""
         self.protocol = b"dj0\0"  # when using new blob features
 
-    def squeeze(self, array, convert_to_scalar=True):
+    def squeeze(self, array: np.ndarray, convert_to_scalar: bool = True) -> np.ndarray:
         """
-        Simplify the input array - squeeze out all singleton dimensions.
-        If convert_to_scalar, then convert zero-dimensional arrays to scalars
+        Remove singleton dimensions from an array.
+
+        Parameters
+        ----------
+        array : np.ndarray
+            Input array.
+        convert_to_scalar : bool, optional
+            If True, convert 0-dimensional arrays to Python scalars. Default True.
+
+        Returns
+        -------
+        np.ndarray or scalar
+            Squeezed array or scalar value.
         """
         if not self._squeeze:
             return array
@@ -233,9 +281,19 @@ class Blob:
                 data = data + 1j * self.read_value(dtype, count=n_elem)
         return self.squeeze(data.reshape(shape, order="F"))
 
-    def pack_array(self, array):
+    def pack_array(self, array: np.ndarray) -> bytes:
         """
-        Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.
+        Serialize a NumPy array into bytes.
+
+        Parameters
+        ----------
+        array : np.ndarray
+            Array to serialize. Scalars are encoded with ndim=0.
+
+        Returns
+        -------
+        bytes
+            Serialized array data.
         """
         if "datetime64" in array.dtype.name:
             self.set_dj0()
@@ -497,10 +555,60 @@ class Blob:
         return blob
 
 
-def pack(obj, compress=True):
+def pack(obj, compress: bool = True) -> bytes:
+    """
+    Serialize a Python object to binary blob format.
+
+    Parameters
+    ----------
+    obj : any
+        Object to serialize. Supports NumPy arrays, Python scalars,
+        collections (dict, list, tuple, set), datetime objects, UUID,
+        Decimal, and MATLAB-compatible MatCell/MatStruct.
+    compress : bool, optional
+        If True (default), compress blobs larger than 1000 bytes using zlib.
+
+    Returns
+    -------
+    bytes
+        Serialized binary data.
+
+    Raises
+    ------
+    DataJointError
+        If the object type is not supported.
+
+    Examples
+    --------
+    >>> data = np.array([1, 2, 3])
+    >>> blob = pack(data)
+    >>> unpacked = unpack(blob)
+    """
     return Blob().pack(obj, compress=compress)
 
 
-def unpack(blob, squeeze=False):
+def unpack(blob: bytes, squeeze: bool = False):
+    """
+    Deserialize a binary blob to a Python object.
+
+    Parameters
+    ----------
+    blob : bytes
+        Binary data from ``pack()`` or MATLAB mYm serialization.
+    squeeze : bool, optional
+        If True, remove singleton dimensions from arrays. Default False.
+
+    Returns
+    -------
+    any
+        Deserialized Python object.
+
+    Examples
+    --------
+    >>> blob = pack({'a': 1, 'b': [1, 2, 3]})
+    >>> data = unpack(blob)
+    >>> data['b']
+    [1, 2, 3]
+    """
     if blob is not None:
         return Blob(squeeze=squeeze).unpack(blob)

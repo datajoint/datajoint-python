@@ -393,7 +393,7 @@ def make_condition(
 
 
 def extract_column_names(sql_expression: str) -> set[str]:
-    """
+    r"""
     Extract column names from an SQL expression.
 
     Parameters
