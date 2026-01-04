@@ -602,10 +602,10 @@ class Table(QueryExpression):
         Insert a collection of rows.
 
         :param rows: Either (a) an iterable where an element is a numpy record, a
-            dict-like object, a pandas.DataFrame, a sequence, or a query expression with
-            the same heading as self, or (b) a pathlib.Path object specifying a path
-            relative to the current directory with a CSV file, the contents of which
-            will be inserted.
+            dict-like object, a pandas.DataFrame, a polars.DataFrame, a pyarrow.Table,
+            a sequence, or a query expression with the same heading as self, or
+            (b) a pathlib.Path object specifying a path relative to the current
+            directory with a CSV file, the contents of which will be inserted.
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
@@ -627,6 +627,14 @@ class Table(QueryExpression):
             # drop 'extra' synthetic index for 1-field index case -
             # frames with more advanced indices should be prepared by user.
             rows = rows.reset_index(drop=len(rows.index.names) == 1 and not rows.index.names[0]).to_records(index=False)
+
+        # Polars DataFrame -> list of dicts (soft dependency, check by type name)
+        if type(rows).__module__.startswith("polars") and type(rows).__name__ == "DataFrame":
+            rows = rows.to_dicts()
+
+        # PyArrow Table -> list of dicts (soft dependency, check by type name)
+        if type(rows).__module__.startswith("pyarrow") and type(rows).__name__ == "Table":
+            rows = rows.to_pylist()
 
         if isinstance(rows, Path):
             with open(rows, newline="") as data_file:

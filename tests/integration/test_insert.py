@@ -258,6 +258,119 @@ class TestInsertDataFrame:
         assert len(table) == 100
 
 
+try:
+    import polars
+
+    HAS_POLARS = True
+except ImportError:
+    HAS_POLARS = False
+
+try:
+    import pyarrow
+
+    HAS_PYARROW = True
+except ImportError:
+    HAS_PYARROW = False
+
+
+@pytest.mark.skipif(not HAS_POLARS, reason="polars not installed")
+class TestPolarsInsert:
+    """Tests for Polars DataFrame insert support."""
+
+    def test_insert_polars_basic(self, schema_insert):
+        """Test inserting a Polars DataFrame."""
+        table = SimpleTable()
+        df = polars.DataFrame({"id": [1, 2, 3], "value": ["a", "b", "c"], "score": [1.0, 2.0, 3.0]})
+        table.insert(df)
+        assert len(table) == 3
+        assert set(table.to_arrays("id")) == {1, 2, 3}
+
+    def test_insert_polars_with_options(self, schema_insert):
+        """Test Polars insert with skip_duplicates and chunk_size."""
+        table = SimpleTable()
+        df = polars.DataFrame({"id": [1, 2], "value": ["a", "b"], "score": [1.0, 2.0]})
+        table.insert(df)
+
+        # Insert more with duplicates
+        df2 = polars.DataFrame({"id": [2, 3, 4], "value": ["b", "c", "d"], "score": [2.0, 3.0, 4.0]})
+        table.insert(df2, skip_duplicates=True)
+        assert len(table) == 4
+
+    def test_insert_polars_chunk_size(self, schema_insert):
+        """Test Polars insert with chunk_size."""
+        table = SimpleTable()
+        df = polars.DataFrame(
+            {"id": list(range(50)), "value": [f"v{i}" for i in range(50)], "score": [float(i) for i in range(50)]}
+        )
+        table.insert(df, chunk_size=10)
+        assert len(table) == 50
+
+    def test_insert_polars_roundtrip(self, schema_insert):
+        """Test roundtrip: to_polars() -> insert()."""
+        table = SimpleTable()
+        table.insert([{"id": i, "value": f"val{i}", "score": float(i)} for i in range(3)])
+
+        # Fetch as Polars
+        df = table.to_polars()
+        assert isinstance(df, polars.DataFrame)
+
+        # Clear and re-insert
+        with dj.config.override(safemode=False):
+            table.delete()
+
+        table.insert(df)
+        assert len(table) == 3
+
+
+@pytest.mark.skipif(not HAS_PYARROW, reason="pyarrow not installed")
+class TestArrowInsert:
+    """Tests for PyArrow Table insert support."""
+
+    def test_insert_arrow_basic(self, schema_insert):
+        """Test inserting a PyArrow Table."""
+        table = SimpleTable()
+        arrow_table = pyarrow.table({"id": [1, 2, 3], "value": ["a", "b", "c"], "score": [1.0, 2.0, 3.0]})
+        table.insert(arrow_table)
+        assert len(table) == 3
+        assert set(table.to_arrays("id")) == {1, 2, 3}
+
+    def test_insert_arrow_with_options(self, schema_insert):
+        """Test Arrow insert with skip_duplicates."""
+        table = SimpleTable()
+        arrow_table = pyarrow.table({"id": [1, 2], "value": ["a", "b"], "score": [1.0, 2.0]})
+        table.insert(arrow_table)
+
+        # Insert more with duplicates
+        arrow_table2 = pyarrow.table({"id": [2, 3, 4], "value": ["b", "c", "d"], "score": [2.0, 3.0, 4.0]})
+        table.insert(arrow_table2, skip_duplicates=True)
+        assert len(table) == 4
+
+    def test_insert_arrow_chunk_size(self, schema_insert):
+        """Test Arrow insert with chunk_size."""
+        table = SimpleTable()
+        arrow_table = pyarrow.table(
+            {"id": list(range(50)), "value": [f"v{i}" for i in range(50)], "score": [float(i) for i in range(50)]}
+        )
+        table.insert(arrow_table, chunk_size=10)
+        assert len(table) == 50
+
+    def test_insert_arrow_roundtrip(self, schema_insert):
+        """Test roundtrip: to_arrow() -> insert()."""
+        table = SimpleTable()
+        table.insert([{"id": i, "value": f"val{i}", "score": float(i)} for i in range(3)])
+
+        # Fetch as Arrow
+        arrow_table = table.to_arrow()
+        assert isinstance(arrow_table, pyarrow.Table)
+
+        # Clear and re-insert
+        with dj.config.override(safemode=False):
+            table.delete()
+
+        table.insert(arrow_table)
+        assert len(table) == 3
+
+
 class TestDeprecationWarning:
     """Tests for positional insert deprecation warning."""
 
