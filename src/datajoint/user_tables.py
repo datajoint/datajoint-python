@@ -42,11 +42,14 @@ supported_class_attrs = {
     "children",
     "insert",
     "insert1",
+    "insert_dataframe",
     "update1",
+    "validate",
     "drop",
     "drop_quick",
     "delete",
     "delete_quick",
+    "staged_insert1",
 }
 
 

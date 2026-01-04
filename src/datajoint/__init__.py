@@ -57,6 +57,7 @@ __all__ = [
     "logger",
     "cli",
     "ObjectRef",
+    "ValidationResult",
 ]
 
 from . import errors
@@ -78,7 +79,7 @@ from .logging import logger
 from .objectref import ObjectRef
 from .schemas import Schema, VirtualModule, list_schemas
 from .settings import config
-from .table import FreeTable, Table
+from .table import FreeTable, Table, ValidationResult
 from .user_tables import Computed, Imported, Lookup, Manual, Part
 from .version import __version__
 

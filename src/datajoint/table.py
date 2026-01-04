@@ -6,6 +6,8 @@ import json
 import logging
 import re
 import uuid
+import warnings
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -52,6 +54,43 @@ class _RenameMap(tuple):
     """for internal use"""
 
     pass
+
+
+@dataclass
+class ValidationResult:
+    """
+    Result of table.validate() call.
+
+    Attributes:
+        is_valid: True if all rows passed validation
+        errors: List of (row_index, field_name, error_message) tuples
+        rows_checked: Number of rows that were validated
+    """
+
+    is_valid: bool
+    errors: list = field(default_factory=list)  # list of (row_index, field_name | None, message)
+    rows_checked: int = 0
+
+    def __bool__(self) -> bool:
+        """Allow using ValidationResult in boolean context."""
+        return self.is_valid
+
+    def raise_if_invalid(self):
+        """Raise DataJointError if validation failed."""
+        if not self.is_valid:
+            raise DataJointError(self.summary())
+
+    def summary(self) -> str:
+        """Return formatted error summary."""
+        if self.is_valid:
+            return f"Validation passed: {self.rows_checked} rows checked"
+        lines = [f"Validation failed: {len(self.errors)} error(s) in {self.rows_checked} rows"]
+        for row_idx, field_name, message in self.errors[:10]:  # Show first 10 errors
+            field_str = f" in field '{field_name}'" if field_name else ""
+            lines.append(f"  Row {row_idx}{field_str}: {message}")
+        if len(self.errors) > 10:
+            lines.append(f"  ... and {len(self.errors) - 10} more errors")
+        return "\n".join(lines)
 
 
 class Table(QueryExpression):
@@ -375,6 +414,143 @@ class Table(QueryExpression):
         )
         self.connection.query(query, args=list(r[2] for r in row if r[2] is not None))
 
+    def validate(self, rows, *, ignore_extra_fields=False) -> ValidationResult:
+        """
+        Validate rows without inserting them.
+
+        :param rows: Same format as insert() - iterable of dicts, tuples, numpy records,
+            or a pandas DataFrame.
+        :param ignore_extra_fields: If True, ignore fields not in the table heading.
+        :return: ValidationResult with is_valid, errors list, and rows_checked count.
+
+        Validates:
+            - Field existence (all fields must be in table heading)
+            - Row format (correct number of attributes for positional inserts)
+            - Codec validation (type checking via codec.validate())
+            - NULL constraints (non-nullable fields must have values)
+            - Primary key completeness (all PK fields must be present)
+            - UUID format and JSON serializability
+
+        Cannot validate (database-enforced):
+            - Foreign key constraints
+            - Unique constraints (other than PK)
+            - Custom MySQL constraints
+
+        Example::
+
+            result = table.validate(rows)
+            if result:
+                table.insert(rows)
+            else:
+                print(result.summary())
+        """
+        errors = []
+
+        # Convert DataFrame to records
+        if isinstance(rows, pandas.DataFrame):
+            rows = rows.reset_index(drop=len(rows.index.names) == 1 and not rows.index.names[0]).to_records(index=False)
+
+        # Convert Path (CSV) to list of dicts
+        if isinstance(rows, Path):
+            with open(rows, newline="") as data_file:
+                rows = list(csv.DictReader(data_file, delimiter=","))
+
+        rows = list(rows)  # Materialize iterator
+        row_count = len(rows)
+
+        for row_idx, row in enumerate(rows):
+            # Validate row format and fields
+            row_dict = None
+            try:
+                if isinstance(row, np.void):  # numpy record
+                    fields = list(row.dtype.fields.keys())
+                    row_dict = {name: row[name] for name in fields}
+                elif isinstance(row, collections.abc.Mapping):
+                    fields = list(row.keys())
+                    row_dict = dict(row)
+                else:  # positional tuple/list
+                    if len(row) != len(self.heading):
+                        errors.append(
+                            (
+                                row_idx,
+                                None,
+                                f"Incorrect number of attributes: {len(row)} given, {len(self.heading)} expected",
+                            )
+                        )
+                        continue
+                    fields = list(self.heading.names)
+                    row_dict = dict(zip(fields, row))
+            except TypeError:
+                errors.append((row_idx, None, f"Invalid row type: {type(row).__name__}"))
+                continue
+
+            # Check for unknown fields
+            if not ignore_extra_fields:
+                for field_name in fields:
+                    if field_name not in self.heading:
+                        errors.append((row_idx, field_name, f"Field '{field_name}' not in table heading"))
+
+            # Validate each field value
+            for name in self.heading.names:
+                if name not in row_dict:
+                    # Check if field is required (non-nullable, no default, not autoincrement)
+                    attr = self.heading[name]
+                    if not attr.nullable and attr.default is None and not attr.autoincrement:
+                        errors.append((row_idx, name, f"Required field '{name}' is missing"))
+                    continue
+
+                value = row_dict[name]
+                attr = self.heading[name]
+
+                # Skip validation for None values on nullable columns
+                if value is None:
+                    if not attr.nullable and attr.default is None:
+                        errors.append((row_idx, name, f"NULL value not allowed for non-nullable field '{name}'"))
+                    continue
+
+                # Codec validation
+                if attr.codec:
+                    try:
+                        attr.codec.validate(value)
+                    except (TypeError, ValueError) as e:
+                        errors.append((row_idx, name, f"Codec validation failed: {e}"))
+                        continue
+
+                # UUID validation
+                if attr.uuid and not isinstance(value, uuid.UUID):
+                    try:
+                        uuid.UUID(value)
+                    except (AttributeError, ValueError):
+                        errors.append((row_idx, name, f"Invalid UUID format: {value}"))
+                        continue
+
+                # JSON serialization check
+                if attr.json:
+                    try:
+                        json.dumps(value)
+                    except (TypeError, ValueError) as e:
+                        errors.append((row_idx, name, f"Value not JSON serializable: {e}"))
+                        continue
+
+                # Numeric NaN check
+                if attr.numeric and value != "" and not isinstance(value, bool):
+                    try:
+                        if np.isnan(float(value)):
+                            # NaN is allowed - will be converted to NULL
+                            pass
+                    except (TypeError, ValueError):
+                        # Not a number that can be checked for NaN - let it pass
+                        pass
+
+            # Check primary key completeness
+            for pk_field in self.primary_key:
+                if pk_field not in row_dict or row_dict[pk_field] is None:
+                    pk_attr = self.heading[pk_field]
+                    if not pk_attr.autoincrement:
+                        errors.append((row_idx, pk_field, f"Primary key field '{pk_field}' is missing or NULL"))
+
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, rows_checked=row_count)
+
     def insert1(self, row, **kwargs):
         """
         Insert one data record into the table. For ``kwargs``, see ``insert()``.
@@ -420,6 +596,7 @@ class Table(QueryExpression):
         skip_duplicates=False,
         ignore_extra_fields=False,
         allow_direct_insert=None,
+        chunk_size=None,
     ):
         """
         Insert a collection of rows.
@@ -434,12 +611,17 @@ class Table(QueryExpression):
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
         :param allow_direct_insert: Only applies in auto-populated tables. If False (default),
             insert may only be called from inside the make callback.
+        :param chunk_size: If set, insert rows in batches of this size. Useful for very
+            large inserts to avoid memory issues. Each chunk is a separate transaction.
 
         Example:
 
             >>> Table.insert([
             >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
             >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
+
+            # Large insert with chunking
+            >>> Table.insert(large_dataset, chunk_size=10000)
         """
         if isinstance(rows, pandas.DataFrame):
             # drop 'extra' synthetic index for 1-field index case -
@@ -461,7 +643,9 @@ class Table(QueryExpression):
         if inspect.isclass(rows) and issubclass(rows, QueryExpression):
             rows = rows()  # instantiate if a class
         if isinstance(rows, QueryExpression):
-            # insert from select
+            # insert from select - chunk_size not applicable
+            if chunk_size is not None:
+                raise DataJointError("chunk_size is not supported for QueryExpression inserts")
             if not ignore_extra_fields:
                 try:
                     raise DataJointError(
@@ -485,6 +669,28 @@ class Table(QueryExpression):
             self.connection.query(query)
             return
 
+        # Chunked insert mode
+        if chunk_size is not None:
+            rows_iter = iter(rows)
+            while True:
+                chunk = list(itertools.islice(rows_iter, chunk_size))
+                if not chunk:
+                    break
+                self._insert_rows(chunk, replace, skip_duplicates, ignore_extra_fields)
+            return
+
+        # Single batch insert (original behavior)
+        self._insert_rows(rows, replace, skip_duplicates, ignore_extra_fields)
+
+    def _insert_rows(self, rows, replace, skip_duplicates, ignore_extra_fields):
+        """
+        Internal helper to insert a batch of rows.
+
+        :param rows: Iterable of rows to insert
+        :param replace: If True, use REPLACE instead of INSERT
+        :param skip_duplicates: If True, use ON DUPLICATE KEY UPDATE
+        :param ignore_extra_fields: If True, ignore unknown fields
+        """
         # collects the field list from first row (passed by reference)
         field_list = []
         rows = list(self.__make_row_to_insert(row, field_list, ignore_extra_fields) for row in rows)
@@ -507,6 +713,81 @@ class Table(QueryExpression):
                 raise err.suggest("To ignore extra fields in insert, set ignore_extra_fields=True")
             except DuplicateError as err:
                 raise err.suggest("To ignore duplicate entries in insert, set skip_duplicates=True")
+
+    def insert_dataframe(self, df, index_as_pk=None, **insert_kwargs):
+        """
+        Insert DataFrame with explicit index handling.
+
+        This method provides symmetry with to_pandas(): data fetched with to_pandas()
+        (which sets primary key as index) can be modified and re-inserted using
+        insert_dataframe() without manual index manipulation.
+
+        :param df: pandas DataFrame to insert
+        :param index_as_pk: How to handle DataFrame index:
+            - None (default): Auto-detect. Use index as primary key if index names
+              match primary_key columns. Drop if unnamed RangeIndex.
+            - True: Treat index as primary key columns. Raises if index names don't
+              match table primary key.
+            - False: Ignore index entirely (drop it).
+        :param **insert_kwargs: Passed to insert() - replace, skip_duplicates,
+            ignore_extra_fields, allow_direct_insert, chunk_size
+
+        Example::
+
+            # Round-trip with to_pandas()
+            df = table.to_pandas()           # PK becomes index
+            df['value'] = df['value'] * 2    # Modify data
+            table.insert_dataframe(df)       # Auto-detects index as PK
+
+            # Explicit control
+            table.insert_dataframe(df, index_as_pk=True)   # Use index
+            table.insert_dataframe(df, index_as_pk=False)  # Ignore index
+        """
+        if not isinstance(df, pandas.DataFrame):
+            raise DataJointError("insert_dataframe requires a pandas DataFrame")
+
+        # Auto-detect if index should be used as PK
+        if index_as_pk is None:
+            index_as_pk = self._should_index_be_pk(df)
+
+        # Validate index if using as PK
+        if index_as_pk:
+            self._validate_index_columns(df)
+
+        # Prepare rows
+        if index_as_pk:
+            rows = df.reset_index(drop=False).to_records(index=False)
+        else:
+            rows = df.reset_index(drop=True).to_records(index=False)
+
+        self.insert(rows, **insert_kwargs)
+
+    def _should_index_be_pk(self, df) -> bool:
+        """
+        Auto-detect if DataFrame index should map to primary key.
+
+        Returns True if:
+        - Index has named columns that exactly match the table's primary key
+        Returns False if:
+        - Index is unnamed RangeIndex (synthetic index)
+        - Index names don't match primary key
+        """
+        # RangeIndex with no name -> False (synthetic index)
+        if df.index.names == [None]:
+            return False
+        # Check if index names match PK columns
+        index_names = set(n for n in df.index.names if n is not None)
+        return index_names == set(self.primary_key)
+
+    def _validate_index_columns(self, df):
+        """Validate that index columns match the table's primary key."""
+        index_names = [n for n in df.index.names if n is not None]
+        if set(index_names) != set(self.primary_key):
+            raise DataJointError(
+                f"DataFrame index columns {index_names} do not match "
+                f"table primary key {list(self.primary_key)}. "
+                f"Use index_as_pk=False to ignore index, or reset_index() first."
+            )
 
     def delete_quick(self, get_count=False):
         """
@@ -921,6 +1202,12 @@ class Table(QueryExpression):
                 if name in row
             ]
         else:  # positional
+            warnings.warn(
+                "Positional inserts (tuples/lists) are deprecated and will be removed in a future version. "
+                "Use dict with explicit field names instead: table.insert1({'field': value, ...})",
+                DeprecationWarning,
+                stacklevel=4,  # Point to user's insert()/insert1() call
+            )
             try:
                 if len(row) != len(self.heading):
                     raise DataJointError(
