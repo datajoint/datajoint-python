@@ -205,12 +205,21 @@ class Part(UserTable, metaclass=PartMeta):
         + ")"
     )
 
-    def delete(self, force=False):
+    def delete(self, force=False, **kwargs):
         """
-        unless force is True, prohibits direct deletes from parts.
+        Delete from a Part table.
+
+        Args:
+            force: If True, allow direct deletion from Part table.
+                   If False (default), raise an error.
+            **kwargs: Additional arguments passed to Table.delete()
+                      (transaction, safemode, force_masters)
+
+        Raises:
+            DataJointError: If force is False (direct Part deletes are prohibited)
         """
         if force:
-            super().delete(force_parts=True)
+            super().delete(force_parts=True, **kwargs)
         else:
             raise DataJointError("Cannot delete from a Part directly. Delete from master instead")
 
