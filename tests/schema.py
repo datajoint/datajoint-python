@@ -16,24 +16,24 @@ class TTest(dj.Lookup):
     """
 
     definition = """
-    key   :   int     # key
+    key   :   int32     # key
     ---
-    value   :   int     # value
+    value   :   int32     # value
     """
     contents = [(k, 2 * k) for k in range(10)]
 
 
 class TTest2(dj.Manual):
     definition = """
-    key   :   int     # key
+    key   :   int32     # key
     ---
-    value   :   int     # value
+    value   :   int32     # value
     """
 
 
 class TTest3(dj.Manual):
     definition = """
-    key : int
+    key : int32
     ---
     value : varchar(300)
     """
@@ -41,11 +41,11 @@ class TTest3(dj.Manual):
 
 class NullableNumbers(dj.Manual):
     definition = """
-    key : int
+    key : int32
     ---
-    fvalue = null : float
-    dvalue = null : double
-    ivalue = null : int
+    fvalue = null : float32
+    dvalue = null : float64
+    ivalue = null : int32
     """
 
 
@@ -54,7 +54,7 @@ class TTestExtra(dj.Manual):
     clone of Test but with an extra field
     """
 
-    definition = TTest.definition + "\nextra : int # extra int\n"
+    definition = TTest.definition + "\nextra : int32 # extra int\n"
 
 
 class TTestNoExtra(dj.Manual):
@@ -67,14 +67,11 @@ class TTestNoExtra(dj.Manual):
 
 class Auto(dj.Lookup):
     definition = """
-    id  :int auto_increment
+    id  : uint8
     ---
     name :varchar(12)
     """
-
-    def fill(self):
-        if not self:
-            self.insert([dict(name="Godel"), dict(name="Escher"), dict(name="Bach")])
+    contents = [(1, "Godel"), (2, "Escher"), (3, "Bach")]
 
 
 class User(dj.Lookup):
@@ -94,7 +91,7 @@ class User(dj.Lookup):
 
 class Subject(dj.Lookup):
     definition = """  # Basic information about animal subjects used in experiments
-    subject_id   :int  #  unique subject id
+    subject_id   :int32  #  unique subject id
     ---
     real_id            :varchar(40)  # real-world name. Omit if the same as subject_id
     species = "mouse"  :enum('mouse', 'monkey', 'human')
@@ -131,13 +128,13 @@ class Language(dj.Lookup):
 class Experiment(dj.Imported):
     definition = """  # information about experiments
     -> Subject
-    experiment_id  :smallint  # experiment number for this subject
+    experiment_id  :int16  # experiment number for this subject
     ---
     experiment_date  :date   # date when experiment was started
     -> [nullable] User
     data_path=""     :varchar(255)  # file path to recorded data
     notes=""         :varchar(2048) # e.g. purpose of experiment
-    entry_time=CURRENT_TIMESTAMP :timestamp   # automatic timestamp
+    entry_time=CURRENT_TIMESTAMP :datetime   # automatic timestamp
     """
 
     fake_experiments_per_subject = 5
@@ -164,17 +161,17 @@ class Experiment(dj.Imported):
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
     -> Experiment.proj(animal='subject_id')
-    trial_id  :smallint   # trial number
+    trial_id  :int16   # trial number
     ---
-    start_time                 :double      # (s)
+    start_time                 :float64      # (s)
     """
 
     class Condition(dj.Part):
         definition = """   # trial conditions
         -> Trial
-        cond_idx : smallint   # condition number
+        cond_idx : int16   # condition number
         ----
-        orientation :  float   # degrees
+        orientation :  float32   # degrees
         """
 
     def make(self, key):
@@ -191,14 +188,14 @@ class Ephys(dj.Imported):
     definition = """    # some kind of electrophysiological recording
     -> Trial
     ----
-    sampling_frequency :double  # (Hz)
+    sampling_frequency :float64  # (Hz)
     duration           :decimal(7,3)  # (s)
     """
 
     class Channel(dj.Part):
         definition = """     # subtable containing individual channels
         -> master
-        channel    :tinyint unsigned   # channel number within Ephys
+        channel    :uint8   # channel number within Ephys
         ----
         voltage    : <blob>
         current = null : <blob>   # optional current to test null handling
@@ -226,7 +223,7 @@ class Ephys(dj.Imported):
 class Image(dj.Manual):
     definition = """
     # table for testing blob inserts
-    id           : int # image identifier
+    id           : int32 # image identifier
     ---
     img             : <blob> # image
     """
@@ -234,7 +231,7 @@ class Image(dj.Manual):
 
 class UberTrash(dj.Lookup):
     definition = """
-    id : int
+    id : int32
     ---
     """
     contents = [(1,)]
@@ -243,7 +240,7 @@ class UberTrash(dj.Lookup):
 class UnterTrash(dj.Lookup):
     definition = """
     -> UberTrash
-    my_id   : int
+    my_id   : int32
     ---
     """
     contents = [(1, 1), (1, 2)]
@@ -251,7 +248,7 @@ class UnterTrash(dj.Lookup):
 
 class SimpleSource(dj.Lookup):
     definition = """
-    id : int  # id
+    id : int32  # id
     """
     contents = [(x,) for x in range(10)]
 
@@ -311,7 +308,7 @@ class IndexRich(dj.Manual):
     ---
     -> [unique, nullable] User.proj(first="username")
     first_date : date
-    value : int
+    value : int32
     index (first_date, value)
     """
 
@@ -319,16 +316,16 @@ class IndexRich(dj.Manual):
 #  Schema for issue 656
 class ThingA(dj.Manual):
     definition = """
-    a: int
+    a: int32
     """
 
 
 class ThingB(dj.Manual):
     definition = """
-    b1: int
-    b2: int
+    b1: int32
+    b2: int32
     ---
-    b3: int
+    b3: int32
     """
 
 
@@ -343,7 +340,7 @@ class ThingC(dj.Manual):
 #  Additional tables for #1159
 class ThingD(dj.Manual):
     definition = """
-    d: int
+    d: int32
     ---
     -> ThingC
     """
@@ -357,7 +354,7 @@ class ThingE(dj.Manual):
 
 class Parent(dj.Lookup):
     definition = """
-    parent_id: int
+    parent_id: int32
     ---
     name: varchar(30)
     """
@@ -367,7 +364,7 @@ class Parent(dj.Lookup):
 class Child(dj.Lookup):
     definition = """
     -> Parent
-    child_id: int
+    child_id: int32
     ---
     name: varchar(30)
     """
@@ -376,12 +373,12 @@ class Child(dj.Lookup):
 
 # Related to issue #886 (8), #883 (5)
 class ComplexParent(dj.Lookup):
-    definition = "\n".join(["parent_id_{}: int".format(i + 1) for i in range(8)])
+    definition = "\n".join(["parent_id_{}: int32".format(i + 1) for i in range(8)])
     contents = [tuple(i for i in range(8))]
 
 
 class ComplexChild(dj.Lookup):
-    definition = "\n".join(["-> ComplexParent"] + ["child_id_{}: int".format(i + 1) for i in range(1)])
+    definition = "\n".join(["-> ComplexParent"] + ["child_id_{}: int32".format(i + 1) for i in range(1)])
     contents = [tuple(i for i in range(9))]
 
 
@@ -443,16 +440,16 @@ class SessionDateA(dj.Lookup):
 
 class Stimulus(dj.Lookup):
     definition = """
-    id: int
+    id: int32
     ---
-    contrast: int
-    brightness: int
+    contrast: int32
+    brightness: int32
     """
 
 
 class Longblob(dj.Manual):
     definition = """
-    id: int
+    id: int32
     ---
     data: <blob>
     """

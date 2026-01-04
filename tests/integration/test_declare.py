@@ -114,10 +114,9 @@ def test_part(schema_any):
 
 def test_attributes(schema_any):
     """
-    Test autoincrement declaration
+    Test attribute declarations
     """
     auto = Auto()
-    auto.fill()
     subject = Subject()
     experiment = Experiment()
     trial = Trial()
@@ -125,7 +124,7 @@ def test_attributes(schema_any):
     channel = Ephys.Channel()
 
     assert auto.heading.names == ["id", "name"]
-    assert auto.heading.attributes["id"].autoincrement
+    assert auto.heading.attributes["id"].numeric
 
     # test attribute declarations
     assert subject.heading.names == [

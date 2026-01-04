@@ -574,12 +574,13 @@ def schema_any(connection_test, prefix):
     # Restore original config value after all tables are declared
     dj.config.jobs.allow_new_pk_fields_in_computed_tables = original_value
     yield schema_any
-    # Clean up job tables before dropping schema
-    for job in schema_any.jobs:
-        try:
-            job.delete()
-        except DataJointError:
-            pass
+    # Clean up job tables before dropping schema (if schema still exists)
+    if schema_any.exists:
+        for job in schema_any.jobs:
+            try:
+                job.delete()
+            except DataJointError:
+                pass
     schema_any.drop()
 
 
@@ -638,12 +639,13 @@ def schema_any_fresh(connection_test, prefix):
     # Restore original config value after all tables are declared
     dj.config.jobs.allow_new_pk_fields_in_computed_tables = original_value
     yield schema_any
-    # Clean up job tables before dropping schema
-    for job in schema_any.jobs:
-        try:
-            job.delete()
-        except DataJointError:
-            pass
+    # Clean up job tables before dropping schema (if schema still exists)
+    if schema_any.exists:
+        for job in schema_any.jobs:
+            try:
+                job.delete()
+            except DataJointError:
+                pass
     schema_any.drop()
 
 
