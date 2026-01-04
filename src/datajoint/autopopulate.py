@@ -543,6 +543,18 @@ class AutoPopulate:
             self.connection.commit_transaction()
             duration = time.time() - start_time
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
+
+            # Update hidden job metadata if table has the columns
+            if self._has_job_metadata_attrs():
+                from .jobs import _get_job_version
+
+                self._update_job_metadata(
+                    key,
+                    start_time=datetime.datetime.fromtimestamp(start_time),
+                    duration=duration,
+                    version=_get_job_version(),
+                )
+
             if jobs is not None:
                 jobs.complete(key, duration=duration)
             return True
@@ -569,3 +581,29 @@ class AutoPopulate:
                 ),
             )
         return remaining, total
+
+    def _has_job_metadata_attrs(self):
+        """Check if table has hidden job metadata columns."""
+        # Access _attributes directly to include hidden attributes
+        all_attrs = self.target.heading._attributes
+        return all_attrs is not None and "_job_start_time" in all_attrs
+
+    def _update_job_metadata(self, key, start_time, duration, version):
+        """
+        Update hidden job metadata for the given key.
+
+        Args:
+            key: Primary key dict identifying the row(s) to update
+            start_time: datetime when computation started
+            duration: float seconds elapsed
+            version: str code version (truncated to 64 chars)
+        """
+        from .condition import make_condition
+
+        pk_condition = make_condition(self.target, key, set())
+        self.connection.query(
+            f"UPDATE {self.target.full_table_name} SET "
+            "`_job_start_time`=%s, `_job_duration`=%s, `_job_version`=%s "
+            f"WHERE {pk_condition}",
+            args=(start_time, duration, version[:64] if version else ""),
+        )

@@ -138,7 +138,7 @@ class Job(Table):
     host=""         : varchar(255)
     pid=0           : uint32
     connection_id=0 : uint64
-    version=""      : varchar(255)
+    version=""      : varchar(64)
     """
 
     def _get_fk_derived_pk_attrs(self) -> list[tuple[str, str]]:

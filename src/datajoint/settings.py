@@ -223,6 +223,12 @@ class JobsSettings(BaseSettings):
         description="Allow native (non-FK) primary key fields in Computed/Imported tables. "
         "When True, bypasses the FK-only PK validation. Job granularity will be degraded for such tables.",
     )
+    add_job_metadata: bool = Field(
+        default=False,
+        description="Add hidden job metadata attributes (_job_start_time, _job_duration, _job_version) "
+        "to Computed and Imported tables during declaration. Tables created without this setting "
+        "will not receive metadata updates during populate.",
+    )
 
 
 class ObjectStorageSettings(BaseSettings):

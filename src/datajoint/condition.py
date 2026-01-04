@@ -264,7 +264,7 @@ def make_condition(query_expression, condition, columns, semantic_check=True):
     # restrict by another expression (aka semijoin and antijoin)
     if isinstance(condition, QueryExpression):
         assert_join_compatibility(query_expression, condition, semantic_check=semantic_check)
-        # Always match on all namesakes (natural join semantics)
+        # Match on all non-hidden namesakes (hidden attributes excluded)
         common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
         columns.update(common_attributes)
         if isinstance(condition, Aggregation):
