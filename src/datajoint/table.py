@@ -741,6 +741,8 @@ class Table(QueryExpression):
             - iterable of dicts: ``[{"attr": value, ...}, ...]``
             - iterable of numpy.void: Records from a structured array
             - pandas.DataFrame: Each row becomes a table row
+            - polars.DataFrame: Each row becomes a table row
+            - pyarrow.Table: Each row becomes a table row
             - QueryExpression: Results of a query (insert from select)
             - pathlib.Path: Path to a CSV file
 
@@ -780,6 +782,14 @@ class Table(QueryExpression):
             # drop 'extra' synthetic index for 1-field index case -
             # frames with more advanced indices should be prepared by user.
             rows = rows.reset_index(drop=len(rows.index.names) == 1 and not rows.index.names[0]).to_records(index=False)
+
+        # Polars DataFrame -> list of dicts (soft dependency, check by type name)
+        if type(rows).__module__.startswith("polars") and type(rows).__name__ == "DataFrame":
+            rows = rows.to_dicts()
+
+        # PyArrow Table -> list of dicts (soft dependency, check by type name)
+        if type(rows).__module__.startswith("pyarrow") and type(rows).__name__ == "Table":
+            rows = rows.to_pylist()
 
         if isinstance(rows, Path):
             with open(rows, newline="") as data_file:
