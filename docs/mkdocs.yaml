@@ -10,7 +10,6 @@ nav:
   - Architecture:
     - architecture/index.md
     - SQL Transpilation: architecture/transpilation.md
-  - Changelog: changelog.md
   - API Reference: api/ # defer to gen-files + literate-nav
 
 # ---------------------------- STANDARD -----------------------------

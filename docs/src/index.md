@@ -19,7 +19,6 @@ This site contains **developer documentation** for contributors to the DataJoint
 
 - [Contributing Guide](develop.md) — Development environment setup
 - [Architecture](architecture/index.md) — Internal design documentation
-- [Changelog](changelog.md) — Release history
 - [API Reference](api/) — Auto-generated from source
 
 ## Quick Links
