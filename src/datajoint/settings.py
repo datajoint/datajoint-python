@@ -218,6 +218,11 @@ class JobsSettings(BaseSettings):
     version_method: Literal["git", "none"] | None = Field(
         default=None, description="Method to obtain version: 'git' (commit hash), 'none' (empty), or None (disabled)"
     )
+    allow_new_pk_fields_in_computed_tables: bool = Field(
+        default=False,
+        description="Allow native (non-FK) primary key fields in Computed/Imported tables. "
+        "When True, bypasses the FK-only PK validation. Job granularity will be degraded for such tables.",
+    )
 
 
 class ObjectStorageSettings(BaseSettings):

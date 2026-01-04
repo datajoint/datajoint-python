@@ -82,10 +82,19 @@ class AutoPopulate:
         attributes from foreign key references. This ensures proper job granularity
         for distributed populate operations.
 
+        This validation can be bypassed by setting:
+            dj.config.jobs.allow_new_pk_fields_in_computed_tables = True
+
         :param primary_key: list of primary key attribute names
         :param fk_attribute_map: dict mapping child_attr -> (parent_table, parent_attr)
-        :raises DataJointError: if native PK attributes are found
+        :raises DataJointError: if native PK attributes are found (unless bypassed)
         """
+        from .settings import config
+
+        # Check if validation is bypassed
+        if config.jobs.allow_new_pk_fields_in_computed_tables:
+            return
+
         # Check for native (non-FK) primary key attributes
         native_pk_attrs = [attr for attr in primary_key if attr not in fk_attribute_map]
 
@@ -96,7 +105,8 @@ class AutoPopulate:
                 f"Computed and Imported tables must derive all primary key attributes "
                 f"from foreign key references. The make() method is called once per entity "
                 f"(row) in the table. If you need to compute multiple entities per job, "
-                f"define a Part table to store them."
+                f"define a Part table to store them. "
+                f"To bypass this restriction, set: dj.config.jobs.allow_new_pk_fields_in_computed_tables = True"
             )
 
     @property

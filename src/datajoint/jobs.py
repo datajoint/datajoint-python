@@ -143,34 +143,36 @@ class Job(Table):
 
     def _get_fk_derived_pk_attrs(self) -> list[tuple[str, str]]:
         """
-        Extract primary key attributes that come from foreign keys.
+        Extract FK-derived primary key attributes using the dependency graph.
 
-        For new tables: all PK attrs must be FK-derived (enforced at declaration).
-        For legacy tables: returns only FK-derived attrs (others logged with warning).
+        FK-derived attributes are those that come from primary FK references.
+        Uses connection.dependencies to identify FK relationships.
 
         Returns:
-            List of (attribute_name, datatype) tuples.
+            List of (attribute_name, datatype) tuples in target PK order.
         """
-        from .lineage import get_lineage
-
         heading = self._target.heading
+        target_pk = heading.primary_key
+
+        # Load dependency graph if not already loaded
+        self._connection.dependencies.load()
+
+        # Get primary FK parents and collect their attribute mappings
+        # parents(primary=True) returns FKs that contribute to primary key
+        parents = self._target.parents(primary=True, foreign_key_info=True)
+        fk_derived_attrs = set()
+        for _parent_name, props in parents:
+            # attr_map: child_attr -> parent_attr
+            fk_derived_attrs.update(props.get("attr_map", {}).keys())
+
         fk_attrs = []
-
-        for name in heading.primary_key:
-            # Check if this attribute has lineage (meaning it came from a foreign key)
-            lineage = get_lineage(
-                self._connection,
-                self.database,
-                self._target.table_name,
-                name,
-            )
-
-            if lineage:
-                # This attribute has lineage - it's FK-derived
+        for name in target_pk:
+            if name in fk_derived_attrs:
+                # FK-derived: comes from a primary FK parent
                 attr = heading[name]
                 fk_attrs.append((name, attr.type))
             else:
-                # No lineage - this is a native PK attribute (not from FK)
+                # Native PK attribute - not from FK
                 logger.warning(
                     f"Ignoring non-FK primary key attribute '{name}' in jobs table "
                     f"for {self._target.full_table_name}. Job granularity will be degraded."
@@ -285,7 +287,10 @@ class Job(Table):
             key_source = key_source & AndList(restrictions)
 
         # Keys that need jobs: in key_source, not in target, not in jobs
-        new_keys = (key_source - self._target - self).proj()
+        # Disable semantic_check for Job table (self) because its attributes may not have matching lineage
+        from .condition import Not
+
+        new_keys = (key_source - self._target).restrict(Not(self), semantic_check=False).proj()
         new_key_list = new_keys.fetch("KEY")
 
         if new_key_list:
@@ -306,7 +311,8 @@ class Job(Table):
         # 2. Re-pend success jobs if keep_completed=True
         if config.jobs.keep_completed:
             # Success jobs whose keys are in key_source but not in target
-            success_to_repend = (self.completed & key_source) - self._target
+            # Disable semantic_check for Job table operations
+            success_to_repend = self.completed.restrict(key_source, semantic_check=False) - self._target
             repend_keys = success_to_repend.fetch("KEY")
             for key in repend_keys:
                 (self & key).delete_quick()

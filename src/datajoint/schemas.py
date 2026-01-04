@@ -378,7 +378,8 @@ class Schema:
         jobs_list = []
 
         # Get all existing job tables (~~prefix)
-        result = self.connection.query(f"SHOW TABLES IN `{self.database}` LIKE '~~%'").fetchall()
+        # Note: %% escapes the % in pymysql
+        result = self.connection.query(f"SHOW TABLES IN `{self.database}` LIKE '~~%%'").fetchall()
         existing_job_tables = {row[0] for row in result}
 
         # Iterate over auto-populated tables and check if their job table exists
