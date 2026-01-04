@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import copy
 import inspect
 import logging
 import re
 from itertools import count
+from typing import TYPE_CHECKING, Any
 
 from .condition import (
     AndList,
@@ -21,6 +24,10 @@ from .errors import DataJointError
 from .fetch import Fetch1, _get
 from .preview import preview, repr_html
 from .settings import config
+
+if TYPE_CHECKING:
+    from .connection import Connection
+    from .heading import Heading
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -62,43 +69,85 @@ class QueryExpression:
     _distinct = False
 
     @property
-    def connection(self):
-        """a dj.Connection object"""
+    def connection(self) -> Connection:
+        """
+        The database connection for this query.
+
+        Returns
+        -------
+        dj.Connection
+            Active database connection.
+        """
         assert self._connection is not None
         return self._connection
 
     @property
-    def support(self):
-        """A list of table names or subqueries to from the FROM clause"""
+    def support(self) -> list[str | QueryExpression]:
+        """
+        Tables or subqueries forming the FROM clause.
+
+        Returns
+        -------
+        list
+            Table names (str) or QueryExpression subqueries.
+        """
         assert self._support is not None
         return self._support
 
     @property
-    def heading(self):
-        """a dj.Heading object, reflects the effects of the projection operator .proj"""
+    def heading(self) -> Heading:
+        """
+        Column information after projection.
+
+        Returns
+        -------
+        dj.Heading
+            Heading reflecting any applied projection.
+        """
         return self._heading
 
     @property
-    def original_heading(self):
-        """a dj.Heading object reflecting the attributes before projection"""
+    def original_heading(self) -> Heading:
+        """
+        Column information before projection.
+
+        Returns
+        -------
+        dj.Heading
+            Original heading without projection effects.
+        """
         return self._original_heading or self.heading
 
     @property
-    def restriction(self):
-        """a AndList object of restrictions applied to input to produce the result"""
+    def restriction(self) -> AndList:
+        """
+        Restrictions applied to produce the result.
+
+        Returns
+        -------
+        AndList
+            Conjunction of restriction conditions.
+        """
         if self._restriction is None:
             self._restriction = AndList()
         return self._restriction
 
     @property
-    def restriction_attributes(self):
-        """the set of attribute names invoked in the WHERE clause"""
+    def restriction_attributes(self) -> set[str]:
+        """
+        Attribute names used in the WHERE clause.
+
+        Returns
+        -------
+        set
+            Names of attributes referenced by restrictions.
+        """
         if self._restriction_attributes is None:
             self._restriction_attributes = set()
         return self._restriction_attributes
 
     @property
-    def primary_key(self):
+    def primary_key(self) -> list[str]:
         return self.heading.primary_key
 
     _subquery_alias_count = count()  # count for alias names used in the FROM clause
@@ -140,11 +189,19 @@ class QueryExpression:
 
         return clause
 
-    def make_sql(self, fields=None):
+    def make_sql(self, fields: list[str] | None = None) -> str:
         """
-        Make the SQL SELECT statement.
+        Generate the SQL SELECT statement for this query.
 
-        :param fields: used to explicitly set the select attributes
+        Parameters
+        ----------
+        fields : list, optional
+            Attribute names to select. If None, uses heading attributes.
+
+        Returns
+        -------
+        str
+            Complete SQL SELECT statement.
         """
         return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
@@ -155,64 +212,61 @@ class QueryExpression:
         )
 
     # --------- query operators -----------
-    def make_subquery(self):
-        """create a new SELECT statement where self is the FROM clause"""
+    def make_subquery(self) -> QueryExpression:
+        """
+        Create a new query with this expression as a subquery.
+
+        Returns
+        -------
+        QueryExpression
+            New expression with self in the FROM clause.
+        """
         result = QueryExpression()
         result._connection = self.connection
         result._support = [self]
         result._heading = self.heading.make_subquery_heading()
         return result
 
-    def restrict(self, restriction, semantic_check=True):
+    def restrict(self, restriction: Any, semantic_check: bool = True) -> QueryExpression:
         """
-        Produces a new expression with the new restriction applied.
+        Apply a restriction (WHERE clause) to this expression.
 
-        :param restriction: a sequence or an array (treated as OR list), another QueryExpression,
-            an SQL condition string, or an AndList.
-        :param semantic_check: If True (default), use semantic matching - only match on
+        Parameters
+        ----------
+        restriction : various
+            Condition to apply. Can be:
+
+            - str: SQL condition (e.g., ``"x > 5"``)
+            - dict: Attribute-value pairs (equality)
+            - QueryExpression: Match on common attributes
+            - AndList: Conjunction of conditions
+            - list/tuple: Disjunction (OR) of conditions
+            - bool: True = no effect, False = empty result
+
+        semantic_check : bool, optional
+            If True (default), use semantic matching - only match on
             homologous namesakes and error on non-homologous namesakes.
-            If False, use natural matching on all namesakes (no lineage checking).
-        :return: A new QueryExpression with the restriction applied.
+            If False, use natural matching on all namesakes.
 
-        rel.restrict(restriction) is equivalent to rel & restriction.
-        rel.restrict(Not(restriction)) is equivalent to rel - restriction
+        Returns
+        -------
+        QueryExpression
+            New expression with restriction applied.
 
-        The primary key of the result is unaffected.
-        Successive restrictions are combined as logical AND: r & a & b is equivalent to r & AndList((a, b))
-        Any QueryExpression, collection, or sequence other than an AndList are treated as OrLists
-        (logical disjunction of conditions)
-        Inverse restriction is accomplished by either using the subtraction operator or the Not class.
+        Notes
+        -----
+        ``rel & restriction`` is equivalent to ``rel.restrict(restriction)``.
+        ``rel - restriction`` is equivalent to ``rel.restrict(Not(restriction))``.
 
-        The expressions in each row equivalent:
+        Successive restrictions combine as logical AND.
+        Collections (except AndList) are treated as OR lists.
 
-        rel & True                          rel
-        rel & False                         the empty entity set
-        rel & 'TRUE'                        rel
-        rel & 'FALSE'                       the empty entity set
-        rel - cond                          rel & Not(cond)
-        rel - 'TRUE'                        rel & False
-        rel - 'FALSE'                       rel
-        rel & AndList((cond1,cond2))        rel & cond1 & cond2
-        rel & AndList()                     rel
-        rel & [cond1, cond2]                rel & OrList((cond1, cond2))
-        rel & []                            rel & False
-        rel & None                          rel & False
-        rel & any_empty_entity_set          rel & False
-        rel - AndList((cond1,cond2))        rel & [Not(cond1), Not(cond2)]
-        rel - [cond1, cond2]                rel & Not(cond1) & Not(cond2)
-        rel - AndList()                     rel & False
-        rel - []                            rel
-        rel - None                          rel
-        rel - any_empty_entity_set          rel
-
-        When arg is another QueryExpression, the restriction rel & arg restricts rel to elements that match at least
-        one element in arg (hence arg is treated as an OrList).
-        Conversely, rel - arg restricts rel to elements that do not match any elements in arg.
-        Two elements match when their common attributes have equal values or when they have no common attributes.
-        All shared attributes must be in the primary key of either rel or arg or both or an error will be raised.
-
-        QueryExpression.restrict is the only access point that modifies restrictions. All other operators must
-        ultimately call restrict()
+        Examples
+        --------
+        >>> table & "session_id > 5"        # SQL condition
+        >>> table & {"subject": "mouse1"}   # Equality
+        >>> table & other_table             # Match on common attributes
+        >>> table - {"status": "failed"}    # Anti-restriction
         """
         attributes = set()
         if isinstance(restriction, Top):
@@ -248,11 +302,14 @@ class QueryExpression:
     def restrict_in_place(self, restriction):
         self.__dict__.update(self.restrict(restriction).__dict__)
 
-    def __and__(self, restriction):
+    def __and__(self, restriction: Any) -> QueryExpression:
         """
-        Restriction operator e.g. ``q1 & q2``.
-        :return: a restricted copy of the input argument
-        See QueryExpression.restrict for more detail.
+        Restriction operator (``&``).
+
+        Returns
+        -------
+        QueryExpression
+            Restricted copy. See ``restrict()`` for details.
         """
         return self.restrict(restriction)
 
@@ -263,27 +320,38 @@ class QueryExpression:
             "Use .restrict(other, semantic_check=False) for restrictions without semantic checking."
         )
 
-    def __sub__(self, restriction):
+    def __sub__(self, restriction: Any) -> QueryExpression:
         """
-        Inverted restriction e.g. ``q1 - q2``.
-        :return: a restricted copy of the input argument
-        See QueryExpression.restrict for more detail.
+        Anti-restriction operator (``-``).
+
+        Returns
+        -------
+        QueryExpression
+            Rows NOT matching the restriction. See ``restrict()`` for details.
         """
         return self.restrict(Not(restriction))
 
-    def __neg__(self):
+    def __neg__(self) -> Not | QueryExpression:
         """
-        Convert between restriction and inverted restriction e.g. ``-q1``.
-        :return: target restriction
-        See QueryExpression.restrict for more detail.
+        Negation operator (``-expr``).
+
+        Returns
+        -------
+        Not
+            Negated restriction for use in other expressions.
         """
         if isinstance(self, Not):
             return self.restriction
         return Not(self)
 
-    def __mul__(self, other):
+    def __mul__(self, other: QueryExpression) -> QueryExpression:
         """
-        join of query expressions `self` and `other` e.g. ``q1 * q2``.
+        Join operator (``*``).
+
+        Returns
+        -------
+        QueryExpression
+            Joined result. See ``join()`` for details.
         """
         return self.join(other)
 
@@ -294,22 +362,33 @@ class QueryExpression:
             "Use .join(other, semantic_check=False) for joins without semantic checking."
         )
 
-    def join(self, other, semantic_check=True, left=False, allow_nullable_pk=False):
+    def join(self, other: QueryExpression | type, semantic_check: bool = True, left: bool = False, allow_nullable_pk: bool = False) -> QueryExpression:
         """
-        Create the joined QueryExpression.
+        Join this expression with another.
 
-        :param other: QueryExpression to join with
-        :param semantic_check: If True (default), use semantic matching - only match on
-            homologous namesakes (same lineage) and error on non-homologous namesakes.
-            If False, use natural join on all namesakes (no lineage checking).
-        :param left: If True, perform a left join (retain all rows from self)
-        :param allow_nullable_pk: If True, bypass the left join constraint that requires
-            self to determine other. When bypassed, the result PK is the union of both
-            operands' PKs, and PK attributes from the right operand could be NULL.
-            Used internally by aggregation with keep_all_rows=True.
-        :return: The joined QueryExpression
+        Parameters
+        ----------
+        other : QueryExpression
+            Expression to join with.
+        semantic_check : bool, optional
+            If True (default), use semantic matching - only match on
+            homologous namesakes (same lineage) and error on non-homologous
+            namesakes. If False, use natural join on all namesakes.
+        left : bool, optional
+            If True, perform a left join (retain all rows from self).
+            Requires self to determine other. Default False.
+        allow_nullable_pk : bool, optional
+            If True, bypass left join constraint. Used internally by
+            aggregation with keep_all_rows=True. Default False.
 
-        a * b is short for a.join(b)
+        Returns
+        -------
+        QueryExpression
+            Joined result with combined attributes.
+
+        Notes
+        -----
+        ``a * b`` is equivalent to ``a.join(b)``.
         """
         # Joining with U is no longer supported
         if isinstance(other, U):
@@ -380,69 +459,88 @@ class QueryExpression:
         assert len(result.support) == len(result._joins) + 1
         return result
 
-    def extend(self, other, semantic_check=True):
+    def extend(self, other: QueryExpression, semantic_check: bool = True) -> QueryExpression:
         """
-        Extend self with attributes from other.
+        Extend this expression with attributes from another.
 
-        The extend operation adds attributes from `other` to `self` while preserving
-        self's entity identity. It is semantically equivalent to `self.join(other, left=True)`
-        but expresses a clearer intent: extending an entity set with additional attributes
-        rather than combining two entity sets.
+        Adds attributes from ``other`` while preserving this expression's
+        entity identity. Semantically equivalent to ``self.join(other, left=True)``.
 
-        Requirements:
-            self → other: Every attribute in other's primary key must exist in self.
-            This ensures:
-            - All rows of self are preserved (no filtering)
-            - Self's primary key remains the result's primary key (no NULL PKs)
-            - The operation is a true extension, not a Cartesian product
+        Parameters
+        ----------
+        other : QueryExpression
+            Expression whose attributes will extend self.
+        semantic_check : bool, optional
+            If True (default), require homologous namesakes. If False, match
+            on all namesakes without lineage checking.
 
-        Conceptual model:
-            Unlike a general join (Cartesian product restricted by matching attributes),
-            extend is closer to projection—it adds new attributes to existing entities
-            without changing which entities are in the result.
+        Returns
+        -------
+        QueryExpression
+            Extended result with self's primary key and combined attributes.
 
-        Example:
-            # Session determines Trial (session_id is in Trial's PK)
-            # But Trial does NOT determine Session (trial_num not in Session)
+        Raises
+        ------
+        DataJointError
+            If self does not determine other (A → B required).
 
-            # Valid: extend trials with session info
-            Trial.extend(Session)  # Adds 'date' from Session to each Trial
+        Notes
+        -----
+        Requires ``self → other``: every attribute in other's primary key
+        must exist in self. This ensures:
 
-            # Invalid: Session cannot extend to Trial
-            Session.extend(Trial)  # Error: trial_num not in Session
+        - All rows of self are preserved
+        - Self's primary key remains the result's primary key
+        - No NULL values in primary key
 
-        :param other: QueryExpression whose attributes will extend self
-        :param semantic_check: If True (default), require homologous namesakes.
-            If False, match on all namesakes without lineage checking.
-        :return: Extended QueryExpression with self's PK and combined attributes
-        :raises DataJointError: If self does not determine other
+        Examples
+        --------
+        >>> # Trial determines Session (session_id in Trial's PK)
+        >>> Trial.extend(Session)  # Adds session attrs to each trial
         """
         return self.join(other, semantic_check=semantic_check, left=True)
 
-    def __add__(self, other):
-        """union e.g. ``q1 + q2``."""
+    def __add__(self, other: QueryExpression) -> Union:
+        """
+        Union operator (``+``).
+
+        Returns
+        -------
+        Union
+            Combined entity set with matching primary keys.
+        """
         return Union.create(self, other)
 
-    def proj(self, *attributes, **named_attributes):
+    def proj(self, *attributes: str, **named_attributes: str) -> QueryExpression:
         """
-        Projection operator.
+        Select, rename, or compute attributes.
 
-        :param attributes:  attributes to be included in the result. (The primary key is already included).
-        :param named_attributes: new attributes computed or renamed from existing attributes.
-        :return: the projected expression.
-        Primary key attributes cannot be excluded but may be renamed.
-        If the attribute list contains an Ellipsis ..., then all secondary attributes are included too
-        Prefixing an attribute name with a dash '-attr' removes the attribute from the list if present.
-        Keyword arguments can be used to rename attributes as in name='attr', duplicate them as in name='(attr)', or
-        self.proj(...) or self.proj(Ellipsis) -- include all attributes (return self)
-        self.proj() -- include only primary key
-        self.proj('attr1', 'attr2')  -- include primary key and attributes attr1 and attr2
-        self.proj(..., '-attr1', '-attr2')  -- include all attributes except attr1 and attr2
-        self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1
-        self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup'
-        self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax)
-        from other attributes available before the projection.
-        Each attribute name can only be used once.
+        Parameters
+        ----------
+        *attributes : str
+            Attributes to include (primary key always included).
+            Use ``...`` (Ellipsis) to include all secondary attributes.
+            Prefix with ``-`` to exclude (e.g., ``"-attr"``).
+        **named_attributes : str
+            New or renamed attributes. Values can be:
+
+            - ``"attr"``: Rename existing attribute
+            - ``"(attr)"``: Duplicate attribute with new name
+            - ``"expr"``: SQL expression computing new attribute
+
+        Returns
+        -------
+        QueryExpression
+            Projected expression with selected attributes.
+
+        Examples
+        --------
+        >>> table.proj()                    # Primary key only
+        >>> table.proj(...)                 # All attributes
+        >>> table.proj('a', 'b')            # PK + 'a' + 'b'
+        >>> table.proj(..., '-secret')      # All except 'secret'
+        >>> table.proj(new_name='old')      # Rename 'old' to 'new_name'
+        >>> table.proj(total='x + y')       # Computed attribute
         """
         named_attributes = {k: translate_attribute(v)[1] for k, v in named_attributes.items()}
         # new attributes in parentheses are included again with the new name without removing original
@@ -538,15 +636,32 @@ class QueryExpression:
         )
         return result
 
-    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
+    def aggr(self, group: QueryExpression, *attributes: str, keep_all_rows: bool = False, **named_attributes: str) -> QueryExpression:
         """
-        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
-        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+        Aggregate data grouped by this expression's primary key.
 
-        :param group:  The query expression to be aggregated.
-        :param keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.
-        :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
-        :return: The derived query expression
+        Parameters
+        ----------
+        group : QueryExpression
+            Expression to be aggregated.
+        *attributes : str
+            Attributes from self to include (primary key always included).
+        keep_all_rows : bool, optional
+            If True, keep all rows from self (left join). If False (default),
+            keep only rows matching entries in group.
+        **named_attributes : str
+            Aggregation computations as SQL expressions, e.g.,
+            ``count="count(*)"``, ``total="sum(value)"``.
+
+        Returns
+        -------
+        QueryExpression
+            Aggregated result.
+
+        Examples
+        --------
+        >>> Session.aggr(Trial, n_trials="count(*)")
+        >>> Subject.aggr(Session, ..., first="min(session_date)")
         """
         if Ellipsis in attributes:
             # expand ellipsis to include only attributes from the left table
@@ -592,16 +707,28 @@ class QueryExpression:
             return self.restrict(Top(limit, order_by, offset))
         return self
 
-    def to_dicts(self, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_dicts(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = ".") -> list[dict[str, Any]]:
         """
         Fetch all rows as a list of dictionaries.
 
-        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
-        :param limit: maximum number of rows to return
-        :param offset: number of rows to skip
-        :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data (attachments, filepaths)
-        :return: list of dictionaries, one per row
+        Parameters
+        ----------
+        order_by : str or list, optional
+            Attribute(s) to order by. Use ``"KEY"`` or ``"KEY DESC"`` for
+            primary key ordering.
+        limit : int, optional
+            Maximum number of rows to return.
+        offset : int, optional
+            Number of rows to skip.
+        squeeze : bool, optional
+            If True, remove extra dimensions from arrays. Default False.
+        download_path : str, optional
+            Path for downloading external data. Default ``"."``.
+
+        Returns
+        -------
+        list[dict]
+            One dictionary per row with attribute names as keys.
         """
         expr = self._apply_top(order_by, limit, offset)
         cursor = expr.cursor(as_dict=True)
@@ -611,16 +738,31 @@ class QueryExpression:
             for row in cursor
         ]
 
-    def to_pandas(self, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_pandas(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = ".") -> pandas.DataFrame:
         """
         Fetch all rows as a pandas DataFrame with primary key as index.
 
-        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
-        :param limit: maximum number of rows to return
-        :param offset: number of rows to skip
-        :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data
-        :return: pandas DataFrame with primary key columns as index
+        Parameters
+        ----------
+        order_by : str or list, optional
+            Attribute(s) to order by.
+        limit : int, optional
+            Maximum number of rows to return.
+        offset : int, optional
+            Number of rows to skip.
+        squeeze : bool, optional
+            If True, remove extra dimensions from arrays. Default False.
+        download_path : str, optional
+            Path for downloading external data. Default ``"."``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame with primary key columns as index.
+
+        See Also
+        --------
+        insert_dataframe : Insert DataFrame back to table.
         """
         dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze, download_path=download_path)
         df = pandas.DataFrame(dicts)
@@ -628,18 +770,32 @@ class QueryExpression:
             df = df.set_index(self.primary_key)
         return df
 
-    def to_polars(self, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_polars(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = "."):
         """
         Fetch all rows as a polars DataFrame.
 
-        Requires polars: pip install datajoint[polars]
+        Parameters
+        ----------
+        order_by : str or list, optional
+            Attribute(s) to order by.
+        limit : int, optional
+            Maximum number of rows to return.
+        offset : int, optional
+            Number of rows to skip.
+        squeeze : bool, optional
+            If True, remove extra dimensions from arrays. Default False.
+        download_path : str, optional
+            Path for downloading external data. Default ``"."``.
 
-        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
-        :param limit: maximum number of rows to return
-        :param offset: number of rows to skip
-        :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data
-        :return: polars DataFrame
+        Returns
+        -------
+        polars.DataFrame
+            Polars DataFrame with all rows.
+
+        Raises
+        ------
+        ImportError
+            If polars is not installed. Install with ``pip install datajoint[polars]``.
         """
         try:
             import polars
@@ -648,18 +804,32 @@ class QueryExpression:
         dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze, download_path=download_path)
         return polars.DataFrame(dicts)
 
-    def to_arrow(self, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_arrow(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = "."):
         """
         Fetch all rows as a PyArrow Table.
 
-        Requires pyarrow: pip install datajoint[arrow]
+        Parameters
+        ----------
+        order_by : str or list, optional
+            Attribute(s) to order by.
+        limit : int, optional
+            Maximum number of rows to return.
+        offset : int, optional
+            Number of rows to skip.
+        squeeze : bool, optional
+            If True, remove extra dimensions from arrays. Default False.
+        download_path : str, optional
+            Path for downloading external data. Default ``"."``.
 
-        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
-        :param limit: maximum number of rows to return
-        :param offset: number of rows to skip
-        :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data
-        :return: pyarrow Table
+        Returns
+        -------
+        pyarrow.Table
+            PyArrow Table with all rows.
+
+        Raises
+        ------
+        ImportError
+            If pyarrow is not installed. Install with ``pip install datajoint[arrow]``.
         """
         try:
             import pyarrow
@@ -670,21 +840,39 @@ class QueryExpression:
             return pyarrow.table({})
         return pyarrow.Table.from_pylist(dicts)
 
-    def to_arrays(self, *attrs, include_key=False, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_arrays(self, *attrs: str, include_key: bool = False, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None, squeeze: bool = False, download_path: str = ".") -> np.ndarray | tuple[np.ndarray, ...]:
         """
         Fetch data as numpy arrays.
 
-        If no attrs specified, returns a numpy structured array (recarray) of all columns.
-        If attrs specified, returns a tuple of numpy arrays (one per attribute).
+        Parameters
+        ----------
+        *attrs : str
+            Attribute names to fetch. If empty, fetch all as structured array.
+        include_key : bool, optional
+            If True and attrs specified, include primary key columns. Default False.
+        order_by : str or list, optional
+            Attribute(s) to order by.
+        limit : int, optional
+            Maximum number of rows to return.
+        offset : int, optional
+            Number of rows to skip.
+        squeeze : bool, optional
+            If True, remove extra dimensions from arrays. Default False.
+        download_path : str, optional
+            Path for downloading external data. Default ``"."``.
 
-        :param attrs: attribute names to fetch (if empty, fetch all)
-        :param include_key: if True and attrs specified, include primary key columns
-        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
-        :param limit: maximum number of rows to return
-        :param offset: number of rows to skip
-        :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data
-        :return: numpy recarray (no attrs) or tuple of arrays (with attrs)
+        Returns
+        -------
+        numpy.ndarray or tuple
+            If no attrs: structured array (recarray) of all columns.
+            If single attr: 1D array of values.
+            If multiple attrs: tuple of arrays.
+
+        Examples
+        --------
+        >>> table.to_arrays()              # Structured array of all columns
+        >>> table.to_arrays('x', 'y')      # Tuple of two arrays
+        >>> x = table.to_arrays('x')       # Single array
         """
         from functools import partial
 
@@ -742,37 +930,67 @@ class QueryExpression:
                 ret[name] = list(map(partial(get, heading[name]), ret[name]))
             return ret
 
-    def keys(self, order_by=None, limit=None, offset=None):
+    def keys(self, order_by: str | list[str] | None = None, limit: int | None = None, offset: int | None = None) -> list[dict[str, Any]]:
         """
         Fetch primary key values as a list of dictionaries.
 
-        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
-        :param limit: maximum number of rows to return
-        :param offset: number of rows to skip
-        :return: list of dictionaries containing only primary key columns
+        Parameters
+        ----------
+        order_by : str or list, optional
+            Attribute(s) to order by.
+        limit : int, optional
+            Maximum number of rows to return.
+        offset : int, optional
+            Number of rows to skip.
+
+        Returns
+        -------
+        list[dict]
+            Primary key values only.
         """
         return self.proj().to_dicts(order_by=order_by, limit=limit, offset=offset)
 
-    def head(self, limit=25):
+    def head(self, limit: int = 25) -> list[dict[str, Any]]:
         """
-        Preview the first few entries from query expression.
+        Preview the first entries from the query result.
 
-        :param limit: number of entries (default 25)
-        :return: list of dictionaries
+        Parameters
+        ----------
+        limit : int, optional
+            Number of entries to return. Default 25.
+
+        Returns
+        -------
+        list[dict]
+            First entries ordered by primary key.
         """
         return self.to_dicts(order_by="KEY", limit=limit)
 
-    def tail(self, limit=25):
+    def tail(self, limit: int = 25) -> list[dict[str, Any]]:
         """
-        Preview the last few entries from query expression.
+        Preview the last entries from the query result.
 
-        :param limit: number of entries (default 25)
-        :return: list of dictionaries
+        Parameters
+        ----------
+        limit : int, optional
+            Number of entries to return. Default 25.
+
+        Returns
+        -------
+        list[dict]
+            Last entries ordered by primary key.
         """
         return list(reversed(self.to_dicts(order_by="KEY DESC", limit=limit)))
 
-    def __len__(self):
-        """:return: number of elements in the result set e.g. ``len(q1)``."""
+    def __len__(self) -> int:
+        """
+        Return the number of rows in the result set.
+
+        Returns
+        -------
+        int
+            Row count.
+        """
         result = self.make_subquery() if self._top else copy.copy(self)
         has_left_join = any(is_left for is_left, _ in result._joins)
         return result.connection.query(
@@ -789,10 +1007,14 @@ class QueryExpression:
             )
         ).fetchone()[0]
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         """
-        :return: True if the result is not empty. Equivalent to len(self) > 0 but often
-            faster e.g. ``bool(q1)``.
+        Check if the result set is non-empty.
+
+        Returns
+        -------
+        bool
+            True if at least one row exists. More efficient than ``len(self) > 0``.
         """
         return bool(
             self.connection.query(

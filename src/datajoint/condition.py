@@ -1,4 +1,11 @@
-"""methods for generating SQL WHERE clauses from datajoint restriction conditions"""
+"""
+SQL WHERE clause generation from DataJoint restriction conditions.
+
+This module provides utilities for converting various restriction formats
+(dicts, strings, QueryExpressions) into SQL WHERE clauses.
+"""
+
+from __future__ import annotations
 
 import collections
 import datetime
@@ -9,18 +16,36 @@ import logging
 import re
 import uuid
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 import numpy
 import pandas
 
 from .errors import DataJointError
 
+if TYPE_CHECKING:
+    from .expression import QueryExpression
+
 logger = logging.getLogger(__name__.split(".")[0])
 
 JSON_PATTERN = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$")
 
 
-def translate_attribute(key):
+def translate_attribute(key: str) -> tuple[dict | None, str]:
+    """
+    Translate an attribute key, handling JSON path notation.
+
+    Parameters
+    ----------
+    key : str
+        Attribute name, optionally with JSON path (e.g., ``"attr.path.field"``).
+
+    Returns
+    -------
+    tuple
+        (match_dict, sql_expression) where match_dict contains parsed
+        components or None if no JSON path.
+    """
     match = JSON_PATTERN.match(key)
     if match is None:
         return match, key
@@ -35,26 +60,35 @@ def translate_attribute(key):
 
 class PromiscuousOperand:
     """
-    A container for an operand to ignore join compatibility
+    Wrapper to bypass join compatibility checking.
+
+    Used when you want to force a natural join without semantic matching.
+
+    Parameters
+    ----------
+    operand : QueryExpression
+        The operand to wrap.
     """
 
-    def __init__(self, operand):
+    def __init__(self, operand: QueryExpression) -> None:
         self.operand = operand
 
 
 class AndList(list):
     """
-    A list of conditions to by applied to a query expression by logical conjunction: the
-    conditions are AND-ed. All other collections (lists, sets, other entity sets, etc) are
-    applied by logical disjunction (OR).
+    List of conditions combined with logical AND.
 
-    Example:
-    expr2 = expr & dj.AndList((cond1, cond2, cond3))
-    is equivalent to
-    expr2 = expr & cond1 & cond2 & cond3
+    All conditions in the list are AND-ed together. Other collections
+    (lists, sets, QueryExpressions) are OR-ed.
+
+    Examples
+    --------
+    >>> expr & dj.AndList((cond1, cond2, cond3))
+    # equivalent to
+    >>> expr & cond1 & cond2 & cond3
     """
 
-    def append(self, restriction):
+    def append(self, restriction: Any) -> None:
         if isinstance(restriction, AndList):
             # extend to reduce nesting
             self.extend(restriction)
@@ -65,15 +99,25 @@ class AndList(list):
 @dataclass
 class Top:
     """
-    A restriction to the top entities of a query.
-    In SQL, this corresponds to ORDER BY ... LIMIT ... OFFSET
+    Restrict query to top N entities with ordering.
+
+    In SQL, corresponds to ``ORDER BY ... LIMIT ... OFFSET``.
+
+    Parameters
+    ----------
+    limit : int, optional
+        Maximum number of rows to return. Default 1.
+    order_by : str or list[str], optional
+        Attributes to order by. ``"KEY"`` for primary key. Default ``"KEY"``.
+    offset : int, optional
+        Number of rows to skip. Default 0.
     """
 
     limit: int | None = 1
     order_by: str | list[str] = "KEY"
     offset: int = 0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.order_by = self.order_by or ["KEY"]
         self.offset = self.offset or 0
 
@@ -92,30 +136,54 @@ class Top:
 
 
 class Not:
-    """invert restriction"""
+    """
+    Invert a restriction condition.
 
-    def __init__(self, restriction):
+    Parameters
+    ----------
+    restriction : any
+        Restriction condition to negate.
+
+    Examples
+    --------
+    >>> table - condition  # equivalent to table & Not(condition)
+    """
+
+    def __init__(self, restriction: Any) -> None:
         self.restriction = restriction
 
 
-def assert_join_compatibility(expr1, expr2, semantic_check=True):
+def assert_join_compatibility(
+    expr1: QueryExpression,
+    expr2: QueryExpression,
+    semantic_check: bool = True,
+) -> None:
     """
-    Determine if expressions expr1 and expr2 are join-compatible.
+    Check if two expressions are join-compatible.
 
-    With semantic_check=True (default):
-        Raises an error if there are non-homologous namesakes (same name, different lineage).
-        This prevents accidental joins on attributes that share names but represent
-        different entities.
+    Parameters
+    ----------
+    expr1 : QueryExpression
+        First expression.
+    expr2 : QueryExpression
+        Second expression.
+    semantic_check : bool, optional
+        If True (default), use semantic matching and error on non-homologous
+        namesakes (same name, different lineage). If False, use natural join.
 
-        If the ~lineage table doesn't exist for either schema, a warning is issued
-        and semantic checking is disabled (join proceeds as natural join).
+    Raises
+    ------
+    DataJointError
+        If semantic_check is True and expressions have non-homologous namesakes.
+
+    Notes
+    -----
+    With semantic_check=True:
+        Prevents accidental joins on attributes that share names but represent
+        different entities. If ~lineage table doesn't exist, a warning is issued.
 
     With semantic_check=False:
-        No lineage checking. All namesake attributes are matched (natural join behavior).
-
-    :param expr1: A QueryExpression object
-    :param expr2: A QueryExpression object
-    :param semantic_check: If True (default), use semantic matching and error on conflicts
+        All namesake attributes are matched (natural join behavior).
     """
     from .expression import QueryExpression, U
 
@@ -151,16 +219,44 @@ def assert_join_compatibility(expr1, expr2, semantic_check=True):
                 )
 
 
-def make_condition(query_expression, condition, columns, semantic_check=True):
+def make_condition(
+    query_expression: QueryExpression,
+    condition: Any,
+    columns: set[str],
+    semantic_check: bool = True,
+) -> str | bool:
     """
-    Translate the input condition into the equivalent SQL condition (a string)
+    Translate a restriction into an SQL WHERE clause condition.
 
-    :param query_expression: a dj.QueryExpression object to apply condition
-    :param condition: any valid restriction object.
-    :param columns: a set passed by reference to collect all column names used in the
-        condition.
-    :param semantic_check: If True (default), use semantic matching and error on conflicts.
-    :return: an SQL condition string or a boolean value.
+    Parameters
+    ----------
+    query_expression : QueryExpression
+        The expression to apply the condition to.
+    condition : any
+        Valid restriction: str, dict, bool, QueryExpression, AndList,
+        numpy.void, pandas.DataFrame, or iterable of restrictions.
+    columns : set[str]
+        Set passed by reference to collect column names used in the condition.
+    semantic_check : bool, optional
+        If True (default), use semantic matching and error on conflicts.
+
+    Returns
+    -------
+    str or bool
+        SQL condition string, or bool if condition evaluates to constant.
+
+    Notes
+    -----
+    Restriction types are processed as follows:
+
+    - ``str``: Used directly as SQL condition
+    - ``dict``: AND of equality conditions for matching attributes
+    - ``bool``: Returns the boolean value (possibly negated)
+    - ``QueryExpression``: Generates subquery (semijoin/antijoin)
+    - ``AndList``: AND of all conditions
+    - ``list/set/tuple``: OR of all conditions
+    - ``numpy.void``: Like dict, from record array
+    - ``pandas.DataFrame``: Converted to records, then OR-ed
     """
     from .expression import Aggregation, QueryExpression, U
 
@@ -296,14 +392,27 @@ def make_condition(query_expression, condition, columns, semantic_check=True):
         return f"{'NOT ' if negate else ''} ({' OR '.join(or_list)})" if or_list else negate
 
 
-def extract_column_names(sql_expression):
+def extract_column_names(sql_expression: str) -> set[str]:
     """
-    extract all presumed column names from an sql expression such as the WHERE clause,
-    for example.
+    Extract column names from an SQL expression.
 
-    :param sql_expression: a string containing an SQL expression
-    :return: set of extracted column names
-    This may be MySQL-specific for now.
+    Parameters
+    ----------
+    sql_expression : str
+        SQL expression (e.g., WHERE clause) to parse.
+
+    Returns
+    -------
+    set[str]
+        Set of extracted column names.
+
+    Notes
+    -----
+    Parsing is MySQL-specific. Identifies columns by:
+
+    1. Names in backticks (``\`column\```)
+    2. Bare identifiers not followed by ``(`` (excludes functions)
+    3. Excludes SQL reserved words (IS, IN, AND, OR, etc.)
     """
     assert isinstance(sql_expression, str)
     result = set()

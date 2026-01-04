@@ -1,7 +1,17 @@
+"""
+Heading management for DataJoint tables.
+
+This module provides the Heading class for managing table column metadata,
+including attribute types, constraints, and lineage information.
+"""
+
+from __future__ import annotations
+
 import logging
 import re
 from collections import defaultdict, namedtuple
 from itertools import chain
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -14,6 +24,9 @@ from .declare import (
 )
 from .errors import DataJointError
 from .lineage import get_table_lineages, lineage_table_exists
+
+if TYPE_CHECKING:
+    from .connection import Connection
 
 
 class _MissingType(Codec, register=False):
@@ -70,40 +83,85 @@ default_attribute_properties = dict(  # these default values are set in computed
 
 class Attribute(namedtuple("_Attribute", default_attribute_properties)):
     """
-    Properties of a table column (attribute)
+    Properties of a table column (attribute).
+
+    Attributes
+    ----------
+    name : str
+        Attribute name.
+    type : str
+        Database type string.
+    in_key : bool
+        True if part of primary key.
+    nullable : bool
+        True if NULL values allowed.
+    default : any
+        Default value.
+    comment : str
+        Attribute comment/description.
+    codec : Codec
+        Codec for encoding/decoding values.
+    lineage : str
+        Origin of attribute for semantic matching.
     """
 
-    def todict(self):
-        """Convert namedtuple to dict."""
+    def todict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
         return dict((name, self[i]) for i, name in enumerate(self._fields))
 
     @property
-    def sql_type(self):
-        """:return: datatype (as string) in database. In most cases, it is the same as self.type"""
+    def sql_type(self) -> str:
+        """
+        Return the SQL datatype string.
+
+        Returns
+        -------
+        str
+            Database type (usually same as self.type).
+        """
         # UUID is now a core type alias - already resolved to binary(16)
         return self.type
 
     @property
-    def sql_comment(self):
-        """:return: full comment for the SQL declaration. Includes custom type specification"""
+    def sql_comment(self) -> str:
+        """
+        Return the full SQL comment including type markers.
+
+        Returns
+        -------
+        str
+            Comment with optional ``:uuid:`` prefix.
+        """
         # UUID info is stored in the comment for reconstruction
         return (":uuid:" if self.uuid else "") + self.comment
 
     @property
-    def sql(self):
+    def sql(self) -> str:
         """
-        Convert primary key attribute tuple into its SQL CREATE TABLE clause.
-        Default values are not reflected.
-        This is used for declaring foreign keys in referencing tables
+        Generate SQL clause for this attribute in CREATE TABLE.
 
-        :return: SQL code for attribute declaration
+        Used for declaring foreign keys in referencing tables.
+        Default values are not included.
+
+        Returns
+        -------
+        str
+            SQL attribute declaration.
         """
         return '`{name}` {type} NOT NULL COMMENT "{comment}"'.format(
             name=self.name, type=self.sql_type, comment=self.sql_comment
         )
 
     @property
-    def original_name(self):
+    def original_name(self) -> str:
+        """
+        Return the original attribute name before any renaming.
+
+        Returns
+        -------
+        str
+            Original name from attribute_expression or current name.
+        """
         if self.attribute_expression is None:
             return self.name
         assert self.attribute_expression.startswith("`")
@@ -112,18 +170,32 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
 
 class Heading:
     """
-    Local class for table headings.
-    Heading contains the property attributes, which is an dict in which the keys are
-    the attribute names and the values are Attributes.
+    Table heading containing column metadata.
+
+    Manages attribute information including names, types, constraints,
+    and lineage for semantic matching.
+
+    Parameters
+    ----------
+    attribute_specs : list, optional
+        List of attribute specification dictionaries.
+    table_info : dict, optional
+        Database table information for lazy loading.
+    lineage_available : bool, optional
+        Whether lineage information is available. Default True.
+
+    Attributes
+    ----------
+    attributes : dict
+        Mapping of attribute names to Attribute objects.
     """
 
-    def __init__(self, attribute_specs=None, table_info=None, lineage_available=True):
-        """
-
-        :param attribute_specs: a list of dicts with the same keys as Attribute
-        :param table_info: a dict with information to load the heading from the database
-        :param lineage_available: whether lineage tracking is available for this heading
-        """
+    def __init__(
+        self,
+        attribute_specs: list[dict] | None = None,
+        table_info: dict | None = None,
+        lineage_available: bool = True,
+    ) -> None:
         self.indexes = None
         self.table_info = table_info
         self._table_status = None
@@ -131,15 +203,16 @@ class Heading:
         self._attributes = None if attribute_specs is None else dict((q["name"], Attribute(**q)) for q in attribute_specs)
 
     @property
-    def lineage_available(self):
+    def lineage_available(self) -> bool:
         """Whether lineage tracking is available for this heading's schema."""
         return self._lineage_available
 
-    def __len__(self):
+    def __len__(self) -> int:
         return 0 if self.attributes is None else len(self.attributes)
 
     @property
-    def table_status(self):
+    def table_status(self) -> dict | None:
+        """Table status information from database."""
         if self.table_info is None:
             return None
         if self._table_status is None:
@@ -147,59 +220,73 @@ class Heading:
         return self._table_status
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict[str, Attribute]:
+        """
+        Mapping of attribute names to Attribute objects.
+
+        Excludes hidden attributes (names starting with ``_``).
+        """
         if self._attributes is None:
             self._init_from_database()  # lazy loading from database
         return {k: v for k, v in self._attributes.items() if not v.is_hidden}
 
     @property
-    def names(self):
+    def names(self) -> list[str]:
+        """List of visible attribute names."""
         return [k for k in self.attributes]
 
     @property
-    def primary_key(self):
+    def primary_key(self) -> list[str]:
+        """List of primary key attribute names."""
         return [k for k, v in self.attributes.items() if v.in_key]
 
     @property
-    def secondary_attributes(self):
+    def secondary_attributes(self) -> list[str]:
+        """List of non-primary-key attribute names."""
         return [k for k, v in self.attributes.items() if not v.in_key]
 
-    def determines(self, other):
+    def determines(self, other: Heading) -> bool:
         """
         Check if self determines other (self → other).
 
-        A determines B iff every attribute in PK(B) is in A.
+        A determines B iff every attribute in PK(B) is in A. This means
+        knowing A's primary key is sufficient to determine B's primary key
+        through functional dependencies.
 
-        This means knowing A's primary key is sufficient to determine B's primary key
-        through the functional dependencies implied by A's structure.
+        Parameters
+        ----------
+        other : Heading
+            Another Heading object.
 
-        :param other: Another Heading object
-        :return: True if self determines other
+        Returns
+        -------
+        bool
+            True if self determines other.
         """
         self_attrs = set(self.names)
         return all(attr in self_attrs for attr in other.primary_key)
 
     @property
-    def blobs(self):
+    def blobs(self) -> list[str]:
+        """List of blob attribute names."""
         return [k for k, v in self.attributes.items() if v.is_blob]
 
     @property
-    def non_blobs(self):
-        """Attributes that are not blobs or JSON (used for simple column handling)."""
+    def non_blobs(self) -> list[str]:
+        """Attributes that are not blobs or JSON."""
         return [k for k, v in self.attributes.items() if not (v.is_blob or v.json)]
 
     @property
-    def new_attributes(self):
+    def new_attributes(self) -> list[str]:
+        """Attributes with computed expressions (projections)."""
         return [k for k, v in self.attributes.items() if v.attribute_expression is not None]
 
-    def __getitem__(self, name):
-        """shortcut to the attribute"""
+    def __getitem__(self, name: str) -> Attribute:
+        """Get attribute by name."""
         return self.attributes[name]
 
-    def __repr__(self):
-        """
-        :return:  heading representation in DataJoint declaration format but without foreign key expansion
-        """
+    def __repr__(self) -> str:
+        """Return heading in DataJoint declaration format."""
         in_key = True
         ret = ""
         if self._table_status is not None:
@@ -216,19 +303,37 @@ class Heading:
         return ret
 
     @property
-    def has_autoincrement(self):
+    def has_autoincrement(self) -> bool:
+        """Check if any attribute has auto_increment."""
         return any(e.autoincrement for e in self.attributes.values())
 
     @property
-    def as_dtype(self):
+    def as_dtype(self) -> np.dtype:
         """
-        represent the heading as a numpy dtype
+        Return heading as a numpy dtype.
+
+        Returns
+        -------
+        numpy.dtype
+            Structured dtype for creating numpy arrays.
         """
         return np.dtype(dict(names=self.names, formats=[v.dtype for v in self.attributes.values()]))
 
-    def as_sql(self, fields, include_aliases=True):
+    def as_sql(self, fields: list[str], include_aliases: bool = True) -> str:
         """
-        represent heading as the SQL SELECT clause.
+        Generate SQL SELECT clause for specified fields.
+
+        Parameters
+        ----------
+        fields : list[str]
+            Attribute names to include.
+        include_aliases : bool, optional
+            Include AS clauses for computed attributes. Default True.
+
+        Returns
+        -------
+        str
+            Comma-separated SQL field list.
         """
         return ",".join(
             (
@@ -242,8 +347,8 @@ class Heading:
     def __iter__(self):
         return iter(self.attributes)
 
-    def _init_from_database(self):
-        """initialize heading from an existing database table."""
+    def _init_from_database(self) -> None:
+        """Initialize heading from an existing database table."""
         conn, database, table_name, context = (self.table_info[k] for k in ("conn", "database", "table_name", "context"))
         info = conn.query(
             'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(table_name=table_name, database=database),

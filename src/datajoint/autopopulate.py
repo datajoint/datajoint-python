@@ -1,5 +1,7 @@
 """This module defines class dj.AutoPopulate"""
 
+from __future__ import annotations
+
 import contextlib
 import datetime
 import inspect
@@ -7,12 +9,17 @@ import logging
 import multiprocessing as mp
 import signal
 import traceback
+from typing import TYPE_CHECKING, Any, Generator
 
 import deepdiff
 from tqdm import tqdm
 
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
+
+if TYPE_CHECKING:
+    from .jobs import Job
+    from .table import Table
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -22,10 +29,20 @@ logger = logging.getLogger(__name__.split(".")[0])
 # --- helper functions for multiprocessing --
 
 
-def _initialize_populate(table, jobs, populate_kwargs):
+def _initialize_populate(table: Table, jobs: Job | None, populate_kwargs: dict[str, Any]) -> None:
     """
-    Initialize the process for multiprocessing.
-    Saves the unpickled copy of the table to the current process and reconnects.
+    Initialize a worker process for multiprocessing.
+
+    Saves the unpickled table to the current process and reconnects to database.
+
+    Parameters
+    ----------
+    table : Table
+        Table instance to populate.
+    jobs : Job or None
+        Job management object or None for direct mode.
+    populate_kwargs : dict
+        Arguments for _populate1().
     """
     process = mp.current_process()
     process.table = table
@@ -34,11 +51,19 @@ def _initialize_populate(table, jobs, populate_kwargs):
     table.connection.connect()  # reconnect
 
 
-def _call_populate1(key):
+def _call_populate1(key: dict[str, Any]) -> bool | tuple[dict[str, Any], Any]:
     """
-    Call current process' table._populate1()
-    :key - a dict specifying job to compute
-    :return: key, error if error, otherwise None
+    Call _populate1() for a single key in the worker process.
+
+    Parameters
+    ----------
+    key : dict
+        Primary key specifying job to compute.
+
+    Returns
+    -------
+    bool or tuple
+        Result from _populate1().
     """
     process = mp.current_process()
     return process.table._populate1(key, process.jobs, **process.populate_kwargs)
@@ -46,9 +71,22 @@ def _call_populate1(key):
 
 class AutoPopulate:
     """
-    AutoPopulate is a mixin class that adds the method populate() to a Table class.
-    Auto-populated tables must inherit from both Table and AutoPopulate,
-    must define the property `key_source`, and must define the callback method `make`.
+    Mixin class that adds automated population to Table classes.
+
+    Auto-populated tables (Computed, Imported) inherit from both Table and
+    AutoPopulate. They must implement the ``make()`` method that computes
+    and inserts data for one primary key.
+
+    Attributes
+    ----------
+    key_source : QueryExpression
+        Query yielding keys to be populated. Default is join of FK parents.
+    jobs : Job
+        Job table (``~~table_name``) for distributed processing.
+
+    Notes
+    -----
+    Subclasses may override ``key_source`` to customize population scope.
     """
 
     _key_source = None
@@ -56,15 +94,18 @@ class AutoPopulate:
     _jobs = None
 
     @property
-    def jobs(self):
+    def jobs(self) -> Job:
         """
         Access the job table for this auto-populated table.
 
-        The job table (~~table_name) is created lazily on first access.
+        The job table (``~~table_name``) is created lazily on first access.
         It tracks job status, priority, scheduling, and error information
         for distributed populate operations.
 
-        :return: Job object for this table
+        Returns
+        -------
+        Job
+            Job management object for this table.
         """
         if self._jobs is None:
             from .jobs import Job
@@ -74,7 +115,7 @@ class AutoPopulate:
                 self._jobs.declare()
         return self._jobs
 
-    def _declare_check(self, primary_key, fk_attribute_map):
+    def _declare_check(self, primary_key: list[str], fk_attribute_map: dict[str, tuple[str, str]]) -> None:
         """
         Validate FK-only primary key constraint for auto-populated tables.
 
@@ -82,12 +123,18 @@ class AutoPopulate:
         attributes from foreign key references. This ensures proper job granularity
         for distributed populate operations.
 
-        This validation can be bypassed by setting:
-            dj.config.jobs.allow_new_pk_fields_in_computed_tables = True
+        Parameters
+        ----------
+        primary_key : list
+            List of primary key attribute names.
+        fk_attribute_map : dict
+            Mapping of child_attr -> (parent_table, parent_attr).
 
-        :param primary_key: list of primary key attribute names
-        :param fk_attribute_map: dict mapping child_attr -> (parent_table, parent_attr)
-        :raises DataJointError: if native PK attributes are found (unless bypassed)
+        Raises
+        ------
+        DataJointError
+            If native (non-FK) PK attributes are found, unless bypassed via
+            ``dj.config.jobs.allow_new_pk_fields_in_computed_tables = True``.
         """
         from .settings import config
 
@@ -110,13 +157,22 @@ class AutoPopulate:
             )
 
     @property
-    def key_source(self):
+    def key_source(self) -> QueryExpression:
         """
-        :return: the query expression that yields primary key values to be passed,
-        sequentially, to the ``make`` method when populate() is called.
-        The default value is the join of the parent tables references from the primary key.
-        Subclasses may override they key_source to change the scope or the granularity
-        of the make calls.
+        Query expression yielding keys to be populated.
+
+        Returns the primary key values to be passed sequentially to ``make()``
+        when ``populate()`` is called. The default is the join of parent tables
+        referenced from the primary key.
+
+        Returns
+        -------
+        QueryExpression
+            Expression yielding keys for population.
+
+        Notes
+        -----
+        Subclasses may override to change the scope or granularity of make calls.
         """
 
         def _rename_attributes(table, props):
@@ -135,50 +191,40 @@ class AutoPopulate:
                 self._key_source *= _rename_attributes(*q)
         return self._key_source
 
-    def make(self, key):
+    def make(self, key: dict[str, Any]) -> None | Generator[Any, Any, None]:
         """
-        This method must be implemented by derived classes to perform automated computation.
-        The method must implement the following three steps:
+        Compute and insert data for one key.
 
-        1. Fetch data from tables above in the dependency hierarchy, restricted by the given key.
-        2. Compute secondary attributes based on the fetched data.
-        3. Insert the new tuple(s) into the current table.
+        Must be implemented by subclasses to perform automated computation.
+        The method implements three steps:
 
-        The method can be implemented either as:
-        (a) Regular method: All three steps are performed in a single database transaction.
-            The method must return None.
-        (b) Generator method:
-            The make method is split into three functions:
-            - `make_fetch`: Fetches data from the parent tables.
-            - `make_compute`: Computes secondary attributes based on the fetched data.
-            - `make_insert`: Inserts the computed data into the current table.
+        1. Fetch data from parent tables, restricted by the given key
+        2. Compute secondary attributes based on the fetched data
+        3. Insert the new row(s) into the current table
 
-            Then populate logic is executes as follows:
+        Parameters
+        ----------
+        key : dict
+            Primary key value identifying the entity to compute.
 
-            <pseudocode>
-            fetched_data1 = self.make_fetch(key)
-            computed_result = self.make_compute(key, *fetched_data1)
-            begin transaction:
-                fetched_data2 = self.make_fetch(key)
-                if fetched_data1 != fetched_data2:
-                    cancel transaction
-                else:
-                    self.make_insert(key, *computed_result)
-                    commit_transaction
-            <pseudocode>
+        Raises
+        ------
+        NotImplementedError
+            If neither ``make()`` nor the tripartite methods are implemented.
 
-        Importantly, the output of make_fetch is a tuple that serves as the input into `make_compute`.
-        The output of `make_compute` is a tuple that serves as the input into `make_insert`.
+        Notes
+        -----
+        **Simple make**: Implement as a regular method that performs all three
+        steps in a single database transaction. Must return None.
 
-        The functionality must be strictly divided between these three methods:
-        - All database queries must be completed in `make_fetch`.
-        - All computation must be completed in `make_compute`.
-        - All database inserts must be completed in `make_insert`.
+        **Tripartite make**: For long-running computations, implement:
 
-        DataJoint may programmatically enforce this separation in the future.
+        - ``make_fetch(key)``: Fetch data from parent tables
+        - ``make_compute(key, *fetched_data)``: Compute results
+        - ``make_insert(key, *computed_result)``: Insert results
 
-        :param key: The primary key value used to restrict the data fetching.
-        :raises NotImplementedError: If the derived class does not implement the required methods.
+        The tripartite pattern allows computation outside the transaction,
+        with referential integrity checking before commit.
         """
 
         if not (hasattr(self, "make_fetch") and hasattr(self, "make_insert") and hasattr(self, "make_compute")):
@@ -204,9 +250,19 @@ class AutoPopulate:
         self.make_insert(key, *computed_result)
         yield
 
-    def _jobs_to_do(self, restrictions):
+    def _jobs_to_do(self, restrictions: tuple) -> QueryExpression:
         """
-        :return: the query yielding the keys to be computed (derived from self.key_source)
+        Return the query yielding keys to be computed.
+
+        Parameters
+        ----------
+        restrictions : tuple
+            Conditions to filter key_source.
+
+        Returns
+        -------
+        QueryExpression
+            Keys derived from key_source that need computation.
         """
         if self.restriction:
             raise DataJointError(
@@ -234,44 +290,61 @@ class AutoPopulate:
 
     def populate(
         self,
-        *restrictions,
-        suppress_errors=False,
-        return_exception_objects=False,
-        reserve_jobs=False,
-        max_calls=None,
-        display_progress=False,
-        processes=1,
-        make_kwargs=None,
-        priority=None,
-        refresh=None,
-    ):
+        *restrictions: Any,
+        suppress_errors: bool = False,
+        return_exception_objects: bool = False,
+        reserve_jobs: bool = False,
+        max_calls: int | None = None,
+        display_progress: bool = False,
+        processes: int = 1,
+        make_kwargs: dict[str, Any] | None = None,
+        priority: int | None = None,
+        refresh: bool | None = None,
+    ) -> dict[str, Any]:
         """
-        ``table.populate()`` calls ``table.make(key)`` for every primary key in
-        ``self.key_source`` for which there is not already a tuple in table.
+        Populate the table by calling ``make()`` for unpopulated keys.
 
-        Two execution modes:
+        Calls ``make(key)`` for every primary key in ``key_source`` for which
+        there is not already a row in this table.
 
-        **Direct mode** (reserve_jobs=False, default):
-            Keys computed directly from: (key_source & restrictions) - target
-            No job table involvement. Suitable for single-worker scenarios,
-            development, and debugging.
+        Parameters
+        ----------
+        *restrictions
+            Conditions to filter key_source.
+        suppress_errors : bool, optional
+            If True, collect errors instead of raising. Default False.
+        return_exception_objects : bool, optional
+            If True, return exception objects instead of messages. Default False.
+        reserve_jobs : bool, optional
+            If True, use job table for distributed processing. Default False.
+        max_calls : int, optional
+            Maximum number of ``make()`` calls.
+        display_progress : bool, optional
+            If True, show progress bar. Default False.
+        processes : int, optional
+            Number of worker processes. Default 1.
+        make_kwargs : dict, optional
+            Keyword arguments passed to each ``make()`` call.
+        priority : int, optional
+            (Distributed mode) Only process jobs at this priority or higher.
+        refresh : bool, optional
+            (Distributed mode) Refresh job queue before processing.
+            Default from ``config.jobs.auto_refresh``.
 
-        **Distributed mode** (reserve_jobs=True):
-            Uses the job table (~~table_name) for multi-worker coordination.
-            Supports priority, scheduling, and status tracking.
+        Returns
+        -------
+        dict
+            ``{"success_count": int, "error_list": list}``.
 
-        :param restrictions: conditions to filter key_source
-        :param suppress_errors: if True, collect errors instead of raising
-        :param return_exception_objects: return error objects instead of just error messages
-        :param reserve_jobs: if True, use job table for distributed processing
-        :param max_calls: maximum number of make() calls (total across all processes)
-        :param display_progress: if True, show progress bar
-        :param processes: number of worker processes
-        :param make_kwargs: keyword arguments passed to each make() call
-        :param priority: (reserve_jobs only) only process jobs at this priority or more urgent
-        :param refresh: (reserve_jobs only) refresh job queue before processing.
-            Default from config.jobs.auto_refresh
-        :return: dict with "success_count" and "error_list"
+        Notes
+        -----
+        **Direct mode** (``reserve_jobs=False``): Keys computed from
+        ``(key_source & restrictions) - target``. No job table. Suitable for
+        single-worker, development, and debugging.
+
+        **Distributed mode** (``reserve_jobs=True``): Uses job table
+        (``~~table_name``) for multi-worker coordination with priority and
+        status tracking.
         """
         if self.connection.in_transaction:
             raise DataJointError("Populate cannot be called during a transaction.")
@@ -457,16 +530,35 @@ class AutoPopulate:
         finally:
             signal.signal(signal.SIGTERM, old_handler)
 
-    def _populate1(self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None):
+    def _populate1(
+        self,
+        key: dict[str, Any],
+        jobs: Job | None,
+        suppress_errors: bool,
+        return_exception_objects: bool,
+        make_kwargs: dict[str, Any] | None = None,
+    ) -> bool | tuple[dict[str, Any], Any]:
         """
-        Populate table for one source key, calling self.make inside a transaction.
+        Populate table for one key, calling make() inside a transaction.
 
-        :param key: dict specifying job to populate
-        :param jobs: the Job object or None if not reserve_jobs
-        :param suppress_errors: if True, errors are suppressed and returned
-        :param return_exception_objects: if True, errors returned as objects
-        :return: (key, error) when suppress_errors=True,
-            True if successfully invoke one make() call, otherwise False
+        Parameters
+        ----------
+        key : dict
+            Primary key specifying the job to populate.
+        jobs : Job or None
+            Job object for distributed mode, None for direct mode.
+        suppress_errors : bool
+            If True, errors are suppressed and returned.
+        return_exception_objects : bool
+            If True, return exception objects instead of messages.
+        make_kwargs : dict, optional
+            Keyword arguments passed to ``make()``.
+
+        Returns
+        -------
+        bool or tuple
+            True if make() succeeded, False if skipped (already done or reserved),
+            (key, error) tuple if suppress_errors=True and error occurred.
         """
         import time
 
@@ -552,16 +644,24 @@ class AutoPopulate:
         finally:
             self.__class__._allow_insert = False
 
-    def progress(self, *restrictions, display=False):
+    def progress(self, *restrictions: Any, display: bool = False) -> tuple[int, int]:
         """
         Report the progress of populating the table.
 
         Uses a single aggregation query to efficiently compute both total and
         remaining counts.
 
-        :param restrictions: conditions to restrict key_source
-        :param display: if True, log the progress
-        :return: (remaining, total) -- numbers of tuples to be populated
+        Parameters
+        ----------
+        *restrictions
+            Conditions to restrict key_source.
+        display : bool, optional
+            If True, log the progress. Default False.
+
+        Returns
+        -------
+        tuple
+            (remaining, total) - number of keys yet to populate and total keys.
         """
         todo = self._jobs_to_do(restrictions)
 
@@ -633,11 +733,16 @@ class AutoPopulate:
         """
         Update hidden job metadata for the given key.
 
-        Args:
-            key: Primary key dict identifying the row(s) to update
-            start_time: datetime when computation started
-            duration: float seconds elapsed
-            version: str code version (truncated to 64 chars)
+        Parameters
+        ----------
+        key : dict
+            Primary key identifying the row(s) to update.
+        start_time : datetime
+            When computation started.
+        duration : float
+            Computation duration in seconds.
+        version : str
+            Code version (truncated to 64 chars).
         """
         from .condition import make_condition
 

@@ -1,3 +1,12 @@
+"""
+Schema management for DataJoint.
+
+This module provides the Schema class for binding Python table classes to
+database schemas, and utilities for schema introspection and management.
+"""
+
+from __future__ import annotations
+
 import collections
 import inspect
 import itertools
@@ -5,9 +14,14 @@ import logging
 import re
 import types
 import warnings
+from typing import TYPE_CHECKING, Any
 
 from .connection import conn
 from .errors import AccessError, DataJointError
+
+if TYPE_CHECKING:
+    from .connection import Connection
+    from .table import Table
 from .heading import Heading
 from .jobs import Job
 from .settings import config
@@ -18,13 +32,22 @@ from .utils import to_camel_case, user_choice
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def ordered_dir(class_):
+def ordered_dir(class_: type) -> list[str]:
     """
-    List (most) attributes of the class including inherited ones, similar to `dir` built-in function,
-    but respects order of attribute declaration as much as possible.
+    List class attributes respecting declaration order.
 
-    :param class_: class to list members for
-    :return: a list of attributes declared in class_ and its superclasses
+    Similar to the ``dir()`` built-in, but preserves attribute declaration
+    order as much as possible.
+
+    Parameters
+    ----------
+    class_ : type
+        Class to list members for.
+
+    Returns
+    -------
+    list[str]
+        Attributes declared in class_ and its superclasses.
     """
     attr_list = list()
     for c in reversed(class_.mro()):
@@ -34,34 +57,63 @@ def ordered_dir(class_):
 
 class Schema:
     """
-    A schema object is a decorator for UserTable classes that binds them to their database.
-    It also specifies the namespace `context` in which other UserTable classes are defined.
+    Decorator that binds table classes to a database schema.
+
+    Schema objects associate Python table classes with database schemas and
+    provide the namespace context for foreign key resolution.
+
+    Parameters
+    ----------
+    schema_name : str, optional
+        Database schema name. If omitted, call ``activate()`` later.
+    context : dict, optional
+        Namespace for foreign key lookup. None uses caller's context.
+    connection : Connection, optional
+        Database connection. Defaults to ``dj.conn()``.
+    create_schema : bool, optional
+        If False, raise error if schema doesn't exist. Default True.
+    create_tables : bool, optional
+        If False, raise error when accessing missing tables. Default True.
+    add_objects : dict, optional
+        Additional objects for the declaration context.
+
+    Examples
+    --------
+    >>> schema = dj.Schema('my_schema')
+    >>> @schema
+    ... class Session(dj.Manual):
+    ...     definition = '''
+    ...     session_id : int
+    ...     '''
     """
 
     def __init__(
         self,
-        schema_name=None,
-        context=None,
+        schema_name: str | None = None,
+        context: dict[str, Any] | None = None,
         *,
-        connection=None,
-        create_schema=True,
-        create_tables=True,
-        add_objects=None,
-    ):
+        connection: Connection | None = None,
+        create_schema: bool = True,
+        create_tables: bool = True,
+        add_objects: dict[str, Any] | None = None,
+    ) -> None:
         """
-        Associate database schema `schema_name`. If the schema does not exist, attempt to
-        create it on the server.
+        Initialize the schema object.
 
-        If the schema_name is omitted, then schema.activate(..) must be called later
-        to associate with the database.
-
-        :param schema_name: the database schema to associate.
-        :param context: dictionary for looking up foreign key references, leave None to use local context.
-        :param connection: Connection object. Defaults to datajoint.conn().
-        :param create_schema: When False, do not create the schema and raise an error if missing.
-        :param create_tables: When False, do not create tables and raise errors when accessing missing tables.
-        :param add_objects: a mapping with additional objects to make available to the context in which table classes
-        are declared.
+        Parameters
+        ----------
+        schema_name : str, optional
+            Database schema name. If omitted, call ``activate()`` later.
+        context : dict, optional
+            Namespace for foreign key lookup. None uses caller's context.
+        connection : Connection, optional
+            Database connection. Defaults to ``dj.conn()``.
+        create_schema : bool, optional
+            If False, raise error if schema doesn't exist. Default True.
+        create_tables : bool, optional
+            If False, raise error when accessing missing tables. Default True.
+        add_objects : dict, optional
+            Additional objects for the declaration context.
         """
         self.connection = connection
         self.database = None
@@ -73,30 +125,42 @@ class Schema:
         if schema_name:
             self.activate(schema_name)
 
-    def is_activated(self):
+    def is_activated(self) -> bool:
+        """Check if the schema has been activated."""
         return self.database is not None
 
     def activate(
         self,
-        schema_name=None,
+        schema_name: str | None = None,
         *,
-        connection=None,
-        create_schema=None,
-        create_tables=None,
-        add_objects=None,
-    ):
+        connection: Connection | None = None,
+        create_schema: bool | None = None,
+        create_tables: bool | None = None,
+        add_objects: dict[str, Any] | None = None,
+    ) -> None:
         """
-        Associate database schema `schema_name`. If the schema does not exist, attempt to
-        create it on the server.
+        Associate with a database schema.
 
-        :param schema_name: the database schema to associate.
-            schema_name=None is used to assert that the schema has already been activated.
-        :param connection: Connection object. Defaults to datajoint.conn().
-        :param create_schema: If False, do not create the schema and raise an error if missing.
-        :param create_tables: If False, do not create tables and raise errors when attempting
-            to access missing tables.
-        :param add_objects: a mapping with additional objects to make available to the context
-            in which table classes are declared.
+        If the schema does not exist, attempts to create it on the server.
+
+        Parameters
+        ----------
+        schema_name : str, optional
+            Database schema name. None asserts schema is already activated.
+        connection : Connection, optional
+            Database connection. Defaults to ``dj.conn()``.
+        create_schema : bool, optional
+            If False, raise error if schema doesn't exist.
+        create_tables : bool, optional
+            If False, raise error when accessing missing tables.
+        add_objects : dict, optional
+            Additional objects for the declaration context.
+
+        Raises
+        ------
+        DataJointError
+            If schema_name is None and schema not yet activated, or if
+            schema already activated for a different database.
         """
         if schema_name is None:
             if self.exists:
@@ -144,12 +208,26 @@ class Schema:
         if not self.exists:
             raise DataJointError(message or "Schema `{db}` has not been created.".format(db=self.database))
 
-    def __call__(self, cls, *, context=None):
+    def __call__(self, cls: type, *, context: dict[str, Any] | None = None) -> type:
         """
-        Binds the supplied class to a schema. This is intended to be used as a decorator.
+        Bind a table class to this schema. Used as a decorator.
 
-        :param cls: class to decorate.
-        :param context: supplied when called from spawn_missing_classes
+        Parameters
+        ----------
+        cls : type
+            Table class to decorate.
+        context : dict, optional
+            Declaration context. Supplied by spawn_missing_classes.
+
+        Returns
+        -------
+        type
+            The decorated class.
+
+        Raises
+        ------
+        DataJointError
+            If applied to a Part table (use on master only).
         """
         context = context or self.context or inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
@@ -160,11 +238,16 @@ class Schema:
             self.declare_list.append((cls, context))
         return cls
 
-    def _decorate_master(self, cls, context):
+    def _decorate_master(self, cls: type, context: dict[str, Any]) -> None:
         """
+        Process a master table class and its part tables.
 
-        :param cls: the master class to process
-        :param context: the class' declaration context
+        Parameters
+        ----------
+        cls : type
+            Master table class to process.
+        context : dict
+            Declaration context for foreign key resolution.
         """
         self._decorate_table(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
         # Process part tables
@@ -179,9 +262,18 @@ class Schema:
                         context=dict(context, master=cls, self=part, **{cls.__name__: cls}),
                     )
 
-    def _decorate_table(self, table_class, context, assert_declared=False):
+    def _decorate_table(self, table_class: type, context: dict[str, Any], assert_declared: bool = False) -> None:
         """
-        assign schema properties to the table class and declare the table
+        Assign schema properties to the table class and declare the table.
+
+        Parameters
+        ----------
+        table_class : type
+            Table class to decorate.
+        context : dict
+            Declaration context for foreign key resolution.
+        assert_declared : bool, optional
+            If True, assert table is already declared. Default False.
         """
         table_class.database = self.database
         table_class._connection = self.connection
@@ -225,9 +317,14 @@ class Schema:
         return "Schema `{name}`\n".format(name=self.database)
 
     @property
-    def size_on_disk(self):
+    def size_on_disk(self) -> int:
         """
-        :return: size of the entire schema in bytes
+        Return the total size of all tables in the schema.
+
+        Returns
+        -------
+        int
+            Size in bytes (data + indices).
         """
         self._assert_exists()
         return int(
@@ -239,12 +336,19 @@ class Schema:
             ).fetchone()[0]
         )
 
-    def spawn_missing_classes(self, context=None):
+    def spawn_missing_classes(self, context: dict[str, Any] | None = None) -> None:
         """
-        Creates the appropriate python user table classes from tables in the schema and places them
-        in the context.
+        Create Python table classes for tables without existing classes.
 
-        :param context: alternative context to place the missing classes into, e.g. locals()
+        Introspects the database schema and creates appropriate Python classes
+        (Lookup, Manual, Imported, Computed, Part) for tables that don't have
+        corresponding classes in the context.
+
+        Parameters
+        ----------
+        context : dict, optional
+            Namespace to place created classes into. Defaults to caller's
+            local namespace.
         """
         self._assert_exists()
         if context is None:
@@ -287,9 +391,19 @@ class Schema:
             self._decorate_table(part_class, context=context, assert_declared=True)
             setattr(master_class, class_name, part_class)
 
-    def drop(self, force=False):
+    def drop(self, force: bool = False) -> None:
         """
-        Drop the associated schema if it exists
+        Drop the associated schema and all its tables.
+
+        Parameters
+        ----------
+        force : bool, optional
+            If True, skip confirmation prompt. Default False.
+
+        Raises
+        ------
+        AccessError
+            If insufficient permissions to drop the schema.
         """
         if not self.exists:
             logger.info("Schema named `{database}` does not exist. Doing nothing.".format(database=self.database))
@@ -308,9 +422,19 @@ class Schema:
                 )
 
     @property
-    def exists(self):
+    def exists(self) -> bool:
         """
-        :return: true if the associated schema exists on the server
+        Check if the associated schema exists on the server.
+
+        Returns
+        -------
+        bool
+            True if the schema exists.
+
+        Raises
+        ------
+        DataJointError
+            If schema has not been activated.
         """
         if self.database is None:
             raise DataJointError("Schema must be activated first.")
@@ -323,9 +447,14 @@ class Schema:
         )
 
     @property
-    def lineage_table_exists(self):
+    def lineage_table_exists(self) -> bool:
         """
-        :return: true if the ~lineage table exists in this schema
+        Check if the ~lineage table exists in this schema.
+
+        Returns
+        -------
+        bool
+            True if the lineage table exists.
         """
         from .lineage import lineage_table_exists
 
@@ -333,29 +462,34 @@ class Schema:
         return lineage_table_exists(self.connection, self.database)
 
     @property
-    def lineage(self):
+    def lineage(self) -> dict[str, str]:
         """
         Get all lineages for tables in this schema.
 
-        :return: A dict mapping 'schema.table.attribute' to its lineage
+        Returns
+        -------
+        dict[str, str]
+            Mapping of ``'schema.table.attribute'`` to its lineage origin.
         """
         from .lineage import get_schema_lineages
 
         self._assert_exists()
         return get_schema_lineages(self.connection, self.database)
 
-    def rebuild_lineage(self):
+    def rebuild_lineage(self) -> None:
         """
         Rebuild the ~lineage table for all tables in this schema.
 
-        This recomputes lineage for all attributes by querying FK relationships
-        from the information_schema. Use this to restore lineage for schemas
-        that predate the lineage system or after corruption.
+        Recomputes lineage for all attributes by querying FK relationships
+        from the information_schema. Use to restore lineage for schemas that
+        predate the lineage system or after corruption.
 
+        Notes
+        -----
         After rebuilding, restart the Python kernel and reimport to pick up
         the new lineage information.
 
-        Note: Upstream schemas (referenced via cross-schema foreign keys) must
+        Upstream schemas (referenced via cross-schema foreign keys) must
         have their lineage rebuilt first.
         """
         from .lineage import rebuild_schema_lineage
@@ -364,15 +498,19 @@ class Schema:
         rebuild_schema_lineage(self.connection, self.database)
 
     @property
-    def jobs(self):
+    def jobs(self) -> list[Job]:
         """
-        Return list of Job objects for auto-populated tables that have job tables.
+        Return Job objects for auto-populated tables with job tables.
 
-        Only returns Job objects when both the target table and its ~~table_name
-        job table exist in the database. Job tables are created lazily on first
-        access to table.jobs or populate(reserve_jobs=True).
+        Only returns Job objects when both the target table and its
+        ``~~table_name`` job table exist in the database. Job tables are
+        created lazily on first access to ``table.jobs`` or
+        ``populate(reserve_jobs=True)``.
 
-        :return: list of Job objects for existing job tables
+        Returns
+        -------
+        list[Job]
+            Job objects for existing job tables.
         """
         self._assert_exists()
         jobs_list = []
@@ -400,12 +538,24 @@ class Schema:
         self._assert_exists()
         return self.save()
 
-    def save(self, python_filename=None):
+    def save(self, python_filename: str | None = None) -> str:
         """
-        Generate the code for a module that recreates the schema.
-        This method is in preparation for a future release and is not officially supported.
+        Generate Python code that recreates this schema.
 
-        :return: a string containing the body of a complete Python module defining this schema.
+        Parameters
+        ----------
+        python_filename : str, optional
+            If provided, write the code to this file.
+
+        Returns
+        -------
+        str
+            Python module source code defining this schema.
+
+        Notes
+        -----
+        This method is in preparation for a future release and is not
+        officially supported.
         """
         self.connection.dependencies.load()
         self._assert_exists()
@@ -460,12 +610,17 @@ class Schema:
         with open(python_filename, "wt") as f:
             f.write(python_code)
 
-    def list_tables(self):
+    def list_tables(self) -> list[str]:
         """
-        Return a list of all tables in the schema except tables with ~ in first character such
-        as ~logs and ~job
+        Return all user tables in the schema.
 
-        :return: A list of table names from the database schema.
+        Excludes hidden tables (starting with ``~``) such as ``~lineage``
+        and job tables (``~~``).
+
+        Returns
+        -------
+        list[str]
+            Table names in topological order.
         """
         self.connection.dependencies.load()
         return [
@@ -477,31 +632,59 @@ class Schema:
 
 class VirtualModule(types.ModuleType):
     """
-    A virtual module imitates a Python module representing a DataJoint schema from table definitions in the database.
-    It declares the schema objects and a class for each table.
+    A virtual module representing a DataJoint schema from database tables.
+
+    Creates a Python module with table classes automatically generated from
+    the database schema. Useful for accessing schemas without Python source.
+
+    Parameters
+    ----------
+    module_name : str
+        Display name for the module.
+    schema_name : str
+        Database schema name.
+    create_schema : bool, optional
+        If True, create the schema if it doesn't exist. Default False.
+    create_tables : bool, optional
+        If True, allow declaring new tables. Default False.
+    connection : Connection, optional
+        Database connection. Defaults to ``dj.conn()``.
+    add_objects : dict, optional
+        Additional objects to add to the module namespace.
+
+    Examples
+    --------
+    >>> lab = dj.VirtualModule('lab', 'my_lab_schema')
+    >>> lab.Subject.fetch()
     """
 
     def __init__(
         self,
-        module_name,
-        schema_name,
+        module_name: str,
+        schema_name: str,
         *,
-        create_schema=False,
-        create_tables=False,
-        connection=None,
-        add_objects=None,
-    ):
+        create_schema: bool = False,
+        create_tables: bool = False,
+        connection: Connection | None = None,
+        add_objects: dict[str, Any] | None = None,
+    ) -> None:
         """
-        Creates a python module with the given name from the name of a schema on the server and
-        automatically adds classes to it corresponding to the tables in the schema.
+        Initialize the virtual module.
 
-        :param module_name: displayed module name
-        :param schema_name: name of the database in mysql
-        :param create_schema: if True, create the schema on the database server
-        :param create_tables: if True, module.schema can be used as the decorator for declaring new
-        :param connection: a dj.Connection object to pass into the schema
-        :param add_objects: additional objects to add to the module
-        :return: the python module containing classes from the schema object and the table classes
+        Parameters
+        ----------
+        module_name : str
+            Display name for the module.
+        schema_name : str
+            Database schema name.
+        create_schema : bool, optional
+            If True, create the schema if it doesn't exist. Default False.
+        create_tables : bool, optional
+            If True, allow declaring new tables. Default False.
+        connection : Connection, optional
+            Database connection. Defaults to ``dj.conn()``.
+        add_objects : dict, optional
+            Additional objects to add to the module namespace.
         """
         super(VirtualModule, self).__init__(name=module_name)
         _schema = Schema(
@@ -516,10 +699,19 @@ class VirtualModule(types.ModuleType):
         _schema.spawn_missing_classes(context=self.__dict__)
 
 
-def list_schemas(connection=None):
+def list_schemas(connection: Connection | None = None) -> list[str]:
     """
-    :param connection: a dj.Connection object
-    :return: list of all accessible schemas on the server
+    List all accessible schemas on the server.
+
+    Parameters
+    ----------
+    connection : Connection, optional
+        Database connection. Defaults to ``dj.conn()``.
+
+    Returns
+    -------
+    list[str]
+        Names of all accessible schemas.
     """
     return [
         r[0]

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import csv
 import inspect
@@ -9,11 +11,17 @@ import uuid
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas
 
 from .condition import make_condition
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from .connection import Connection
+    from .expression import QueryExpression
 from .declare import alter, declare
 from .errors import (
     AccessError,
@@ -109,7 +117,7 @@ class Table(QueryExpression):
     declaration_context = None
 
     @property
-    def table_name(self):
+    def table_name(self) -> str:
         # For UserTable subclasses, table_name is computed by the metaclass.
         # Delegate to the class's table_name if _table_name is not set.
         if self._table_name is None:
@@ -117,19 +125,22 @@ class Table(QueryExpression):
         return self._table_name
 
     @property
-    def class_name(self):
+    def class_name(self) -> str:
         return self.__class__.__name__
 
     @property
-    def definition(self):
+    def definition(self) -> str:
         raise NotImplementedError("Subclasses of Table must implement the `definition` property")
 
-    def declare(self, context=None):
+    def declare(self, context: dict[str, Any] | None = None) -> None:
         """
         Declare the table in the schema based on self.definition.
 
-        :param context: the context for foreign key resolution. If None, foreign keys are
-            not allowed.
+        Parameters
+        ----------
+        context : dict, optional
+            Namespace for foreign key resolution. If None, foreign keys are
+            not allowed in the definition.
         """
         if self.connection.in_transaction:
             raise DataJointError("Cannot declare new tables inside a transaction, e.g. from inside a populate/make call")
@@ -154,19 +165,23 @@ class Table(QueryExpression):
         # Populate lineage table for this table's attributes
         self._populate_lineage(primary_key, fk_attribute_map)
 
-    def _declare_check(self, primary_key, fk_attribute_map):
+    def _declare_check(self, primary_key: list[str], fk_attribute_map: dict[str, tuple[str, str]]) -> None:
         """
         Hook for declaration-time validation. Subclasses can override.
 
         Called before the table is created in the database. Override this method
         to add validation logic (e.g., AutoPopulate validates FK-only primary keys).
 
-        :param primary_key: list of primary key attribute names
-        :param fk_attribute_map: dict mapping child_attr -> (parent_table, parent_attr)
+        Parameters
+        ----------
+        primary_key : list
+            List of primary key attribute names.
+        fk_attribute_map : dict
+            Mapping of child_attr -> (parent_table, parent_attr).
         """
         pass  # Default: no validation
 
-    def _populate_lineage(self, primary_key, fk_attribute_map):
+    def _populate_lineage(self, primary_key: list[str], fk_attribute_map: dict[str, tuple[str, str]]) -> None:
         """
         Populate the ~lineage table with lineage information for this table's attributes.
 
@@ -174,8 +189,12 @@ class Table(QueryExpression):
         - All FK attributes (traced to their origin)
         - Native primary key attributes (lineage = self)
 
-        :param primary_key: list of primary key attribute names
-        :param fk_attribute_map: dict mapping child_attr -> (parent_table, parent_attr)
+        Parameters
+        ----------
+        primary_key : list
+            List of primary key attribute names.
+        fk_attribute_map : dict
+            Mapping of child_attr -> (parent_table, parent_attr).
         """
         from .lineage import (
             ensure_lineage_table,
@@ -257,28 +276,49 @@ class Table(QueryExpression):
                     if prompt:
                         logger.info("Table altered")
 
-    def from_clause(self):
+    def from_clause(self) -> str:
         """
-        :return: the FROM clause of SQL SELECT statements.
+        Return the FROM clause for SQL SELECT statements.
+
+        Returns
+        -------
+        str
+            The full table name in backtick-quoted format.
         """
         return self.full_table_name
 
-    def get_select_fields(self, select_fields=None):
+    def get_select_fields(self, select_fields: list[str] | None = None) -> str:
         """
-        :return: the selected attributes from the SQL SELECT statement.
+        Return the selected attributes for SQL SELECT statements.
+
+        Returns
+        -------
+        str
+            SQL field list or "*" if no projection is specified.
         """
         return "*" if select_fields is None else self.heading.project(select_fields).as_sql
 
-    def parents(self, primary=None, as_objects=False, foreign_key_info=False):
+    def parents(self, primary: bool | None = None, as_objects: bool = False, foreign_key_info: bool = False) -> list:
         """
+        Return the list of parent tables referenced by foreign keys.
 
-        :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
-            primary key attributes are considered.  If False, return foreign keys including at least one
-            secondary attribute.
-        :param as_objects: if False, return table names. If True, return table objects.
-        :param foreign_key_info: if True, each element in result also includes foreign key info.
-        :return: list of parents as table names or table objects
-            with (optional) foreign key information.
+        Parameters
+        ----------
+        primary : bool, optional
+            If None, return all parents. If True, only return foreign keys
+            composed entirely of primary key attributes. If False, return
+            foreign keys including at least one secondary attribute.
+        as_objects : bool, optional
+            If False (default), return table names as strings.
+            If True, return FreeTable objects.
+        foreign_key_info : bool, optional
+            If True, return tuples of (table, fk_properties).
+            If False (default), return only table names/objects.
+
+        Returns
+        -------
+        list
+            Parent tables as names, objects, or (table, fk_info) tuples.
         """
         get_edge = self.connection.dependencies.parents
         nodes = [
@@ -291,15 +331,27 @@ class Table(QueryExpression):
             nodes = [name for name, props in nodes]
         return nodes
 
-    def children(self, primary=None, as_objects=False, foreign_key_info=False):
+    def children(self, primary: bool | None = None, as_objects: bool = False, foreign_key_info: bool = False) -> list:
         """
-        :param primary: if None, then all children are returned. If True, then only foreign keys composed of
-            primary key attributes are considered.  If False, return foreign keys including at least one
-            secondary attribute.
-        :param as_objects: if False, return table names. If True, return table objects.
-        :param foreign_key_info: if True, each element in result also includes foreign key info.
-        :return: list of children as table names or table objects
-            with (optional) foreign key information.
+        Return the list of child tables that reference this table via foreign keys.
+
+        Parameters
+        ----------
+        primary : bool, optional
+            If None, return all children. If True, only return foreign keys
+            composed entirely of primary key attributes. If False, return
+            foreign keys including at least one secondary attribute.
+        as_objects : bool, optional
+            If False (default), return table names as strings.
+            If True, return FreeTable objects.
+        foreign_key_info : bool, optional
+            If True, return tuples of (table, fk_properties).
+            If False (default), return only table names/objects.
+
+        Returns
+        -------
+        list
+            Child tables as names, objects, or (table, fk_info) tuples.
         """
         get_edge = self.connection.dependencies.children
         nodes = [
@@ -312,10 +364,23 @@ class Table(QueryExpression):
             nodes = [name for name, props in nodes]
         return nodes
 
-    def descendants(self, as_objects=False):
+    def descendants(self, as_objects: bool = False) -> list:
         """
-        :param as_objects: False - a list of table names; True - a list of table objects.
-        :return: list of tables descendants in topological order.
+        Return all descendant tables in topological order.
+
+        Descendants are tables that directly or indirectly depend on this table
+        through foreign key relationships.
+
+        Parameters
+        ----------
+        as_objects : bool, optional
+            If False (default), return table names as strings.
+            If True, return FreeTable objects.
+
+        Returns
+        -------
+        list
+            Descendant tables in topological order (dependencies first).
         """
         return [
             FreeTable(self.connection, node) if as_objects else node
@@ -323,10 +388,23 @@ class Table(QueryExpression):
             if not node.isdigit()
         ]
 
-    def ancestors(self, as_objects=False):
+    def ancestors(self, as_objects: bool = False) -> list:
         """
-        :param as_objects: False - a list of table names; True - a list of table objects.
-        :return: list of tables ancestors in topological order.
+        Return all ancestor tables in topological order.
+
+        Ancestors are tables that this table directly or indirectly depends on
+        through foreign key relationships.
+
+        Parameters
+        ----------
+        as_objects : bool, optional
+            If False (default), return table names as strings.
+            If True, return FreeTable objects.
+
+        Returns
+        -------
+        list
+            Ancestor tables in topological order (dependencies first).
         """
         return [
             FreeTable(self.connection, node) if as_objects else node
@@ -334,11 +412,23 @@ class Table(QueryExpression):
             if not node.isdigit()
         ]
 
-    def parts(self, as_objects=False):
+    def parts(self, as_objects: bool = False) -> list:
         """
-        return part tables either as entries in a dict with foreign key information or a list of objects
+        Return part tables belonging to this master table.
 
-        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
+        Part tables are subordinate tables whose names follow the pattern
+        ``master__part`` (double underscore).
+
+        Parameters
+        ----------
+        as_objects : bool, optional
+            If False (default), return table names as strings.
+            If True, return FreeTable objects.
+
+        Returns
+        -------
+        list
+            Part table names or FreeTable objects.
         """
         self.connection.dependencies.load(force=False)
         nodes = [
@@ -349,9 +439,14 @@ class Table(QueryExpression):
         return [FreeTable(self.connection, c) for c in nodes] if as_objects else nodes
 
     @property
-    def is_declared(self):
+    def is_declared(self) -> bool:
         """
-        :return: True is the table is declared in the schema.
+        Check if the table is declared in the database.
+
+        Returns
+        -------
+        bool
+            True if the table exists in the schema.
         """
         return (
             self.connection.query(
@@ -361,9 +456,14 @@ class Table(QueryExpression):
         )
 
     @property
-    def full_table_name(self):
+    def full_table_name(self) -> str:
         """
-        :return: full table name in the schema
+        Return the fully qualified table name.
+
+        Returns
+        -------
+        str
+            Table name in the format ```database`.`table_name```.
         """
         if self.database is None or self.table_name is None:
             raise DataJointError(
@@ -372,23 +472,31 @@ class Table(QueryExpression):
             )
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
 
-    def update1(self, row):
+    def update1(self, row: Mapping[str, Any]) -> None:
         """
-        ``update1`` updates one existing entry in the table.
-        Caution: In DataJoint the primary modes for data manipulation is to ``insert`` and
-        ``delete`` entire records since referential integrity works on the level of records,
-        not fields. Therefore, updates are reserved for corrective operations outside of main
-        workflow. Use UPDATE methods sparingly with full awareness of potential violations of
-        assumptions.
+        Update one existing row in the table.
 
-        :param row: a ``dict`` containing the primary key values and the attributes to update.
-            Setting an attribute value to None will reset it to the default value (if any).
+        Caution: In DataJoint, the primary modes for data manipulation are
+        ``insert`` and ``delete`` of entire rows since referential integrity
+        operates at the row level, not field level. Use updates sparingly
+        for corrective operations outside the main workflow.
 
-        The primary key attributes must always be provided.
+        Parameters
+        ----------
+        row : dict
+            Dictionary containing primary key values and attributes to update.
+            All primary key attributes must be provided. Setting an attribute
+            to None resets it to its default value (if any).
 
-        Examples:
+        Raises
+        ------
+        DataJointError
+            If row is not dict-like, primary key is incomplete, attribute
+            not found, table is restricted, or row doesn't exist.
 
-        >>> table.update1({'id': 1, 'value': 3})  # update value in record with id=1
+        Examples
+        --------
+        >>> table.update1({'id': 1, 'value': 3})  # update value in row with id=1
         >>> table.update1({'id': 1, 'value': None})  # reset value to default
         """
         # argument validations
@@ -414,15 +522,26 @@ class Table(QueryExpression):
         )
         self.connection.query(query, args=list(r[2] for r in row if r[2] is not None))
 
-    def validate(self, rows, *, ignore_extra_fields=False) -> ValidationResult:
+    def validate(self, rows: Iterable | pandas.DataFrame, *, ignore_extra_fields: bool = False) -> ValidationResult:
         """
         Validate rows without inserting them.
 
-        :param rows: Same format as insert() - iterable of dicts, tuples, numpy records,
+        Parameters
+        ----------
+        rows : iterable or DataFrame
+            Same format as ``insert()``: iterable of dicts, tuples, numpy records,
             or a pandas DataFrame.
-        :param ignore_extra_fields: If True, ignore fields not in the table heading.
-        :return: ValidationResult with is_valid, errors list, and rows_checked count.
+        ignore_extra_fields : bool, optional
+            If True, ignore fields not in the table heading. Default False.
 
+        Returns
+        -------
+        ValidationResult
+            Result object with ``is_valid``, ``errors`` list, and ``rows_checked``.
+            Can be used in boolean context (``if result: ...``).
+
+        Notes
+        -----
         Validates:
             - Field existence (all fields must be in table heading)
             - Row format (correct number of attributes for positional inserts)
@@ -436,13 +555,13 @@ class Table(QueryExpression):
             - Unique constraints (other than PK)
             - Custom MySQL constraints
 
-        Example::
-
-            result = table.validate(rows)
-            if result:
-                table.insert(rows)
-            else:
-                print(result.summary())
+        Examples
+        --------
+        >>> result = table.validate(rows)
+        >>> if result:
+        ...     table.insert(rows)
+        ... else:
+        ...     print(result.summary())
         """
         errors = []
 
@@ -551,12 +670,21 @@ class Table(QueryExpression):
 
         return ValidationResult(is_valid=len(errors) == 0, errors=errors, rows_checked=row_count)
 
-    def insert1(self, row, **kwargs):
+    def insert1(self, row: Mapping[str, Any] | tuple | np.void, **kwargs: Any) -> None:
         """
-        Insert one data record into the table. For ``kwargs``, see ``insert()``.
+        Insert a single row into the table.
 
-        :param row: a numpy record, a dict-like object, or an ordered sequence to be inserted
-            as one row.
+        Parameters
+        ----------
+        row : dict or numpy.void or sequence
+            A single row to insert: dict-like, numpy record, or ordered sequence.
+        **kwargs
+            Passed to ``insert()``: replace, skip_duplicates, ignore_extra_fields,
+            allow_direct_insert.
+
+        See Also
+        --------
+        insert : Insert multiple rows.
         """
         self.insert((row,), **kwargs)
 
@@ -565,27 +693,31 @@ class Table(QueryExpression):
         """
         Context manager for staged insert with direct object storage writes.
 
-        Use this for large objects like Zarr arrays where copying from local storage
-        is inefficient. Allows writing directly to the destination storage before
-        finalizing the database insert.
+        Use this for large objects like Zarr arrays where copying from local
+        storage is inefficient. Allows writing directly to the destination
+        storage before finalizing the database insert.
 
-        Example:
-            with table.staged_insert1 as staged:
-                staged.rec['subject_id'] = 123
-                staged.rec['session_id'] = 45
+        Yields
+        ------
+        StagedInsert
+            Context for setting record values and getting storage handles.
 
-                # Create object storage directly
-                z = zarr.open(staged.store('raw_data', '.zarr'), mode='w', shape=(1000, 1000))
-                z[:] = data
-
-                # Assign to record
-                staged.rec['raw_data'] = z
-
-            # On successful exit: metadata computed, record inserted
-            # On exception: storage cleaned up, no record inserted
-
-        Yields:
-            StagedInsert: Context for setting record values and getting storage handles
+        Examples
+        --------
+        >>> with table.staged_insert1 as staged:
+        ...     staged.rec['subject_id'] = 123
+        ...     staged.rec['session_id'] = 45
+        ...
+        ...     # Create object storage directly
+        ...     z = zarr.open(staged.store('raw_data', '.zarr'), mode='w',
+        ...                   shape=(1000, 1000))
+        ...     z[:] = data
+        ...
+        ...     # Assign to record
+        ...     staged.rec['raw_data'] = z
+        ...
+        ... # On successful exit: metadata computed, record inserted
+        ... # On exception: storage cleaned up, no record inserted
         """
         return _staged_insert1(self)
 
@@ -599,29 +731,50 @@ class Table(QueryExpression):
         chunk_size=None,
     ):
         """
-        Insert a collection of rows.
+        Insert one or more rows into the table.
 
-        :param rows: Either (a) an iterable where an element is a numpy record, a
-            dict-like object, a pandas.DataFrame, a sequence, or a query expression with
-            the same heading as self, or (b) a pathlib.Path object specifying a path
-            relative to the current directory with a CSV file, the contents of which
-            will be inserted.
-        :param replace: If True, replaces the existing tuple.
-        :param skip_duplicates: If True, silently skip duplicate inserts.
-        :param ignore_extra_fields: If False, fields that are not in the heading raise error.
-        :param allow_direct_insert: Only applies in auto-populated tables. If False (default),
-            insert may only be called from inside the make callback.
-        :param chunk_size: If set, insert rows in batches of this size. Useful for very
-            large inserts to avoid memory issues. Each chunk is a separate transaction.
+        Parameters
+        ----------
+        rows : iterable or Path or QueryExpression
+            Data to insert. Can be:
 
-        Example:
+            - iterable of dicts: ``[{"attr": value, ...}, ...]``
+            - iterable of numpy.void: Records from a structured array
+            - pandas.DataFrame: Each row becomes a table row
+            - QueryExpression: Results of a query (insert from select)
+            - pathlib.Path: Path to a CSV file
 
-            >>> Table.insert([
-            >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
-            >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
+        replace : bool, optional
+            If True, replace existing rows with matching primary keys using
+            MySQL's REPLACE statement. Default False.
+        skip_duplicates : bool, optional
+            If True, silently skip rows that would cause duplicate key errors.
+            Default False.
+        ignore_extra_fields : bool, optional
+            If True, ignore fields in the input that are not in the table
+            heading. If False (default), extra fields raise an error.
+        allow_direct_insert : bool, optional
+            For auto-populated tables: if False (default), inserts are only
+            allowed from within the ``make()`` method. Set True to bypass.
+        chunk_size : int, optional
+            If set, insert rows in batches of this size. Useful for very
+            large inserts to avoid memory issues. Each chunk is a separate
+            transaction.
 
-            # Large insert with chunking
-            >>> Table.insert(large_dataset, chunk_size=10000)
+        Examples
+        --------
+        >>> Table.insert([
+        ...     {'subject_id': 7, 'species': 'mouse', 'dob': '2014-09-01'},
+        ...     {'subject_id': 8, 'species': 'mouse', 'dob': '2014-09-02'}
+        ... ])
+
+        >>> # Large insert with chunking
+        >>> Table.insert(large_dataset, chunk_size=10000)
+
+        See Also
+        --------
+        insert1 : Insert a single row.
+        insert_dataframe : Insert DataFrame with index handling.
         """
         if isinstance(rows, pandas.DataFrame):
             # drop 'extra' synthetic index for 1-field index case -
@@ -686,10 +839,16 @@ class Table(QueryExpression):
         """
         Internal helper to insert a batch of rows.
 
-        :param rows: Iterable of rows to insert
-        :param replace: If True, use REPLACE instead of INSERT
-        :param skip_duplicates: If True, use ON DUPLICATE KEY UPDATE
-        :param ignore_extra_fields: If True, ignore unknown fields
+        Parameters
+        ----------
+        rows : iterable
+            Rows to insert.
+        replace : bool
+            If True, use REPLACE instead of INSERT.
+        skip_duplicates : bool
+            If True, use ON DUPLICATE KEY UPDATE.
+        ignore_extra_fields : bool
+            If True, ignore unknown fields.
         """
         # collects the field list from first row (passed by reference)
         field_list = []
@@ -718,30 +877,42 @@ class Table(QueryExpression):
         """
         Insert DataFrame with explicit index handling.
 
-        This method provides symmetry with to_pandas(): data fetched with to_pandas()
-        (which sets primary key as index) can be modified and re-inserted using
-        insert_dataframe() without manual index manipulation.
+        Provides symmetry with ``to_pandas()``: data fetched with ``to_pandas()``
+        (which sets primary key as index) can be modified and re-inserted
+        without manual index manipulation.
 
-        :param df: pandas DataFrame to insert
-        :param index_as_pk: How to handle DataFrame index:
-            - None (default): Auto-detect. Use index as primary key if index names
-              match primary_key columns. Drop if unnamed RangeIndex.
-            - True: Treat index as primary key columns. Raises if index names don't
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            DataFrame to insert.
+        index_as_pk : bool, optional
+            How to handle DataFrame index:
+
+            - None (default): Auto-detect. Use index as primary key if index
+              names match primary_key columns. Drop if unnamed RangeIndex.
+            - True: Treat index as primary key columns. Raises if names don't
               match table primary key.
             - False: Ignore index entirely (drop it).
-        :param **insert_kwargs: Passed to insert() - replace, skip_duplicates,
-            ignore_extra_fields, allow_direct_insert, chunk_size
 
-        Example::
+        **insert_kwargs
+            Passed to ``insert()``: replace, skip_duplicates,
+            ignore_extra_fields, allow_direct_insert, chunk_size.
 
-            # Round-trip with to_pandas()
-            df = table.to_pandas()           # PK becomes index
-            df['value'] = df['value'] * 2    # Modify data
-            table.insert_dataframe(df)       # Auto-detects index as PK
+        Examples
+        --------
+        >>> # Round-trip with to_pandas()
+        >>> df = table.to_pandas()           # PK becomes index
+        >>> df['value'] = df['value'] * 2    # Modify data
+        >>> table.insert_dataframe(df)       # Auto-detects index as PK
 
-            # Explicit control
-            table.insert_dataframe(df, index_as_pk=True)   # Use index
-            table.insert_dataframe(df, index_as_pk=False)  # Ignore index
+        >>> # Explicit control
+        >>> table.insert_dataframe(df, index_as_pk=True)   # Use index
+        >>> table.insert_dataframe(df, index_as_pk=False)  # Ignore index
+
+        See Also
+        --------
+        insert : General insert method.
+        to_pandas : Fetch data as DataFrame with PK as index.
         """
         if not isinstance(df, pandas.DataFrame):
             raise DataJointError("insert_dataframe requires a pandas DataFrame")
@@ -789,10 +960,22 @@ class Table(QueryExpression):
                 f"Use index_as_pk=False to ignore index, or reset_index() first."
             )
 
-    def delete_quick(self, get_count=False):
+    def delete_quick(self, get_count: bool = False) -> int | None:
         """
-        Deletes the table without cascading and without user prompt.
-        If this table has populated dependent tables, this will fail.
+        Delete rows without cascading or user prompt.
+
+        If this table has populated dependent tables, the delete will fail
+        due to foreign key constraints.
+
+        Parameters
+        ----------
+        get_count : bool, optional
+            If True, return the number of deleted rows. Default False.
+
+        Returns
+        -------
+        int or None
+            Number of deleted rows if get_count=True, else None.
         """
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
         self.connection.query(query)
@@ -807,25 +990,35 @@ class Table(QueryExpression):
         force_masters: bool = False,
     ) -> int:
         """
-        Deletes the contents of the table and its dependent tables, recursively.
+        Delete rows and cascade to dependent tables.
 
-        Args:
-            transaction: If `True`, use of the entire delete becomes an atomic transaction.
-                This is the default and recommended behavior. Set to `False` if this delete is
-                nested within another transaction.
-            safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
-                is `dj.config['safemode']`.
-            force_parts: Delete from parts even when not deleting from their masters.
-            force_masters: If `True`, include part/master pairs in the cascade.
-                Default is `False`.
+        Recursively deletes matching rows from this table and all tables
+        that reference it through foreign keys.
 
-        Returns:
-            Number of deleted rows (excluding those from dependent tables).
+        Parameters
+        ----------
+        transaction : bool, optional
+            If True (default), the entire delete is an atomic transaction.
+            Set False if nested within another transaction.
+        safemode : bool, optional
+            If True, prohibit nested transactions and prompt for confirmation.
+            Default is ``dj.config['safemode']``.
+        force_parts : bool, optional
+            Delete from part tables even when not deleting from their masters.
+            Default False.
+        force_masters : bool, optional
+            Include part/master pairs in the cascade. Default False.
 
-        Raises:
-            DataJointError: Delete exceeds maximum number of delete attempts.
-            DataJointError: When deleting within an existing transaction.
-            DataJointError: Deleting a part table before its master.
+        Returns
+        -------
+        int
+            Number of deleted rows (excluding dependent tables).
+
+        Raises
+        ------
+        DataJointError
+            If delete exceeds maximum attempts, if deleting within an existing
+            transaction (in safemode), or if deleting part before master.
         """
         deleted = set()
         visited_masters = set()
@@ -965,9 +1158,12 @@ class Table(QueryExpression):
                     logger.warning("Delete cancelled")
         return delete_count
 
-    def drop_quick(self):
+    def drop_quick(self) -> None:
         """
-        Drops the table without cascading to dependent tables and without user prompt.
+        Drop the table without cascading or user prompt.
+
+        Unlike ``drop()``, this does not cascade to dependent tables and will
+        fail if other tables have foreign key references to this table.
         """
         if self.is_declared:
             # Clean up lineage entries for this table
@@ -981,10 +1177,18 @@ class Table(QueryExpression):
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
-    def drop(self):
+    def drop(self) -> None:
         """
-        Drop the table and all tables that reference it, recursively.
-        User is prompted for confirmation if config['safemode'] is set to True.
+        Drop the table and all dependent tables recursively.
+
+        Cascades to all tables that reference this table through foreign keys.
+        User is prompted for confirmation if ``config['safemode']`` is True.
+
+        Raises
+        ------
+        DataJointError
+            If called on a restricted table or attempting to drop a part
+            table before its master.
         """
         if self.restriction:
             raise DataJointError(
@@ -1014,9 +1218,14 @@ class Table(QueryExpression):
             logger.info("Tables dropped. Restart kernel.")
 
     @property
-    def size_on_disk(self):
+    def size_on_disk(self) -> int:
         """
-        :return: size of data and indices in bytes on the storage device
+        Return the size of data and indices on disk.
+
+        Returns
+        -------
+        int
+            Size in bytes (data + indices).
         """
         ret = self.connection.query(
             'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(database=self.database, table=self.table_name),
@@ -1024,9 +1233,22 @@ class Table(QueryExpression):
         ).fetchone()
         return ret["Data_length"] + ret["Index_length"]
 
-    def describe(self, context=None, printout=False):
+    def describe(self, context: dict[str, Any] | None = None, printout: bool = False) -> str:
         """
-        :return:  the definition string for the query using DataJoint DDL.
+        Return the table definition in DataJoint DDL syntax.
+
+        Parameters
+        ----------
+        context : dict, optional
+            Namespace for resolving foreign key class names. If None, uses
+            the caller's namespace.
+        printout : bool, optional
+            If True, also log the definition. Default False.
+
+        Returns
+        -------
+        str
+            Table definition in DataJoint DDL format.
         """
         if context is None:
             frame = inspect.currentframe().f_back
@@ -1242,12 +1464,21 @@ class Table(QueryExpression):
 
 def lookup_class_name(name, context, depth=3):
     """
-    given a table name in the form `schema_name`.`table_name`, find its class in the context.
+    Find a table class in the given namespace by its full table name.
 
-    :param name: `schema_name`.`table_name`
-    :param context: dictionary representing the namespace
-    :param depth: search depth into imported modules, helps avoid infinite recursion.
-    :return: class name found in the context or None if not found
+    Parameters
+    ----------
+    name : str
+        Full table name in format ```schema_name`.`table_name```.
+    context : dict
+        Namespace to search (e.g., globals()).
+    depth : int, optional
+        Search depth into imported modules. Default 3.
+
+    Returns
+    -------
+    str or None
+        Class name if found (e.g., "module.ClassName"), None otherwise.
     """
     # breadth-first search
     nodes = [dict(context=context, context_name="", depth=depth)]
@@ -1283,11 +1514,17 @@ def lookup_class_name(name, context, depth=3):
 
 class FreeTable(Table):
     """
-    A base table without a dedicated class. Each instance is associated with a table
-    specified by full_table_name.
+    A table without a dedicated Python class.
 
-    :param conn:  a dj.Connection object
-    :param full_table_name: in format `database`.`table_name`
+    FreeTable provides access to any table by its full name, useful for
+    introspection and cascading operations.
+
+    Parameters
+    ----------
+    conn : dj.Connection
+        Database connection.
+    full_table_name : str
+        Table name in format ```database`.`table_name```.
     """
 
     def __init__(self, conn, full_table_name):

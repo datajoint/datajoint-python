@@ -15,21 +15,33 @@ def _get(connection, attr, data, squeeze, download_path):
     Retrieve and decode attribute data from the database.
 
     In the simplified type system:
+
     - Native types pass through unchanged
     - JSON types are parsed
     - UUID types are converted from bytes
     - Blob types return raw bytes (unless a codec handles them)
     - Codecs handle all custom encoding/decoding via type chains
 
-    For composed types (e.g., <blob@> using <hash>), decoders are applied
-    in reverse order: innermost first, then outermost.
+    For composed types (e.g., ``<blob@>`` using ``<hash>``), decoders are
+    applied in reverse order: innermost first, then outermost.
 
-    :param connection: a dj.Connection object
-    :param attr: attribute from the table's heading
-    :param data: raw value fetched from the database
-    :param squeeze: if True squeeze blobs (legacy, unused)
-    :param download_path: for fetches that download data (attachments, filepaths)
-    :return: decoded data
+    Parameters
+    ----------
+    connection : dj.Connection
+        Database connection.
+    attr : Attribute
+        Attribute from the table's heading.
+    data : any
+        Raw value fetched from the database.
+    squeeze : bool
+        If True, squeeze singleton dimensions from arrays.
+    download_path : str
+        Path for downloading external data (attachments, filepaths).
+
+    Returns
+    -------
+    any
+        Decoded data in Python-native format.
     """
     from .settings import config
 
@@ -88,9 +100,12 @@ def _get(connection, attr, data, squeeze, download_path):
 
 class Fetch1:
     """
-    Fetch object for fetching the result of a query yielding exactly one row.
+    Fetch handler for queries that return exactly one row.
 
-    :param expression: a query expression to fetch from.
+    Parameters
+    ----------
+    expression : QueryExpression
+        Query expression to fetch from.
     """
 
     def __init__(self, expression):
@@ -98,21 +113,36 @@ class Fetch1:
 
     def __call__(self, *attrs, squeeze=False, download_path="."):
         """
-        Fetches the result of a query expression that yields exactly one entry.
+        Fetch exactly one row from the query result.
 
-        If no attributes are specified, returns the result as a dict.
-        If attributes are specified returns the corresponding results as a tuple.
+        Parameters
+        ----------
+        *attrs : str
+            Attribute names to return. If empty, returns all as dict.
+            Use ``"KEY"`` to fetch primary key as a dict.
+        squeeze : bool, optional
+            If True, remove singleton dimensions from arrays. Default False.
+        download_path : str, optional
+            Path for downloading external data. Default ``"."``.
 
-        Examples:
-            d = rel.fetch1()           # returns dict with all attributes
-            a, b = rel.fetch1('a', 'b')  # returns tuple of attribute values
+        Returns
+        -------
+        dict or tuple or value
+            If no attrs: dict with all attributes.
+            If one attr: single value.
+            If multiple attrs: tuple of values.
 
-        :param attrs: attributes to return when expanding into a tuple.
-                      If empty, returns a dict with all attributes.
-        :param squeeze: when True, remove extra dimensions from arrays
-        :param download_path: for fetches that download data, e.g. attachments
-        :return: dict (no attrs) or tuple/value (with attrs)
-        :raises DataJointError: if not exactly one row in result
+        Raises
+        ------
+        DataJointError
+            If query does not return exactly one row.
+
+        Examples
+        --------
+        >>> row = table.fetch1()              # dict with all attributes
+        >>> a, b = table.fetch1('a', 'b')     # tuple of values
+        >>> x = table.fetch1('x')             # single value
+        >>> pk = table.fetch1('KEY')          # primary key dict
         """
         heading = self._expression.heading
 
