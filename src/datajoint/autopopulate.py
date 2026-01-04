@@ -127,7 +127,7 @@ class AutoPopulate:
             )
 
         if self._key_source is None:
-            parents = self.target.parents(primary=True, as_objects=True, foreign_key_info=True)
+            parents = self.parents(primary=True, as_objects=True, foreign_key_info=True)
             if not parents:
                 raise DataJointError("A table must have dependencies from its primary key for auto-populate to work")
             self._key_source = _rename_attributes(*parents[0])
@@ -204,15 +204,6 @@ class AutoPopulate:
         self.make_insert(key, *computed_result)
         yield
 
-    @property
-    def target(self):
-        """
-        :return: table to be populated.
-        In the typical case, dj.AutoPopulate is mixed into a dj.Table class by
-        inheritance and the target is self.
-        """
-        return self
-
     def _jobs_to_do(self, restrictions):
         """
         :return: the query yielding the keys to be computed (derived from self.key_source)
@@ -235,7 +226,7 @@ class AutoPopulate:
             raise DataJointError(
                 "The populate target lacks attribute %s "
                 "from the primary key of key_source"
-                % next(name for name in todo.heading.primary_key if name not in self.target.heading)
+                % next(name for name in todo.heading.primary_key if name not in self.heading)
             )
         except StopIteration:
             pass
@@ -324,7 +315,7 @@ class AutoPopulate:
         Computes keys directly from key_source, suitable for single-worker
         execution, development, and debugging.
         """
-        keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY")
+        keys = (self._jobs_to_do(restrictions) - self).fetch("KEY")
 
         logger.debug("Found %d keys to populate" % len(keys))
 
@@ -493,14 +484,14 @@ class AutoPopulate:
         if not is_generator:
             self.connection.start_transaction()
 
-        if key in self.target:  # already populated
+        if key in self:  # already populated
             if not is_generator:
                 self.connection.cancel_transaction()
             if jobs is not None:
                 jobs.complete(key)
             return False
 
-        logger.debug(f"Making {key} -> {self.target.full_table_name}")
+        logger.debug(f"Making {key} -> {self.full_table_name}")
         self.__class__._allow_insert = True
 
         try:
@@ -531,7 +522,7 @@ class AutoPopulate:
                 exception=error.__class__.__name__,
                 msg=": " + str(error) if str(error) else "",
             )
-            logger.debug(f"Error making {key} -> {self.target.full_table_name} - {error_message}")
+            logger.debug(f"Error making {key} -> {self.full_table_name} - {error_message}")
             if jobs is not None:
                 jobs.error(key, error_message=error_message, error_stack=traceback.format_exc())
             if not suppress_errors or isinstance(error, SystemExit):
@@ -542,7 +533,7 @@ class AutoPopulate:
         else:
             self.connection.commit_transaction()
             duration = time.time() - start_time
-            logger.debug(f"Success making {key} -> {self.target.full_table_name}")
+            logger.debug(f"Success making {key} -> {self.full_table_name}")
 
             # Update hidden job metadata if table has the columns
             if self._has_job_metadata_attrs():
@@ -564,11 +555,61 @@ class AutoPopulate:
     def progress(self, *restrictions, display=False):
         """
         Report the progress of populating the table.
+
+        Uses a single aggregation query to efficiently compute both total and
+        remaining counts.
+
+        :param restrictions: conditions to restrict key_source
+        :param display: if True, log the progress
         :return: (remaining, total) -- numbers of tuples to be populated
         """
         todo = self._jobs_to_do(restrictions)
-        total = len(todo)
-        remaining = len(todo - self.target)
+
+        # Get primary key attributes from key_source for join condition
+        # These are the "job keys" - the granularity at which populate() works
+        pk_attrs = todo.primary_key
+        assert pk_attrs, "key_source must have a primary key"
+
+        # Find common attributes between key_source and self for the join
+        # This handles cases where self has additional PK attributes
+        common_attrs = [attr for attr in pk_attrs if attr in self.heading.names]
+
+        if not common_attrs:
+            # No common attributes - fall back to two-query method
+            total = len(todo)
+            remaining = len(todo - self)
+        else:
+            # Build a single query that computes both total and remaining
+            # Using LEFT JOIN with COUNT(DISTINCT) to handle 1:many relationships
+            todo_sql = todo.make_sql()
+            target_sql = self.make_sql()
+
+            # Build join condition on common attributes
+            join_cond = " AND ".join(f"`$ks`.`{attr}` = `$tgt`.`{attr}`" for attr in common_attrs)
+
+            # Build DISTINCT key expression for counting unique jobs
+            # Use CONCAT for composite keys to create a single distinct value
+            if len(pk_attrs) == 1:
+                distinct_key = f"`$ks`.`{pk_attrs[0]}`"
+                null_check = f"`$tgt`.`{common_attrs[0]}`"
+            else:
+                distinct_key = "CONCAT_WS('|', {})".format(", ".join(f"`$ks`.`{attr}`" for attr in pk_attrs))
+                null_check = f"`$tgt`.`{common_attrs[0]}`"
+
+            # Single aggregation query:
+            # - COUNT(DISTINCT key) gives total unique jobs in key_source
+            # - Remaining = jobs where no matching target row exists
+            sql = f"""
+                SELECT
+                    COUNT(DISTINCT {distinct_key}) AS total,
+                    COUNT(DISTINCT CASE WHEN {null_check} IS NULL THEN {distinct_key} END) AS remaining
+                FROM ({todo_sql}) AS `$ks`
+                LEFT JOIN ({target_sql}) AS `$tgt` ON {join_cond}
+            """
+
+            result = self.connection.query(sql).fetchone()
+            total, remaining = result
+
         if display:
             logger.info(
                 "%-20s" % self.__class__.__name__
@@ -585,7 +626,7 @@ class AutoPopulate:
     def _has_job_metadata_attrs(self):
         """Check if table has hidden job metadata columns."""
         # Access _attributes directly to include hidden attributes
-        all_attrs = self.target.heading._attributes
+        all_attrs = self.heading._attributes
         return all_attrs is not None and "_job_start_time" in all_attrs
 
     def _update_job_metadata(self, key, start_time, duration, version):
@@ -600,9 +641,9 @@ class AutoPopulate:
         """
         from .condition import make_condition
 
-        pk_condition = make_condition(self.target, key, set())
+        pk_condition = make_condition(self, key, set())
         self.connection.query(
-            f"UPDATE {self.target.full_table_name} SET "
+            f"UPDATE {self.full_table_name} SET "
             "`_job_start_time`=%s, `_job_duration`=%s, `_job_version`=%s "
             f"WHERE {pk_condition}",
             args=(start_time, duration, version[:64] if version else ""),

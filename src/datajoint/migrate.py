@@ -248,3 +248,167 @@ def check_migration_status(schema: Schema) -> dict:
         "pending": sum(1 for c in columns if c["needs_migration"]),
         "columns": columns,
     }
+
+
+# =============================================================================
+# Job Metadata Migration
+# =============================================================================
+
+# Hidden job metadata columns added by config.jobs.add_job_metadata
+JOB_METADATA_COLUMNS = [
+    ("_job_start_time", "datetime(3) DEFAULT NULL"),
+    ("_job_duration", "float DEFAULT NULL"),
+    ("_job_version", "varchar(64) DEFAULT ''"),
+]
+
+
+def _get_existing_columns(connection, database: str, table_name: str) -> set[str]:
+    """Get set of existing column names for a table."""
+    result = connection.query(
+        """
+        SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+        """,
+        args=(database, table_name),
+    )
+    return {row[0] for row in result.fetchall()}
+
+
+def _is_autopopulated_table(table_name: str) -> bool:
+    """Check if a table name indicates a Computed or Imported table."""
+    # Computed tables start with __ (but not part tables which have __ in middle)
+    # Imported tables start with _ (but not __)
+    if table_name.startswith("__"):
+        # Computed table if no __ after the prefix
+        return "__" not in table_name[2:]
+    elif table_name.startswith("_"):
+        # Imported table
+        return True
+    return False
+
+
+def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
+    """
+    Add hidden job metadata columns to existing Computed/Imported tables.
+
+    This migration utility adds the hidden columns (_job_start_time, _job_duration,
+    _job_version) to tables that were created before config.jobs.add_job_metadata
+    was enabled.
+
+    Args:
+        target: Either a table class/instance (dj.Computed or dj.Imported) or
+                a Schema object. If a Schema, all Computed/Imported tables in
+                the schema will be processed.
+        dry_run: If True (default), only preview changes without applying.
+
+    Returns:
+        Dict with keys:
+            - tables_analyzed: Number of tables checked
+            - tables_modified: Number of tables that were/would be modified
+            - columns_added: Total columns added across all tables
+            - details: List of dicts with per-table information
+
+    Example:
+        >>> import datajoint as dj
+        >>> from datajoint.migrate import add_job_metadata_columns
+        >>>
+        >>> # Preview migration for a single table
+        >>> result = add_job_metadata_columns(MyComputedTable, dry_run=True)
+        >>> print(f"Would add {result['columns_added']} columns")
+        >>>
+        >>> # Apply migration to all tables in a schema
+        >>> result = add_job_metadata_columns(schema, dry_run=False)
+        >>> print(f"Modified {result['tables_modified']} tables")
+
+    Note:
+        - Only Computed and Imported tables are modified (not Manual, Lookup, or Part tables)
+        - Existing rows will have NULL values for _job_start_time and _job_duration
+        - Future populate() calls will fill in metadata for new rows
+        - This does NOT retroactively populate metadata for existing rows
+    """
+    from .schemas import Schema
+    from .table import Table
+
+    result = {
+        "tables_analyzed": 0,
+        "tables_modified": 0,
+        "columns_added": 0,
+        "details": [],
+    }
+
+    # Determine tables to process
+    if isinstance(target, Schema):
+        schema = target
+        # Get all user tables in the schema
+        tables_query = """
+            SELECT TABLE_NAME
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_TYPE = 'BASE TABLE'
+            AND TABLE_NAME NOT LIKE '~%%'
+        """
+        table_names = [row[0] for row in schema.connection.query(tables_query, args=(schema.database,)).fetchall()]
+        tables_to_process = [
+            (schema.database, name, schema.connection) for name in table_names if _is_autopopulated_table(name)
+        ]
+    elif isinstance(target, type) and issubclass(target, Table):
+        # Table class
+        instance = target()
+        tables_to_process = [(instance.database, instance.table_name, instance.connection)]
+    elif isinstance(target, Table):
+        # Table instance
+        tables_to_process = [(target.database, target.table_name, target.connection)]
+    else:
+        raise DataJointError(f"target must be a Table class, Table instance, or Schema, got {type(target)}")
+
+    for database, table_name, connection in tables_to_process:
+        result["tables_analyzed"] += 1
+
+        # Skip non-autopopulated tables
+        if not _is_autopopulated_table(table_name):
+            continue
+
+        # Check which columns need to be added
+        existing_columns = _get_existing_columns(connection, database, table_name)
+        columns_to_add = [(name, definition) for name, definition in JOB_METADATA_COLUMNS if name not in existing_columns]
+
+        if not columns_to_add:
+            result["details"].append(
+                {
+                    "table": f"{database}.{table_name}",
+                    "status": "already_migrated",
+                    "columns_added": 0,
+                }
+            )
+            continue
+
+        # Generate and optionally execute ALTER statements
+        table_detail = {
+            "table": f"{database}.{table_name}",
+            "status": "migrated" if not dry_run else "pending",
+            "columns_added": len(columns_to_add),
+            "sql_statements": [],
+        }
+
+        for col_name, col_definition in columns_to_add:
+            sql = f"ALTER TABLE `{database}`.`{table_name}` ADD COLUMN `{col_name}` {col_definition}"
+            table_detail["sql_statements"].append(sql)
+
+            if not dry_run:
+                try:
+                    connection.query(sql)
+                    logger.info(f"Added column {col_name} to {database}.{table_name}")
+                except Exception as e:
+                    logger.error(f"Failed to add column {col_name} to {database}.{table_name}: {e}")
+                    table_detail["status"] = "error"
+                    table_detail["error"] = str(e)
+                    raise DataJointError(f"Migration failed: {e}") from e
+            else:
+                logger.info(f"Would add column {col_name} to {database}.{table_name}")
+
+        result["tables_modified"] += 1
+        result["columns_added"] += len(columns_to_add)
+        result["details"].append(table_detail)
+
+    return result
