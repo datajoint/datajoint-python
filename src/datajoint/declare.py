@@ -5,7 +5,6 @@ declare the corresponding mysql tables.
 
 import logging
 import re
-from hashlib import sha1
 
 import pyparsing as pp
 
@@ -296,13 +295,6 @@ def declare(full_table_name, definition, context):
         external_stores,
         fk_attribute_map,
     ) = prepare_declare(definition, context)
-
-    if config.get("add_hidden_timestamp", False):
-        metadata_attr_sql = ["`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"]
-        attribute_sql.extend(
-            attr.format(full_table_name=sha1(full_table_name.replace("`", "").encode("utf-8")).hexdigest())
-            for attr in metadata_attr_sql
-        )
 
     # Add hidden job metadata for Computed/Imported tables (not parts)
     # Note: table_name may still have backticks, strip them for prefix checking

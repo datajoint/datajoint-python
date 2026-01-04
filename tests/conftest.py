@@ -455,29 +455,6 @@ def minio_client(s3_creds, s3fs_client, teardown=False):
 
 
 # =============================================================================
-# Utility Fixtures
-# =============================================================================
-
-
-@pytest.fixture(scope="session")
-def monkeysession():
-    with pytest.MonkeyPatch.context() as mp:
-        yield mp
-
-
-@pytest.fixture(scope="module")
-def monkeymodule():
-    with pytest.MonkeyPatch.context() as mp:
-        yield mp
-
-
-@pytest.fixture
-def enable_adapted_types():
-    """Deprecated - custom attribute types no longer require a feature flag."""
-    yield
-
-
-# =============================================================================
 # Cleanup Fixtures
 # =============================================================================
 

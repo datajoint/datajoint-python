@@ -302,7 +302,6 @@ class Config(BaseSettings):
     safemode: bool = True
     fetch_format: Literal["array", "frame"] = "array"
     enable_python_native_blobs: bool = True
-    add_hidden_timestamp: bool = False
     filepath_checksum_size_limit: int | None = None
 
     # External stores configuration
