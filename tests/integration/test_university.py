@@ -138,23 +138,29 @@ def test_union(schema_uni):
 
 
 def test_aggr(schema_uni):
+    # Default: keeps all courses (some may have NULL avg_grade if no grades)
     avg_grade_per_course = Course.aggr(Grade * LetterGrade, avg_grade="round(avg(points), 2)")
     assert len(avg_grade_per_course) == 45
 
-    # GPA
-    student_gpa = Student.aggr(Course * Grade * LetterGrade, gpa="round(sum(points*credits)/sum(credits), 2)")
+    # GPA - use exclude_nonmatching=True to only include students with grades
+    student_gpa = Student.aggr(
+        Course * Grade * LetterGrade,
+        gpa="round(sum(points*credits)/sum(credits), 2)",
+        exclude_nonmatching=True,
+    )
     gpa = student_gpa.to_arrays("gpa")
-    assert len(gpa) == 261
+    assert len(gpa) == 261  # only students with grades
     assert 2 < gpa.mean() < 3
 
     # Sections in biology department with zero students in them
-    section = (Section & {"dept": "BIOL"}).aggr(Enroll, n="count(student_id)", keep_all_rows=True) & "n=0"
+    # aggr now keeps all rows by default (like proj), so sections with 0 enrollments are included
+    section = (Section & {"dept": "BIOL"}).aggr(Enroll, n="count(student_id)") & "n=0"
     assert len(set(section.to_arrays("dept"))) == 1
     assert len(section) == 17
     assert bool(section)
 
     # Test correct use of ellipses in a similar query
-    section = (Section & {"dept": "BIOL"}).aggr(Grade, ..., n="count(student_id)", keep_all_rows=True) & "n>1"
+    section = (Section & {"dept": "BIOL"}).aggr(Grade, ..., n="count(student_id)") & "n>1"
     assert not any(name in section.heading.names for name in Grade.heading.secondary_attributes)
     assert len(set(section.to_arrays("dept"))) == 1
     assert len(section) == 168
