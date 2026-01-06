@@ -306,7 +306,7 @@ class QueryExpression:
         :param allow_nullable_pk: If True, bypass the left join constraint that requires
             self to determine other. When bypassed, the result PK is the union of both
             operands' PKs, and PK attributes from the right operand could be NULL.
-            Used internally by aggregation with keep_all_rows=True.
+            Used internally by aggregation when exclude_nonmatching=False.
         :return: The joined QueryExpression
 
         a * b is short for a.join(b)
@@ -538,21 +538,33 @@ class QueryExpression:
         )
         return result
 
-    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
+    def aggr(self, group, *attributes, exclude_nonmatching=False, **named_attributes):
         """
-        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
-        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+        Aggregation/grouping operation, similar to proj but with computations over a grouped relation.
 
-        :param group:  The query expression to be aggregated.
-        :param keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.
+        By default, keeps all rows from self (like proj). Use exclude_nonmatching=True to
+        keep only rows that have matches in group.
+
+        :param group: The query expression to be aggregated.
+        :param exclude_nonmatching: If True, exclude rows from self that have no matching
+            entries in group (INNER JOIN). Default False keeps all rows (LEFT JOIN).
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
+
+        Example::
+
+            # Count sessions per subject (keeps all subjects, even those with 0 sessions)
+            Subject.aggr(Session, n="count(*)")
+
+            # Count sessions per subject (only subjects with at least one session)
+            Subject.aggr(Session, n="count(*)", exclude_nonmatching=True)
         """
         if Ellipsis in attributes:
             # expand ellipsis to include only attributes from the left table
             attributes = set(attributes)
             attributes.discard(Ellipsis)
             attributes.update(self.heading.secondary_attributes)
+        keep_all_rows = not exclude_nonmatching
         return Aggregation.create(self, group=group, keep_all_rows=keep_all_rows).proj(*attributes, **named_attributes)
 
     aggregate = aggr  # alias for aggr
@@ -1170,12 +1182,14 @@ class U:
         Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
         has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
 
+        Note: exclude_nonmatching is always True for dj.U (cannot keep all rows from infinite set).
+
         :param group:  The query expression to be aggregated.
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
         """
-        if named_attributes.get("keep_all_rows", False):
-            raise DataJointError("Cannot set keep_all_rows=True when aggregating on a universal set.")
+        if named_attributes.pop("exclude_nonmatching", True) is False:
+            raise DataJointError("Cannot set exclude_nonmatching=False when aggregating on a universal set.")
 
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()
