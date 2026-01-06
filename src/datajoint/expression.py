@@ -18,7 +18,7 @@ import numpy as np
 import pandas
 
 from .errors import DataJointError
-from .fetch import Fetch1, _get
+from .codecs import decode_attribute
 from .preview import preview, repr_html
 from .settings import config
 
@@ -582,9 +582,71 @@ class QueryExpression:
             "See table.fetch.__doc__ for details."
         )
 
-    @property
-    def fetch1(self):
-        return Fetch1(self)
+    def fetch1(self, *attrs, squeeze=False):
+        """
+        Fetch exactly one row from the query result.
+
+        If no attributes are specified, returns the result as a dict.
+        If attributes are specified, returns the corresponding values as a tuple.
+
+        :param attrs: attribute names to fetch (if empty, fetch all as dict)
+        :param squeeze: if True, remove extra dimensions from arrays
+        :return: dict (no attrs) or tuple/value (with attrs)
+        :raises DataJointError: if not exactly one row in result
+
+        Examples::
+
+            d = table.fetch1()              # returns dict with all attributes
+            a, b = table.fetch1('a', 'b')   # returns tuple of attribute values
+            value = table.fetch1('a')       # returns single value
+        """
+        heading = self.heading
+
+        if not attrs:
+            # Fetch all attributes, return as dict
+            cursor = self.cursor(as_dict=True)
+            row = cursor.fetchone()
+            if not row or cursor.fetchone():
+                raise DataJointError("fetch1 requires exactly one tuple in the input set.")
+            return {name: decode_attribute(heading[name], row[name], squeeze=squeeze) for name in heading.names}
+        else:
+            # Handle "KEY" specially - it means primary key columns
+            def is_key(attr):
+                return attr == "KEY"
+
+            has_key = any(is_key(a) for a in attrs)
+
+            if has_key and len(attrs) == 1:
+                # Just fetching KEY - return the primary key dict
+                keys = self.keys()
+                if len(keys) != 1:
+                    raise DataJointError(f"fetch1 should only return one tuple. {len(keys)} tuples found")
+                return keys[0]
+
+            # Fetch specific attributes, return as tuple
+            # Replace KEY with primary key columns for projection
+            proj_attrs = []
+            for attr in attrs:
+                if is_key(attr):
+                    proj_attrs.extend(self.primary_key)
+                else:
+                    proj_attrs.append(attr)
+
+            dicts = self.proj(*proj_attrs).to_dicts(squeeze=squeeze)
+            if len(dicts) != 1:
+                raise DataJointError(f"fetch1 should only return one tuple. {len(dicts)} tuples found")
+            row = dicts[0]
+
+            # Build result values, handling KEY specially
+            values = []
+            for attr in attrs:
+                if is_key(attr):
+                    # Return dict of primary key columns
+                    values.append({k: row[k] for k in self.primary_key})
+                else:
+                    values.append(row[attr])
+
+            return values[0] if len(attrs) == 1 else tuple(values)
 
     def _apply_top(self, order_by=None, limit=None, offset=None):
         """Apply order_by, limit, offset if specified, return modified expression."""
@@ -592,7 +654,7 @@ class QueryExpression:
             return self.restrict(Top(limit, order_by, offset))
         return self
 
-    def to_dicts(self, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_dicts(self, order_by=None, limit=None, offset=None, squeeze=False):
         """
         Fetch all rows as a list of dictionaries.
 
@@ -600,18 +662,20 @@ class QueryExpression:
         :param limit: maximum number of rows to return
         :param offset: number of rows to skip
         :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data (attachments, filepaths)
         :return: list of dictionaries, one per row
+
+        For external storage types (attachments, filepaths), files are downloaded
+        to config["download_path"]. Use config.override() to change::
+
+            with dj.config.override(download_path="/data"):
+                data = table.to_dicts()
         """
         expr = self._apply_top(order_by, limit, offset)
         cursor = expr.cursor(as_dict=True)
         heading = expr.heading
-        return [
-            {name: _get(expr.connection, heading[name], row[name], squeeze, download_path) for name in heading.names}
-            for row in cursor
-        ]
+        return [{name: decode_attribute(heading[name], row[name], squeeze) for name in heading.names} for row in cursor]
 
-    def to_pandas(self, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_pandas(self, order_by=None, limit=None, offset=None, squeeze=False):
         """
         Fetch all rows as a pandas DataFrame with primary key as index.
 
@@ -619,16 +683,15 @@ class QueryExpression:
         :param limit: maximum number of rows to return
         :param offset: number of rows to skip
         :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data
         :return: pandas DataFrame with primary key columns as index
         """
-        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze, download_path=download_path)
+        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
         df = pandas.DataFrame(dicts)
         if len(df) > 0 and self.primary_key:
             df = df.set_index(self.primary_key)
         return df
 
-    def to_polars(self, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_polars(self, order_by=None, limit=None, offset=None, squeeze=False):
         """
         Fetch all rows as a polars DataFrame.
 
@@ -638,17 +701,16 @@ class QueryExpression:
         :param limit: maximum number of rows to return
         :param offset: number of rows to skip
         :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data
         :return: polars DataFrame
         """
         try:
             import polars
         except ImportError:
             raise ImportError("polars is required for to_polars(). " "Install with: pip install datajoint[polars]")
-        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze, download_path=download_path)
+        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
         return polars.DataFrame(dicts)
 
-    def to_arrow(self, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_arrow(self, order_by=None, limit=None, offset=None, squeeze=False):
         """
         Fetch all rows as a PyArrow Table.
 
@@ -658,19 +720,18 @@ class QueryExpression:
         :param limit: maximum number of rows to return
         :param offset: number of rows to skip
         :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data
         :return: pyarrow Table
         """
         try:
             import pyarrow
         except ImportError:
             raise ImportError("pyarrow is required for to_arrow(). " "Install with: pip install datajoint[arrow]")
-        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze, download_path=download_path)
+        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
         if not dicts:
             return pyarrow.table({})
         return pyarrow.Table.from_pylist(dicts)
 
-    def to_arrays(self, *attrs, include_key=False, order_by=None, limit=None, offset=None, squeeze=False, download_path="."):
+    def to_arrays(self, *attrs, include_key=False, order_by=None, limit=None, offset=None, squeeze=False):
         """
         Fetch data as numpy arrays.
 
@@ -683,7 +744,6 @@ class QueryExpression:
         :param limit: maximum number of rows to return
         :param offset: number of rows to skip
         :param squeeze: if True, remove extra dimensions from arrays
-        :param download_path: path for downloading external data
         :return: numpy recarray (no attrs) or tuple of arrays (with attrs).
             With include_key=True: (keys, *arrays) where keys is list[dict]
 
@@ -713,7 +773,7 @@ class QueryExpression:
 
             # Project to only needed columns
             projected = expr.proj(*fetch_attrs)
-            dicts = projected.to_dicts(squeeze=squeeze, download_path=download_path)
+            dicts = projected.to_dicts(squeeze=squeeze)
 
             # Extract keys if requested
             if include_key:
@@ -736,7 +796,7 @@ class QueryExpression:
             return result_arrays[0] if len(attrs) == 1 else tuple(result_arrays)
         else:
             # Fetch all columns as structured array
-            get = partial(_get, expr.connection, squeeze=squeeze, download_path=download_path)
+            get = partial(decode_attribute, squeeze=squeeze)
             cursor = expr.cursor(as_dict=False)
             rows = list(cursor.fetchall())
 
@@ -842,10 +902,7 @@ class QueryExpression:
         cursor = self.cursor(as_dict=True)
         heading = self.heading
         for row in cursor:
-            yield {
-                name: _get(self.connection, heading[name], row[name], squeeze=False, download_path=".")
-                for name in heading.names
-            }
+            yield {name: decode_attribute(heading[name], row[name], squeeze=False) for name in heading.names}
 
     def cursor(self, as_dict=False):
         """
