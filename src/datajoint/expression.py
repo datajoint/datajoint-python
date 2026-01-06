@@ -678,13 +678,26 @@ class QueryExpression:
         If attrs specified, returns a tuple of numpy arrays (one per attribute).
 
         :param attrs: attribute names to fetch (if empty, fetch all)
-        :param include_key: if True and attrs specified, include primary key columns
+        :param include_key: if True and attrs specified, prepend primary keys as list of dicts
         :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
         :param limit: maximum number of rows to return
         :param offset: number of rows to skip
         :param squeeze: if True, remove extra dimensions from arrays
         :param download_path: path for downloading external data
-        :return: numpy recarray (no attrs) or tuple of arrays (with attrs)
+        :return: numpy recarray (no attrs) or tuple of arrays (with attrs).
+            With include_key=True: (keys, *arrays) where keys is list[dict]
+
+        Examples::
+
+            # Fetch as structured array
+            data = table.to_arrays()
+
+            # Fetch specific columns as separate arrays
+            a, b = table.to_arrays('a', 'b')
+
+            # Fetch with primary keys for later restrictions
+            keys, a, b = table.to_arrays('a', 'b', include_key=True)
+            # keys = [{'id': 1}, {'id': 2}, ...]  # same format as table.keys()
         """
         from functools import partial
 
@@ -702,6 +715,10 @@ class QueryExpression:
             projected = expr.proj(*fetch_attrs)
             dicts = projected.to_dicts(squeeze=squeeze, download_path=download_path)
 
+            # Extract keys if requested
+            if include_key:
+                keys = [{k: d[k] for k in expr.primary_key} for d in dicts]
+
             # Extract arrays for requested attributes
             result_arrays = []
             for attr in attrs:
@@ -714,6 +731,8 @@ class QueryExpression:
                     arr = np.array(values, dtype=object)
                 result_arrays.append(arr)
 
+            if include_key:
+                return (keys, *result_arrays)
             return result_arrays[0] if len(attrs) == 1 else tuple(result_arrays)
         else:
             # Fetch all columns as structured array
