@@ -810,7 +810,7 @@ class Table(QueryExpression):
     def delete(
         self,
         transaction: bool = True,
-        safemode: bool | None = None,
+        prompt: bool | None = None,
         force_parts: bool = False,
         force_masters: bool = False,
     ) -> int:
@@ -821,8 +821,8 @@ class Table(QueryExpression):
             transaction: If `True`, use of the entire delete becomes an atomic transaction.
                 This is the default and recommended behavior. Set to `False` if this delete is
                 nested within another transaction.
-            safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
-                is `dj.config['safemode']`.
+            prompt: If `True`, show what will be deleted and ask for confirmation.
+                If `False`, delete without confirmation. Default is `dj.config['safemode']`.
             force_parts: Delete from parts even when not deleting from their masters.
             force_masters: If `True`, include part/master pairs in the cascade.
                 Default is `False`.
@@ -916,19 +916,19 @@ class Table(QueryExpression):
                 raise DataJointError("Exceeded maximum number of delete attempts.")
             return delete_count
 
-        safemode = config["safemode"] if safemode is None else safemode
+        prompt = config["safemode"] if prompt is None else prompt
 
         # Start transaction
         if transaction:
             if not self.connection.in_transaction:
                 self.connection.start_transaction()
             else:
-                if not safemode:
+                if not prompt:
                     transaction = False
                 else:
                     raise DataJointError(
                         "Delete cannot use a transaction within an ongoing transaction. "
-                        "Set transaction=False or safemode=False)."
+                        "Set transaction=False or prompt=False."
                     )
 
         # Cascading delete
@@ -954,22 +954,22 @@ class Table(QueryExpression):
 
         # Confirm and commit
         if delete_count == 0:
-            if safemode:
+            if prompt:
                 logger.warning("Nothing to delete.")
             if transaction:
                 self.connection.cancel_transaction()
         elif not transaction:
             logger.info("Delete completed")
         else:
-            if not safemode or user_choice("Commit deletes?", default="no") == "yes":
+            if not prompt or user_choice("Commit deletes?", default="no") == "yes":
                 if transaction:
                     self.connection.commit_transaction()
-                if safemode:
+                if prompt:
                     logger.info("Delete committed.")
             else:
                 if transaction:
                     self.connection.cancel_transaction()
-                if safemode:
+                if prompt:
                     logger.warning("Delete cancelled")
         return delete_count
 
@@ -989,15 +989,20 @@ class Table(QueryExpression):
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
-    def drop(self):
+    def drop(self, prompt: bool | None = None):
         """
         Drop the table and all tables that reference it, recursively.
-        User is prompted for confirmation if config['safemode'] is set to True.
+
+        Args:
+            prompt: If `True`, show what will be dropped and ask for confirmation.
+                If `False`, drop without confirmation. Default is `dj.config['safemode']`.
         """
         if self.restriction:
             raise DataJointError(
                 "A table with an applied restriction cannot be dropped. Call drop() on the unrestricted Table."
             )
+        prompt = config["safemode"] if prompt is None else prompt
+
         self.connection.dependencies.load()
         do_drop = True
         tables = [table for table in self.connection.dependencies.descendants(self.full_table_name) if not table.isdigit()]
@@ -1012,7 +1017,7 @@ class Table(QueryExpression):
                     )
                 )
 
-        if config["safemode"]:
+        if prompt:
             for table in tables:
                 logger.info(table + " (%d tuples)" % len(FreeTable(self.connection, table)))
             do_drop = user_choice("Proceed?", default="no") == "yes"
