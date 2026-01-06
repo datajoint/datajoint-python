@@ -119,6 +119,7 @@ class Codec(ABC):
         _codec_registry[cls.name] = cls()
         logger.debug(f"Registered codec <{cls.name}> from {cls.__module__}.{cls.__name__}")
 
+    @abstractmethod
     def get_dtype(self, is_external: bool) -> str:
         """
         Return the storage dtype for this codec.
@@ -136,12 +137,10 @@ class Codec(ABC):
 
         Raises
         ------
-        NotImplementedError
-            If not overridden by subclass.
         DataJointError
             If external storage not supported but requested.
         """
-        raise NotImplementedError(f"Codec <{self.name}> must implement get_dtype()")
+        ...
 
     @abstractmethod
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> Any:
