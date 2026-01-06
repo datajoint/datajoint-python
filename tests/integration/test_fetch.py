@@ -344,3 +344,56 @@ def test_lazy_iteration(lang, languages):
     first = next(iter_obj)
     assert isinstance(first, dict)
     assert "name" in first and "language" in first
+
+
+def test_to_arrays_include_key(lang, languages):
+    """Test to_arrays with include_key=True returns keys as list of dicts"""
+    # Fetch with include_key=True
+    keys, names, langs = lang.to_arrays("name", "language", include_key=True, order_by="KEY")
+
+    # keys should be a list of dicts with primary key columns
+    assert isinstance(keys, list)
+    assert all(isinstance(k, dict) for k in keys)
+    assert all(set(k.keys()) == {"name", "language"} for k in keys)
+
+    # names and langs should be numpy arrays
+    assert isinstance(names, np.ndarray)
+    assert isinstance(langs, np.ndarray)
+
+    # Length should match
+    assert len(keys) == len(names) == len(langs) == len(languages)
+
+    # Keys should match the data
+    for key, name, language in zip(keys, names, langs):
+        assert key["name"] == name
+        assert key["language"] == language
+
+    # Keys should be usable for restrictions
+    first_key = keys[0]
+    restricted = lang & first_key
+    assert len(restricted) == 1
+    assert restricted.fetch1("name") == first_key["name"]
+
+
+def test_to_arrays_include_key_single_attr(subject):
+    """Test to_arrays include_key with single attribute"""
+    keys, species = subject.to_arrays("species", include_key=True)
+
+    assert isinstance(keys, list)
+    assert isinstance(species, np.ndarray)
+    assert len(keys) == len(species)
+
+    # Verify keys have only primary key columns
+    assert all("subject_id" in k for k in keys)
+
+
+def test_to_arrays_without_include_key(lang):
+    """Test that to_arrays without include_key doesn't return keys"""
+    result = lang.to_arrays("name", "language")
+
+    # Should return tuple of arrays, not (keys, ...)
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    names, langs = result
+    assert isinstance(names, np.ndarray)
+    assert isinstance(langs, np.ndarray)

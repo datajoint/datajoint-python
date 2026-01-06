@@ -908,12 +908,14 @@ class QueryExpression:
             If no attrs: structured array (recarray) of all columns.
             If single attr: 1D array of values.
             If multiple attrs: tuple of arrays.
+            With include_key=True: (keys, *arrays) where keys is list[dict].
 
         Examples
         --------
         >>> table.to_arrays()              # Structured array of all columns
         >>> table.to_arrays('x', 'y')      # Tuple of two arrays
         >>> x = table.to_arrays('x')       # Single array
+        >>> keys, a, b = table.to_arrays('a', 'b', include_key=True)  # With keys
         """
         from functools import partial
 
@@ -931,6 +933,10 @@ class QueryExpression:
             projected = expr.proj(*fetch_attrs)
             dicts = projected.to_dicts(squeeze=squeeze, download_path=download_path)
 
+            # Extract keys if requested
+            if include_key:
+                keys = [{k: d[k] for k in expr.primary_key} for d in dicts]
+
             # Extract arrays for requested attributes
             result_arrays = []
             for attr in attrs:
@@ -943,6 +949,8 @@ class QueryExpression:
                     arr = np.array(values, dtype=object)
                 result_arrays.append(arr)
 
+            if include_key:
+                return (keys, *result_arrays)
             return result_arrays[0] if len(attrs) == 1 else tuple(result_arrays)
         else:
             # Fetch all columns as structured array
