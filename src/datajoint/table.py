@@ -864,10 +864,12 @@ class Table(QueryExpression):
         rows = list(self.__make_row_to_insert(row, field_list, ignore_extra_fields) for row in rows)
         if rows:
             try:
-                query = "{command} INTO {destination}(`{fields}`) VALUES {placeholders}{duplicate}".format(
+                # Handle empty field_list (all-defaults insert)
+                fields_clause = f"(`{'`,`'.join(field_list)}`)" if field_list else "()"
+                query = "{command} INTO {destination}{fields} VALUES {placeholders}{duplicate}".format(
                     command="REPLACE" if replace else "INSERT",
                     destination=self.from_clause(),
-                    fields="`,`".join(field_list),
+                    fields=fields_clause,
                     placeholders=",".join("(" + ",".join(row["placeholders"]) + ")" for row in rows),
                     duplicate=(
                         " ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`".format(pk=self.primary_key[0]) if skip_duplicates else ""
@@ -1457,8 +1459,19 @@ class Table(QueryExpression):
         if ignore_extra_fields:
             attributes = [a for a in attributes if a is not None]
 
-        assert len(attributes), "Empty tuple"
-        row_to_insert = dict(zip(("names", "placeholders", "values"), zip(*attributes)))
+        if not attributes:
+            # Check if empty insert is allowed (all attributes have defaults)
+            required_attrs = [
+                attr.name
+                for attr in self.heading.attributes.values()
+                if not (attr.autoincrement or attr.nullable or attr.default is not None)
+            ]
+            if required_attrs:
+                raise DataJointError(f"Cannot insert empty row. The following attributes require values: {required_attrs}")
+            # All attributes have defaults - allow empty insert
+            row_to_insert = {"names": (), "placeholders": (), "values": ()}
+        else:
+            row_to_insert = dict(zip(("names", "placeholders", "values"), zip(*attributes)))
         if not field_list:
             # first row sets the composition of the field list
             field_list.extend(row_to_insert["names"])
