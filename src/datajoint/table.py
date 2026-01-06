@@ -533,7 +533,7 @@ class Table(QueryExpression):
                         continue
 
                 # Numeric NaN check
-                if attr.numeric and value != "" and not isinstance(value, bool):
+                if attr.numeric and value != "" and not isinstance(value, (bool, np.bool_)):
                     try:
                         if np.isnan(float(value)):
                             # NaN is allowed - will be converted to NULL
@@ -1169,7 +1169,7 @@ class Table(QueryExpression):
                 value = json.dumps(value)
             # Numeric - convert to string
             elif attr.numeric:
-                value = str(int(value) if isinstance(value, bool) else value)
+                value = str(int(value) if isinstance(value, (bool, np.bool_)) else value)
             # Blob - pass through as bytes (use <blob> for automatic serialization)
 
         return name, placeholder, value
