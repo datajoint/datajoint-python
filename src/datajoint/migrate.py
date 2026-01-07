@@ -2,8 +2,8 @@
 Migration utilities for DataJoint schema updates.
 
 This module provides tools for migrating existing schemas to use the new
-AttributeType system, particularly for upgrading blob columns to use
-explicit `<djblob>` type declarations.
+Codec system, particularly for upgrading blob columns to use
+explicit `<blob>` type declarations.
 """
 
 from __future__ import annotations
@@ -25,11 +25,11 @@ BLOB_TYPES = re.compile(r"^(tiny|small|medium|long|)blob$", re.I)
 
 def analyze_blob_columns(schema: Schema) -> list[dict]:
     """
-    Analyze a schema to find blob columns that could be migrated to <djblob>.
+    Analyze a schema to find blob columns that could be migrated to <blob>.
 
     This function identifies blob columns that:
     1. Have a MySQL blob type (tinyblob, blob, mediumblob, longblob)
-    2. Do NOT already have an adapter/type specified in their comment
+    2. Do NOT already have a codec/type specified in their comment
 
     All blob size variants are included in the analysis.
 
@@ -80,8 +80,8 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
         columns = connection.query(columns_query, args=(schema.database, table_name)).fetchall()
 
         for column_name, column_type, comment in columns:
-            # Check if comment already has an adapter type (starts with :type:)
-            has_adapter = comment and comment.startswith(":")
+            # Check if comment already has a codec type (starts with :type:)
+            has_codec = comment and comment.startswith(":")
 
             results.append(
                 {
@@ -89,7 +89,7 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
                     "column_name": column_name,
                     "column_type": column_type,
                     "current_comment": comment or "",
-                    "needs_migration": not has_adapter,
+                    "needs_migration": not has_codec,
                 }
             )
 
@@ -98,19 +98,19 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
 
 def generate_migration_sql(
     schema: Schema,
-    target_type: str = "djblob",
+    target_type: str = "blob",
     dry_run: bool = True,
 ) -> list[str]:
     """
-    Generate SQL statements to migrate blob columns to use <djblob>.
+    Generate SQL statements to migrate blob columns to use <blob>.
 
     This generates ALTER TABLE statements that update column comments to
-    include the `:<djblob>:` prefix, marking them as using explicit
+    include the `:<blob>:` prefix, marking them as using explicit
     DataJoint blob serialization.
 
     Args:
         schema: The DataJoint schema to migrate.
-        target_type: The type name to migrate to (default: "djblob").
+        target_type: The type name to migrate to (default: "blob").
         dry_run: If True, only return SQL without executing.
 
     Returns:
@@ -156,18 +156,18 @@ def generate_migration_sql(
 
 def migrate_blob_columns(
     schema: Schema,
-    target_type: str = "djblob",
+    target_type: str = "blob",
     dry_run: bool = True,
 ) -> dict:
     """
-    Migrate blob columns in a schema to use explicit <djblob> type.
+    Migrate blob columns in a schema to use explicit <blob> type.
 
     This updates column comments in the database to include the type
     declaration. The data format remains unchanged.
 
     Args:
         schema: The DataJoint schema to migrate.
-        target_type: The type name to migrate to (default: "djblob").
+        target_type: The type name to migrate to (default: "blob").
         dry_run: If True, only preview changes without applying.
 
     Returns:
@@ -188,7 +188,7 @@ def migrate_blob_columns(
 
     Warning:
         After migration, table definitions should be updated to use
-        `<djblob>` instead of `longblob` for consistency. The migration
+        `<blob>` instead of `longblob` for consistency. The migration
         only updates database metadata; source code changes are manual.
     """
     columns = analyze_blob_columns(schema)

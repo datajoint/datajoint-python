@@ -6,10 +6,10 @@ from external storage. Content becomes orphaned when all database rows
 referencing it are deleted.
 
 Supports two storage patterns:
-- Content-addressed storage: <content>, <xblob>, <xattach>
+- Content-addressed storage: <hash@>, <blob@>, <attach@>
   Stored at: _content/{hash[:2]}/{hash[2:4]}/{hash}
 
-- Path-addressed storage: <object>
+- Path-addressed storage: <object@>
   Stored at: {schema}/{table}/objects/{pk}/{field}_{token}/
 
 Usage:
@@ -41,10 +41,10 @@ def _uses_content_storage(attr) -> bool:
     """
     Check if an attribute uses content-addressed storage.
 
-    This includes types that compose with <content>:
-    - <content> directly
-    - <xblob> (composes with <content>)
-    - <xattach> (composes with <content>)
+    This includes types that chain to <hash> for external storage:
+    - <hash@store> directly
+    - <blob@store> (chains to <hash>)
+    - <attach@store> (chains to <hash>)
 
     Args:
         attr: Attribute from table heading
@@ -52,12 +52,22 @@ def _uses_content_storage(attr) -> bool:
     Returns:
         True if the attribute stores content hashes
     """
-    if not attr.adapter:
+    if not attr.codec:
         return False
 
-    # Check if this type or its composition chain uses content storage
-    type_name = getattr(attr.adapter, "type_name", "")
-    return type_name in ("content", "xblob", "xattach")
+    # Check if this type uses content storage
+    codec_name = getattr(attr.codec, "name", "")
+    store = getattr(attr, "store", None)
+
+    # <hash> always uses content storage (external only)
+    if codec_name == "hash":
+        return True
+
+    # <blob@> and <attach@> use content storage when external (has store)
+    if codec_name in ("blob", "attach") and store is not None:
+        return True
+
+    return False
 
 
 def _uses_object_storage(attr) -> bool:
@@ -70,11 +80,11 @@ def _uses_object_storage(attr) -> bool:
     Returns:
         True if the attribute stores object paths
     """
-    if not attr.adapter:
+    if not attr.codec:
         return False
 
-    type_name = getattr(attr.adapter, "type_name", "")
-    return type_name == "object"
+    codec_name = getattr(attr.codec, "name", "")
+    return codec_name == "object"
 
 
 def _extract_content_refs(value: Any) -> list[tuple[str, str | None]]:
@@ -144,7 +154,7 @@ def scan_references(
     Scan schemas for content references.
 
     Examines all tables in the given schemas and extracts content hashes
-    from columns that use content-addressed storage (<content>, <xblob>, <xattach>).
+    from columns that use content-addressed storage (<hash@>, <blob@>, <attach@>).
 
     Args:
         *schemas: Schema instances to scan
@@ -384,7 +394,7 @@ def scan(
     """
     Scan for orphaned content and objects without deleting.
 
-    Scans both content-addressed storage (for <content>, <xblob>, <xattach>)
+    Scans both content-addressed storage (for <hash@>, <blob@>, <attach@>)
     and path-addressed storage (for <object>).
 
     Args:
@@ -542,7 +552,7 @@ def format_stats(stats: dict[str, Any]) -> str:
     # Show content-addressed storage stats if present
     if "content_referenced" in stats:
         lines.append("")
-        lines.append("Content-Addressed Storage (<content>, <xblob>, <xattach>):")
+        lines.append("Content-Addressed Storage (<hash@>, <blob@>, <attach@>):")
         lines.append(f"  Referenced: {stats['content_referenced']}")
         lines.append(f"  Stored:     {stats['content_stored']}")
         lines.append(f"  Orphaned:   {stats['content_orphaned']}")

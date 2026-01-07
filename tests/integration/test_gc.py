@@ -14,41 +14,45 @@ class TestUsesContentStorage:
     """Tests for _uses_content_storage helper function."""
 
     def test_returns_false_for_no_adapter(self):
-        """Test that False is returned when attribute has no adapter."""
+        """Test that False is returned when attribute has no codec."""
         attr = MagicMock()
-        attr.adapter = None
+        attr.codec = None
 
         assert gc._uses_content_storage(attr) is False
 
-    def test_returns_true_for_content_type(self):
-        """Test that True is returned for <content> type."""
+    def test_returns_true_for_hash_type(self):
+        """Test that True is returned for <hash@> type."""
         attr = MagicMock()
-        attr.adapter = MagicMock()
-        attr.adapter.type_name = "content"
+        attr.codec = MagicMock()
+        attr.codec.name = "hash"
+        attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
 
-    def test_returns_true_for_xblob_type(self):
-        """Test that True is returned for <xblob> type."""
+    def test_returns_true_for_blob_external(self):
+        """Test that True is returned for <blob@> type (external)."""
         attr = MagicMock()
-        attr.adapter = MagicMock()
-        attr.adapter.type_name = "xblob"
+        attr.codec = MagicMock()
+        attr.codec.name = "blob"
+        attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
 
-    def test_returns_true_for_xattach_type(self):
-        """Test that True is returned for <xattach> type."""
+    def test_returns_true_for_attach_external(self):
+        """Test that True is returned for <attach@> type (external)."""
         attr = MagicMock()
-        attr.adapter = MagicMock()
-        attr.adapter.type_name = "xattach"
+        attr.codec = MagicMock()
+        attr.codec.name = "attach"
+        attr.store = "mystore"
 
         assert gc._uses_content_storage(attr) is True
 
-    def test_returns_false_for_other_types(self):
-        """Test that False is returned for non-content types."""
+    def test_returns_false_for_blob_internal(self):
+        """Test that False is returned for <blob> internal storage."""
         attr = MagicMock()
-        attr.adapter = MagicMock()
-        attr.adapter.type_name = "djblob"
+        attr.codec = MagicMock()
+        attr.codec.name = "blob"
+        attr.store = None
 
         assert gc._uses_content_storage(attr) is False
 
@@ -89,25 +93,25 @@ class TestUsesObjectStorage:
     """Tests for _uses_object_storage helper function."""
 
     def test_returns_false_for_no_adapter(self):
-        """Test that False is returned when attribute has no adapter."""
+        """Test that False is returned when attribute has no codec."""
         attr = MagicMock()
-        attr.adapter = None
+        attr.codec = None
 
         assert gc._uses_object_storage(attr) is False
 
     def test_returns_true_for_object_type(self):
         """Test that True is returned for <object> type."""
         attr = MagicMock()
-        attr.adapter = MagicMock()
-        attr.adapter.type_name = "object"
+        attr.codec = MagicMock()
+        attr.codec.name = "object"
 
         assert gc._uses_object_storage(attr) is True
 
     def test_returns_false_for_other_types(self):
         """Test that False is returned for non-object types."""
         attr = MagicMock()
-        attr.adapter = MagicMock()
-        attr.adapter.type_name = "xblob"
+        attr.codec = MagicMock()
+        attr.codec.name = "blob"
 
         assert gc._uses_object_storage(attr) is False
 

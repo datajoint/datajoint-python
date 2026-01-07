@@ -2,8 +2,6 @@
 Exception classes for the DataJoint library
 """
 
-import os
-
 
 # --- Top Level ---
 class DataJointError(Exception):
@@ -87,43 +85,3 @@ class BucketInaccessible(DataJointError):
     """
     Error raised when a S3 bucket is inaccessible
     """
-
-
-# environment variables to control availability of experimental features
-
-ADAPTED_TYPE_SWITCH = "DJ_SUPPORT_ADAPTED_TYPES"
-FILEPATH_FEATURE_SWITCH = "DJ_SUPPORT_FILEPATH_MANAGEMENT"
-
-
-def _switch_adapted_types(on):
-    """
-    Enable (on=True) or disable (on=False) support for AttributeAdapter
-    """
-    if on:
-        os.environ[ADAPTED_TYPE_SWITCH] = "TRUE"
-    else:
-        del os.environ[ADAPTED_TYPE_SWITCH]
-
-
-def _support_adapted_types():
-    """
-    check if support for AttributeAdapter is enabled
-    """
-    return os.getenv(ADAPTED_TYPE_SWITCH, "FALSE").upper() == "TRUE"
-
-
-def _switch_filepath_types(on):
-    """
-    Enable (on=True) or disable (on=False) support for AttributeAdapter
-    """
-    if on:
-        os.environ[FILEPATH_FEATURE_SWITCH] = "TRUE"
-    else:
-        del os.environ[FILEPATH_FEATURE_SWITCH]
-
-
-def _support_filepath_types():
-    """
-    check if support for AttributeAdapter is enabled
-    """
-    return os.getenv(FILEPATH_FEATURE_SWITCH, "FALSE").upper() == "TRUE"

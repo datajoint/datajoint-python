@@ -160,7 +160,9 @@ class TestSettingsAccess:
         # Host can be localhost or db (docker), just verify it's a string
         assert isinstance(dj.config.database.host, str)
         assert len(dj.config.database.host) > 0
-        assert dj.config.database.port == 3306
+        # Port may be 3306 (default) or a random port (testcontainers)
+        assert isinstance(dj.config.database.port, int)
+        assert 1 <= dj.config.database.port <= 65535
         # safemode may be modified by conftest fixtures
         assert isinstance(dj.config.safemode, bool)
 
@@ -169,7 +171,9 @@ class TestSettingsAccess:
         # Host can be localhost or db (docker), just verify it's a string
         assert isinstance(dj.config["database.host"], str)
         assert len(dj.config["database.host"]) > 0
-        assert dj.config["database.port"] == 3306
+        # Port may be 3306 (default) or a random port (testcontainers)
+        assert isinstance(dj.config["database.port"], int)
+        assert 1 <= dj.config["database.port"] <= 65535
         # safemode may be modified by conftest fixtures
         assert isinstance(dj.config["safemode"], bool)
 

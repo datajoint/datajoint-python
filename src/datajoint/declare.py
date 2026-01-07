@@ -9,7 +9,7 @@ from hashlib import sha1
 
 import pyparsing as pp
 
-from .attribute_type import get_adapter
+from .codecs import lookup_codec
 from .condition import translate_attribute
 from .errors import DataJointError
 from .settings import config
@@ -34,16 +34,20 @@ CORE_TYPES = {
     "uuid": (r"uuid$", "binary(16)"),
     # JSON
     "json": (r"json$", None),  # json passes through as-is
-    # Binary (blob maps to longblob)
-    "blob": (r"blob$", "longblob"),
+    # Binary (bytes maps to longblob in MySQL, bytea in PostgreSQL)
+    "bytes": (r"bytes$", "longblob"),
     # Temporal
     "date": (r"date$", None),
     "datetime": (r"datetime$", None),
     # String types (with parameters)
     "char": (r"char\s*\(\d+\)$", None),
     "varchar": (r"varchar\s*\(\d+\)$", None),
+    # Unlimited text
+    "text": (r"text$", None),
     # Enumeration
     "enum": (r"enum\s*\(.+\)$", None),
+    # Fixed-point decimal
+    "decimal": (r"decimal\s*\(\d+\s*,\s*\d+\)$", None),
 }
 
 # Compile core type patterns
@@ -66,14 +70,14 @@ TYPE_PATTERN = {
         **{name.upper(): pattern for name, (pattern, _) in CORE_TYPES.items()},
         # Native SQL types (passthrough with warning for non-standard use)
         INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
-        DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
+        NUMERIC=r"numeric(\s*\(.+\))?(\s+unsigned)?$",  # numeric is SQL alias, use decimal instead
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
         STRING=r"(var)?char\s*\(.+\)$",  # Catches char/varchar not matched by core types
         TEMPORAL=r"(time|timestamp|year)(\s*\(.+\))?$",  # time, timestamp, year (not date/datetime)
         NATIVE_BLOB=r"(tiny|small|medium|long)blob$",  # Specific blob variants
-        TEXT=r"(tiny|small|medium|long)?text$",  # Text types
-        # AttributeTypes use angle brackets
-        ADAPTED=r"<.+>$",
+        NATIVE_TEXT=r"(tiny|small|medium|long)text$",  # Text variants (use plain 'text' instead)
+        # Codecs use angle brackets
+        CODEC=r"<.+>$",
     ).items()
 }
 
@@ -81,7 +85,7 @@ TYPE_PATTERN = {
 CORE_TYPE_NAMES = {name.upper() for name in CORE_TYPES}
 
 # Special types that need comment storage (core types + adapted)
-SPECIAL_TYPES = CORE_TYPE_NAMES | {"ADAPTED"}
+SPECIAL_TYPES = CORE_TYPE_NAMES | {"CODEC"}
 
 # Native SQL types that pass through (with optional warning)
 NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
@@ -98,23 +102,6 @@ def match_type(attribute_type):
 
 
 logger = logging.getLogger(__name__.split(".")[0])
-
-
-def build_foreign_key_parser_old():
-    # old-style foreign key parser. Superseded by expression-based syntax. See issue #436
-    # This will be deprecated in a future release.
-    left = pp.Literal("(").suppress()
-    right = pp.Literal(")").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]"))
-    new_attrs = pp.Optional(left + pp.DelimitedList(attribute_name) + right).set_results_name("new_attrs")
-    arrow = pp.Literal("->").suppress()
-    lbracket = pp.Literal("[").suppress()
-    rbracket = pp.Literal("]").suppress()
-    option = pp.Word(pp.srange("[a-zA-Z]"))
-    options = pp.Optional(lbracket + pp.DelimitedList(option) + rbracket).set_results_name("options")
-    ref_table = pp.Word(pp.alphas, pp.alphanums + "._").set_results_name("ref_table")
-    ref_attrs = pp.Optional(left + pp.DelimitedList(attribute_name) + right).set_results_name("ref_attrs")
-    return new_attrs + arrow + options + ref_table + ref_attrs
 
 
 def build_foreign_key_parser():
@@ -140,7 +127,6 @@ def build_attribute_parser():
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
 
-foreign_key_parser_old = build_foreign_key_parser_old()
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
 
@@ -454,20 +440,30 @@ def substitute_special_type(match, category, foreign_key_sql, context):
     Substitute special types with their native SQL equivalents.
 
     Special types are:
-    - Core DataJoint types (float32 → float, uuid → binary(16), blob → longblob, etc.)
-    - ADAPTED types (AttributeTypes in angle brackets)
+    - Core DataJoint types (float32 → float, uuid → binary(16), bytes → longblob, etc.)
+    - CODEC types (Codecs in angle brackets)
 
     :param match: dict containing with keys "type" and "comment" -- will be modified in place
     :param category: attribute type category from TYPE_PATTERN
     :param foreign_key_sql: list of foreign key declarations to add to
-    :param context: context for looking up user-defined attribute_type adapters
+    :param context: context for looking up user-defined codecs (unused, kept for compatibility)
     """
-    if category == "ADAPTED":
-        # AttributeType - resolve to underlying dtype
-        attr_type, store_name = get_adapter(context, match["type"])
+    if category == "CODEC":
+        # Codec - resolve to underlying dtype
+        codec, store_name = lookup_codec(match["type"])
         if store_name is not None:
             match["store"] = store_name
-        match["type"] = attr_type.dtype
+        # Determine if external storage is used (store_name is present, even if empty string for default)
+        is_external = store_name is not None
+        inner_dtype = codec.get_dtype(is_external=is_external)
+
+        # If inner dtype is a codec without store, propagate the store from outer type
+        # e.g., <attach@mystore> returns <hash>, we need to resolve as <hash@mystore>
+        if inner_dtype.startswith("<") and "@" not in inner_dtype and match.get("store") is not None:
+            # Append store to the inner dtype
+            inner_dtype = inner_dtype[:-1] + "@" + match["store"] + ">"
+
+        match["type"] = inner_dtype
         # Recursively resolve if dtype is also a special type
         category = match_type(match["type"])
         if category in SPECIAL_TYPES:
@@ -526,7 +522,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     category = match_type(match["type"])
 
     if category in SPECIAL_TYPES:
-        # Core types and AttributeTypes are recorded in comment for reconstruction
+        # Core types and Codecs are recorded in comment for reconstruction
         match["comment"] = ":{type}:{comment}".format(**match)
         substitute_special_type(match, category, foreign_key_sql, context)
     elif category in NATIVE_TYPES:

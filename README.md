@@ -146,30 +146,57 @@ DataJoint (<https://datajoint.com>).
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) for MySQL and MinIO services
+- [Docker](https://docs.docker.com/get-docker/) (Docker daemon must be running)
 - Python 3.10+
+
+### Quick Start
+
+```bash
+# Clone and install
+git clone https://github.com/datajoint/datajoint-python.git
+cd datajoint-python
+pip install -e ".[test]"
+
+# Run all tests (containers start automatically via testcontainers)
+pytest tests/
+
+# Install and run pre-commit hooks
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 
 ### Running Tests
 
-Tests are organized into `unit/` (no external services) and `integration/` (requires MySQL + MinIO):
+Tests use [testcontainers](https://testcontainers.com/) to automatically manage MySQL and MinIO containers.
+**No manual `docker-compose up` required** - containers start when tests run and stop afterward.
 
 ```bash
-# Install dependencies
-pip install -e ".[test]"
-
-# Run unit tests only (fast, no Docker needed)
-pytest tests/unit/
-
-# Start MySQL and MinIO for integration tests
-docker compose up -d db minio
-
-# Run all tests
+# Run all tests (recommended)
 pytest tests/
+
+# Run with coverage report
+pytest --cov-report term-missing --cov=datajoint tests/
 
 # Run specific test file
 pytest tests/integration/test_blob.py -v
 
-# Stop services when done
+# Run only unit tests (no containers needed)
+pytest tests/unit/
+```
+
+### Alternative: External Containers
+
+For development/debugging, you may prefer persistent containers that survive test runs:
+
+```bash
+# Start containers manually
+docker compose up -d db minio
+
+# Run tests using external containers
+DJ_USE_EXTERNAL_CONTAINERS=1 pytest tests/
+
+# Stop containers when done
 docker compose down
 ```
 
@@ -183,24 +210,46 @@ docker compose --profile test up djtest --build
 
 ### Alternative: Using pixi
 
-[pixi](https://pixi.sh) users can run tests with automatic service management:
+[pixi](https://pixi.sh) users can run tests with:
 
 ```bash
 pixi install        # First time setup
-pixi run test       # Starts services and runs tests
-pixi run services-down  # Stop services
+pixi run test       # Runs tests (testcontainers manages containers)
 ```
 
 ### Pre-commit Hooks
 
+Pre-commit hooks run automatically on `git commit` to check code quality.
+**All hooks must pass before committing.**
+
 ```bash
-pre-commit install          # Install hooks (first time)
-pre-commit run --all-files  # Run all checks
+# Install hooks (first time only)
+pip install pre-commit
+pre-commit install
+
+# Run all checks manually
+pre-commit run --all-files
+
+# Run specific hook
+pre-commit run ruff --all-files
+pre-commit run codespell --all-files
 ```
+
+Hooks include:
+- **ruff**: Python linting and formatting
+- **codespell**: Spell checking
+- **YAML/JSON/TOML validation**
+- **Large file detection**
+
+### Before Submitting a PR
+
+1. **Run all tests**: `pytest tests/`
+2. **Run pre-commit**: `pre-commit run --all-files`
+3. **Check coverage**: `pytest --cov-report term-missing --cov=datajoint tests/`
 
 ### Environment Variables
 
-Tests use these defaults (configured in `pyproject.toml`):
+For external container mode (`DJ_USE_EXTERNAL_CONTAINERS=1`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|

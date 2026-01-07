@@ -1,0 +1,368 @@
+"""
+Tests for codec chaining (composition).
+
+This tests the <blob@> → <hash> → json composition pattern
+and similar codec chains.
+"""
+
+from datajoint.codecs import (
+    Codec,
+    _codec_registry,
+    resolve_dtype,
+)
+
+
+class TestCodecChainResolution:
+    """Tests for resolving codec chains."""
+
+    def setup_method(self):
+        """Clear test codecs from registry before each test."""
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def teardown_method(self):
+        """Clean up test codecs after each test."""
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def test_single_codec_chain(self):
+        """Test resolving a single-codec chain."""
+
+        class TestSingle(Codec):
+            name = "test_single"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "varchar(100)"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return str(value)
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        final_dtype, chain, store = resolve_dtype("<test_single>")
+
+        assert final_dtype == "varchar(100)"
+        assert len(chain) == 1
+        assert chain[0].name == "test_single"
+        assert store is None
+
+    def test_two_codec_chain(self):
+        """Test resolving a two-codec chain."""
+
+        class TestInner(Codec):
+            name = "test_inner"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        class TestOuter(Codec):
+            name = "test_outer"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        final_dtype, chain, store = resolve_dtype("<test_outer>")
+
+        assert final_dtype == "bytes"
+        assert len(chain) == 2
+        assert chain[0].name == "test_outer"
+        assert chain[1].name == "test_inner"
+
+    def test_three_codec_chain(self):
+        """Test resolving a three-codec chain."""
+
+        class TestBase(Codec):
+            name = "test_base"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "json"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        class TestMiddle(Codec):
+            name = "test_middle"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_base>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        class TestTop(Codec):
+            name = "test_top"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_middle>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        final_dtype, chain, store = resolve_dtype("<test_top>")
+
+        assert final_dtype == "json"
+        assert len(chain) == 3
+        assert chain[0].name == "test_top"
+        assert chain[1].name == "test_middle"
+        assert chain[2].name == "test_base"
+
+
+class TestCodecChainEncodeDecode:
+    """Tests for encode/decode through codec chains."""
+
+    def setup_method(self):
+        """Clear test codecs from registry before each test."""
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def teardown_method(self):
+        """Clean up test codecs after each test."""
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def test_encode_order(self):
+        """Test that encode is applied outer → inner."""
+        encode_order = []
+
+        class TestInnerEnc(Codec):
+            name = "test_inner_enc"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
+
+            def encode(self, value, *, key=None, store_name=None):
+                encode_order.append("inner")
+                return value + b"_inner"
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        class TestOuterEnc(Codec):
+            name = "test_outer_enc"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner_enc>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                encode_order.append("outer")
+                return value + b"_outer"
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        _, chain, _ = resolve_dtype("<test_outer_enc>")
+
+        # Apply encode in order: outer first, then inner
+        value = b"start"
+        for codec in chain:
+            value = codec.encode(value)
+
+        assert encode_order == ["outer", "inner"]
+        assert value == b"start_outer_inner"
+
+    def test_decode_order(self):
+        """Test that decode is applied inner → outer (reverse of encode)."""
+        decode_order = []
+
+        class TestInnerDec(Codec):
+            name = "test_inner_dec"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                decode_order.append("inner")
+                return stored.replace(b"_inner", b"")
+
+        class TestOuterDec(Codec):
+            name = "test_outer_dec"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner_dec>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                decode_order.append("outer")
+                return stored.replace(b"_outer", b"")
+
+        _, chain, _ = resolve_dtype("<test_outer_dec>")
+
+        # Apply decode in reverse order: inner first, then outer
+        value = b"start_outer_inner"
+        for codec in reversed(chain):
+            value = codec.decode(value)
+
+        assert decode_order == ["inner", "outer"]
+        assert value == b"start"
+
+    def test_roundtrip(self):
+        """Test encode/decode roundtrip through a codec chain."""
+
+        class TestInnerRt(Codec):
+            name = "test_inner_rt"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
+
+            def encode(self, value, *, key=None, store_name=None):
+                # Compress (just add prefix for testing)
+                return b"COMPRESSED:" + value
+
+            def decode(self, stored, *, key=None):
+                # Decompress
+                return stored.replace(b"COMPRESSED:", b"")
+
+        class TestOuterRt(Codec):
+            name = "test_outer_rt"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner_rt>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                # Serialize (just encode string for testing)
+                return str(value).encode("utf-8")
+
+            def decode(self, stored, *, key=None):
+                # Deserialize
+                return stored.decode("utf-8")
+
+        _, chain, _ = resolve_dtype("<test_outer_rt>")
+
+        # Original value
+        original = "test data"
+
+        # Encode: outer → inner
+        encoded = original
+        for codec in chain:
+            encoded = codec.encode(encoded)
+
+        assert encoded == b"COMPRESSED:test data"
+
+        # Decode: inner → outer (reversed)
+        decoded = encoded
+        for codec in reversed(chain):
+            decoded = codec.decode(decoded)
+
+        assert decoded == original
+
+
+class TestBuiltinCodecChains:
+    """Tests for built-in codec chains."""
+
+    def test_blob_internal_resolves_to_bytes(self):
+        """Test that <blob> (internal) → bytes."""
+        final_dtype, chain, _ = resolve_dtype("<blob>")
+
+        assert final_dtype == "bytes"
+        assert len(chain) == 1
+        assert chain[0].name == "blob"
+
+    def test_blob_external_resolves_to_json(self):
+        """Test that <blob@store> → <hash> → json."""
+        final_dtype, chain, store = resolve_dtype("<blob@store>")
+
+        assert final_dtype == "json"
+        assert len(chain) == 2
+        assert chain[0].name == "blob"
+        assert chain[1].name == "hash"
+        assert store == "store"
+
+    def test_attach_internal_resolves_to_bytes(self):
+        """Test that <attach> (internal) → bytes."""
+        final_dtype, chain, _ = resolve_dtype("<attach>")
+
+        assert final_dtype == "bytes"
+        assert len(chain) == 1
+        assert chain[0].name == "attach"
+
+    def test_attach_external_resolves_to_json(self):
+        """Test that <attach@store> → <hash> → json."""
+        final_dtype, chain, store = resolve_dtype("<attach@store>")
+
+        assert final_dtype == "json"
+        assert len(chain) == 2
+        assert chain[0].name == "attach"
+        assert chain[1].name == "hash"
+        assert store == "store"
+
+    def test_hash_external_resolves_to_json(self):
+        """Test that <hash@store> → json (external only)."""
+        final_dtype, chain, store = resolve_dtype("<hash@store>")
+
+        assert final_dtype == "json"
+        assert len(chain) == 1
+        assert chain[0].name == "hash"
+        assert store == "store"
+
+    def test_object_external_resolves_to_json(self):
+        """Test that <object@> → json (external only)."""
+        final_dtype, chain, store = resolve_dtype("<object@store>")
+
+        assert final_dtype == "json"
+        assert len(chain) == 1
+        assert chain[0].name == "object"
+        assert store == "store"
+
+    def test_filepath_external_resolves_to_json(self):
+        """Test that <filepath@> → json (external only)."""
+        final_dtype, chain, store = resolve_dtype("<filepath@store>")
+
+        assert final_dtype == "json"
+        assert len(chain) == 1
+        assert chain[0].name == "filepath"
+        assert store == "store"
+
+
+class TestStoreNameParsing:
+    """Tests for store name parsing in codec specs."""
+
+    def test_codec_with_store(self):
+        """Test parsing codec with store name."""
+        final_dtype, chain, store = resolve_dtype("<blob@mystore>")
+
+        assert final_dtype == "json"
+        assert store == "mystore"
+
+    def test_codec_without_store(self):
+        """Test parsing codec without store name."""
+        final_dtype, chain, store = resolve_dtype("<blob>")
+
+        assert store is None
+
+    def test_filepath_with_store(self):
+        """Test parsing filepath with store name."""
+        final_dtype, chain, store = resolve_dtype("<filepath@s3store>")
+
+        assert final_dtype == "json"
+        assert store == "s3store"

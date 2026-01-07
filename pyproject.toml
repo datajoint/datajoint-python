@@ -84,9 +84,9 @@ datajoint = "datajoint.cli:cli"
 test = [
   "pytest",
   "pytest-cov",
-  "pytest-env",
   "requests",
   "graphviz",
+  "testcontainers[mysql,minio]>=4.0",
 ]
 
 [project.optional-dependencies]
@@ -96,9 +96,9 @@ azure = ["adlfs>=2023.1.0"]
 test = [
   "pytest",
   "pytest-cov",
-  "pytest-env",
   "requests",
   "s3fs>=2023.1.0",
+  "testcontainers[mysql,minio]>=4.0",
 ]
 dev = [
   "pre-commit",
@@ -158,20 +158,11 @@ skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
 # astroid -- Python library name (not "asteroid")
 ignore-words-list = "rever,numer,astroid"
 
-[tool.pytest_env]
-# Default environment variables for tests (D: prefix = only set if not defined)
-# These defaults work for local development with `docker compose up -d db minio`
-# For devcontainer/docker: override DJ_HOST=db and S3_ENDPOINT=minio:9000
-"D:DJ_HOST" = "localhost"
-"D:DJ_PORT" = "3306"
-"D:DJ_USER" = "root"
-"D:DJ_PASS" = "password"
-"D:DJ_TEST_USER" = "datajoint"
-"D:DJ_TEST_PASSWORD" = "datajoint"
-"D:S3_ENDPOINT" = "localhost:9000"
-"D:S3_ACCESS_KEY" = "datajoint"
-"D:S3_SECRET_KEY" = "datajoint"
-"D:S3_BUCKET" = "datajoint.test"
+[tool.pytest.ini_options]
+markers = [
+    "requires_mysql: marks tests as requiring MySQL database (deselect with '-m \"not requires_mysql\"')",
+    "requires_minio: marks tests as requiring MinIO object storage (deselect with '-m \"not requires_minio\"')",
+]
 
 
 [tool.pixi.workspace]
@@ -187,12 +178,13 @@ dev = { features = ["dev"], solve-group = "default" }
 test = { features = ["test"], solve-group = "default" }
 
 [tool.pixi.tasks]
-# Start required services (MySQL and MinIO)
+# Tests use testcontainers - no manual setup required
+test = "pytest tests/"
+test-cov = "pytest --cov-report term-missing --cov=datajoint tests/"
+# Optional: use external containers (docker-compose) instead of testcontainers
 services-up = "docker compose up -d db minio"
 services-down = "docker compose down"
-# Run tests (requires services to be running, uses localhost defaults from pytest_env)
-test = { cmd = "pytest tests/", depends-on = ["services-up"] }
-test-cov = { cmd = "pytest --cov-report term-missing --cov=datajoint tests/", depends-on = ["services-up"] }
+test-external = { cmd = "DJ_USE_EXTERNAL_CONTAINERS=1 pytest tests/", depends-on = ["services-up"] }
 
 [tool.pixi.dependencies]
 python = ">=3.10,<3.14"
