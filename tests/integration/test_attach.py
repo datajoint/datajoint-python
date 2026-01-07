@@ -7,6 +7,8 @@ from tests.schema_external import Attach
 
 def test_attach_attributes(schema_ext, minio_client, tmpdir_factory):
     """Test saving files in attachments"""
+    import datajoint as dj
+
     # create a mock file
     table = Attach()
     source_folder = tmpdir_factory.mktemp("source")
@@ -23,27 +25,31 @@ def test_attach_attributes(schema_ext, minio_client, tmpdir_factory):
 
     download_folder = Path(tmpdir_factory.mktemp("download"))
     keys = table.keys(order_by="KEY")
-    path1, path2 = table.to_arrays("img", "txt", download_path=download_folder, order_by="KEY")
 
-    # verify that different attachment are renamed if their filenames collide
-    assert path1[0] != path2[0]
-    assert path1[0] != path1[1]
-    assert Path(path1[0]).parent == download_folder
-    with Path(path1[-1]).open("rb") as f:
-        check1 = f.read()
-    with Path(path2[-1]).open("rb") as f:
-        check2 = f.read()
-    assert data1 == check1
-    assert data2 == check2
+    with dj.config.override(download_path=str(download_folder)):
+        path1, path2 = table.to_arrays("img", "txt", order_by="KEY")
 
-    # verify that existing files are not duplicated if their filename matches issue #592
-    p1, p2 = (Attach & keys[0]).fetch1("img", "txt", download_path=download_folder)
-    assert p1 == path1[0]
-    assert p2 == path2[0]
+        # verify that different attachment are renamed if their filenames collide
+        assert path1[0] != path2[0]
+        assert path1[0] != path1[1]
+        assert Path(path1[0]).parent == download_folder
+        with Path(path1[-1]).open("rb") as f:
+            check1 = f.read()
+        with Path(path2[-1]).open("rb") as f:
+            check2 = f.read()
+        assert data1 == check1
+        assert data2 == check2
+
+        # verify that existing files are not duplicated if their filename matches issue #592
+        p1, p2 = (Attach & keys[0]).fetch1("img", "txt")
+        assert p1 == path1[0]
+        assert p2 == path2[0]
 
 
 def test_return_string(schema_ext, minio_client, tmpdir_factory):
     """Test returning string on fetch"""
+    import datajoint as dj
+
     # create a mock file
     table = Attach()
     source_folder = tmpdir_factory.mktemp("source")
@@ -59,6 +65,7 @@ def test_return_string(schema_ext, minio_client, tmpdir_factory):
     table.insert1(dict(attach=2, img=attach1, txt=attach2))
 
     download_folder = Path(tmpdir_factory.mktemp("download"))
-    path1, path2 = table.to_arrays("img", "txt", download_path=download_folder, order_by="KEY")
+    with dj.config.override(download_path=str(download_folder)):
+        path1, path2 = table.to_arrays("img", "txt", order_by="KEY")
 
     assert isinstance(path1[0], str)

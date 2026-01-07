@@ -230,10 +230,12 @@ def test_heading_repr(schema_simp_pop):
 
 
 def test_aggregate(schema_simp_pop):
-    x = B().aggregate(B.C())
+    # With exclude_nonmatching=True, only rows with matches are kept (INNER JOIN)
+    x = B().aggregate(B.C(), exclude_nonmatching=True)
     assert len(x) == len(B() & B.C())
 
-    x = B().aggregate(B.C(), keep_all_rows=True)
+    # Default behavior now keeps all rows (LEFT JOIN)
+    x = B().aggregate(B.C())
     assert len(x) == len(B())  # test LEFT join
 
     assert len((x & "id_b=0").to_arrays()) == len(B() & "id_b=0")  # test restricted aggregation
@@ -244,7 +246,6 @@ def test_aggregate(schema_simp_pop):
         count="count(id_c)",
         mean="avg(value)",
         max="max(value)",
-        keep_all_rows=True,
     )
     assert len(x) == len(B())
     y = x & "mean>0"  # restricted aggregation
@@ -260,12 +261,14 @@ def test_aggregate(schema_simp_pop):
 
 
 def test_aggr(schema_simp_pop):
-    x = B.aggr(B.C)
+    # With exclude_nonmatching=True, only rows with matches are kept (INNER JOIN)
+    x = B.aggr(B.C, exclude_nonmatching=True)
     l1 = len(x)
     l2 = len(B & B.C)
     assert l1 == l2
 
-    x = B().aggr(B.C(), keep_all_rows=True)
+    # Default behavior now keeps all rows (LEFT JOIN)
+    x = B().aggr(B.C())
     assert len(x) == len(B())  # test LEFT join
 
     assert len((x & "id_b=0").to_arrays()) == len(B() & "id_b=0")  # test restricted aggregation
@@ -276,7 +279,6 @@ def test_aggr(schema_simp_pop):
         count="count(id_c)",
         mean="avg(value)",
         max="max(value)",
-        keep_all_rows=True,
     )
     assert len(x) == len(B())
     y = x & "mean>0"  # restricted aggregation

@@ -221,7 +221,7 @@ class Part(UserTable, metaclass=PartMeta):
             force: If True, allow direct deletion from Part table.
                    If False (default), raise an error.
             **kwargs: Additional arguments passed to Table.delete()
-                      (transaction, safemode, force_masters)
+                      (transaction, prompt, force_masters)
 
         Raises:
             DataJointError: If force is False (direct Part deletes are prohibited)

@@ -1,16 +1,21 @@
 # DataJoint for Python
 
-DataJoint is an open-source Python framework for building scientific data pipelines.
-It implements the **Relational Workflow Model**—a paradigm that extends relational
-databases with native support for computational workflows.
+DataJoint is a framework for scientific data pipelines that introduces the **Relational Workflow Model**—a paradigm where your database schema is an executable specification of your workflow.
 
-**Key Features:**
+Traditional databases store data but don't understand how it was computed. DataJoint extends relational databases with native workflow semantics:
 
-- **Declarative schema design** — Define tables and relationships in Python
-- **Automatic dependency tracking** — Foreign keys encode workflow dependencies
-- **Built-in computation** — Imported and Computed tables run automatically
-- **Data integrity** — Referential integrity and transaction support
-- **Reproducibility** — Immutable data with full provenance
+- **Tables represent workflow steps** — Each table is a step in your pipeline where entities are created
+- **Foreign keys encode dependencies** — Parent tables must be populated before child tables
+- **Computations are declarative** — Define *what* to compute; DataJoint determines *when* and tracks *what's done*
+- **Results are immutable** — Computed results preserve full provenance and reproducibility
+
+### Object-Augmented Schemas
+
+Scientific data includes both structured metadata and large data objects (time series, images, movies, neural recordings, gene sequences). DataJoint solves this with **Object-Augmented Schemas (OAS)**—a unified architecture where relational tables and object storage are managed as one system with identical guarantees for integrity, transactions, and lifecycle.
+
+### DataJoint 2.0
+
+**DataJoint 2.0** solidifies these core concepts with a modernized API, improved type system, and enhanced object storage integration. Existing users can refer to the [Migration Guide](https://docs.datajoint.com/migration/) for upgrading from earlier versions.
 
 **Documentation:** https://docs.datajoint.com
 

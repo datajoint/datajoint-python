@@ -503,6 +503,80 @@ def lookup_codec(codec_spec: str) -> tuple[Codec, str | None]:
 
 
 # =============================================================================
+# Decode Helper
+# =============================================================================
+
+
+def decode_attribute(attr, data, squeeze: bool = False):
+    """
+    Decode raw database value using attribute's codec or native type handling.
+
+    This is the central decode function used by all fetch methods. It handles:
+    - Codec chains (e.g., <blob@store> → <hash> → bytes)
+    - Native type conversions (JSON, UUID)
+    - External storage downloads (via config["download_path"])
+
+    Args:
+        attr: Attribute from the table's heading.
+        data: Raw value fetched from the database.
+        squeeze: If True, remove singleton dimensions from numpy arrays.
+
+    Returns:
+        Decoded Python value.
+    """
+    import json
+    import uuid as uuid_module
+
+    import numpy as np
+
+    if data is None:
+        return None
+
+    if attr.codec:
+        # Get store if present for external storage
+        store = getattr(attr, "store", None)
+        if store is not None:
+            dtype_spec = f"<{attr.codec.name}@{store}>"
+        else:
+            dtype_spec = f"<{attr.codec.name}>"
+
+        final_dtype, type_chain, _ = resolve_dtype(dtype_spec)
+
+        # Process the final storage type (what's in the database)
+        if final_dtype.lower() == "json":
+            data = json.loads(data)
+        elif final_dtype.lower() in ("longblob", "blob", "mediumblob", "tinyblob"):
+            pass  # Blob data is already bytes
+        elif final_dtype.lower() == "binary(16)":
+            data = uuid_module.UUID(bytes=data)
+
+        # Apply decoders in reverse order: innermost first, then outermost
+        for codec in reversed(type_chain):
+            data = codec.decode(data, key=None)
+
+        # Squeeze arrays if requested
+        if squeeze and isinstance(data, np.ndarray):
+            data = data.squeeze()
+
+        return data
+
+    # No codec - handle native types
+    if attr.json:
+        return json.loads(data)
+
+    if attr.uuid:
+        import uuid as uuid_module
+
+        return uuid_module.UUID(bytes=data)
+
+    if attr.is_blob:
+        return data  # Raw bytes
+
+    # Native types - pass through unchanged
+    return data
+
+
+# =============================================================================
 # Auto-register built-in codecs
 # =============================================================================
 
