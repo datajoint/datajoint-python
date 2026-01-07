@@ -1,18 +1,18 @@
 """
-DataJoint for Python is a framework for building data pipelines using MySQL databases
-to represent pipeline structure and bulk storage systems for large objects.
-DataJoint is built on the foundation of the relational data model and prescribes a
-consistent method for organizing, populating, and querying data.
+DataJoint for Python — a framework for scientific data pipelines.
 
-The DataJoint data model is described in https://arxiv.org/abs/1807.11104
+DataJoint introduces the Relational Workflow Model, where your database schema
+is an executable specification of your workflow. Tables represent workflow steps,
+foreign keys encode dependencies, and computations are declarative.
 
-DataJoint is free software under the LGPL License. In addition, we request
-that any use of DataJoint leading to a publication be acknowledged in the publication.
+Documentation: https://docs.datajoint.com
+Source: https://github.com/datajoint/datajoint-python
 
-Please cite:
+Copyright 2014-2026 DataJoint Inc. and contributors.
+Licensed under the Apache License, Version 2.0.
 
-  - http://biorxiv.org/content/early/2015/11/14/031658
-  - http://dx.doi.org/10.1101/031658
+If DataJoint contributes to a publication, please cite:
+https://doi.org/10.1101/031658
 """
 
 __author__ = "DataJoint Contributors"

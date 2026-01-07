@@ -39,7 +39,7 @@ maintainers = [
 # manually sync here: https://docs.datajoint.com/core/datajoint-python/latest/#welcome-to-datajoint-for-python
 description = "DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data."
 readme = "README.md"
-license = {file = "LICENSE.txt"}
+license = {file = "LICENSE"}
 keywords = [
     "database",
     "automated",
@@ -62,7 +62,7 @@ classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Healthcare Industry",
-  "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+  "License :: OSI Approved :: Apache Software License",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
