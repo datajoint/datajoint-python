@@ -201,6 +201,36 @@ class ExternalSettings(BaseSettings):
     aws_secret_access_key: SecretStr | None = Field(default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY")
 
 
+class JobsSettings(BaseSettings):
+    """Job queue configuration for AutoPopulate 2.0."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="DJ_JOBS_",
+        case_sensitive=False,
+        extra="forbid",
+        validate_assignment=True,
+    )
+
+    auto_refresh: bool = Field(default=True, description="Auto-refresh jobs queue on populate")
+    keep_completed: bool = Field(default=False, description="Keep success records in jobs table")
+    stale_timeout: int = Field(default=3600, ge=0, description="Seconds before pending job is checked for staleness")
+    default_priority: int = Field(default=5, ge=0, le=255, description="Default priority for new jobs (lower = more urgent)")
+    version_method: Literal["git", "none"] | None = Field(
+        default=None, description="Method to obtain version: 'git' (commit hash), 'none' (empty), or None (disabled)"
+    )
+    allow_new_pk_fields_in_computed_tables: bool = Field(
+        default=False,
+        description="Allow native (non-FK) primary key fields in Computed/Imported tables. "
+        "When True, bypasses the FK-only PK validation. Job granularity will be degraded for such tables.",
+    )
+    add_job_metadata: bool = Field(
+        default=False,
+        description="Add hidden job metadata attributes (_job_start_time, _job_duration, _job_version) "
+        "to Computed and Imported tables during declaration. Tables created without this setting "
+        "will not receive metadata updates during populate.",
+    )
+
+
 class ObjectStorageSettings(BaseSettings):
     """Object storage configuration for the object type."""
 
@@ -264,6 +294,7 @@ class Config(BaseSettings):
     connection: ConnectionSettings = Field(default_factory=ConnectionSettings)
     display: DisplaySettings = Field(default_factory=DisplaySettings)
     external: ExternalSettings = Field(default_factory=ExternalSettings)
+    jobs: JobsSettings = Field(default_factory=JobsSettings)
     object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
 
     # Top-level settings
@@ -271,7 +302,6 @@ class Config(BaseSettings):
     safemode: bool = True
     fetch_format: Literal["array", "frame"] = "array"
     enable_python_native_blobs: bool = True
-    add_hidden_timestamp: bool = False
     filepath_checksum_size_limit: int | None = None
 
     # External stores configuration

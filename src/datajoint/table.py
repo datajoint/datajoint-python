@@ -101,6 +101,10 @@ class Table(QueryExpression):
                 + "Classes defining tables should be formatted in strict CamelCase."
             )
         sql, _external_stores, primary_key, fk_attribute_map = declare(self.full_table_name, self.definition, context)
+
+        # Call declaration hook for validation (subclasses like AutoPopulate can override)
+        self._declare_check(primary_key, fk_attribute_map)
+
         sql = sql.format(database=self.database)
         try:
             self.connection.query(sql)
@@ -110,6 +114,18 @@ class Table(QueryExpression):
 
         # Populate lineage table for this table's attributes
         self._populate_lineage(primary_key, fk_attribute_map)
+
+    def _declare_check(self, primary_key, fk_attribute_map):
+        """
+        Hook for declaration-time validation. Subclasses can override.
+
+        Called before the table is created in the database. Override this method
+        to add validation logic (e.g., AutoPopulate validates FK-only primary keys).
+
+        :param primary_key: list of primary key attribute names
+        :param fk_attribute_map: dict mapping child_attr -> (parent_table, parent_attr)
+        """
+        pass  # Default: no validation
 
     def _populate_lineage(self, primary_key, fk_attribute_map):
         """

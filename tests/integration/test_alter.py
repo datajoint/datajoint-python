@@ -45,9 +45,10 @@ class TestAlter:
         """
         https://github.com/datajoint/datajoint-python/issues/936
         """
-        self.verify_alter(schema_alter, table=Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL")
+        # Regex includes optional COMMENT for type annotations
+        self.verify_alter(schema_alter, table=Parent.Child, attribute_sql=r"`child_id` .* DEFAULT NULL[^,]*")
         self.verify_alter(
             schema_alter,
             table=Parent.Grandchild,
-            attribute_sql="`grandchild_id` .* DEFAULT NULL",
+            attribute_sql=r"`grandchild_id` .* DEFAULT NULL[^,]*",
         )

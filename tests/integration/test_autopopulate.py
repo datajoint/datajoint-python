@@ -49,31 +49,36 @@ def test_populate_with_success_count(clean_autopopulate, subject, experiment, tr
     assert len(trial.key_source & trial) == success_count
 
 
-def test_populate_key_list(clean_autopopulate, subject, experiment, trial):
-    # test simple populate
+def test_populate_max_calls(clean_autopopulate, subject, experiment, trial):
+    # test populate with max_calls limit
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
-    keys = experiment.key_source.fetch("KEY", order_by="KEY")
     n = 3
-    assert len(keys) > n
-    keys = keys[:n]
-    ret = experiment.populate(keys=keys)
+    total_keys = len(experiment.key_source)
+    assert total_keys > n
+    ret = experiment.populate(max_calls=n)
     assert n == ret["success_count"]
 
 
-def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, schema_any, subject, experiment):
-    # test simple populate
+def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, subject, experiment):
+    # test that error and ignore jobs are excluded from populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
 
-    keys = experiment.key_source.fetch("KEY", limit=2)
+    # Refresh jobs to create pending entries
+    experiment.jobs.refresh()
+
+    keys = experiment.jobs.pending.fetch("KEY", limit=2)
     for idx, key in enumerate(keys):
         if idx == 0:
-            schema_any.jobs.ignore(experiment.table_name, key)
+            experiment.jobs.ignore(key)
         else:
-            schema_any.jobs.error(experiment.table_name, key, "")
+            # Create an error job by first reserving then setting error
+            experiment.jobs.reserve(key)
+            experiment.jobs.error(key, "test error")
 
-    experiment.populate(reserve_jobs=True)
+    # Populate should skip error and ignore jobs
+    experiment.populate(reserve_jobs=True, refresh=False)
     assert len(experiment.key_source & experiment) == len(experiment.key_source) - 2
 
 

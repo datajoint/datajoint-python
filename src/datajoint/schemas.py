@@ -9,7 +9,7 @@ import warnings
 from .connection import conn
 from .errors import AccessError, DataJointError
 from .heading import Heading
-from .jobs import JobTable
+from .jobs import Job
 from .settings import config
 from .table import FreeTable, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
@@ -68,7 +68,6 @@ class Schema:
         self.context = context
         self.create_schema = create_schema
         self.create_tables = create_tables
-        self._jobs = None
         self.add_objects = add_objects
         self.declare_list = []
         if schema_name:
@@ -367,14 +366,34 @@ class Schema:
     @property
     def jobs(self):
         """
-        schema.jobs provides a view of the job reservation table for the schema
+        Return list of Job objects for auto-populated tables that have job tables.
 
-        :return: jobs table
+        Only returns Job objects when both the target table and its ~~table_name
+        job table exist in the database. Job tables are created lazily on first
+        access to table.jobs or populate(reserve_jobs=True).
+
+        :return: list of Job objects for existing job tables
         """
         self._assert_exists()
-        if self._jobs is None:
-            self._jobs = JobTable(self.connection, self.database)
-        return self._jobs
+        jobs_list = []
+
+        # Get all existing job tables (~~prefix)
+        # Note: %% escapes the % in pymysql
+        result = self.connection.query(f"SHOW TABLES IN `{self.database}` LIKE '~~%%'").fetchall()
+        existing_job_tables = {row[0] for row in result}
+
+        # Iterate over auto-populated tables and check if their job table exists
+        for table_name in self.list_tables():
+            table = FreeTable(self.connection, f"`{self.database}`.`{table_name}`")
+            tier = _get_tier(table.full_table_name)
+            if tier in (Computed, Imported):
+                # Compute expected job table name: ~~base_name
+                base_name = table_name.lstrip("_")
+                job_table_name = f"~~{base_name}"
+                if job_table_name in existing_job_tables:
+                    jobs_list.append(Job(table))
+
+        return jobs_list
 
     @property
     def code(self):

@@ -5,7 +5,6 @@ declare the corresponding mysql tables.
 
 import logging
 import re
-from hashlib import sha1
 
 import pyparsing as pp
 
@@ -38,7 +37,7 @@ CORE_TYPES = {
     "bytes": (r"bytes$", "longblob"),
     # Temporal
     "date": (r"date$", None),
-    "datetime": (r"datetime$", None),
+    "datetime": (r"datetime(\s*\(\d+\))?$", None),  # datetime with optional fractional seconds precision
     # String types (with parameters)
     "char": (r"char\s*\(\d+\)$", None),
     "varchar": (r"varchar\s*\(\d+\)$", None),
@@ -297,12 +296,20 @@ def declare(full_table_name, definition, context):
         fk_attribute_map,
     ) = prepare_declare(definition, context)
 
-    if config.get("add_hidden_timestamp", False):
-        metadata_attr_sql = ["`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"]
-        attribute_sql.extend(
-            attr.format(full_table_name=sha1(full_table_name.replace("`", "").encode("utf-8")).hexdigest())
-            for attr in metadata_attr_sql
-        )
+    # Add hidden job metadata for Computed/Imported tables (not parts)
+    # Note: table_name may still have backticks, strip them for prefix checking
+    clean_table_name = table_name.strip("`")
+    if config.jobs.add_job_metadata:
+        # Check if this is a Computed (__) or Imported (_) table, but not a Part (contains __ in middle)
+        is_computed = clean_table_name.startswith("__") and "__" not in clean_table_name[2:]
+        is_imported = clean_table_name.startswith("_") and not clean_table_name.startswith("__")
+        if is_computed or is_imported:
+            job_metadata_sql = [
+                "`_job_start_time` datetime(3) DEFAULT NULL",
+                "`_job_duration` float DEFAULT NULL",
+                "`_job_version` varchar(64) DEFAULT ''",
+            ]
+            attribute_sql.extend(job_metadata_sql)
 
     if not primary_key:
         raise DataJointError("Table must have a primary key")

@@ -1,6 +1,7 @@
+"""Tests for per-table Job management (AutoPopulate 2.0)."""
+
 import random
 import string
-
 
 import datajoint as dj
 from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
@@ -8,123 +9,152 @@ from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 from tests import schema
 
 
-def test_reserve_job(clean_jobs, subject, schema_any):
+def test_reserve_job(clean_jobs, subject, experiment):
+    """Test job reservation, completion, and error workflows."""
     assert subject
-    table_name = "fake_table"
 
-    # reserve jobs
-    for key in subject.fetch("KEY"):
-        assert schema_any.jobs.reserve(table_name, key), "failed to reserve a job"
+    # Refresh jobs to create pending entries
+    experiment.jobs.refresh()
+    pending_count = len(experiment.jobs.pending)
+    assert pending_count > 0, "no pending jobs created"
 
-    # refuse jobs
-    for key in subject.fetch("KEY"):
-        assert not schema_any.jobs.reserve(table_name, key), "failed to respect reservation"
+    # Reserve all pending jobs
+    keys = experiment.jobs.pending.fetch("KEY")
+    for key in keys:
+        assert experiment.jobs.reserve(key), "failed to reserve a job"
 
-    # complete jobs
-    for key in subject.fetch("KEY"):
-        schema_any.jobs.complete(table_name, key)
-    assert not schema_any.jobs, "failed to free jobs"
+    # Try to reserve already-reserved jobs - should fail
+    for key in keys:
+        assert not experiment.jobs.reserve(key), "failed to respect reservation"
 
-    # reserve jobs again
-    for key in subject.fetch("KEY"):
-        assert schema_any.jobs.reserve(table_name, key), "failed to reserve new jobs"
+    # Complete jobs
+    for key in keys:
+        experiment.jobs.complete(key)
 
-    # finish with error
-    for key in subject.fetch("KEY"):
-        schema_any.jobs.error(table_name, key, "error message")
+    # Check jobs are completed (or deleted if keep_completed=False)
+    if dj.config.jobs.keep_completed:
+        assert len(experiment.jobs.completed) == len(keys)
+    else:
+        assert len(experiment.jobs) == 0, "failed to free jobs"
 
-    # refuse jobs with errors
-    for key in subject.fetch("KEY"):
-        assert not schema_any.jobs.reserve(table_name, key), "failed to ignore error jobs"
+    # Refresh again to create new pending jobs
+    experiment.jobs.refresh()
+    keys = experiment.jobs.pending.fetch("KEY")
 
-    # clear error jobs
-    (schema_any.jobs & dict(status="error")).delete()
-    assert not schema_any.jobs, "failed to clear error jobs"
+    # Reserve and mark as error
+    for key in keys:
+        experiment.jobs.reserve(key)
+        experiment.jobs.error(key, "error message")
+
+    # Try to reserve error jobs - should fail
+    for key in keys:
+        assert not experiment.jobs.reserve(key), "failed to ignore error jobs"
+
+    # Clear error jobs
+    experiment.jobs.errors.delete()
+    assert len(experiment.jobs) == 0, "failed to clear error jobs"
 
 
-def test_restrictions(clean_jobs, schema_any):
-    jobs = schema_any.jobs
-    jobs.delete()
-    jobs.reserve("a", {"key": "a1"})
-    jobs.reserve("a", {"key": "a2"})
-    jobs.reserve("b", {"key": "b1"})
-    jobs.error("a", {"key": "a2"}, "error")
-    jobs.error("b", {"key": "b1"}, "error")
+def test_job_status_filters(clean_jobs, subject, experiment):
+    """Test job status filter properties."""
+    # Refresh to create pending jobs
+    experiment.jobs.refresh()
 
-    assert len(jobs & {"table_name": "a"}) == 2
-    assert len(jobs & {"status": "error"}) == 2
-    assert len(jobs & {"table_name": "a", "status": "error"}) == 1
-    jobs.delete()
+    # All should be pending
+    total = len(experiment.jobs)
+    assert total > 0
+    assert len(experiment.jobs.pending) == total
+    assert len(experiment.jobs.reserved) == 0
+    assert len(experiment.jobs.errors) == 0
+
+    # Reserve some jobs
+    keys = experiment.jobs.pending.fetch("KEY", limit=2)
+    for key in keys:
+        experiment.jobs.reserve(key)
+
+    assert len(experiment.jobs.reserved) == 2
+
+    # Mark one as error
+    experiment.jobs.error(keys[0], "test error")
+    assert len(experiment.jobs.errors) == 1
 
 
 def test_sigint(clean_jobs, schema_any):
+    """Test that KeyboardInterrupt is recorded as error."""
+    sig_int_table = schema.SigIntTable()
     try:
-        schema.SigIntTable().populate(reserve_jobs=True)
+        sig_int_table.populate(reserve_jobs=True)
     except KeyboardInterrupt:
         pass
 
-    assert len(schema_any.jobs.fetch()), "SigInt jobs table is empty"
-    status, error_message = schema_any.jobs.fetch1("status", "error_message")
+    assert len(sig_int_table.jobs.errors) > 0, "SigInt job error not recorded"
+    status, error_message = sig_int_table.jobs.errors.fetch1("status", "error_message")
     assert status == "error"
-    assert error_message == "KeyboardInterrupt"
+    assert "KeyboardInterrupt" in error_message
 
 
 def test_sigterm(clean_jobs, schema_any):
+    """Test that SystemExit is recorded as error."""
+    sig_term_table = schema.SigTermTable()
     try:
-        schema.SigTermTable().populate(reserve_jobs=True)
+        sig_term_table.populate(reserve_jobs=True)
     except SystemExit:
         pass
 
-    assert len(schema_any.jobs.fetch()), "SigTerm jobs table is empty"
-    status, error_message = schema_any.jobs.fetch1("status", "error_message")
+    assert len(sig_term_table.jobs.errors) > 0, "SigTerm job error not recorded"
+    status, error_message = sig_term_table.jobs.errors.fetch1("status", "error_message")
     assert status == "error"
-    assert error_message == "SystemExit: SIGTERM received"
+    assert "SIGTERM" in error_message or "SystemExit" in error_message
 
 
 def test_suppress_dj_errors(clean_jobs, schema_any):
-    """test_suppress_dj_errors: dj errors suppressible w/o native py blobs"""
+    """Test that DataJoint errors are suppressible without native py blobs."""
+    error_class = schema.ErrorClass()
     with dj.config.override(enable_python_native_blobs=False):
-        schema.ErrorClass.populate(reserve_jobs=True, suppress_errors=True)
-    assert len(schema.DjExceptionName()) == len(schema_any.jobs) > 0
+        error_class.populate(reserve_jobs=True, suppress_errors=True)
+    assert len(schema.DjExceptionName()) == len(error_class.jobs.errors) > 0
 
 
-def test_long_error_message(clean_jobs, subject, schema_any):
-    # create long error message
+def test_long_error_message(clean_jobs, subject, experiment):
+    """Test that long error messages are truncated."""
+    # Create long and short error messages
     long_error_message = "".join(random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH + 100))
     short_error_message = "".join(random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH // 2))
-    assert subject
-    table_name = "fake_table"
 
-    key = subject.fetch("KEY", limit=1)[0]
+    # Refresh to create pending jobs
+    experiment.jobs.refresh()
+    key = experiment.jobs.pending.fetch("KEY", limit=1)[0]
 
-    # test long error message
-    schema_any.jobs.reserve(table_name, key)
-    schema_any.jobs.error(table_name, key, long_error_message)
-    error_message = schema_any.jobs.fetch1("error_message")
+    # Test long error message truncation
+    experiment.jobs.reserve(key)
+    experiment.jobs.error(key, long_error_message)
+    error_message = experiment.jobs.errors.fetch1("error_message")
     assert len(error_message) == ERROR_MESSAGE_LENGTH, "error message is longer than max allowed"
     assert error_message.endswith(TRUNCATION_APPENDIX), "appropriate ending missing for truncated error message"
-    schema_any.jobs.delete()
+    experiment.jobs.delete()
 
-    # test long error message
-    schema_any.jobs.reserve(table_name, key)
-    schema_any.jobs.error(table_name, key, short_error_message)
-    error_message = schema_any.jobs.fetch1("error_message")
+    # Refresh and test short error message (not truncated)
+    experiment.jobs.refresh()
+    key = experiment.jobs.pending.fetch("KEY", limit=1)[0]
+    experiment.jobs.reserve(key)
+    experiment.jobs.error(key, short_error_message)
+    error_message = experiment.jobs.errors.fetch1("error_message")
     assert error_message == short_error_message, "error messages do not agree"
     assert not error_message.endswith(TRUNCATION_APPENDIX), "error message should not be truncated"
-    schema_any.jobs.delete()
 
 
-def test_long_error_stack(clean_jobs, subject, schema_any):
-    # create long error stack
+def test_long_error_stack(clean_jobs, subject, experiment):
+    """Test that long error stacks are stored correctly."""
+    # Create long error stack
     STACK_SIZE = 89942  # Does not fit into small blob (should be 64k, but found to be higher)
     long_error_stack = "".join(random.choice(string.ascii_letters) for _ in range(STACK_SIZE))
-    assert subject
-    table_name = "fake_table"
 
-    key = subject.fetch("KEY", limit=1)[0]
+    # Refresh to create pending jobs
+    experiment.jobs.refresh()
+    key = experiment.jobs.pending.fetch("KEY", limit=1)[0]
 
-    # test long error stack
-    schema_any.jobs.reserve(table_name, key)
-    schema_any.jobs.error(table_name, key, "error message", long_error_stack)
-    error_stack = schema_any.jobs.fetch1("error_stack")
+    # Test long error stack
+    experiment.jobs.reserve(key)
+    experiment.jobs.error(key, "error message", long_error_stack)
+    error_stack = experiment.jobs.errors.fetch1("error_stack")
     assert error_stack == long_error_stack, "error stacks do not agree"

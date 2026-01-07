@@ -46,7 +46,7 @@ class QueryExpression:
 
     _restriction = None
     _restriction_attributes = None
-    _left = []  # list of booleans True for left joins, False for inner joins
+    _joins = []  # list of (is_left: bool, using_attrs: list[str]) for each join
     _original_heading = None  # heading before projections
 
     # subclasses or instantiators must provide values
@@ -110,8 +110,17 @@ class QueryExpression:
             for src in self.support
         )
         clause = next(support)
-        for s, left in zip(support, self._left):
-            clause += " NATURAL{left} JOIN {clause}".format(left=" LEFT" if left else "", clause=s)
+        for s, (is_left, using_attrs) in zip(support, self._joins):
+            left_kw = "LEFT " if is_left else ""
+            if using_attrs:
+                using = "USING ({})".format(", ".join(f"`{a}`" for a in using_attrs))
+                clause += f" {left_kw}JOIN {s} {using}"
+            else:
+                # Cross join (no common non-hidden attributes)
+                if is_left:
+                    clause += f" LEFT JOIN {s} ON TRUE"
+                else:
+                    clause += f" CROSS JOIN {s}"
         return clause
 
     def where_clause(self):
@@ -326,7 +335,7 @@ class QueryExpression:
                     "Use an inner join or restructure the query."
                 )
 
-        # Always natural join on all namesakes
+        # Always join on all non-hidden namesakes
         join_attributes = set(n for n in self.heading.names if n in other.heading.names)
         # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
@@ -345,6 +354,12 @@ class QueryExpression:
             or any(n in other.heading.new_attributes for n in join_attributes)
             or isinstance(self, Union)
         )
+        # With USING clause (instead of NATURAL JOIN), we need subqueries when
+        # joining with multi-table expressions to ensure correct column matching
+        if len(self.support) > 1 and join_attributes:
+            need_subquery1 = True
+        if len(other.support) > 1 and join_attributes:
+            need_subquery2 = True
         if need_subquery1:
             self = self.make_subquery()
         if need_subquery2:
@@ -352,12 +367,14 @@ class QueryExpression:
         result = QueryExpression()
         result._connection = self.connection
         result._support = self.support + other.support
-        result._left = self._left + [left] + other._left
+        # Store join info: (is_left, using_attrs) - using_attrs excludes hidden attributes
+        using_attrs = [n for n in self.heading.names if n in other.heading.names]
+        result._joins = self._joins + [(left, using_attrs)] + other._joins
         result._heading = self.heading.join(other.heading, nullable_pk=nullable_pk)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
         result._original_heading = self.original_heading.join(other.original_heading, nullable_pk=nullable_pk)
-        assert len(result.support) == len(result._left) + 1
+        assert len(result.support) == len(result._joins) + 1
         return result
 
     def extend(self, other, semantic_check=True):
@@ -571,11 +588,12 @@ class QueryExpression:
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         result = self.make_subquery() if self._top else copy.copy(self)
+        has_left_join = any(is_left for is_left, _ in result._joins)
         return result.connection.query(
             "SELECT {select_} FROM {from_}{where}".format(
                 select_=(
                     "count(*)"
-                    if any(result._left)
+                    if has_left_join
                     else "count(DISTINCT {fields})".format(
                         fields=result.heading.as_sql(result.primary_key, include_aliases=False)
                     )
@@ -718,7 +736,7 @@ class Aggregation(QueryExpression):
         result._connection = join.connection
         result._heading = join.heading.set_primary_key(groupby.primary_key)
         result._support = join.support
-        result._left = join._left
+        result._joins = join._joins
         result._left_restrict = join.restriction  # WHERE clause applied before GROUP BY
         result._grouping_attributes = result.primary_key
 
@@ -930,7 +948,7 @@ class U:
         result._connection = group.connection
         result._heading = group.heading.set_primary_key(list(self.primary_key))
         result._support = group.support
-        result._left = group._left
+        result._joins = group._joins
         result._left_restrict = group.restriction
         result._grouping_attributes = list(self.primary_key)
 

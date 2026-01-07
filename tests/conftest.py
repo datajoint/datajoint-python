@@ -455,29 +455,6 @@ def minio_client(s3_creds, s3fs_client, teardown=False):
 
 
 # =============================================================================
-# Utility Fixtures
-# =============================================================================
-
-
-@pytest.fixture(scope="session")
-def monkeysession():
-    with pytest.MonkeyPatch.context() as mp:
-        yield mp
-
-
-@pytest.fixture(scope="module")
-def monkeymodule():
-    with pytest.MonkeyPatch.context() as mp:
-        yield mp
-
-
-@pytest.fixture
-def enable_adapted_types():
-    """Deprecated - custom attribute types no longer require a feature flag."""
-    yield
-
-
-# =============================================================================
 # Cleanup Fixtures
 # =============================================================================
 
@@ -494,10 +471,12 @@ def clean_autopopulate(experiment, trial, ephys):
 @pytest.fixture
 def clean_jobs(schema_any):
     """Cleanup fixture for jobs tests."""
-    try:
-        schema_any.jobs.delete()
-    except DataJointError:
-        pass
+    # schema.jobs returns a list of Job objects for existing job tables
+    for job in schema_any.jobs:
+        try:
+            job.delete()
+        except DataJointError:
+            pass
     yield
 
 
@@ -522,10 +501,15 @@ def clean_test_tables(test, test_extra, test_no_extra):
 def schema_any(connection_test, prefix):
     schema_any = dj.Schema(prefix + "_test1", schema.LOCALS_ANY, connection=connection_test)
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
-    try:
-        schema_any.jobs.delete()
-    except DataJointError:
-        pass
+    # Clean up any existing job tables (schema.jobs returns a list)
+    for job in schema_any.jobs:
+        try:
+            job.delete()
+        except DataJointError:
+            pass
+    # Allow native PK fields for legacy test tables (Experiment, Trial)
+    original_value = dj.config.jobs.allow_new_pk_fields_in_computed_tables
+    dj.config.jobs.allow_new_pk_fields_in_computed_tables = True
     schema_any(schema.TTest)
     schema_any(schema.TTest2)
     schema_any(schema.TTest3)
@@ -564,11 +548,16 @@ def schema_any(connection_test, prefix):
     schema_any(schema.SessionDateA)
     schema_any(schema.Stimulus)
     schema_any(schema.Longblob)
+    # Restore original config value after all tables are declared
+    dj.config.jobs.allow_new_pk_fields_in_computed_tables = original_value
     yield schema_any
-    try:
-        schema_any.jobs.delete()
-    except DataJointError:
-        pass
+    # Clean up job tables before dropping schema (if schema still exists)
+    if schema_any.exists:
+        for job in schema_any.jobs:
+            try:
+                job.delete()
+            except DataJointError:
+                pass
     schema_any.drop()
 
 
@@ -577,10 +566,15 @@ def schema_any_fresh(connection_test, prefix):
     """Function-scoped schema_any for tests that need fresh schema state."""
     schema_any = dj.Schema(prefix + "_test1_fresh", schema.LOCALS_ANY, connection=connection_test)
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
-    try:
-        schema_any.jobs.delete()
-    except DataJointError:
-        pass
+    # Clean up any existing job tables
+    for job in schema_any.jobs:
+        try:
+            job.delete()
+        except DataJointError:
+            pass
+    # Allow native PK fields for legacy test tables (Experiment, Trial)
+    original_value = dj.config.jobs.allow_new_pk_fields_in_computed_tables
+    dj.config.jobs.allow_new_pk_fields_in_computed_tables = True
     schema_any(schema.TTest)
     schema_any(schema.TTest2)
     schema_any(schema.TTest3)
@@ -619,11 +613,16 @@ def schema_any_fresh(connection_test, prefix):
     schema_any(schema.SessionDateA)
     schema_any(schema.Stimulus)
     schema_any(schema.Longblob)
+    # Restore original config value after all tables are declared
+    dj.config.jobs.allow_new_pk_fields_in_computed_tables = original_value
     yield schema_any
-    try:
-        schema_any.jobs.delete()
-    except DataJointError:
-        pass
+    # Clean up job tables before dropping schema (if schema still exists)
+    if schema_any.exists:
+        for job in schema_any.jobs:
+            try:
+                job.delete()
+            except DataJointError:
+                pass
     schema_any.drop()
 
 
