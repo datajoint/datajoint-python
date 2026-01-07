@@ -36,6 +36,14 @@ def test_stepwise_delete(schema_simp_pop):
         not B()
     ), "failed to delete from the parent table following child table deletion"
 
+def test_part_delete_forwards_kwargs(schema_simp_pop):
+    assert not dj.config["safemode"], "safemode must be off for testing"
+    assert L() and A() and B() and B.C(), "schema population failed"
+
+    # Should accept and forward kwargs supported by Table.delete
+    B.C().delete(force=True, transaction=False)
+
+    assert not B.C(), "failed to delete child table with forwarded kwargs"
 
 def test_delete_tree_restricted(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"

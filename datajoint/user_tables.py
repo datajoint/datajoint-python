@@ -219,16 +219,17 @@ class Part(UserTable):
             else cls.master.table_name + "__" + from_camel_case(cls.__name__)
         )
 
-    def delete(self, force=False):
+    def delete(self, force=False, **kwargs):
         """
-        unless force is True, prohibits direct deletes from parts.
+        Unless force is True, prohibits direct deletes from parts.
+        Accepts any kwargs supported by Table.delete and forwards them to super().delete.
         """
         if force:
-            super().delete(force_parts=True)
-        else:
-            raise DataJointError(
-                "Cannot delete from a Part directly. Delete from master instead"
-            )
+            return super().delete(force_parts=True, **kwargs)
+
+        raise DataJointError(
+            "Cannot delete from a Part directly. Delete from master instead"
+        )
 
     def drop(self, force=False):
         """
