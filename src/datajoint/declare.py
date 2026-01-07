@@ -141,7 +141,7 @@ def is_foreign_key(line):
     return arrow_position >= 0 and not any(c in line[:arrow_position] for c in "\"#'")
 
 
-def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql, index_sql):
+def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql, index_sql, fk_attribute_map=None):
     """
     :param line: a line from a table definition
     :param context: namespace containing referenced objects
@@ -151,6 +151,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     :param attr_sql: list of sql statements defining attributes -- to be updated by this function.
     :param foreign_key_sql: list of sql statements specifying foreign key constraints -- to be updated by this function.
     :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.
+    :param fk_attribute_map: dict mapping child attr -> (parent_table, parent_attr) -- to be updated by this function.
     """
     # Parse and validate
     from .expression import QueryExpression
@@ -194,6 +195,11 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             if primary_key is not None:
                 primary_key.append(attr)
             attr_sql.append(ref.heading[attr].sql.replace("NOT NULL ", "", int(is_nullable)))
+        # Track FK attribute mapping for lineage: child_attr -> (parent_table, parent_attr)
+        if fk_attribute_map is not None:
+            parent_table = ref.support[0]  # e.g., `schema`.`table`
+            parent_attr = ref.heading[attr].original_name
+            fk_attribute_map[attr] = (parent_table, parent_attr)
 
     # declare the foreign key
     foreign_key_sql.append(
@@ -223,6 +229,7 @@ def prepare_declare(definition, context):
     foreign_key_sql = []
     index_sql = []
     external_stores = []
+    fk_attribute_map = {}  # child_attr -> (parent_table, parent_attr)
 
     for line in definition:
         if not line or line.startswith("#"):  # ignore additional comments
@@ -238,6 +245,7 @@ def prepare_declare(definition, context):
                 attribute_sql,
                 foreign_key_sql,
                 index_sql,
+                fk_attribute_map,
             )
         elif re.match(r"^(unique\s+)?index\s*.*$", line, re.I):  # index
             compile_index(line, index_sql)
@@ -258,6 +266,7 @@ def prepare_declare(definition, context):
         foreign_key_sql,
         index_sql,
         external_stores,
+        fk_attribute_map,
     )
 
 
@@ -285,6 +294,7 @@ def declare(full_table_name, definition, context):
         foreign_key_sql,
         index_sql,
         external_stores,
+        fk_attribute_map,
     ) = prepare_declare(definition, context)
 
     if config.get("add_hidden_timestamp", False):
@@ -297,11 +307,12 @@ def declare(full_table_name, definition, context):
     if not primary_key:
         raise DataJointError("Table must have a primary key")
 
-    return (
+    sql = (
         "CREATE TABLE IF NOT EXISTS %s (\n" % full_table_name
         + ",\n".join(attribute_sql + ["PRIMARY KEY (`" + "`,`".join(primary_key) + "`)"] + foreign_key_sql + index_sql)
         + '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment
-    ), external_stores
+    )
+    return sql, external_stores, primary_key, fk_attribute_map
 
 
 def _make_attribute_alter(new, old, primary_key):
@@ -387,6 +398,7 @@ def alter(definition, old_definition, context):
         foreign_key_sql,
         index_sql,
         external_stores,
+        _fk_attribute_map,
     ) = prepare_declare(definition, context)
     (
         table_comment_,
@@ -395,6 +407,7 @@ def alter(definition, old_definition, context):
         foreign_key_sql_,
         index_sql_,
         external_stores_,
+        _fk_attribute_map_,
     ) = prepare_declare(old_definition, context)
 
     # analyze differences between declarations

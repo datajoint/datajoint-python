@@ -13,6 +13,7 @@ from .declare import (
     TYPE_PATTERN,
 )
 from .errors import DataJointError
+from .lineage import get_table_lineages, lineage_table_exists
 
 
 class _MissingType(Codec, register=False):
@@ -63,6 +64,7 @@ default_attribute_properties = dict(  # these default values are set in computed
     unsupported=False,
     attribute_expression=None,
     dtype=object,
+    lineage=None,  # Origin of attribute, e.g. "schema.table.attr" for semantic matching
 )
 
 
@@ -115,16 +117,23 @@ class Heading:
     the attribute names and the values are Attributes.
     """
 
-    def __init__(self, attribute_specs=None, table_info=None):
+    def __init__(self, attribute_specs=None, table_info=None, lineage_available=True):
         """
 
         :param attribute_specs: a list of dicts with the same keys as Attribute
         :param table_info: a dict with information to load the heading from the database
+        :param lineage_available: whether lineage tracking is available for this heading
         """
         self.indexes = None
         self.table_info = table_info
         self._table_status = None
+        self._lineage_available = lineage_available
         self._attributes = None if attribute_specs is None else dict((q["name"], Attribute(**q)) for q in attribute_specs)
+
+    @property
+    def lineage_available(self):
+        """Whether lineage tracking is available for this heading's schema."""
+        return self._lineage_available
 
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
@@ -375,6 +384,16 @@ class Heading:
                 # restore codec type name for display
                 attr["type"] = codec_spec
 
+        # Load lineage information for semantic matching from ~lineage table
+        self._lineage_available = lineage_table_exists(conn, database)
+        if self._lineage_available:
+            lineages = get_table_lineages(conn, database, table_name)
+            for attr in attributes:
+                attr["lineage"] = lineages.get(attr["name"])
+        else:
+            for attr in attributes:
+                attr["lineage"] = None
+
         self._attributes = dict(((q["name"], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes
@@ -428,7 +447,7 @@ class Heading:
             dict(default_attribute_properties, name=new_name, attribute_expression=expr)
             for new_name, expr in compute_map.items()
         )
-        return Heading(chain(copy_attrs, compute_attrs))
+        return Heading(chain(copy_attrs, compute_attrs), lineage_available=self._lineage_available)
 
     def join(self, other):
         """
@@ -439,7 +458,8 @@ class Heading:
             [self.attributes[name].todict() for name in self.primary_key]
             + [other.attributes[name].todict() for name in other.primary_key if name not in self.primary_key]
             + [self.attributes[name].todict() for name in self.secondary_attributes if name not in other.primary_key]
-            + [other.attributes[name].todict() for name in other.secondary_attributes if name not in self.primary_key]
+            + [other.attributes[name].todict() for name in other.secondary_attributes if name not in self.primary_key],
+            lineage_available=self._lineage_available and other._lineage_available,
         )
 
     def set_primary_key(self, primary_key):
@@ -451,7 +471,8 @@ class Heading:
             chain(
                 (dict(self.attributes[name].todict(), in_key=True) for name in primary_key),
                 (dict(self.attributes[name].todict(), in_key=False) for name in self.names if name not in primary_key),
-            )
+            ),
+            lineage_available=self._lineage_available,
         )
 
     def make_subquery_heading(self):
@@ -459,4 +480,7 @@ class Heading:
         Create a new heading with removed attribute sql_expressions.
         Used by subqueries, which resolve the sql_expressions.
         """
-        return Heading(dict(v.todict(), attribute_expression=None) for v in self.attributes.values())
+        return Heading(
+            (dict(v.todict(), attribute_expression=None) for v in self.attributes.values()),
+            lineage_available=self._lineage_available,
+        )

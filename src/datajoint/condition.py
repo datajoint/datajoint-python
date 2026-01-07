@@ -5,6 +5,7 @@ import datetime
 import decimal
 import inspect
 import json
+import logging
 import re
 import uuid
 from dataclasses import dataclass
@@ -13,6 +14,8 @@ import numpy
 import pandas
 
 from .errors import DataJointError
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 JSON_PATTERN = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$")
 
@@ -95,32 +98,60 @@ class Not:
         self.restriction = restriction
 
 
-def assert_join_compatibility(expr1, expr2):
+def assert_join_compatibility(expr1, expr2, semantic_check=True):
     """
-    Determine if expressions expr1 and expr2 are join-compatible.  To be join-compatible,
-    the matching attributes in the two expressions must be in the primary key of one or the
-    other expression.
-    Raises an exception if not compatible.
+    Determine if expressions expr1 and expr2 are join-compatible.
+
+    With semantic_check=True (default):
+        Raises an error if there are non-homologous namesakes (same name, different lineage).
+        This prevents accidental joins on attributes that share names but represent
+        different entities.
+
+        If the ~lineage table doesn't exist for either schema, a warning is issued
+        and semantic checking is disabled (join proceeds as natural join).
+
+    With semantic_check=False:
+        No lineage checking. All namesake attributes are matched (natural join behavior).
 
     :param expr1: A QueryExpression object
     :param expr2: A QueryExpression object
+    :param semantic_check: If True (default), use semantic matching and error on conflicts
     """
     from .expression import QueryExpression, U
 
     for rel in (expr1, expr2):
         if not isinstance(rel, (U, QueryExpression)):
             raise DataJointError("Object %r is not a QueryExpression and cannot be joined." % rel)
-    if not isinstance(expr1, U) and not isinstance(expr2, U):  # dj.U is always compatible
-        try:
-            raise DataJointError(
-                "Cannot join query expressions on dependent attribute `%s`"
-                % next(r for r in set(expr1.heading.secondary_attributes).intersection(expr2.heading.secondary_attributes))
+
+    # dj.U is always compatible (it represents all possible lineages)
+    if isinstance(expr1, U) or isinstance(expr2, U):
+        return
+
+    if semantic_check:
+        # Check if lineage tracking is available for both expressions
+        if not expr1.heading.lineage_available or not expr2.heading.lineage_available:
+            logger.warning(
+                "Semantic check disabled: ~lineage table not found. "
+                "To enable semantic matching, rebuild lineage with: "
+                "schema.rebuild_lineage()"
             )
-        except StopIteration:
-            pass  # all ok
+            return
+
+        # Error on non-homologous namesakes
+        namesakes = set(expr1.heading.names) & set(expr2.heading.names)
+        for name in namesakes:
+            lineage1 = expr1.heading[name].lineage
+            lineage2 = expr2.heading[name].lineage
+            # Semantic match requires both lineages to be non-None and equal
+            if lineage1 is None or lineage2 is None or lineage1 != lineage2:
+                raise DataJointError(
+                    f"Cannot join on attribute `{name}`: "
+                    f"different lineages ({lineage1} vs {lineage2}). "
+                    f"Use .proj() to rename one of the attributes."
+                )
 
 
-def make_condition(query_expression, condition, columns):
+def make_condition(query_expression, condition, columns, semantic_check=True):
     """
     Translate the input condition into the equivalent SQL condition (a string)
 
@@ -128,6 +159,7 @@ def make_condition(query_expression, condition, columns):
     :param condition: any valid restriction object.
     :param columns: a set passed by reference to collect all column names used in the
         condition.
+    :param semantic_check: If True (default), use semantic matching and error on conflicts.
     :return: an SQL condition string or a boolean value.
     """
     from .expression import Aggregation, QueryExpression, U
@@ -180,7 +212,11 @@ def make_condition(query_expression, condition, columns):
     # restrict by AndList
     if isinstance(condition, AndList):
         # omit all conditions that evaluate to True
-        items = [item for item in (make_condition(query_expression, cond, columns) for cond in condition) if item is not True]
+        items = [
+            item
+            for item in (make_condition(query_expression, cond, columns, semantic_check) for cond in condition)
+            if item is not True
+        ]
         if any(item is False for item in items):
             return negate  # if any item is False, the whole thing is False
         if not items:
@@ -226,14 +262,9 @@ def make_condition(query_expression, condition, columns):
         condition = condition()
 
     # restrict by another expression (aka semijoin and antijoin)
-    check_compatibility = True
-    if isinstance(condition, PromiscuousOperand):
-        condition = condition.operand
-        check_compatibility = False
-
     if isinstance(condition, QueryExpression):
-        if check_compatibility:
-            assert_join_compatibility(query_expression, condition)
+        assert_join_compatibility(query_expression, condition, semantic_check=semantic_check)
+        # Always match on all namesakes (natural join semantics)
         common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
         columns.update(common_attributes)
         if isinstance(condition, Aggregation):
@@ -255,7 +286,7 @@ def make_condition(query_expression, condition, columns):
 
     # if iterable (but not a string, a QueryExpression, or an AndList), treat as an OrList
     try:
-        or_list = [make_condition(query_expression, q, columns) for q in condition]
+        or_list = [make_condition(query_expression, q, columns, semantic_check) for q in condition]
     except TypeError:
         raise DataJointError("Invalid restriction type %r" % condition)
     else:
