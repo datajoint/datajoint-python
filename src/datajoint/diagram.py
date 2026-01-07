@@ -1,3 +1,12 @@
+"""
+Diagram visualization for DataJoint schemas.
+
+This module provides the Diagram class for visualizing schema structure
+as directed acyclic graphs showing tables and their foreign key relationships.
+"""
+
+from __future__ import annotations
+
 import functools
 import inspect
 import io
@@ -32,44 +41,58 @@ if not diagram_active:  # noqa: C901
 
     class Diagram:
         """
-        Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
+        Schema diagram (disabled).
 
-        To enable Diagram feature, please install both matplotlib and pygraphviz. For instructions on how to install
-        these two packages, refer to https://docs.datajoint.com/core/datajoint-python/0.14/client/install/
+        Diagram visualization requires matplotlib and pygraphviz packages.
+        Install them to enable this feature.
+
+        See Also
+        --------
+        https://docs.datajoint.com/core/datajoint-python/0.14/client/install/
         """
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs) -> None:
             logger.warning("Please install matplotlib and pygraphviz libraries to enable the Diagram feature.")
 
 else:
 
     class Diagram(nx.DiGraph):
         """
-        Schema diagram showing tables and foreign keys between in the form of a directed
-        acyclic graph (DAG).  The diagram is derived from the connection.dependencies object.
+        Schema diagram as a directed acyclic graph (DAG).
 
-        Usage:
+        Visualizes tables and foreign key relationships derived from
+        ``connection.dependencies``.
 
-        >>>  diag = Diagram(source)
+        Parameters
+        ----------
+        source : Table, Schema, or module
+            A table object, table class, schema, or module with a schema.
+        context : dict, optional
+            Namespace for resolving table class names. If None, uses caller's
+            frame globals/locals.
 
-        source can be a table object, a table class, a schema, or a module that has a schema.
-
+        Examples
+        --------
+        >>> diag = dj.Diagram(schema.MyTable)
         >>> diag.draw()
 
-        draws the diagram using pyplot
+        Operators:
 
-        diag1 + diag2  - combines the two diagrams.
-        diag1 - diag2  - difference between diagrams
-        diag1 * diag2  - intersection of diagrams
-        diag + n   - expands n levels of successors
-        diag - n   - expands n levels of predecessors
-        Thus dj.Diagram(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
+        - ``diag1 + diag2`` - union of diagrams
+        - ``diag1 - diag2`` - difference of diagrams
+        - ``diag1 * diag2`` - intersection of diagrams
+        - ``diag + n`` - expand n levels of successors (children)
+        - ``diag - n`` - expand n levels of predecessors (parents)
 
-        Note that diagram + 1 - 1  may differ from diagram - 1 + 1 and so forth.
-        Only those tables that are loaded in the connection object are displayed
+        >>> dj.Diagram(schema.Table) + 1 - 1  # immediate ancestors and descendants
+
+        Notes
+        -----
+        ``diagram + 1 - 1`` may differ from ``diagram - 1 + 1``.
+        Only tables loaded in the connection are displayed.
         """
 
-        def __init__(self, source, context=None):
+        def __init__(self, source, context=None) -> None:
             if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
@@ -115,27 +138,33 @@ else:
                         self.nodes_to_show.add(node)
 
         @classmethod
-        def from_sequence(cls, sequence):
+        def from_sequence(cls, sequence) -> "Diagram":
             """
-            The join Diagram for all objects in sequence
+            Create combined Diagram from a sequence of sources.
 
-            :param sequence: a sequence (e.g. list, tuple)
-            :return: Diagram(arg1) + ... + Diagram(argn)
+            Parameters
+            ----------
+            sequence : iterable
+                Sequence of table objects, classes, or schemas.
+
+            Returns
+            -------
+            Diagram
+                Union of diagrams: ``Diagram(arg1) + ... + Diagram(argn)``.
             """
             return functools.reduce(lambda x, y: x + y, map(Diagram, sequence))
 
-        def add_parts(self):
+        def add_parts(self) -> "Diagram":
             """
-            Adds to the diagram the part tables of all master tables already in the diagram
-            :return:
+            Add part tables of all masters already in the diagram.
+
+            Returns
+            -------
+            Diagram
+                New diagram with part tables included.
             """
 
             def is_part(part, master):
-                """
-                :param part:  `database`.`table_name`
-                :param master:   `database`.`table_name`
-                :return: True if part is part of master.
-                """
                 part = [s.strip("`") for s in part.split(".")]
                 master = [s.strip("`") for s in master.split(".")]
                 return master[0] == part[0] and master[1] + "__" == part[1][: len(master[1]) + 2]
@@ -144,11 +173,19 @@ else:
             self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
             return self
 
-        def __add__(self, arg):
+        def __add__(self, arg) -> "Diagram":
             """
-            :param arg: either another Diagram or a positive integer.
-            :return: Union of the diagrams when arg is another Diagram
-                     or an expansion downstream when arg is a positive integer.
+            Union or downstream expansion.
+
+            Parameters
+            ----------
+            arg : Diagram or int
+                Another Diagram for union, or positive int for downstream expansion.
+
+            Returns
+            -------
+            Diagram
+                Combined or expanded diagram.
             """
             self = Diagram(self)  # copy
             try:
@@ -166,11 +203,19 @@ else:
                         self.nodes_to_show.update(new)
             return self
 
-        def __sub__(self, arg):
+        def __sub__(self, arg) -> "Diagram":
             """
-            :param arg: either another Diagram or a positive integer.
-            :return: Difference of the diagrams when arg is another Diagram or
-                     an expansion upstream when arg is a positive integer.
+            Difference or upstream expansion.
+
+            Parameters
+            ----------
+            arg : Diagram or int
+                Another Diagram for difference, or positive int for upstream expansion.
+
+            Returns
+            -------
+            Diagram
+                Reduced or expanded diagram.
             """
             self = Diagram(self)  # copy
             try:
@@ -189,23 +234,43 @@ else:
                         self.nodes_to_show.update(new)
             return self
 
-        def __mul__(self, arg):
+        def __mul__(self, arg) -> "Diagram":
             """
-            Intersection of two diagrams
-            :param arg: another Diagram
-            :return: a new Diagram comprising nodes that are present in both operands.
+            Intersection of two diagrams.
+
+            Parameters
+            ----------
+            arg : Diagram
+                Another Diagram.
+
+            Returns
+            -------
+            Diagram
+                Diagram with nodes present in both operands.
             """
             self = Diagram(self)  # copy
             self.nodes_to_show.intersection_update(arg.nodes_to_show)
             return self
 
-        def topo_sort(self):
-            """return nodes in lexicographical topological order"""
+        def topo_sort(self) -> list[str]:
+            """
+            Return nodes in topological order.
+
+            Returns
+            -------
+            list[str]
+                Node names in topological order.
+            """
             return topo_sort(self)
 
-        def _make_graph(self):
+        def _make_graph(self) -> nx.DiGraph:
             """
-            Make the self.graph - a graph object ready for drawing
+            Build graph object ready for drawing.
+
+            Returns
+            -------
+            nx.DiGraph
+                Graph with nodes relabeled to class names.
             """
             # mark "distinguished" tables, i.e. those that introduce new primary key
             # attributes
@@ -233,13 +298,14 @@ else:
             return graph
 
         @staticmethod
-        def _encapsulate_edge_attributes(graph):
+        def _encapsulate_edge_attributes(graph: nx.DiGraph) -> None:
             """
-            Modifies the `nx.Graph`'s edge attribute `attr_map` to be a string representation
-            of the attribute map, and encapsulates the string in double quotes.
-            Changes the graph in place.
+            Encapsulate edge attr_map in double quotes for pydot compatibility.
 
-            Implements workaround described in
+            Modifies graph in place.
+
+            See Also
+            --------
             https://github.com/pydot/pydot/issues/258#issuecomment-795798099
             """
             for u, v, *_, edgedata in graph.edges(data=True):
@@ -247,13 +313,14 @@ else:
                     graph.edges[u, v]["attr_map"] = '"{0}"'.format(edgedata["attr_map"])
 
         @staticmethod
-        def _encapsulate_node_names(graph):
+        def _encapsulate_node_names(graph: nx.DiGraph) -> None:
             """
-            Modifies the `nx.Graph`'s node names string representations encapsulated in
-            double quotes.
-            Changes the graph in place.
+            Encapsulate node names in double quotes for pydot compatibility.
 
-            Implements workaround described in
+            Modifies graph in place.
+
+            See Also
+            --------
             https://github.com/datajoint/datajoint-python/pull/1176
             """
             nx.relabel_nodes(
@@ -396,7 +463,22 @@ else:
             else:
                 raise DataJointError("pyplot was not imported")
 
-        def save(self, filename, format=None):
+        def save(self, filename: str, format: str | None = None) -> None:
+            """
+            Save diagram to file.
+
+            Parameters
+            ----------
+            filename : str
+                Output filename.
+            format : str, optional
+                File format (``'png'`` or ``'svg'``). Inferred from extension if None.
+
+            Raises
+            ------
+            DataJointError
+                If format is unsupported.
+            """
             if format is None:
                 if filename.lower().endswith(".png"):
                     format = "png"

@@ -438,3 +438,72 @@ class TestValidationResult:
         result = dj.ValidationResult(is_valid=False, errors=errors, rows_checked=20)
         summary = result.summary()
         assert "and 10 more errors" in summary
+
+
+class AllDefaultsTable(dj.Manual):
+    """Table where all attributes have defaults."""
+
+    definition = """
+    id : int auto_increment
+    ---
+    timestamp=CURRENT_TIMESTAMP : datetime
+    notes=null : varchar(200)
+    """
+
+
+class TestEmptyInsert:
+    """Tests for inserting empty dicts (GitHub issue #1280)."""
+
+    @pytest.fixture
+    def schema_empty_insert(self, connection_test, prefix):
+        schema = dj.Schema(
+            prefix + "_empty_insert_test",
+            context=dict(AllDefaultsTable=AllDefaultsTable, SimpleTable=SimpleTable),
+            connection=connection_test,
+        )
+        schema(AllDefaultsTable)
+        schema(SimpleTable)
+        yield schema
+        schema.drop()
+
+    def test_empty_insert_all_defaults(self, schema_empty_insert):
+        """Test that empty insert succeeds when all attributes have defaults."""
+        table = AllDefaultsTable()
+        assert len(table) == 0
+
+        # Insert empty dict - should use all defaults
+        table.insert1({})
+        assert len(table) == 1
+
+        # Check that values were populated with defaults
+        row = table.fetch1()
+        assert row["id"] == 1  # auto_increment starts at 1
+        assert row["timestamp"] is not None  # CURRENT_TIMESTAMP
+        assert row["notes"] is None  # nullable defaults to NULL
+
+    def test_empty_insert_multiple(self, schema_empty_insert):
+        """Test inserting multiple empty dicts."""
+        table = AllDefaultsTable()
+
+        # Insert multiple empty dicts
+        table.insert([{}, {}, {}])
+        assert len(table) == 3
+
+        # Each should have unique auto_increment id
+        ids = set(table.to_arrays("id"))
+        assert ids == {1, 2, 3}
+
+    def test_empty_insert_required_fields_error(self, schema_empty_insert):
+        """Test that empty insert raises clear error when fields are required."""
+        table = SimpleTable()
+
+        # SimpleTable has required fields (id, value)
+        with pytest.raises(dj.DataJointError) as exc_info:
+            table.insert1({})
+
+        error_msg = str(exc_info.value)
+        assert "Cannot insert empty row" in error_msg
+        assert "require values" in error_msg
+        # Should list the required attributes
+        assert "id" in error_msg
+        assert "value" in error_msg

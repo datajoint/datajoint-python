@@ -1,3 +1,13 @@
+"""
+Foreign key dependency graph for DataJoint schemas.
+
+This module provides the Dependencies class that tracks foreign key
+relationships between tables and supports topological sorting for
+proper ordering of operations like delete and drop.
+"""
+
+from __future__ import annotations
+
 import itertools
 import re
 from collections import defaultdict
@@ -7,18 +17,37 @@ import networkx as nx
 from .errors import DataJointError
 
 
-def extract_master(part_table):
-    """
-    given a part table name, return master part. None if not a part table
+def extract_master(part_table: str) -> str | None:
+    r"""
+    Extract master table name from a part table name.
+
+    Parameters
+    ----------
+    part_table : str
+        Full table name (e.g., ```\`schema\`.\`master__part\```).
+
+    Returns
+    -------
+    str or None
+        Master table name if part_table is a part table, None otherwise.
     """
     match = re.match(r"(?P<master>`\w+`.`#?\w+)__\w+`", part_table)
     return match["master"] + "`" if match else None
 
 
-def topo_sort(graph):
+def topo_sort(graph: nx.DiGraph) -> list[str]:
     """
-    topological sort of a dependency graph that keeps part tables together with their masters
-    :return: list of table names in topological order
+    Topological sort keeping part tables with their masters.
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        Dependency graph.
+
+    Returns
+    -------
+    list[str]
+        Table names in topological order with parts following masters.
     """
 
     graph = nx.DiGraph(graph)  # make a copy
@@ -69,28 +98,52 @@ def topo_sort(graph):
 
 class Dependencies(nx.DiGraph):
     """
-    The graph of dependencies (foreign keys) between loaded tables.
+    Graph of foreign key dependencies between loaded tables.
 
-    Note: the 'connection' argument should normally be supplied;
-    Empty use is permitted to facilitate use of networkx algorithms which
-    internally create objects with the expectation of empty constructors.
-    See also: https://github.com/datajoint/datajoint-python/pull/443
+    Extends NetworkX DiGraph to track foreign key relationships and
+    support operations like cascade delete and topological ordering.
+
+    Parameters
+    ----------
+    connection : Connection, optional
+        Database connection. May be None to support NetworkX algorithms
+        that create objects with empty constructors.
+
+    Attributes
+    ----------
+    _conn : Connection or None
+        Database connection.
+    _loaded : bool
+        Whether dependencies have been loaded from the database.
+
+    Notes
+    -----
+    Empty constructor use is permitted to facilitate NetworkX algorithms.
+    See: https://github.com/datajoint/datajoint-python/pull/443
     """
 
-    def __init__(self, connection=None):
+    def __init__(self, connection=None) -> None:
         self._conn = connection
         self._node_alias_count = itertools.count()
         self._loaded = False
         super().__init__(self)
 
-    def clear(self):
+    def clear(self) -> None:
+        """Clear the graph and reset loaded state."""
         self._loaded = False
         super().clear()
 
-    def load(self, force=True):
+    def load(self, force: bool = True) -> None:
         """
         Load dependencies for all loaded schemas.
-        This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
+
+        Called before operations requiring dependencies: delete, drop,
+        populate, progress.
+
+        Parameters
+        ----------
+        force : bool, optional
+            If True (default), reload even if already loaded.
         """
         # reload from scratch to prevent duplication of renamed edges
         if self._loaded and not force:
@@ -165,45 +218,90 @@ class Dependencies(nx.DiGraph):
             raise DataJointError("DataJoint can only work with acyclic dependencies")
         self._loaded = True
 
-    def topo_sort(self):
-        """:return: list of tables names in topological order"""
+    def topo_sort(self) -> list[str]:
+        """
+        Return table names in topological order.
+
+        Returns
+        -------
+        list[str]
+            Table names sorted topologically.
+        """
         return topo_sort(self)
 
-    def parents(self, table_name, primary=None):
-        """
-        :param table_name: `schema`.`table`
-        :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
-            primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
-            attribute are considered.
-        :return: dict of tables referenced by the foreign keys of table
+    def parents(self, table_name: str, primary: bool | None = None) -> dict:
+        r"""
+        Get tables referenced by this table's foreign keys.
+
+        Parameters
+        ----------
+        table_name : str
+            Full table name (```\`schema\`.\`table\```).
+        primary : bool, optional
+            If None, return all parents. If True, only FK composed entirely
+            of primary key attributes. If False, only FK with at least one
+            non-primary attribute.
+
+        Returns
+        -------
+        dict
+            Mapping of parent table name to edge properties.
         """
         self.load(force=False)
         return {p[0]: p[2] for p in self.in_edges(table_name, data=True) if primary is None or p[2]["primary"] == primary}
 
-    def children(self, table_name, primary=None):
-        """
-        :param table_name: `schema`.`table`
-        :param primary: if None, then all children are returned. If True, then only foreign keys composed of
-            primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
-            attribute are considered.
-        :return: dict of tables referencing the table through foreign keys
+    def children(self, table_name: str, primary: bool | None = None) -> dict:
+        r"""
+        Get tables that reference this table through foreign keys.
+
+        Parameters
+        ----------
+        table_name : str
+            Full table name (```\`schema\`.\`table\```).
+        primary : bool, optional
+            If None, return all children. If True, only FK composed entirely
+            of primary key attributes. If False, only FK with at least one
+            non-primary attribute.
+
+        Returns
+        -------
+        dict
+            Mapping of child table name to edge properties.
         """
         self.load(force=False)
         return {p[1]: p[2] for p in self.out_edges(table_name, data=True) if primary is None or p[2]["primary"] == primary}
 
-    def descendants(self, full_table_name):
-        """
-        :param full_table_name:  In form `schema`.`table_name`
-        :return: all dependent tables sorted in topological order.  Self is included.
+    def descendants(self, full_table_name: str) -> list[str]:
+        r"""
+        Get all dependent tables in topological order.
+
+        Parameters
+        ----------
+        full_table_name : str
+            Full table name (```\`schema\`.\`table_name\```).
+
+        Returns
+        -------
+        list[str]
+            Dependent tables in topological order. Self is included first.
         """
         self.load(force=False)
         nodes = self.subgraph(nx.descendants(self, full_table_name))
         return [full_table_name] + nodes.topo_sort()
 
-    def ancestors(self, full_table_name):
-        """
-        :param full_table_name:  In form `schema`.`table_name`
-        :return: all dependent tables sorted in topological order.  Self is included.
+    def ancestors(self, full_table_name: str) -> list[str]:
+        r"""
+        Get all ancestor tables in reverse topological order.
+
+        Parameters
+        ----------
+        full_table_name : str
+            Full table name (```\`schema\`.\`table_name\```).
+
+        Returns
+        -------
+        list[str]
+            Ancestor tables in reverse topological order. Self is included last.
         """
         self.load(force=False)
         nodes = self.subgraph(nx.ancestors(self, full_table_name))

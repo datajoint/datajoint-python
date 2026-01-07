@@ -1,44 +1,44 @@
-# Welcome to DataJoint for Python!
+# DataJoint for Python
 
-DataJoint for Python is a framework for scientific workflow management based on
-relational principles. DataJoint is built on the foundation of the relational data
-model and prescribes a consistent method for organizing, populating, computing, and
-querying data.
+DataJoint is an open-source Python framework for building scientific data pipelines.
+It implements the **Relational Workflow Model**—a paradigm that extends relational
+databases with native support for computational workflows.
 
-DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at
-Baylor College of Medicine for the distributed processing and management of large
-volumes of data streaming from regular experiments. Starting in 2011, DataJoint has
-been available as an open-source project adopted by other labs and improved through
-contributions from several developers.
-Presently, the primary developer of DataJoint open-source software is the company [DataJoint](https://datajoint.com){:target="_blank"}.
+## Documentation
 
-## Data Pipeline Example
+**User documentation** is available at **[docs.datajoint.com](https://docs.datajoint.com)**, including:
 
-![pipeline](https://raw.githubusercontent.com/datajoint/datajoint-python/master/images/pipeline.png)
+- Tutorials and getting started guides
+- Concepts and explanations
+- How-to guides
+- API reference
 
-[Yatsenko et al., bioRxiv 2021](https://doi.org/10.1101/2021.03.30.437358){:target="_blank"}
+## This Site
 
-## Getting Started
+This site contains **developer documentation** for contributors to the DataJoint codebase:
 
-- Install with Conda
+- [Contributing Guide](develop.md) — Development environment setup
+- [Architecture](architecture/index.md) — Internal design documentation
+- [API Reference](api/) — Auto-generated from source
 
-     ```bash
-     conda install -c conda-forge datajoint
-     ```
+## Quick Links
 
-- Install with pip
+| Resource | Link |
+|----------|------|
+| User Documentation | [docs.datajoint.com](https://docs.datajoint.com) |
+| GitHub Repository | [github.com/datajoint/datajoint-python](https://github.com/datajoint/datajoint-python) |
+| PyPI Package | [pypi.org/project/datajoint](https://pypi.org/project/datajoint) |
+| Issue Tracker | [GitHub Issues](https://github.com/datajoint/datajoint-python/issues) |
+| Community | [DataJoint Slack](https://datajoint.slack.com) |
 
-     ```bash
-     pip install datajoint
-     ```
+## Installation
 
-- [Quick Start Guide](./quick-start.md)
+```bash
+pip install datajoint
+```
 
-- [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials){:target="_blank"} on GitHub Codespaces
+## License
 
-- [DataJoint Elements](https://docs.datajoint.com/elements/) - Catalog of example pipelines for neuroscience experiments
+DataJoint is released under the [Apache 2.0 License](https://github.com/datajoint/datajoint-python/blob/master/LICENSE).
 
-- Contribute
-  - [Development Environment](./develop)
-
-  - [Guidelines](https://docs.datajoint.com/about/contribute/)
+Copyright 2024 DataJoint Inc. and contributors.

@@ -86,7 +86,8 @@ def test_update1(tmpdir, schema_update1, mock_stores_update):
     # Insert the relative path within the store
     Thing.update1(dict(key, img_file=f"{relpath}/{filename}"))
 
-    check2 = Thing.fetch1(download_path=tmpdir)
+    with dj.config.override(download_path=str(tmpdir)):
+        check2 = Thing.fetch1()
     buffer2 = Path(check2["picture"]).read_bytes()  # read attachment
     # For filepath, fetch returns ObjectRef - read the file through it
     filepath_ref = check2["img_file"]

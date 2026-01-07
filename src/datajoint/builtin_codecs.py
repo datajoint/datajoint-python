@@ -167,13 +167,19 @@ class HashCodec(Codec):
         """
         Store content and return metadata.
 
-        Args:
-            value: Raw bytes to store.
-            key: Primary key values (unused).
-            store_name: Store to use. If None, uses default store.
+        Parameters
+        ----------
+        value : bytes
+            Raw bytes to store.
+        key : dict, optional
+            Primary key values (unused).
+        store_name : str, optional
+            Store to use. If None, uses default store.
 
-        Returns:
-            Metadata dict: {hash, store, size}
+        Returns
+        -------
+        dict
+            Metadata dict: ``{hash, store, size}``.
         """
         from .content_registry import put_content
 
@@ -183,11 +189,16 @@ class HashCodec(Codec):
         """
         Retrieve content by hash.
 
-        Args:
-            stored: Metadata dict with 'hash' and optionally 'store'.
-            key: Primary key values (unused).
+        Parameters
+        ----------
+        stored : dict
+            Metadata dict with ``'hash'`` and optionally ``'store'``.
+        key : dict, optional
+            Primary key values (unused).
 
-        Returns:
+        Returns
+        -------
+        bytes
             Original bytes.
         """
         from .content_registry import get_content
@@ -275,19 +286,20 @@ class ObjectCodec(Codec):
         """
         Store content and return metadata.
 
-        Args:
-            value: Content to store. Can be:
-                - bytes: Raw bytes to store as file
-                - str/Path: Path to local file or folder to upload
-            key: Dict containing context for path construction:
-                - _schema: Schema name
-                - _table: Table name
-                - _field: Field/attribute name
-                - Other entries are primary key values
-            store_name: Store to use. If None, uses default store.
+        Parameters
+        ----------
+        value : bytes, str, or Path
+            Content to store: bytes (raw data), or str/Path (file/folder to upload).
+        key : dict, optional
+            Context for path construction with keys ``_schema``, ``_table``,
+            ``_field``, plus primary key values.
+        store_name : str, optional
+            Store to use. If None, uses default store.
 
-        Returns:
-            Metadata dict suitable for ObjectRef.from_json()
+        Returns
+        -------
+        dict
+            Metadata dict suitable for ``ObjectRef.from_json()``.
         """
         from datetime import datetime, timezone
         from pathlib import Path
@@ -381,12 +393,17 @@ class ObjectCodec(Codec):
         """
         Create ObjectRef handle for lazy access.
 
-        Args:
-            stored: Metadata dict from database.
-            key: Primary key values (unused).
+        Parameters
+        ----------
+        stored : dict
+            Metadata dict from database.
+        key : dict, optional
+            Primary key values (unused).
 
-        Returns:
-            ObjectRef for accessing the stored content.
+        Returns
+        -------
+        ObjectRef
+            Handle for accessing the stored content.
         """
         from .objectref import ObjectRef
         from .content_registry import get_store_backend
@@ -396,7 +413,7 @@ class ObjectCodec(Codec):
         return ObjectRef.from_json(stored, backend=backend)
 
     def validate(self, value: Any) -> None:
-        """Validate that value is bytes, path, dict metadata, or (extension, data) tuple."""
+        """Validate value is bytes, path, dict metadata, or (ext, data) tuple."""
         from pathlib import Path
 
         if isinstance(value, bytes):
@@ -463,13 +480,19 @@ class AttachCodec(Codec):
         """
         Read file and encode as filename + contents.
 
-        Args:
-            value: Path to file (str or Path).
-            key: Primary key values (unused).
-            store_name: Unused for internal storage.
+        Parameters
+        ----------
+        value : str or Path
+            Path to file.
+        key : dict, optional
+            Primary key values (unused).
+        store_name : str, optional
+            Unused for internal storage.
 
-        Returns:
-            Bytes: filename (UTF-8) + null byte + file contents
+        Returns
+        -------
+        bytes
+            Filename (UTF-8) + null byte + file contents.
         """
         from pathlib import Path
 
@@ -487,12 +510,17 @@ class AttachCodec(Codec):
         """
         Extract file to download path and return local path.
 
-        Args:
-            stored: Blob containing filename + null + contents.
-            key: Primary key values (unused).
+        Parameters
+        ----------
+        stored : bytes
+            Blob containing filename + null + contents.
+        key : dict, optional
+            Primary key values (unused).
 
-        Returns:
-            Path to extracted file as string.
+        Returns
+        -------
+        str
+            Path to extracted file.
         """
         from pathlib import Path
 
@@ -592,13 +620,19 @@ class FilepathCodec(Codec):
         """
         Store path reference as JSON metadata.
 
-        Args:
-            value: Relative path within the store (str).
-            key: Primary key values (unused).
-            store_name: Store where the file exists.
+        Parameters
+        ----------
+        value : str
+            Relative path within the store.
+        key : dict, optional
+            Primary key values (unused).
+        store_name : str, optional
+            Store where the file exists.
 
-        Returns:
-            Metadata dict: {path, store}
+        Returns
+        -------
+        dict
+            Metadata dict: ``{path, store}``.
         """
         from datetime import datetime, timezone
 
@@ -629,12 +663,17 @@ class FilepathCodec(Codec):
         """
         Create ObjectRef handle for lazy access.
 
-        Args:
-            stored: Metadata dict with path and store.
-            key: Primary key values (unused).
+        Parameters
+        ----------
+        stored : dict
+            Metadata dict with path and store.
+        key : dict, optional
+            Primary key values (unused).
 
-        Returns:
-            ObjectRef for accessing the file.
+        Returns
+        -------
+        ObjectRef
+            Handle for accessing the file.
         """
         from .objectref import ObjectRef
         from .content_registry import get_store_backend

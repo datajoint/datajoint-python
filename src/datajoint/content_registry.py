@@ -23,11 +23,15 @@ def compute_content_hash(data: bytes) -> str:
     """
     Compute SHA256 hash of content.
 
-    Args:
-        data: Content bytes
+    Parameters
+    ----------
+    data : bytes
+        Content bytes.
 
-    Returns:
-        Hex-encoded SHA256 hash (64 characters)
+    Returns
+    -------
+    str
+        Hex-encoded SHA256 hash (64 characters).
     """
     return hashlib.sha256(data).hexdigest()
 
@@ -39,11 +43,15 @@ def build_content_path(content_hash: str) -> str:
     Content is stored in a hierarchical structure to avoid too many files
     in a single directory: _content/{hash[:2]}/{hash[2:4]}/{hash}
 
-    Args:
-        content_hash: SHA256 hex hash (64 characters)
+    Parameters
+    ----------
+    content_hash : str
+        SHA256 hex hash (64 characters).
 
-    Returns:
-        Relative path within the store
+    Returns
+    -------
+    str
+        Relative path within the store.
     """
     if len(content_hash) != 64:
         raise DataJointError(f"Invalid content hash length: {len(content_hash)} (expected 64)")
@@ -54,12 +62,16 @@ def get_store_backend(store_name: str | None = None) -> StorageBackend:
     """
     Get a StorageBackend for content storage.
 
-    Args:
-        store_name: Name of the store to use. If None, uses the default object storage
-            configuration or the configured default_store.
+    Parameters
+    ----------
+    store_name : str, optional
+        Name of the store to use. If None, uses the default object storage
+        configuration or the configured default_store.
 
-    Returns:
-        StorageBackend instance
+    Returns
+    -------
+    StorageBackend
+        StorageBackend instance.
     """
     # If store_name is None, check for configured default_store
     if store_name is None and config.object_storage.default_store:
@@ -77,12 +89,17 @@ def put_content(data: bytes, store_name: str | None = None) -> dict[str, Any]:
     If the content already exists (same hash), it is not re-uploaded.
     Returns metadata including the hash, store, and size.
 
-    Args:
-        data: Content bytes to store
-        store_name: Name of the store. If None, uses default store.
+    Parameters
+    ----------
+    data : bytes
+        Content bytes to store.
+    store_name : str, optional
+        Name of the store. If None, uses default store.
 
-    Returns:
-        Metadata dict with keys: hash, store, size
+    Returns
+    -------
+    dict[str, Any]
+        Metadata dict with keys: hash, store, size.
     """
     content_hash = compute_content_hash(data)
     path = build_content_path(content_hash)
@@ -107,16 +124,24 @@ def get_content(content_hash: str, store_name: str | None = None) -> bytes:
     """
     Retrieve content by its hash.
 
-    Args:
-        content_hash: SHA256 hex hash of the content
-        store_name: Name of the store. If None, uses default store.
+    Parameters
+    ----------
+    content_hash : str
+        SHA256 hex hash of the content.
+    store_name : str, optional
+        Name of the store. If None, uses default store.
 
-    Returns:
-        Content bytes
+    Returns
+    -------
+    bytes
+        Content bytes.
 
-    Raises:
-        MissingExternalFile: If content is not found
-        DataJointError: If hash verification fails
+    Raises
+    ------
+    MissingExternalFile
+        If content is not found.
+    DataJointError
+        If hash verification fails.
     """
     path = build_content_path(content_hash)
     backend = get_store_backend(store_name)
@@ -135,12 +160,17 @@ def content_exists(content_hash: str, store_name: str | None = None) -> bool:
     """
     Check if content exists in storage.
 
-    Args:
-        content_hash: SHA256 hex hash of the content
-        store_name: Name of the store. If None, uses default store.
+    Parameters
+    ----------
+    content_hash : str
+        SHA256 hex hash of the content.
+    store_name : str, optional
+        Name of the store. If None, uses default store.
 
-    Returns:
-        True if content exists
+    Returns
+    -------
+    bool
+        True if content exists.
     """
     path = build_content_path(content_hash)
     backend = get_store_backend(store_name)
@@ -151,15 +181,24 @@ def delete_content(content_hash: str, store_name: str | None = None) -> bool:
     """
     Delete content from storage.
 
-    WARNING: This should only be called after verifying no references exist.
+    This should only be called after verifying no references exist.
     Use garbage collection to safely remove unreferenced content.
 
-    Args:
-        content_hash: SHA256 hex hash of the content
-        store_name: Name of the store. If None, uses default store.
+    Parameters
+    ----------
+    content_hash : str
+        SHA256 hex hash of the content.
+    store_name : str, optional
+        Name of the store. If None, uses default store.
 
-    Returns:
-        True if content was deleted, False if it didn't exist
+    Returns
+    -------
+    bool
+        True if content was deleted, False if it didn't exist.
+
+    Warnings
+    --------
+    This permanently deletes content. Ensure no references exist first.
     """
     path = build_content_path(content_hash)
     backend = get_store_backend(store_name)
@@ -175,12 +214,17 @@ def get_content_size(content_hash: str, store_name: str | None = None) -> int:
     """
     Get the size of stored content.
 
-    Args:
-        content_hash: SHA256 hex hash of the content
-        store_name: Name of the store. If None, uses default store.
+    Parameters
+    ----------
+    content_hash : str
+        SHA256 hex hash of the content.
+    store_name : str, optional
+        Name of the store. If None, uses default store.
 
-    Returns:
-        Size in bytes
+    Returns
+    -------
+    int
+        Size in bytes.
     """
     path = build_content_path(content_hash)
     backend = get_store_backend(store_name)

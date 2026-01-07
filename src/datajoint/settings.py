@@ -1,21 +1,26 @@
 """
-DataJoint Settings using pydantic-settings.
+DataJoint configuration system using pydantic-settings.
 
-This module provides a strongly-typed configuration system for DataJoint.
+This module provides strongly-typed configuration with automatic loading
+from environment variables, secrets directories, and JSON config files.
 
 Configuration sources (in priority order):
-1. Environment variables (DJ_*)
-2. Secrets directories (.secrets/ in project, /run/secrets/datajoint/)
-3. Project config file (datajoint.json, searched recursively up to .git/.hg)
 
-Example usage:
-    >>> import datajoint as dj
-    >>> dj.config.database.host
-    'localhost'
-    >>> with dj.config.override(safemode=False):
-    ...     # dangerous operations here
+1. Environment variables (``DJ_*``)
+2. Secrets directories (``.secrets/`` in project, ``/run/secrets/datajoint/``)
+3. Project config file (``datajoint.json``, searched recursively up to ``.git/.hg``)
 
-Project structure:
+Examples
+--------
+>>> import datajoint as dj
+>>> dj.config.database.host
+'localhost'
+>>> with dj.config.override(safemode=False):
+...     # dangerous operations here
+...     pass
+
+Project structure::
+
     myproject/
     ├── .git/
     ├── datajoint.json      # Project config (commit this)
@@ -25,6 +30,8 @@ Project structure:
     └── src/
         └── analysis.py     # Config found via parent search
 """
+
+from __future__ import annotations
 
 import json
 import logging
@@ -75,13 +82,17 @@ def find_config_file(start: Path | None = None) -> Path | None:
     """
     Search for datajoint.json in current and parent directories.
 
-    Searches upward from `start` (default: cwd) until finding the config file
-    or hitting a project boundary (.git, .hg) or filesystem root.
+    Searches upward from ``start`` until finding the config file or hitting
+    a project boundary (``.git``, ``.hg``) or filesystem root.
 
-    Args:
-        start: Directory to start search from. Defaults to current working directory.
+    Parameters
+    ----------
+    start : Path, optional
+        Directory to start search from. Defaults to current working directory.
 
-    Returns:
+    Returns
+    -------
+    Path or None
         Path to config file if found, None otherwise.
     """
     current = (start or Path.cwd()).resolve()
@@ -107,13 +118,18 @@ def find_secrets_dir(config_path: Path | None = None) -> Path | None:
     Find the secrets directory.
 
     Priority:
-    1. .secrets/ in same directory as datajoint.json (project secrets)
-    2. /run/secrets/datajoint/ (Docker/Kubernetes secrets)
 
-    Args:
-        config_path: Path to datajoint.json if found.
+    1. ``.secrets/`` in same directory as datajoint.json (project secrets)
+    2. ``/run/secrets/datajoint/`` (Docker/Kubernetes secrets)
 
-    Returns:
+    Parameters
+    ----------
+    config_path : Path, optional
+        Path to datajoint.json if found.
+
+    Returns
+    -------
+    Path or None
         Path to secrets directory if found, None otherwise.
     """
     # Check project secrets directory (next to config file)
@@ -133,11 +149,16 @@ def read_secret_file(secrets_dir: Path | None, name: str) -> str | None:
     """
     Read a secret value from a file in the secrets directory.
 
-    Args:
-        secrets_dir: Path to secrets directory.
-        name: Name of the secret file (e.g., 'database.password').
+    Parameters
+    ----------
+    secrets_dir : Path or None
+        Path to secrets directory.
+    name : str
+        Name of the secret file (e.g., ``'database.password'``).
 
-    Returns:
+    Returns
+    -------
+    str or None
         Secret value as string, or None if not found.
     """
     if secrets_dir is None:
@@ -268,18 +289,23 @@ class Config(BaseSettings):
     Main DataJoint configuration.
 
     Settings are loaded from (in priority order):
-    1. Environment variables (DJ_*)
-    2. Secrets directory (.secrets/ or /run/secrets/datajoint/)
-    3. Config file (datajoint.json, searched in parent directories)
+
+    1. Environment variables (``DJ_*``)
+    2. Secrets directory (``.secrets/`` or ``/run/secrets/datajoint/``)
+    3. Config file (``datajoint.json``, searched in parent directories)
     4. Default values
 
+    Examples
+    --------
     Access settings via attributes:
-        >>> config.database.host
-        >>> config.safemode
+
+    >>> config.database.host
+    >>> config.safemode
 
     Override temporarily with context manager:
-        >>> with config.override(safemode=False):
-        ...     pass
+
+    >>> with config.override(safemode=False):
+    ...     pass
     """
 
     model_config = SettingsConfigDict(
@@ -336,14 +362,20 @@ class Config(BaseSettings):
         """
         Get configuration for an external store.
 
-        Args:
-            store: Name of the store to retrieve
+        Parameters
+        ----------
+        store : str
+            Name of the store to retrieve.
 
-        Returns:
-            Store configuration dict with validated fields
+        Returns
+        -------
+        dict[str, Any]
+            Store configuration dict with validated fields.
 
-        Raises:
-            DataJointError: If store is not configured or has invalid config
+        Raises
+        ------
+        DataJointError
+            If store is not configured or has invalid config.
         """
         if store not in self.stores:
             raise DataJointError(f"Storage '{store}' is requested but not configured")
@@ -418,11 +450,15 @@ class Config(BaseSettings):
         """
         Get validated object storage configuration.
 
-        Returns:
-            Object storage configuration dict
+        Returns
+        -------
+        dict[str, Any]
+            Object storage configuration dict.
 
-        Raises:
-            DataJointError: If object storage is not configured or has invalid config
+        Raises
+        ------
+        DataJointError
+            If object storage is not configured or has invalid config.
         """
         os_settings = self.object_storage
 
@@ -485,14 +521,20 @@ class Config(BaseSettings):
         """
         Get validated configuration for a specific object store.
 
-        Args:
-            store_name: Name of the store (None for default store)
+        Parameters
+        ----------
+        store_name : str, optional
+            Name of the store. None for default store.
 
-        Returns:
-            Object store configuration dict
+        Returns
+        -------
+        dict[str, Any]
+            Object store configuration dict.
 
-        Raises:
-            DataJointError: If store is not configured or has invalid config
+        Raises
+        ------
+        DataJointError
+            If store is not configured or has invalid config.
         """
         if store_name is None:
             # Return default store spec
@@ -567,8 +609,10 @@ class Config(BaseSettings):
         """
         Load settings from a JSON file.
 
-        Args:
-            filename: Path to load configuration from.
+        Parameters
+        ----------
+        filename : str or Path
+            Path to load configuration from.
         """
         filepath = Path(filename)
         if not filepath.exists():
@@ -659,18 +703,23 @@ class Config(BaseSettings):
         """
         Temporarily override configuration values.
 
-        Args:
-            **kwargs: Settings to override. Use double underscore for nested
-                     settings (e.g., database__host="localhost")
+        Parameters
+        ----------
+        **kwargs : Any
+            Settings to override. Use double underscore for nested settings
+            (e.g., ``database__host="localhost"``).
 
-        Yields:
-            The config instance with overridden values
+        Yields
+        ------
+        Config
+            The config instance with overridden values.
 
-        Example:
-            >>> with config.override(safemode=False, database__host="test"):
-            ...     # config.safemode is False here
-            ...     pass
-            >>> # config.safemode is restored
+        Examples
+        --------
+        >>> with config.override(safemode=False, database__host="test"):
+        ...     # config.safemode is False here
+        ...     pass
+        >>> # config.safemode is restored
         """
         # Store original values
         backup = {}
@@ -721,26 +770,36 @@ class Config(BaseSettings):
         Create a template datajoint.json configuration file.
 
         Credentials should NOT be stored in datajoint.json. Instead, use either:
-        - Environment variables (DJ_USER, DJ_PASS, DJ_HOST, etc.)
-        - The .secrets/ directory (created alongside datajoint.json)
 
-        Args:
-            path: Where to save the template. Defaults to 'datajoint.json' in current directory.
-            minimal: If True (default), create a minimal template with just database settings.
-                    If False, create a full template with all available settings.
-            create_secrets_dir: If True (default), also create a .secrets/ directory
-                               with template files for credentials.
+        - Environment variables (``DJ_USER``, ``DJ_PASS``, ``DJ_HOST``, etc.)
+        - The ``.secrets/`` directory (created alongside datajoint.json)
 
-        Returns:
-            Path to the created config file.
+        Parameters
+        ----------
+        path : str or Path, optional
+            Where to save the template. Default ``'datajoint.json'``.
+        minimal : bool, optional
+            If True (default), create minimal template with just database settings.
+            If False, create full template with all available settings.
+        create_secrets_dir : bool, optional
+            If True (default), also create a ``.secrets/`` directory with
+            template files for credentials.
 
-        Raises:
-            FileExistsError: If config file already exists (won't overwrite).
+        Returns
+        -------
+        Path
+            Absolute path to the created config file.
 
-        Example:
-            >>> import datajoint as dj
-            >>> dj.config.save_template()  # Creates minimal template + .secrets/
-            >>> dj.config.save_template("full-config.json", minimal=False)
+        Raises
+        ------
+        FileExistsError
+            If config file already exists (won't overwrite).
+
+        Examples
+        --------
+        >>> import datajoint as dj
+        >>> dj.config.save_template()  # Creates minimal template + .secrets/
+        >>> dj.config.save_template("full-config.json", minimal=False)
         """
         filepath = Path(path)
         if filepath.exists():

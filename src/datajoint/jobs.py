@@ -2,9 +2,11 @@
 Job queue management for AutoPopulate 2.0.
 
 Each auto-populated table (Computed/Imported) has an associated jobs table
-with the naming pattern ~~table_name. The jobs table tracks job status,
+with the naming pattern ``~~table_name``. The jobs table tracks job status,
 priority, scheduling, and error information.
 """
+
+from __future__ import annotations
 
 import logging
 import os
@@ -26,7 +28,9 @@ def _get_job_version() -> str:
     """
     Get version string based on config settings.
 
-    Returns:
+    Returns
+    -------
+    str
         Version string, or empty string if version tracking disabled.
     """
     from .settings import config
@@ -53,21 +57,44 @@ class Job(Table):
     Per-table job queue for AutoPopulate 2.0.
 
     Each auto-populated table (Computed/Imported) has an associated job table
-    with the naming pattern ~~table_name. The job table tracks job status,
+    with the naming pattern ``~~table_name``. The job table tracks job status,
     priority, scheduling, and error information.
 
-    Access via the `jobs` property on any auto-populated table:
-        MyTable.jobs.refresh()
-        MyTable.jobs.pending
-        MyTable.jobs.errors
+    Parameters
+    ----------
+    target_table : Table
+        The Computed/Imported table instance this jobs table manages.
+
+    Attributes
+    ----------
+    target : Table
+        The auto-populated table this jobs table manages.
+    pending : QueryExpression
+        Query for jobs with ``status='pending'``.
+    reserved : QueryExpression
+        Query for jobs with ``status='reserved'``.
+    errors : QueryExpression
+        Query for jobs with ``status='error'``.
+    completed : QueryExpression
+        Query for jobs with ``status='success'``.
+    ignored : QueryExpression
+        Query for jobs with ``status='ignore'``.
+
+    Examples
+    --------
+    >>> MyTable.jobs.refresh()      # Add new jobs, clean up stale ones
+    >>> MyTable.jobs.pending        # Query pending jobs
+    >>> MyTable.jobs.errors         # Query failed jobs
     """
 
-    def __init__(self, target_table):
+    def __init__(self, target_table: Table) -> None:
         """
         Initialize jobs table for an auto-populated table.
 
-        Args:
-            target_table: The Computed/Imported table instance this jobs table manages.
+        Parameters
+        ----------
+        target_table : Table
+            The Computed/Imported table instance this jobs table manages.
         """
         self._target = target_table
         self._connection = target_table.connection
@@ -109,7 +136,9 @@ class Job(Table):
         """
         Generate jobs table definition from target's FK-derived primary key.
 
-        Returns:
+        Returns
+        -------
+        str
             DataJoint table definition string.
         """
         pk_attrs = self._get_fk_derived_pk_attrs()
@@ -148,7 +177,9 @@ class Job(Table):
         FK-derived attributes are those that come from primary FK references.
         Uses connection.dependencies to identify FK relationships.
 
-        Returns:
+        Returns
+        -------
+        list[tuple[str, str]]
             List of (attribute_name, datatype) tuples in target PK order.
         """
         heading = self._target.heading
@@ -181,15 +212,27 @@ class Job(Table):
         return fk_attrs
 
     def _get_pk(self, key: dict) -> dict:
-        """Extract primary key values from a key dict."""
+        """
+        Extract primary key values from a key dict.
+
+        Parameters
+        ----------
+        key : dict
+            Dictionary containing at least the primary key attributes.
+
+        Returns
+        -------
+        dict
+            Dictionary with only the primary key attributes.
+        """
         return {k: key[k] for k in self.primary_key if k in key}
 
-    def delete(self):
-        """Bypass interactive prompts and dependencies."""
+    def delete(self) -> None:
+        """Delete all entries, bypassing interactive prompts and dependencies."""
         self.delete_quick()
 
-    def drop(self):
-        """Bypass interactive prompts and dependencies."""
+    def drop(self) -> None:
+        """Drop the table, bypassing interactive prompts and dependencies."""
         self.drop_quick()
 
     # -------------------------------------------------------------------------
@@ -197,28 +240,63 @@ class Job(Table):
     # -------------------------------------------------------------------------
 
     @property
-    def pending(self):
-        """Return query for pending jobs."""
+    def pending(self) -> "Job":
+        """
+        Query for pending jobs awaiting processing.
+
+        Returns
+        -------
+        Job
+            Restricted query with ``status='pending'``.
+        """
         return self & 'status="pending"'
 
     @property
-    def reserved(self):
-        """Return query for reserved jobs."""
+    def reserved(self) -> "Job":
+        """
+        Query for jobs currently being processed.
+
+        Returns
+        -------
+        Job
+            Restricted query with ``status='reserved'``.
+        """
         return self & 'status="reserved"'
 
     @property
-    def errors(self):
-        """Return query for error jobs."""
+    def errors(self) -> "Job":
+        """
+        Query for jobs that failed with errors.
+
+        Returns
+        -------
+        Job
+            Restricted query with ``status='error'``.
+        """
         return self & 'status="error"'
 
     @property
-    def ignored(self):
-        """Return query for ignored jobs."""
+    def ignored(self) -> "Job":
+        """
+        Query for jobs marked to be skipped.
+
+        Returns
+        -------
+        Job
+            Restricted query with ``status='ignore'``.
+        """
         return self & 'status="ignore"'
 
     @property
-    def completed(self):
-        """Return query for completed (success) jobs."""
+    def completed(self) -> "Job":
+        """
+        Query for successfully completed jobs.
+
+        Returns
+        -------
+        Job
+            Restricted query with ``status='success'``.
+        """
         return self & 'status="success"'
 
     # -------------------------------------------------------------------------
@@ -236,33 +314,39 @@ class Job(Table):
         """
         Refresh the jobs queue: add new jobs and clean up stale/orphaned jobs.
 
+        Parameters
+        ----------
+        *restrictions : any
+            Conditions to filter key_source (for adding new jobs).
+        delay : float, optional
+            Seconds from now until new jobs become available for processing.
+            Default 0 (immediately available). Uses database server time.
+        priority : int, optional
+            Priority for new jobs (lower = more urgent).
+            Default from ``config.jobs.default_priority``.
+        stale_timeout : float, optional
+            Seconds after which jobs are checked for staleness.
+            Jobs older than this are removed if key not in key_source.
+            Default from ``config.jobs.stale_timeout``. Set to 0 to skip.
+        orphan_timeout : float, optional
+            Seconds after which reserved jobs are considered orphaned.
+            Reserved jobs older than this are deleted and re-added as pending.
+            Default None (no orphan cleanup).
+
+        Returns
+        -------
+        dict
+            Status counts with keys: ``'added'``, ``'removed'``,
+            ``'orphaned'``, ``'re_pended'``.
+
+        Notes
+        -----
         Operations performed:
-        1. Add new jobs: (key_source & restrictions) - target - jobs -> insert as 'pending'
-        2. Re-pend success jobs: if keep_completed=True and key in key_source but not in target
+
+        1. Add new jobs: ``(key_source & restrictions) - target - jobs`` → insert as pending
+        2. Re-pend success jobs: if ``keep_completed=True`` and key in key_source but not in target
         3. Remove stale jobs: jobs older than stale_timeout whose keys not in key_source
         4. Remove orphaned jobs: reserved jobs older than orphan_timeout (if specified)
-
-        Args:
-            restrictions: Conditions to filter key_source (for adding new jobs).
-            delay: Seconds from now until new jobs become available for processing.
-                   Default: 0 (immediately available). Uses database server time.
-            priority: Priority for new jobs (lower = more urgent).
-                      Default from config.jobs.default_priority.
-            stale_timeout: Seconds after which jobs are checked for staleness.
-                          Jobs older than this are removed if key not in key_source.
-                          Default from config.jobs.stale_timeout.
-                          Set to 0 to skip stale cleanup.
-            orphan_timeout: Seconds after which reserved jobs are considered orphaned.
-                           Reserved jobs older than this are deleted and re-added as pending.
-                           Default: None (no orphan cleanup - must be explicit).
-
-        Returns:
-            {
-                'added': int,      # New pending jobs added
-                'removed': int,    # Stale jobs removed
-                'orphaned': int,   # Orphaned jobs reset to pending
-                're_pended': int   # Success jobs re-pended (keep_completed mode)
-            }
         """
         from datetime import datetime, timedelta
 
@@ -346,12 +430,17 @@ class Job(Table):
         """
         Attempt to reserve a pending job for processing.
 
-        Updates status to 'reserved' if currently 'pending' and scheduled_time <= now.
+        Updates status to ``'reserved'`` if currently ``'pending'`` and
+        ``scheduled_time <= now``.
 
-        Args:
-            key: Primary key dict of the job to reserve.
+        Parameters
+        ----------
+        key : dict
+            Primary key dict of the job to reserve.
 
-        Returns:
+        Returns
+        -------
+        bool
             True if reservation successful, False if job not available.
         """
         from datetime import datetime
@@ -386,13 +475,19 @@ class Job(Table):
         """
         Mark a job as successfully completed.
 
-        Based on config.jobs.keep_completed:
-        - If True: updates status to 'success' with completion time and duration
-        - If False: deletes the job entry
+        Parameters
+        ----------
+        key : dict
+            Primary key dict of the job.
+        duration : float, optional
+            Execution duration in seconds.
 
-        Args:
-            key: Primary key dict of the job.
-            duration: Execution duration in seconds.
+        Notes
+        -----
+        Based on ``config.jobs.keep_completed``:
+
+        - If True: updates status to ``'success'`` with completion time and duration
+        - If False: deletes the job entry
         """
         from datetime import datetime
 
@@ -415,10 +510,14 @@ class Job(Table):
         """
         Mark a job as failed with error details.
 
-        Args:
-            key: Primary key dict of the job.
-            error_message: Error message (truncated to 2047 chars).
-            error_stack: Full stack trace.
+        Parameters
+        ----------
+        key : dict
+            Primary key dict of the job.
+        error_message : str
+            Error message (truncated to 2047 chars if longer).
+        error_stack : str, optional
+            Full stack trace.
         """
         from datetime import datetime
 
@@ -441,11 +540,13 @@ class Job(Table):
         """
         Mark a job to be ignored (skipped during populate).
 
-        If the key doesn't exist in the jobs table, inserts it with status='ignore'.
-        If it exists, updates the status to 'ignore'.
+        If the key doesn't exist in the jobs table, inserts it with
+        ``status='ignore'``. If it exists, updates the status to ``'ignore'``.
 
-        Args:
-            key: Primary key dict of the job.
+        Parameters
+        ----------
+        key : dict
+            Primary key dict of the job.
         """
         from .settings import config
 
@@ -460,15 +561,11 @@ class Job(Table):
         """
         Return job status breakdown.
 
-        Returns:
-            {
-                'pending': int,
-                'reserved': int,
-                'success': int,
-                'error': int,
-                'ignore': int,
-                'total': int
-            }
+        Returns
+        -------
+        dict
+            Counts by status with keys: ``'pending'``, ``'reserved'``,
+            ``'success'``, ``'error'``, ``'ignore'``, ``'total'``.
         """
         if not self.is_declared:
             return {

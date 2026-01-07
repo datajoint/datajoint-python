@@ -3,12 +3,15 @@ This module contains the Connection class that manages the connection to the dat
 the ``conn`` function that provides access to a persistent connection in datajoint.
 """
 
+from __future__ import annotations
+
 import logging
 import pathlib
 import re
 import warnings
 from contextlib import contextmanager
 from getpass import getpass
+from typing import Callable
 
 import pymysql as client
 
@@ -26,67 +29,98 @@ query_log_max_length = 300
 cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
 
 
-def translate_query_error(client_error, query):
+def translate_query_error(client_error: Exception, query: str) -> Exception:
     """
-    Take client error and original query and return the corresponding DataJoint exception.
+    Translate client error to the corresponding DataJoint exception.
 
-    :param client_error: the exception raised by the client interface
-    :param query: sql query with placeholders
-    :return: an instance of the corresponding subclass of datajoint.errors.DataJointError
+    Parameters
+    ----------
+    client_error : Exception
+        The exception raised by the client interface.
+    query : str
+        SQL query with placeholders.
+
+    Returns
+    -------
+    Exception
+        An instance of the corresponding DataJoint error subclass,
+        or the original error if no mapping exists.
     """
     logger.debug("type: {}, args: {}".format(type(client_error), client_error.args))
 
     err, *args = client_error.args
 
-    # Loss of connection errors
-    if err in (0, "(0, '')"):
-        return errors.LostConnectionError("Server connection lost due to an interface error.", *args)
-    if err == 2006:
-        return errors.LostConnectionError("Connection timed out", *args)
-    if err == 2013:
-        return errors.LostConnectionError("Server connection lost", *args)
-    # Access errors
-    if err in (1044, 1142):
-        return errors.AccessError("Insufficient privileges.", args[0], query)
-    # Integrity errors
-    if err == 1062:
-        return errors.DuplicateError(*args)
-    if err == 1217:  # MySQL 8 error code
-        return errors.IntegrityError(*args)
-    if err == 1451:
-        return errors.IntegrityError(*args)
-    if err == 1452:
-        return errors.IntegrityError(*args)
-    # Syntax errors
-    if err == 1064:
-        return errors.QuerySyntaxError(args[0], query)
-    # Existence errors
-    if err == 1146:
-        return errors.MissingTableError(args[0], query)
-    if err == 1364:
-        return errors.MissingAttributeError(*args)
-    if err == 1054:
-        return errors.UnknownAttributeError(*args)
-    # all the other errors are re-raised in original form
-    return client_error
+    match err:
+        # Loss of connection errors
+        case 0 | "(0, '')":
+            return errors.LostConnectionError("Server connection lost due to an interface error.", *args)
+        case 2006:
+            return errors.LostConnectionError("Connection timed out", *args)
+        case 2013:
+            return errors.LostConnectionError("Server connection lost", *args)
+
+        # Access errors
+        case 1044 | 1142:
+            return errors.AccessError("Insufficient privileges.", args[0], query)
+
+        # Integrity errors
+        case 1062:
+            return errors.DuplicateError(*args)
+        case 1217 | 1451 | 1452:
+            return errors.IntegrityError(*args)
+
+        # Syntax errors
+        case 1064:
+            return errors.QuerySyntaxError(args[0], query)
+
+        # Existence errors
+        case 1146:
+            return errors.MissingTableError(args[0], query)
+        case 1364:
+            return errors.MissingAttributeError(*args)
+        case 1054:
+            return errors.UnknownAttributeError(*args)
+
+        # All other errors pass through unchanged
+        case _:
+            return client_error
 
 
-def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use_tls=None):
+def conn(
+    host: str | None = None,
+    user: str | None = None,
+    password: str | None = None,
+    *,
+    init_fun: Callable | None = None,
+    reset: bool = False,
+    use_tls: bool | dict | None = None,
+) -> Connection:
     """
-    Returns a persistent connection object to be shared by multiple modules.
-    If the connection is not yet established or reset=True, a new connection is set up.
-    If connection information is not provided, it is taken from config which takes the
-    information from dj_local_conf.json. If the password is not specified in that file
-    datajoint prompts for the password.
+    Return a persistent connection object shared by multiple modules.
 
-    :param host: hostname
-    :param user: mysql user
-    :param password: mysql password
-    :param init_fun: initialization function
-    :param reset: whether the connection should be reset or not
-    :param use_tls: TLS encryption option. Valid options are: True (required), False
-        (required no TLS), None (TLS preferred, default), dict (Manually specify values per
-        https://dev.mysql.com/doc/refman/8.0/en/connection-options.html#encrypted-connection-options).
+    If the connection is not yet established or reset=True, a new connection is set up.
+    If connection information is not provided, it is taken from config.
+
+    Parameters
+    ----------
+    host : str, optional
+        Database hostname.
+    user : str, optional
+        MySQL username.
+    password : str, optional
+        MySQL password. Prompts if not provided.
+    init_fun : callable, optional
+        Initialization function called after connection.
+    reset : bool, optional
+        If True, reset existing connection. Default False.
+    use_tls : bool or dict, optional
+        TLS encryption option: True (required), False (no TLS),
+        None (preferred, default), or dict for manual configuration.
+
+    Returns
+    -------
+    Connection
+        Persistent database connection.
     """
     if not hasattr(conn, "connection") or reset:
         host = host if host is not None else config["database.host"]
@@ -128,20 +162,43 @@ class EmulatedCursor:
 
 class Connection:
     """
-    A dj.Connection object manages a connection to a database server.
-    It also catalogues modules, schemas, tables, and their dependencies (foreign keys).
+    Manages a connection to a database server.
 
-    Most of the parameters below should be set in the local configuration file.
+    Catalogues schemas, tables, and their dependencies (foreign keys).
+    Most parameters should be set in the configuration file.
 
-    :param host: host name, may include port number as hostname:port, in which case it overrides the value in port
-    :param user: user name
-    :param password: password
-    :param port: port number
-    :param init_fun: connection initialization function (SQL)
-    :param use_tls: TLS encryption option
+    Parameters
+    ----------
+    host : str
+        Hostname, may include port as ``hostname:port``.
+    user : str
+        Database username.
+    password : str
+        Database password.
+    port : int, optional
+        Port number. Overridden if specified in host.
+    init_fun : str, optional
+        SQL initialization command.
+    use_tls : bool or dict, optional
+        TLS encryption option.
+
+    Attributes
+    ----------
+    schemas : dict
+        Registered schema objects.
+    dependencies : Dependencies
+        Foreign key dependency graph.
     """
 
-    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
+    def __init__(
+        self,
+        host: str,
+        user: str,
+        password: str,
+        port: int | None = None,
+        init_fun: str | None = None,
+        use_tls: bool | dict | None = None,
+    ) -> None:
         if ":" in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(":")
@@ -172,8 +229,8 @@ class Connection:
         connected = "connected" if self.is_connected else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(connected=connected, **self.conn_info)
 
-    def connect(self):
-        """Connect to the database server."""
+    def connect(self) -> None:
+        """Establish or re-establish connection to the database server."""
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", ".*deprecated.*")
             try:
@@ -198,38 +255,67 @@ class Connection:
                 )
         self._conn.autocommit(True)
 
-    def set_query_cache(self, query_cache=None):
+    def set_query_cache(self, query_cache: str | None = None) -> None:
         """
-        When query_cache is not None, the connection switches into the query caching mode, which entails:
-        1. Only SELECT queries are allowed.
-        2. The results of queries are cached under the path indicated by dj.config['query_cache']
-        3. query_cache is a string that differentiates different cache states.
+        Enable query caching mode.
 
-        :param query_cache: a string to initialize the hash for query results
+        When enabled:
+        1. Only SELECT queries are allowed
+        2. Results are cached under ``dj.config['query_cache']``
+        3. Cache key differentiates cache states
+
+        Parameters
+        ----------
+        query_cache : str, optional
+            String to initialize the hash for query results.
+            None disables caching.
         """
         self._query_cache = query_cache
 
-    def purge_query_cache(self):
-        """Purges all query cache."""
+    def purge_query_cache(self) -> None:
+        """Delete all cached query results."""
         if isinstance(config.get(cache_key), str) and pathlib.Path(config[cache_key]).is_dir():
             for path in pathlib.Path(config[cache_key]).iterdir():
                 if not path.is_dir():
                     path.unlink()
 
-    def close(self):
+    def close(self) -> None:
+        """Close the database connection."""
         self._conn.close()
 
-    def register(self, schema):
+    def register(self, schema) -> None:
+        """
+        Register a schema with this connection.
+
+        Parameters
+        ----------
+        schema : Schema
+            Schema object to register.
+        """
         self.schemas[schema.database] = schema
         self.dependencies.clear()
 
-    def ping(self):
-        """Ping the connection or raises an exception if the connection is closed."""
+    def ping(self) -> None:
+        """
+        Ping the server to verify connection is alive.
+
+        Raises
+        ------
+        Exception
+            If the connection is closed.
+        """
         self._conn.ping(reconnect=False)
 
     @property
-    def is_connected(self):
-        """Return true if the object is connected to the database server."""
+    def is_connected(self) -> bool:
+        """
+        Check if connected to the database server.
+
+        Returns
+        -------
+        bool
+            True if connected.
+        """
         try:
             self.ping()
         except:
@@ -247,16 +333,40 @@ class Connection:
         except client.err.Error as err:
             raise translate_query_error(err, query)
 
-    def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
+    def query(
+        self,
+        query: str,
+        args: tuple = (),
+        *,
+        as_dict: bool = False,
+        suppress_warnings: bool = True,
+        reconnect: bool | None = None,
+    ):
         """
-        Execute the specified query and return the tuple generator (cursor).
+        Execute a SQL query and return the cursor.
 
-        :param query: SQL query
-        :param args: additional arguments for the client.cursor
-        :param as_dict: If as_dict is set to True, the returned cursor objects returns
-                        query results as dictionary.
-        :param suppress_warnings: If True, suppress all warnings arising from underlying query library
-        :param reconnect: when None, get from config, when True, attempt to reconnect if disconnected
+        Parameters
+        ----------
+        query : str
+            SQL query to execute.
+        args : tuple, optional
+            Query parameters for prepared statement.
+        as_dict : bool, optional
+            If True, return rows as dictionaries. Default False.
+        suppress_warnings : bool, optional
+            If True, suppress SQL library warnings. Default True.
+        reconnect : bool, optional
+            If True, reconnect if disconnected. None uses config setting.
+
+        Returns
+        -------
+        cursor
+            Database cursor with query results.
+
+        Raises
+        ------
+        DataJointError
+            If non-SELECT query during query caching mode.
         """
         # check cache first:
         use_query_cache = bool(self._query_cache)
@@ -300,24 +410,39 @@ class Connection:
 
         return cursor
 
-    def get_user(self):
+    def get_user(self) -> str:
         """
-        :return: the user name and host name provided by the client to the server.
+        Get the current user and host.
+
+        Returns
+        -------
+        str
+            User name and host as ``'user@host'``.
         """
         return self.query("SELECT user()").fetchone()[0]
 
     # ---------- transaction processing
     @property
-    def in_transaction(self):
+    def in_transaction(self) -> bool:
         """
-        :return: True if there is an open transaction.
+        Check if a transaction is open.
+
+        Returns
+        -------
+        bool
+            True if a transaction is in progress.
         """
         self._in_transaction = self._in_transaction and self.is_connected
         return self._in_transaction
 
-    def start_transaction(self):
+    def start_transaction(self) -> None:
         """
-        Starts a transaction error.
+        Start a new transaction.
+
+        Raises
+        ------
+        DataJointError
+            If a transaction is already in progress.
         """
         if self.in_transaction:
             raise errors.DataJointError("Nested connections are not supported.")
@@ -325,19 +450,14 @@ class Connection:
         self._in_transaction = True
         logger.debug("Transaction started")
 
-    def cancel_transaction(self):
-        """
-        Cancels the current transaction and rolls back all changes made during the transaction.
-        """
+    def cancel_transaction(self) -> None:
+        """Cancel the current transaction and roll back all changes."""
         self.query("ROLLBACK")
         self._in_transaction = False
         logger.debug("Transaction cancelled. Rolling back ...")
 
-    def commit_transaction(self):
-        """
-        Commit all changes made during the transaction and close it.
-
-        """
+    def commit_transaction(self) -> None:
+        """Commit all changes and close the transaction."""
         self.query("COMMIT")
         self._in_transaction = False
         logger.debug("Transaction committed and closed.")
@@ -347,14 +467,21 @@ class Connection:
     @contextmanager
     def transaction(self):
         """
-        Context manager for transactions. Opens an transaction and closes it after the with statement.
-        If an error is caught during the transaction, the commits are automatically rolled back.
-        All errors are raised again.
+        Context manager for transactions.
 
-        Example:
-        >>> import datajoint as dj
-        >>> with dj.conn().transaction as conn:
-        >>>     # transaction is open here
+        Opens a transaction and automatically commits on success or rolls back
+        on exception.
+
+        Yields
+        ------
+        Connection
+            This connection object.
+
+        Examples
+        --------
+        >>> with dj.conn().transaction:
+        ...     # All operations here are in one transaction
+        ...     table.insert(data)
         """
         try:
             self.start_transaction()

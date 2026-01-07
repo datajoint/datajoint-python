@@ -54,27 +54,30 @@ class Codec(ABC):
 
     Requires Python 3.10+.
 
-    Attributes:
-        name: Unique identifier used in ``<name>`` syntax. Must be set by subclasses.
+    Attributes
+    ----------
+    name : str or None
+        Unique identifier used in ``<name>`` syntax. Must be set by subclasses.
 
-    Example:
-        class GraphCodec(dj.Codec):
-            name = "graph"
+    Examples
+    --------
+    >>> class GraphCodec(dj.Codec):
+    ...     name = "graph"
+    ...
+    ...     def get_dtype(self, is_external: bool) -> str:
+    ...         return "<blob>"
+    ...
+    ...     def encode(self, graph, *, key=None, store_name=None):
+    ...         return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
+    ...
+    ...     def decode(self, stored, *, key=None):
+    ...         import networkx as nx
+    ...         G = nx.Graph()
+    ...         G.add_nodes_from(stored['nodes'])
+    ...         G.add_edges_from(stored['edges'])
+    ...         return G
 
-            def get_dtype(self, is_external: bool) -> str:
-                return "<blob>"
-
-            def encode(self, graph, *, key=None, store_name=None):
-                return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
-
-            def decode(self, stored, *, key=None):
-                import networkx as nx
-                G = nx.Graph()
-                G.add_nodes_from(stored['nodes'])
-                G.add_edges_from(stored['edges'])
-                return G
-
-    The codec can then be used in table definitions::
+    Use in table definitions::
 
         class Connectivity(dj.Manual):
             definition = '''
@@ -83,7 +86,7 @@ class Codec(ABC):
             graph_data : <graph>
             '''
 
-    To skip auto-registration (for abstract base classes)::
+    Skip auto-registration for abstract base classes::
 
         class ExternalOnlyCodec(dj.Codec, register=False):
             '''Abstract base - not registered.'''
@@ -116,33 +119,46 @@ class Codec(ABC):
         _codec_registry[cls.name] = cls()
         logger.debug(f"Registered codec <{cls.name}> from {cls.__module__}.{cls.__name__}")
 
+    @abstractmethod
     def get_dtype(self, is_external: bool) -> str:
         """
         Return the storage dtype for this codec.
 
-        Args:
-            is_external: True if @ modifier present (external storage)
+        Parameters
+        ----------
+        is_external : bool
+            True if ``@`` modifier present (external storage).
 
-        Returns:
-            A core type (e.g., "bytes", "json") or another codec (e.g., "<hash>")
+        Returns
+        -------
+        str
+            A core type (e.g., ``"bytes"``, ``"json"``) or another codec
+            (e.g., ``"<hash>"``).
 
-        Raises:
-            NotImplementedError: If not overridden by subclass.
-            DataJointError: If external storage not supported but requested.
+        Raises
+        ------
+        DataJointError
+            If external storage not supported but requested.
         """
-        raise NotImplementedError(f"Codec <{self.name}> must implement get_dtype()")
+        ...
 
     @abstractmethod
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> Any:
         """
         Encode Python value for storage.
 
-        Args:
-            value: The Python object to store.
-            key: Primary key values as a dict. May be needed for path construction.
-            store_name: Target store name for external storage.
+        Parameters
+        ----------
+        value : any
+            The Python object to store.
+        key : dict, optional
+            Primary key values. May be needed for path construction.
+        store_name : str, optional
+            Target store name for external storage.
 
-        Returns:
+        Returns
+        -------
+        any
             Value in the format expected by the dtype.
         """
         ...
@@ -152,11 +168,16 @@ class Codec(ABC):
         """
         Decode stored value back to Python.
 
-        Args:
-            stored: Data retrieved from storage.
-            key: Primary key values as a dict.
+        Parameters
+        ----------
+        stored : any
+            Data retrieved from storage.
+        key : dict, optional
+            Primary key values.
 
-        Returns:
+        Returns
+        -------
+        any
             The reconstructed Python object.
         """
         ...
@@ -169,12 +190,17 @@ class Codec(ABC):
         Called automatically before ``encode()`` during INSERT operations.
         The default implementation accepts any value.
 
-        Args:
-            value: The value to validate.
+        Parameters
+        ----------
+        value : any
+            The value to validate.
 
-        Raises:
-            TypeError: If the value has an incompatible type.
-            ValueError: If the value fails domain validation.
+        Raises
+        ------
+        TypeError
+            If the value has an incompatible type.
+        ValueError
+            If the value fails domain validation.
         """
         pass
 
@@ -186,19 +212,25 @@ def parse_type_spec(spec: str) -> tuple[str, str | None]:
     """
     Parse a type specification into type name and optional store parameter.
 
-    Handles formats like:
-    - "<blob>" -> ("blob", None)
-    - "<blob@cold>" -> ("blob", "cold")
-    - "<blob@>" -> ("blob", "")  # default store
-    - "blob@cold" -> ("blob", "cold")
-    - "blob" -> ("blob", None)
+    Parameters
+    ----------
+    spec : str
+        Type specification string, with or without angle brackets.
 
-    Args:
-        spec: Type specification string, with or without angle brackets.
+    Returns
+    -------
+    tuple[str, str | None]
+        ``(type_name, store_name)``. ``store_name`` is None if not specified,
+        empty string if ``@`` present without name (default store).
 
-    Returns:
-        Tuple of (type_name, store_name). store_name is None if not specified,
-        empty string if @ present without name (default store).
+    Examples
+    --------
+    >>> parse_type_spec("<blob>")
+    ("blob", None)
+    >>> parse_type_spec("<blob@cold>")
+    ("blob", "cold")
+    >>> parse_type_spec("<blob@>")
+    ("blob", "")
     """
     # Strip angle brackets
     spec = spec.strip("<>").strip()
@@ -216,11 +248,15 @@ def unregister_codec(name: str) -> None:
 
     Primarily useful for testing. Use with caution in production code.
 
-    Args:
-        name: The codec name to unregister.
+    Parameters
+    ----------
+    name : str
+        The codec name to unregister.
 
-    Raises:
-        DataJointError: If the codec is not registered.
+    Raises
+    ------
+    DataJointError
+        If the codec is not registered.
     """
     name = name.strip("<>")
     if name not in _codec_registry:
@@ -235,15 +271,21 @@ def get_codec(name: str) -> Codec:
     Looks up the codec in the explicit registry first, then attempts
     to load from installed packages via entry points.
 
-    Args:
-        name: The codec name, with or without angle brackets.
-              Store parameters (e.g., "<blob@cold>") are stripped.
+    Parameters
+    ----------
+    name : str
+        The codec name, with or without angle brackets.
+        Store parameters (e.g., ``"<blob@cold>"``) are stripped.
 
-    Returns:
+    Returns
+    -------
+    Codec
         The registered Codec instance.
 
-    Raises:
-        DataJointError: If the codec is not found.
+    Raises
+    ------
+    DataJointError
+        If the codec is not found.
     """
     # Strip angle brackets and store parameter
     type_name, _ = parse_type_spec(name)
@@ -267,7 +309,9 @@ def list_codecs() -> list[str]:
     """
     List all registered codec names.
 
-    Returns:
+    Returns
+    -------
+    list[str]
         Sorted list of registered codec names.
     """
     _load_entry_points()
@@ -278,10 +322,14 @@ def is_codec_registered(name: str) -> bool:
     """
     Check if a codec name is registered.
 
-    Args:
-        name: The codec name to check (store parameters are ignored).
+    Parameters
+    ----------
+    name : str
+        The codec name to check (store parameters are ignored).
 
-    Returns:
+    Returns
+    -------
+    bool
         True if the codec is registered.
     """
     type_name, _ = parse_type_spec(name)
@@ -346,31 +394,38 @@ def resolve_dtype(
     """
     Resolve a dtype string, following codec chains.
 
-    If dtype references another codec (e.g., "<hash>"), recursively
+    If dtype references another codec (e.g., ``"<hash>"``), recursively
     resolves to find the ultimate storage type. Store parameters are propagated
     through the chain.
 
-    Args:
-        dtype: The dtype string to resolve (e.g., "<blob>", "<blob@cold>", "bytes").
-        seen: Set of already-seen codec names (for cycle detection).
-        store_name: Store name from outer type specification (propagated inward).
+    Parameters
+    ----------
+    dtype : str
+        The dtype string to resolve (e.g., ``"<blob>"``, ``"<blob@cold>"``, ``"bytes"``).
+    seen : set[str], optional
+        Set of already-seen codec names (for cycle detection).
+    store_name : str, optional
+        Store name from outer type specification (propagated inward).
 
-    Returns:
-        Tuple of (final_storage_type, list_of_codecs_in_chain, resolved_store_name).
-        The chain is ordered from outermost to innermost codec.
+    Returns
+    -------
+    tuple[str, list[Codec], str | None]
+        ``(final_storage_type, codec_chain, resolved_store_name)``.
+        Chain is ordered from outermost to innermost codec.
 
-    Raises:
-        DataJointError: If a circular type reference is detected.
+    Raises
+    ------
+    DataJointError
+        If a circular type reference is detected.
 
-    Examples:
-        >>> resolve_dtype("<blob>")
-        ("bytes", [BlobCodec], None)
-
-        >>> resolve_dtype("<blob@cold>")
-        ("<hash>", [BlobCodec], "cold")  # BlobCodec.get_dtype(True) returns "<hash>"
-
-        >>> resolve_dtype("bytes")
-        ("bytes", [], None)
+    Examples
+    --------
+    >>> resolve_dtype("<blob>")
+    ("bytes", [BlobCodec], None)
+    >>> resolve_dtype("<blob@cold>")
+    ("<hash>", [BlobCodec], "cold")
+    >>> resolve_dtype("bytes")
+    ("bytes", [], None)
     """
     if seen is None:
         seen = set()
@@ -420,18 +475,24 @@ def lookup_codec(codec_spec: str) -> tuple[Codec, str | None]:
     """
     Look up a codec from a type specification string.
 
-    Parses a codec specification (e.g., "<blob@store>") and returns
+    Parses a codec specification (e.g., ``"<blob@store>"``) and returns
     the codec instance along with any store name.
 
-    Args:
-        codec_spec: The codec specification, with or without angle brackets.
-                    May include store parameter (e.g., "<blob@cold>").
+    Parameters
+    ----------
+    codec_spec : str
+        The codec specification, with or without angle brackets.
+        May include store parameter (e.g., ``"<blob@cold>"``).
 
-    Returns:
-        Tuple of (Codec instance, store_name or None).
+    Returns
+    -------
+    tuple[Codec, str | None]
+        ``(codec_instance, store_name)`` or ``(codec_instance, None)``.
 
-    Raises:
-        DataJointError: If the codec is not found.
+    Raises
+    ------
+    DataJointError
+        If the codec is not found.
     """
     type_name, store_name = parse_type_spec(codec_spec)
 
