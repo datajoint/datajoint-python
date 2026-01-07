@@ -630,8 +630,8 @@ class TestDjTop:
         ]
         assert key.fetch(as_dict=True) == [
             {"id": 2, "key": 6},
-            {"id": 2, "key": 5},
             {"id": 1, "key": 5},
+            {"id": 2, "key": 5},
             {"id": 0, "key": 4},
             {"id": 1, "key": 4},
             {"id": 2, "key": 4},
