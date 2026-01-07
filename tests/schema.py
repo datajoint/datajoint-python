@@ -145,7 +145,7 @@ class Experiment(dj.Imported):
         """
         from datetime import date, timedelta
 
-        users = [None, None] + list(User().fetch()["username"])
+        users = [None, None] + list(User().to_arrays()["username"])
         random.seed("Amazing Seed4")
         self.insert(
             dict(

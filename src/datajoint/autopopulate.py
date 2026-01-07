@@ -315,7 +315,7 @@ class AutoPopulate:
         Computes keys directly from key_source, suitable for single-worker
         execution, development, and debugging.
         """
-        keys = (self._jobs_to_do(restrictions) - self).fetch("KEY")
+        keys = (self._jobs_to_do(restrictions) - self).keys()
 
         logger.debug("Found %d keys to populate" % len(keys))
 
@@ -406,7 +406,7 @@ class AutoPopulate:
             if priority is not None:
                 pending_query = pending_query & f"priority <= {priority}"
 
-            keys = pending_query.fetch("KEY", order_by="priority ASC, scheduled_time ASC", limit=max_calls)
+            keys = pending_query.keys(order_by="priority ASC, scheduled_time ASC", limit=max_calls)
 
             logger.debug("Found %d pending jobs to populate" % len(keys))
 

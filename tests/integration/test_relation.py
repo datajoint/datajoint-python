@@ -19,13 +19,13 @@ def test_contents(user, subject):
     # test contents
     assert user
     assert len(user) == len(user.contents)
-    u = user.fetch(order_by=["username"])
+    u = user.to_arrays(order_by=["username"])
     assert list(u["username"]) == sorted([s[0] for s in user.contents])
 
     # test prepare
     assert subject
     assert len(subject) == len(subject.contents)
-    u = subject.fetch(order_by=["subject_id"])
+    u = subject.to_arrays(order_by=["subject_id"])
     assert list(u["subject_id"]) == sorted([s[0] for s in subject.contents])
 
 
@@ -103,7 +103,7 @@ def test_insert_pandas_roundtrip(clean_test_tables, test, test2):
     test2.delete()
     n = len(test)
     assert n > 0
-    df = test.fetch(format="frame")
+    df = test.to_pandas()
     assert isinstance(df, pandas.DataFrame)
     assert len(df) == n
     test2.insert(df)
@@ -118,7 +118,7 @@ def test_insert_pandas_userframe(clean_test_tables, test, test2):
     test2.delete()
     n = len(test)
     assert n > 0
-    df = pandas.DataFrame(test.fetch())
+    df = pandas.DataFrame(test.to_arrays())
     assert isinstance(df, pandas.DataFrame)
     assert len(df) == n
     test2.insert(df)
@@ -127,7 +127,7 @@ def test_insert_pandas_userframe(clean_test_tables, test, test2):
 
 def test_insert_select_ignore_extra_fields0(clean_test_tables, test, test_extra):
     """need ignore extra fields for insert select"""
-    test_extra.insert1((test.fetch("key").max() + 1, 0, 0))
+    test_extra.insert1((test.to_arrays("key").max() + 1, 0, 0))
     with pytest.raises(dj.DataJointError):
         test.insert(test_extra)
 
@@ -135,10 +135,10 @@ def test_insert_select_ignore_extra_fields0(clean_test_tables, test, test_extra)
 def test_insert_select_ignore_extra_fields1(clean_test_tables, test, test_extra):
     """make sure extra fields works in insert select"""
     test_extra.delete()
-    keyno = test.fetch("key").max() + 1
+    keyno = test.to_arrays("key").max() + 1
     test_extra.insert1((keyno, 0, 0))
     test.insert(test_extra, ignore_extra_fields=True)
-    assert keyno in test.fetch("key")
+    assert keyno in test.to_arrays("key")
 
 
 def test_insert_select_ignore_extra_fields2(clean_test_tables, test_no_extra, test):
@@ -150,14 +150,14 @@ def test_insert_select_ignore_extra_fields2(clean_test_tables, test_no_extra, te
 def test_insert_select_ignore_extra_fields3(clean_test_tables, test, test_no_extra, test_extra):
     """make sure insert select works for from query result"""
     # Recreate table state from previous tests
-    keyno = test.fetch("key").max() + 1
+    keyno = test.to_arrays("key").max() + 1
     test_extra.insert1((keyno, 0, 0))
     test.insert(test_extra, ignore_extra_fields=True)
 
-    assert len(test_extra.fetch("key")), "test_extra is empty"
+    assert len(test_extra.to_arrays("key")), "test_extra is empty"
     test_no_extra.delete()
-    assert len(test_extra.fetch("key")), "test_extra is empty"
-    keystr = str(test_extra.fetch("key").max())
+    assert len(test_extra.to_arrays("key")), "test_extra is empty"
+    keystr = str(test_extra.to_arrays("key").max())
     test_no_extra.insert((test_extra & "`key`=" + keystr), ignore_extra_fields=True)
 
 
@@ -246,7 +246,7 @@ def test_blob_insert(img):
     """Tests inserting and retrieving blobs."""
     X = np.random.randn(20, 10)
     img.insert1((1, X))
-    Y = img.fetch()[0]["img"]
+    Y = img.to_arrays()[0]["img"]
     assert np.all(X == Y), "Inserted and retrieved image are not identical"
 
 
@@ -256,7 +256,7 @@ def test_drop(trash):
     with patch.object(dj.utils, "input", create=True, return_value="yes"):
         trash.drop()
     try:
-        trash.fetch()
+        trash.to_arrays()
         raise Exception("Fetched after table dropped.")
     except dj.DataJointError:
         pass

@@ -36,9 +36,13 @@ def schema_nan_pop(schema_nan, arr_a):
 
 def test_insert_nan(schema_nan_pop, arr_a):
     """Test fetching of null values"""
-    b = NanTest().fetch("value", order_by="id")
-    assert (np.isnan(arr_a) == np.isnan(b)).all(), "incorrect handling of Nans"
-    assert np.allclose(arr_a[np.logical_not(np.isnan(arr_a))], b[np.logical_not(np.isnan(b))]), "incorrect storage of floats"
+    b = NanTest().to_arrays("value", order_by="id")
+    # Convert None to np.nan for comparison
+    b_float = np.array([np.nan if v is None else v for v in b], dtype=float)
+    assert (np.isnan(arr_a) == np.isnan(b_float)).all(), "incorrect handling of Nans"
+    assert np.allclose(
+        arr_a[np.logical_not(np.isnan(arr_a))], b_float[np.logical_not(np.isnan(b_float))]
+    ), "incorrect storage of floats"
 
 
 def test_nulls_do_not_affect_primary_keys(schema_nan_pop, arr_a):

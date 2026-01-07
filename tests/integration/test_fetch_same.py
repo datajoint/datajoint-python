@@ -47,23 +47,23 @@ def schema_fetch_same(connection_test, prefix):
 
 
 def test_object_conversion_one(schema_fetch_same):
-    new = ProjData().proj(sub="resp").fetch("sub")
+    new = ProjData().proj(sub="resp").to_arrays("sub")
     assert new.dtype == np.float64
 
 
 def test_object_conversion_two(schema_fetch_same):
-    [sub, add] = ProjData().proj(sub="resp", add="sim").fetch("sub", "add")
+    [sub, add] = ProjData().proj(sub="resp", add="sim").to_arrays("sub", "add")
     assert sub.dtype == np.float64
     assert add.dtype == np.float64
 
 
 def test_object_conversion_all(schema_fetch_same):
-    new = ProjData().proj(sub="resp", add="sim").fetch()
+    new = ProjData().proj(sub="resp", add="sim").to_arrays()
     assert new["sub"].dtype == np.float64
     assert new["add"].dtype == np.float64
 
 
 def test_object_no_convert(schema_fetch_same):
-    new = ProjData().fetch()
+    new = ProjData().to_arrays()
     assert new["big"].dtype == "object"
     assert new["blah"].dtype == "object"

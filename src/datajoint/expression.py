@@ -14,8 +14,11 @@ from .condition import (
     translate_attribute,
 )
 from .declare import CONSTANT_LITERALS
+import numpy as np
+import pandas
+
 from .errors import DataJointError
-from .fetch import Fetch, Fetch1
+from .codecs import decode_attribute
 from .preview import preview, repr_html
 from .settings import config
 
@@ -303,7 +306,7 @@ class QueryExpression:
         :param allow_nullable_pk: If True, bypass the left join constraint that requires
             self to determine other. When bypassed, the result PK is the union of both
             operands' PKs, and PK attributes from the right operand could be NULL.
-            Used internally by aggregation with keep_all_rows=True.
+            Used internally by aggregation when exclude_nonmatching=False.
         :return: The joined QueryExpression
 
         a * b is short for a.join(b)
@@ -535,55 +538,329 @@ class QueryExpression:
         )
         return result
 
-    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
+    def aggr(self, group, *attributes, exclude_nonmatching=False, **named_attributes):
         """
-        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
-        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+        Aggregation/grouping operation, similar to proj but with computations over a grouped relation.
 
-        :param group:  The query expression to be aggregated.
-        :param keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.
+        By default, keeps all rows from self (like proj). Use exclude_nonmatching=True to
+        keep only rows that have matches in group.
+
+        :param group: The query expression to be aggregated.
+        :param exclude_nonmatching: If True, exclude rows from self that have no matching
+            entries in group (INNER JOIN). Default False keeps all rows (LEFT JOIN).
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
+
+        Example::
+
+            # Count sessions per subject (keeps all subjects, even those with 0 sessions)
+            Subject.aggr(Session, n="count(*)")
+
+            # Count sessions per subject (only subjects with at least one session)
+            Subject.aggr(Session, n="count(*)", exclude_nonmatching=True)
         """
         if Ellipsis in attributes:
             # expand ellipsis to include only attributes from the left table
             attributes = set(attributes)
             attributes.discard(Ellipsis)
             attributes.update(self.heading.secondary_attributes)
+        keep_all_rows = not exclude_nonmatching
         return Aggregation.create(self, group=group, keep_all_rows=keep_all_rows).proj(*attributes, **named_attributes)
 
     aggregate = aggr  # alias for aggr
 
     # ---------- Fetch operators --------------------
     @property
-    def fetch1(self):
-        return Fetch1(self)
-
-    @property
     def fetch(self):
-        return Fetch(self)
-
-    def head(self, limit=25, **fetch_kwargs):
         """
-        shortcut to fetch the first few entries from query expression.
-        Equivalent to fetch(order_by="KEY", limit=25)
+        The fetch() method has been removed in DataJoint 2.0.
 
-        :param limit:  number of entries
-        :param fetch_kwargs: kwargs for fetch
-        :return: query result
-        """
-        return self.fetch(order_by="KEY", limit=limit, **fetch_kwargs)
+        Use the new explicit output methods instead:
+        - table.to_dicts()           # list of dictionaries
+        - table.to_pandas()          # pandas DataFrame
+        - table.to_arrays()          # numpy structured array
+        - table.to_arrays('a', 'b')  # tuple of numpy arrays
+        - table.keys()               # primary keys as list[dict]
+        - table.to_polars()          # polars DataFrame (requires pip install datajoint[polars])
+        - table.to_arrow()           # PyArrow Table (requires pip install datajoint[arrow])
 
-    def tail(self, limit=25, **fetch_kwargs):
-        """
-        shortcut to fetch the last few entries from query expression.
-        Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]
+        For single-row fetch, use fetch1() which is unchanged.
 
-        :param limit:  number of entries
-        :param fetch_kwargs: kwargs for fetch
-        :return: query result
+        See migration guide: https://docs.datajoint.com/migration/fetch-api
         """
-        return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
+        raise AttributeError(
+            "fetch() has been removed in DataJoint 2.0. "
+            "Use to_dicts(), to_pandas(), to_arrays(), or keys() instead. "
+            "See table.fetch.__doc__ for details."
+        )
+
+    def fetch1(self, *attrs, squeeze=False):
+        """
+        Fetch exactly one row from the query result.
+
+        If no attributes are specified, returns the result as a dict.
+        If attributes are specified, returns the corresponding values as a tuple.
+
+        :param attrs: attribute names to fetch (if empty, fetch all as dict)
+        :param squeeze: if True, remove extra dimensions from arrays
+        :return: dict (no attrs) or tuple/value (with attrs)
+        :raises DataJointError: if not exactly one row in result
+
+        Examples::
+
+            d = table.fetch1()              # returns dict with all attributes
+            a, b = table.fetch1('a', 'b')   # returns tuple of attribute values
+            value = table.fetch1('a')       # returns single value
+        """
+        heading = self.heading
+
+        if not attrs:
+            # Fetch all attributes, return as dict
+            cursor = self.cursor(as_dict=True)
+            row = cursor.fetchone()
+            if not row or cursor.fetchone():
+                raise DataJointError("fetch1 requires exactly one tuple in the input set.")
+            return {name: decode_attribute(heading[name], row[name], squeeze=squeeze) for name in heading.names}
+        else:
+            # Handle "KEY" specially - it means primary key columns
+            def is_key(attr):
+                return attr == "KEY"
+
+            has_key = any(is_key(a) for a in attrs)
+
+            if has_key and len(attrs) == 1:
+                # Just fetching KEY - return the primary key dict
+                keys = self.keys()
+                if len(keys) != 1:
+                    raise DataJointError(f"fetch1 should only return one tuple. {len(keys)} tuples found")
+                return keys[0]
+
+            # Fetch specific attributes, return as tuple
+            # Replace KEY with primary key columns for projection
+            proj_attrs = []
+            for attr in attrs:
+                if is_key(attr):
+                    proj_attrs.extend(self.primary_key)
+                else:
+                    proj_attrs.append(attr)
+
+            dicts = self.proj(*proj_attrs).to_dicts(squeeze=squeeze)
+            if len(dicts) != 1:
+                raise DataJointError(f"fetch1 should only return one tuple. {len(dicts)} tuples found")
+            row = dicts[0]
+
+            # Build result values, handling KEY specially
+            values = []
+            for attr in attrs:
+                if is_key(attr):
+                    # Return dict of primary key columns
+                    values.append({k: row[k] for k in self.primary_key})
+                else:
+                    values.append(row[attr])
+
+            return values[0] if len(attrs) == 1 else tuple(values)
+
+    def _apply_top(self, order_by=None, limit=None, offset=None):
+        """Apply order_by, limit, offset if specified, return modified expression."""
+        if order_by is not None or limit is not None or offset is not None:
+            return self.restrict(Top(limit, order_by, offset))
+        return self
+
+    def to_dicts(self, order_by=None, limit=None, offset=None, squeeze=False):
+        """
+        Fetch all rows as a list of dictionaries.
+
+        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
+        :param limit: maximum number of rows to return
+        :param offset: number of rows to skip
+        :param squeeze: if True, remove extra dimensions from arrays
+        :return: list of dictionaries, one per row
+
+        For external storage types (attachments, filepaths), files are downloaded
+        to config["download_path"]. Use config.override() to change::
+
+            with dj.config.override(download_path="/data"):
+                data = table.to_dicts()
+        """
+        expr = self._apply_top(order_by, limit, offset)
+        cursor = expr.cursor(as_dict=True)
+        heading = expr.heading
+        return [{name: decode_attribute(heading[name], row[name], squeeze) for name in heading.names} for row in cursor]
+
+    def to_pandas(self, order_by=None, limit=None, offset=None, squeeze=False):
+        """
+        Fetch all rows as a pandas DataFrame with primary key as index.
+
+        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
+        :param limit: maximum number of rows to return
+        :param offset: number of rows to skip
+        :param squeeze: if True, remove extra dimensions from arrays
+        :return: pandas DataFrame with primary key columns as index
+        """
+        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+        df = pandas.DataFrame(dicts)
+        if len(df) > 0 and self.primary_key:
+            df = df.set_index(self.primary_key)
+        return df
+
+    def to_polars(self, order_by=None, limit=None, offset=None, squeeze=False):
+        """
+        Fetch all rows as a polars DataFrame.
+
+        Requires polars: pip install datajoint[polars]
+
+        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
+        :param limit: maximum number of rows to return
+        :param offset: number of rows to skip
+        :param squeeze: if True, remove extra dimensions from arrays
+        :return: polars DataFrame
+        """
+        try:
+            import polars
+        except ImportError:
+            raise ImportError("polars is required for to_polars(). " "Install with: pip install datajoint[polars]")
+        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+        return polars.DataFrame(dicts)
+
+    def to_arrow(self, order_by=None, limit=None, offset=None, squeeze=False):
+        """
+        Fetch all rows as a PyArrow Table.
+
+        Requires pyarrow: pip install datajoint[arrow]
+
+        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
+        :param limit: maximum number of rows to return
+        :param offset: number of rows to skip
+        :param squeeze: if True, remove extra dimensions from arrays
+        :return: pyarrow Table
+        """
+        try:
+            import pyarrow
+        except ImportError:
+            raise ImportError("pyarrow is required for to_arrow(). " "Install with: pip install datajoint[arrow]")
+        dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+        if not dicts:
+            return pyarrow.table({})
+        return pyarrow.Table.from_pylist(dicts)
+
+    def to_arrays(self, *attrs, include_key=False, order_by=None, limit=None, offset=None, squeeze=False):
+        """
+        Fetch data as numpy arrays.
+
+        If no attrs specified, returns a numpy structured array (recarray) of all columns.
+        If attrs specified, returns a tuple of numpy arrays (one per attribute).
+
+        :param attrs: attribute names to fetch (if empty, fetch all)
+        :param include_key: if True and attrs specified, prepend primary keys as list of dicts
+        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
+        :param limit: maximum number of rows to return
+        :param offset: number of rows to skip
+        :param squeeze: if True, remove extra dimensions from arrays
+        :return: numpy recarray (no attrs) or tuple of arrays (with attrs).
+            With include_key=True: (keys, *arrays) where keys is list[dict]
+
+        Examples::
+
+            # Fetch as structured array
+            data = table.to_arrays()
+
+            # Fetch specific columns as separate arrays
+            a, b = table.to_arrays('a', 'b')
+
+            # Fetch with primary keys for later restrictions
+            keys, a, b = table.to_arrays('a', 'b', include_key=True)
+            # keys = [{'id': 1}, {'id': 2}, ...]  # same format as table.keys()
+        """
+        from functools import partial
+
+        expr = self._apply_top(order_by, limit, offset)
+        heading = expr.heading
+
+        if attrs:
+            # Fetch specific attributes as tuple of arrays
+            if include_key:
+                fetch_attrs = list(expr.primary_key) + [a for a in attrs if a not in expr.primary_key]
+            else:
+                fetch_attrs = list(attrs)
+
+            # Project to only needed columns
+            projected = expr.proj(*fetch_attrs)
+            dicts = projected.to_dicts(squeeze=squeeze)
+
+            # Extract keys if requested
+            if include_key:
+                keys = [{k: d[k] for k in expr.primary_key} for d in dicts]
+
+            # Extract arrays for requested attributes
+            result_arrays = []
+            for attr in attrs:
+                values = [d[attr] for d in dicts]
+                # Try to create a homogeneous array, fall back to object array for variable-size data
+                try:
+                    arr = np.array(values)
+                except ValueError:
+                    # Variable-size data (e.g., arrays of different shapes)
+                    arr = np.array(values, dtype=object)
+                result_arrays.append(arr)
+
+            if include_key:
+                return (keys, *result_arrays)
+            return result_arrays[0] if len(attrs) == 1 else tuple(result_arrays)
+        else:
+            # Fetch all columns as structured array
+            get = partial(decode_attribute, squeeze=squeeze)
+            cursor = expr.cursor(as_dict=False)
+            rows = list(cursor.fetchall())
+
+            if not rows:
+                return np.array([], dtype=heading.as_dtype)
+
+            # Build dtype, detecting blob types from first row
+            import numbers
+
+            record_type = np.dtype(
+                [
+                    (name, type(value))
+                    if heading[name].is_blob and isinstance(value, numbers.Number)
+                    else (name, heading.as_dtype[name])
+                    for value, name in zip(rows[0], heading.as_dtype.names)
+                ]
+            )
+
+            ret = np.array(rows, dtype=record_type)
+            # Decode blobs and codecs
+            for name in heading:
+                ret[name] = list(map(partial(get, heading[name]), ret[name]))
+            return ret
+
+    def keys(self, order_by=None, limit=None, offset=None):
+        """
+        Fetch primary key values as a list of dictionaries.
+
+        :param order_by: attribute(s) to order by, or "KEY"/"KEY DESC"
+        :param limit: maximum number of rows to return
+        :param offset: number of rows to skip
+        :return: list of dictionaries containing only primary key columns
+        """
+        return self.proj().to_dicts(order_by=order_by, limit=limit, offset=offset)
+
+    def head(self, limit=25):
+        """
+        Preview the first few entries from query expression.
+
+        :param limit: number of entries (default 25)
+        :return: list of dictionaries
+        """
+        return self.to_dicts(order_by="KEY", limit=limit)
+
+    def tail(self, limit=25):
+        """
+        Preview the last few entries from query expression.
+
+        :param limit: number of entries (default 25)
+        :return: list of dictionaries
+        """
+        return list(reversed(self.to_dicts(order_by="KEY DESC", limit=limit)))
 
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
@@ -627,45 +904,24 @@ class QueryExpression:
 
     def __iter__(self):
         """
-        returns an iterator-compatible QueryExpression object e.g. ``iter(q1)``.
+        Lazy streaming iterator over rows as dictionaries.
 
-        :param self: iterator-compatible QueryExpression object
-        """
-        self._iter_only_key = all(v.in_key for v in self.heading.attributes.values())
-        self._iter_keys = self.fetch("KEY")
-        return self
+        Yields one row at a time from a single database cursor, efficiently
+        streaming data without loading all rows into memory.
 
-    def __next__(self):
+        :yields: dict for each row
         """
-        returns the next record on an iterator-compatible QueryExpression object
-            e.g. ``next(q1)``.
-
-        :param self: A query expression
-        :type self: :class:`QueryExpression`
-        :rtype: dict
-        """
-        try:
-            key = self._iter_keys.pop(0)
-        except AttributeError:
-            # self._iter_keys is missing because __iter__ has not been called.
-            raise TypeError("A QueryExpression object is not an iterator. Use iter(obj) to create an iterator.")
-        except IndexError:
-            raise StopIteration
-        else:
-            if self._iter_only_key:
-                return key
-            else:
-                try:
-                    return (self & key).fetch1()
-                except DataJointError:
-                    # The data may have been deleted since the moment the keys were fetched
-                    # -- move on to next entry.
-                    return next(self)
+        cursor = self.cursor(as_dict=True)
+        heading = self.heading
+        for row in cursor:
+            yield {name: decode_attribute(heading[name], row[name], squeeze=False) for name in heading.names}
 
     def cursor(self, as_dict=False):
         """
-        See expression.fetch() for input description.
-        :return: query cursor
+        Execute the query and return a database cursor.
+
+        :param as_dict: if True, rows are returned as dictionaries
+        :return: database query cursor
         """
         sql = self.make_sql()
         logger.debug(sql)
@@ -926,12 +1182,14 @@ class U:
         Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
         has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
 
+        Note: exclude_nonmatching is always True for dj.U (cannot keep all rows from infinite set).
+
         :param group:  The query expression to be aggregated.
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
         """
-        if named_attributes.get("keep_all_rows", False):
-            raise DataJointError("Cannot set keep_all_rows=True when aggregating on a universal set.")
+        if named_attributes.pop("exclude_nonmatching", True) is False:
+            raise DataJointError("Cannot set exclude_nonmatching=False when aggregating on a universal set.")
 
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()

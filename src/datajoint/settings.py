@@ -300,7 +300,6 @@ class Config(BaseSettings):
     # Top-level settings
     loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO", validation_alias="DJ_LOG_LEVEL")
     safemode: bool = True
-    fetch_format: Literal["array", "frame"] = "array"
     enable_python_native_blobs: bool = True
     filepath_checksum_size_limit: int | None = None
 
@@ -784,7 +783,6 @@ class Config(BaseSettings):
                 "stores": {},
                 "loglevel": "INFO",
                 "safemode": True,
-                "fetch_format": "array",
                 "enable_python_native_blobs": True,
                 "cache": None,
                 "query_cache": None,

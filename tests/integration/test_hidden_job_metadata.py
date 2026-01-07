@@ -185,7 +185,7 @@ class TestHiddenJobMetadataPopulation:
         table = schema_job_metadata["ComputedWithMetadata"]
         table.populate()
 
-        result = table.fetch(as_dict=True)
+        result = table.to_dicts()
         for row in result:
             assert "_job_start_time" not in row
             assert "_job_duration" not in row

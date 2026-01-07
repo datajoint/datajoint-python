@@ -12,7 +12,7 @@ def test_restriction(lang, languages, trial):
     rel = dj.U("language") & lang
     assert list(rel.heading.names) == ["language"]
     assert len(rel) == len(language_set)
-    assert set(rel.fetch("language")) == language_set
+    assert set(rel.to_arrays("language")) == language_set
     # dj.U & table promotes attributes to PK
     assert list((dj.U("start_time") & trial).primary_key) == ["start_time"]
 
@@ -52,7 +52,7 @@ def test_aggregations(schema_any):
     lang = Language()
     # test total aggregation on expression object
     n1 = dj.U().aggr(lang, n="count(*)").fetch1("n")
-    assert n1 == len(lang.fetch())
+    assert n1 == len(lang.to_arrays())
     # test total aggregation on expression class
     n2 = dj.U().aggr(Language, n="count(*)").fetch1("n")
     assert n1 == n2
@@ -68,7 +68,7 @@ def test_argmax(schema_any):
     max_val = dj.U().aggr(rel, mx="max(value)").fetch1("mx")
     # Get tuples with that value
     mx = rel & f"value={max_val}"
-    assert mx.fetch("value")[0] == max(rel.fetch("value"))
+    assert mx.to_arrays("value")[0] == max(rel.to_arrays("value"))
 
 
 def test_aggr(schema_any, schema_simp):

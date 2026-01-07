@@ -33,7 +33,7 @@ def preview(query_expression, limit, width):
         limit = config["display.limit"]
     if width is None:
         width = config["display.width"]
-    tuples = rel.fetch(limit=limit + 1, format="array")
+    tuples = rel.to_arrays(limit=limit + 1)
     has_more = len(tuples) > limit
     tuples = tuples[:limit]
 
@@ -42,7 +42,7 @@ def preview(query_expression, limit, width):
     if object_fields:
         # Fetch primary key and object fields as dicts
         obj_rel = query_expression.proj(*object_fields)
-        obj_tuples = obj_rel.fetch(limit=limit, format="array")
+        obj_tuples = obj_rel.to_arrays(limit=limit)
         for obj_tup in obj_tuples:
             obj_dict = {}
             for field in object_fields:
@@ -91,7 +91,7 @@ def repr_html(query_expression):
     # Object fields use codecs - not specially handled in simplified model
     object_fields = []
     info = heading.table_status
-    tuples = rel.fetch(limit=config["display.limit"] + 1, format="array")
+    tuples = rel.to_arrays(limit=config["display.limit"] + 1)
     has_more = len(tuples) > config["display.limit"]
     tuples = tuples[0 : config["display.limit"]]
 
@@ -99,7 +99,7 @@ def repr_html(query_expression):
     object_data_list = []
     if object_fields:
         obj_rel = query_expression.proj(*object_fields)
-        obj_tuples = obj_rel.fetch(limit=config["display.limit"], format="array")
+        obj_tuples = obj_rel.to_arrays(limit=config["display.limit"])
         for obj_tup in obj_tuples:
             obj_dict = {}
             for field in object_fields:

@@ -17,7 +17,7 @@ def test_nullable_dependency(thing_tables):
     c.insert1(dict(a=3, b1=1, b2=1))
     c.insert1(dict(a=4, b1=1, b2=2))
 
-    assert len(c) == len(c.fetch()) == 5
+    assert len(c) == len(c.to_arrays()) == 5
 
 
 def test_topo_sort():

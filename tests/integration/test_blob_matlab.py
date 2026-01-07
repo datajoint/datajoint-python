@@ -68,7 +68,7 @@ def test_complex_matlab_blobs(schema_blob_pop):
     """
     test correct de-serialization of various blob types
     """
-    blobs = Blob().fetch("blob", order_by="KEY")
+    blobs = Blob().to_arrays("blob", order_by="KEY")
 
     blob = blobs[0]  # 'simple string'    'character string'
     assert blob[0] == "character string"
