@@ -25,6 +25,7 @@ supported_class_attrs = {
     "proj",
     "aggr",
     "join",
+    "extend",
     "fetch",
     "fetch1",
     "head",

@@ -164,6 +164,21 @@ class Heading:
     def secondary_attributes(self):
         return [k for k, v in self.attributes.items() if not v.in_key]
 
+    def determines(self, other):
+        """
+        Check if self determines other (self → other).
+
+        A determines B iff every attribute in PK(B) is in A.
+
+        This means knowing A's primary key is sufficient to determine B's primary key
+        through the functional dependencies implied by A's structure.
+
+        :param other: Another Heading object
+        :return: True if self determines other
+        """
+        self_attrs = set(self.names)
+        return all(attr in self_attrs for attr in other.primary_key)
+
     @property
     def blobs(self):
         return [k for k, v in self.attributes.items() if v.is_blob]
@@ -449,18 +464,52 @@ class Heading:
         )
         return Heading(chain(copy_attrs, compute_attrs), lineage_available=self._lineage_available)
 
-    def join(self, other):
+    def _join_dependent(self, dependent):
+        """Build attribute list when self → dependent: PK = PK(self), self's attrs first."""
+        return (
+            [self.attributes[name].todict() for name in self.primary_key]
+            + [self.attributes[name].todict() for name in self.secondary_attributes]
+            + [dependent.attributes[name].todict() for name in dependent.names if name not in self.attributes]
+        )
+
+    def join(self, other, nullable_pk=False):
         """
         Join two headings into a new one.
+
+        The primary key of the result depends on functional dependencies:
+        - A → B: PK = PK(A), A's attributes first
+        - B → A (not A → B): PK = PK(B), B's attributes first
+        - Both: PK = PK(A), left operand takes precedence
+        - Neither: PK = PK(A) ∪ PK(B), A's PK first then B's new PK attrs
+
+        :param nullable_pk: If True, skip PK optimization and use combined PK from both
+            operands. Used for left joins that bypass the A → B constraint, where the
+            right operand's PK attributes could be NULL.
+
         It assumes that self and other are headings that share no common dependent attributes.
         """
-        return Heading(
-            [self.attributes[name].todict() for name in self.primary_key]
-            + [other.attributes[name].todict() for name in other.primary_key if name not in self.primary_key]
-            + [self.attributes[name].todict() for name in self.secondary_attributes if name not in other.primary_key]
-            + [other.attributes[name].todict() for name in other.secondary_attributes if name not in self.primary_key],
-            lineage_available=self._lineage_available and other._lineage_available,
-        )
+        if nullable_pk:
+            a_determines_b = b_determines_a = False
+        else:
+            a_determines_b = self.determines(other)
+            b_determines_a = other.determines(self)
+
+        if a_determines_b:
+            attrs = self._join_dependent(other)
+        elif b_determines_a:
+            attrs = other._join_dependent(self)
+        else:
+            # Neither direction: PK = PK(A) ∪ PK(B)
+            self_pk_set = set(self.primary_key)
+            other_pk_set = set(other.primary_key)
+            attrs = (
+                [self.attributes[name].todict() for name in self.primary_key]
+                + [dict(other.attributes[name].todict(), in_key=True) for name in other.primary_key if name not in self_pk_set]
+                + [self.attributes[name].todict() for name in self.secondary_attributes if name not in other_pk_set]
+                + [other.attributes[name].todict() for name in other.secondary_attributes if name not in self_pk_set]
+            )
+
+        return Heading(attrs, lineage_available=self._lineage_available and other._lineage_available)
 
     def set_primary_key(self, primary_key):
         """
