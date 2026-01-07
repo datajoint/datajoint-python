@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Dict, List
 
 import certifi
-import minio
 import networkx as nx
 import pytest
+minio = pytest.importorskip("minio")
 import urllib3
 from packaging import version
 
