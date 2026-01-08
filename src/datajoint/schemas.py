@@ -628,6 +628,33 @@ class Schema:
             if d == self.database
         ]
 
+    def _find_table_name(self, name: str) -> str | None:
+        """
+        Find the actual SQL table name for a given base name.
+
+        Handles tier prefixes: Manual (none), Lookup (#), Imported (_), Computed (__).
+
+        Parameters
+        ----------
+        name : str
+            Base table name without tier prefix.
+
+        Returns
+        -------
+        str or None
+            The actual SQL table name, or None if not found.
+        """
+        tables = self.list_tables()
+        # Check exact match first
+        if name in tables:
+            return name
+        # Check with tier prefixes
+        for prefix in ("", "#", "_", "__"):
+            candidate = f"{prefix}{name}"
+            if candidate in tables:
+                return candidate
+        return None
+
     def get_table(self, name: str) -> FreeTable:
         """
         Get a table instance by name.
@@ -640,6 +667,7 @@ class Schema:
         name : str
             Table name (e.g., 'experiment', 'session__trial' for parts).
             Can be snake_case (SQL name) or CamelCase (class name).
+            Tier prefixes are optional and will be auto-detected.
 
         Returns
         -------
@@ -659,17 +687,15 @@ class Schema:
         """
         self._assert_exists()
         # Convert CamelCase to snake_case if needed
-        import re
-
         if name[0].isupper():
-            # CamelCase to snake_case conversion
             name = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
-        full_name = f"`{self.database}`.`{name}`"
-        table = FreeTable(self.connection, full_name)
-        if not table.is_declared:
+        table_name = self._find_table_name(name)
+        if table_name is None:
             raise DataJointError(f"Table `{name}` does not exist in schema `{self.database}`.")
-        return table
+
+        full_name = f"`{self.database}`.`{table_name}`"
+        return FreeTable(self.connection, full_name)
 
     def __getitem__(self, name: str) -> FreeTable:
         """
@@ -721,6 +747,7 @@ class Schema:
         ----------
         name : str
             Table name (snake_case or CamelCase).
+            Tier prefixes are optional and will be auto-detected.
 
         Returns
         -------
@@ -732,11 +759,9 @@ class Schema:
         >>> 'Experiment' in schema
         True
         """
-        import re
-
         if name[0].isupper():
             name = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
-        return name in self.list_tables()
+        return self._find_table_name(name) is not None
 
 
 class VirtualModule(types.ModuleType):
