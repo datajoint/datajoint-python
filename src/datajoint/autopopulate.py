@@ -487,8 +487,8 @@ class AutoPopulate:
             if refresh:
                 self.jobs.refresh(*restrictions, priority=priority)
 
-            # Fetch pending jobs ordered by priority
-            pending_query = self.jobs.pending & "scheduled_time <= NOW()"
+            # Fetch pending jobs ordered by priority (use NOW(3) to match CURRENT_TIMESTAMP(3) precision)
+            pending_query = self.jobs.pending & "scheduled_time <= NOW(3)"
             if priority is not None:
                 pending_query = pending_query & f"priority <= {priority}"
 

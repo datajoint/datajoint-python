@@ -447,8 +447,8 @@ class Job(Table):
         bool
             True if reservation successful, False if job not available.
         """
-        # Check if job is pending and scheduled (use MySQL NOW() for consistent timing)
-        job = (self & key & 'status="pending"' & "scheduled_time <= NOW()").to_dicts()
+        # Check if job is pending and scheduled (use NOW(3) to match CURRENT_TIMESTAMP(3) precision)
+        job = (self & key & 'status="pending"' & "scheduled_time <= NOW(3)").to_dicts()
 
         if not job:
             return False
