@@ -570,42 +570,32 @@ class TestDjTop:
         ]
 
     def test_top_restriction_with_keywords(self, schema_simp_pop):
-        # dj.Top only guarantees which elements are selected, not their order
-        select = SelectPK() & dj.Top(limit=9, order_by=["select desc"])
-        key = KeyPK() & dj.Top(limit=9, order_by="key desc")
-        # Convert to sets of tuples for order-independent comparison
-        select_result = {tuple(sorted(d.items())) for d in select.to_dicts()}
-        select_expected = {
-            tuple(sorted(d.items()))
-            for d in [
-                {"id": 2, "select": 8},
-                {"id": 2, "select": 6},
-                {"id": 1, "select": 4},
-                {"id": 2, "select": 4},
-                {"id": 1, "select": 3},
-                {"id": 1, "select": 2},
-                {"id": 2, "select": 2},
-                {"id": 1, "select": 1},
-                {"id": 0, "select": 0},
-            ]
-        }
-        assert select_result == select_expected
-        key_result = {tuple(sorted(d.items())) for d in key.to_dicts()}
-        key_expected = {
-            tuple(sorted(d.items()))
-            for d in [
-                {"id": 2, "key": 6},
-                {"id": 2, "key": 5},
-                {"id": 1, "key": 5},
-                {"id": 0, "key": 4},
-                {"id": 1, "key": 4},
-                {"id": 2, "key": 4},
-                {"id": 0, "key": 3},
-                {"id": 1, "key": 3},
-                {"id": 2, "key": 3},
-            ]
-        }
-        assert key_result == key_expected
+        # dj.Top preserves the ORDER BY clause in results
+        # Use secondary sort by 'id' to ensure deterministic ordering when there are ties
+        select = SelectPK() & dj.Top(limit=9, order_by=["select desc", "id"])
+        key = KeyPK() & dj.Top(limit=9, order_by=["key desc", "id"])
+        assert select.to_dicts() == [
+            {"id": 2, "select": 8},
+            {"id": 2, "select": 6},
+            {"id": 1, "select": 4},
+            {"id": 2, "select": 4},
+            {"id": 1, "select": 3},
+            {"id": 1, "select": 2},
+            {"id": 2, "select": 2},
+            {"id": 1, "select": 1},
+            {"id": 0, "select": 0},
+        ]
+        assert key.to_dicts() == [
+            {"id": 2, "key": 6},
+            {"id": 1, "key": 5},
+            {"id": 2, "key": 5},
+            {"id": 0, "key": 4},
+            {"id": 1, "key": 4},
+            {"id": 2, "key": 4},
+            {"id": 0, "key": 3},
+            {"id": 1, "key": 3},
+            {"id": 2, "key": 3},
+        ]
 
     def test_top_errors(self, schema_simp_pop):
         with pytest.raises(DataJointError) as err1:
