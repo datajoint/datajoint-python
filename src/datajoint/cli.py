@@ -1,3 +1,23 @@
+"""
+DataJoint command-line interface.
+
+Provides a Python REPL with DataJoint pre-loaded and optional schema access.
+
+Usage::
+
+    # Start REPL with database credentials
+    dj --user root --password secret --host localhost:3306
+
+    # Load schemas as virtual modules
+    dj -s my_lab:lab -s my_analysis:analysis
+
+    # In the REPL
+    >>> lab.Subject.to_dicts()
+    >>> dj.Diagram(lab.schema)
+"""
+
+from __future__ import annotations
+
 import argparse
 from code import interact
 from collections import ChainMap
@@ -5,70 +25,95 @@ from collections import ChainMap
 import datajoint as dj
 
 
-def cli(args: list = None):
+def cli(args: list[str] | None = None) -> None:
     """
-    Console interface for DataJoint Python
+    DataJoint command-line interface.
 
-    :param args: List of arguments to be passed in, defaults to reading stdin
-    :type args: list, optional
+    Starts an interactive Python REPL with DataJoint imported and configured.
+    Optionally loads database schemas as virtual modules for quick exploration.
+
+    Parameters
+    ----------
+    args : list[str], optional
+        Command-line arguments. If None, reads from sys.argv.
+
+    Examples
+    --------
+    From the command line::
+
+        $ dj --host localhost:3306 --user root --password secret
+        $ dj -s my_lab:lab -s my_analysis:analysis
+
+    Programmatically::
+
+        >>> from datajoint.cli import cli
+        >>> cli(["--version"])
     """
     parser = argparse.ArgumentParser(
-        prog="datajoint",
-        description="DataJoint console interface.",
-        conflict_handler="resolve",
+        prog="dj",
+        description="DataJoint interactive console. Start a Python REPL with DataJoint pre-loaded.",
+        epilog="Example: dj -s my_lab:lab --host localhost:3306",
     )
-    parser.add_argument("-V", "--version", action="version", version=f"{dj.__name__} {dj.__version__}")
     parser.add_argument(
-        "-u",
-        "--user",
+        "-V", "--version",
+        action="version",
+        version=f"{dj.__name__} {dj.__version__}",
+    )
+    parser.add_argument(
+        "-u", "--user",
         type=str,
-        default=dj.config["database.user"],
-        required=False,
-        help="Datajoint username",
+        default=None,
+        help="Database username (default: from config)",
     )
     parser.add_argument(
-        "-p",
-        "--password",
+        "-p", "--password",
         type=str,
-        default=dj.config["database.password"],
-        required=False,
-        help="Datajoint password",
+        default=None,
+        help="Database password (default: from config)",
     )
     parser.add_argument(
-        "-h",
         "--host",
         type=str,
-        default=dj.config["database.host"],
-        required=False,
-        help="Datajoint host",
+        default=None,
+        help="Database host as host:port (default: from config)",
     )
     parser.add_argument(
-        "-s",
-        "--schemas",
+        "-s", "--schemas",
         nargs="+",
         type=str,
-        required=False,
-        help="A list of virtual module mappings in `db:schema ...` format",
+        metavar="DB:ALIAS",
+        help="Load schemas as virtual modules. Format: schema_name:alias",
     )
+
     kwargs = vars(parser.parse_args(args))
-    mods = {}
+
+    # Apply credentials to config
     if kwargs["user"]:
         dj.config["database.user"] = kwargs["user"]
     if kwargs["password"]:
         dj.config["database.password"] = kwargs["password"]
     if kwargs["host"]:
         dj.config["database.host"] = kwargs["host"]
+
+    # Load requested schemas
+    mods: dict[str, dj.VirtualModule] = {}
     if kwargs["schemas"]:
         for vm in kwargs["schemas"]:
-            d, m = vm.split(":")
-            mods[m] = dj.VirtualModule(m, d)
+            if ":" not in vm:
+                parser.error(f"Invalid schema format '{vm}'. Use schema_name:alias")
+            schema_name, alias = vm.split(":", 1)
+            mods[alias] = dj.VirtualModule(alias, schema_name)
 
-    banner = "dj repl\n"
+    # Build banner
+    banner = f"DataJoint {dj.__version__} REPL\n"
+    banner += "Type 'dj.' and press Tab for available functions.\n"
     if mods:
-        modstr = "\n".join("  - {}".format(m) for m in mods)
-        banner += "\nschema modules:\n\n" + modstr + "\n"
-    interact(banner, local=dict(ChainMap(mods, locals(), globals())))
+        banner += "\nLoaded schemas:\n"
+        for alias in mods:
+            banner += f"  {alias} -> {mods[alias].schema.database}\n"
 
+    # Start interactive session
+    interact(banner, local=dict(ChainMap(mods, {"dj": dj}, globals())))
     raise SystemExit
 
 
