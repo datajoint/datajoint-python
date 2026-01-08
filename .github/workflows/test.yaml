@@ -1,37 +1,55 @@
 name: Test
+
 on:
   push:
     branches:
-      - "**" # every branch
-      - "!gh-pages" # exclude gh-pages branch
-      - "!stage*" # exclude branches beginning with stage
+      - "**"
+      - "!gh-pages"
+      - "!stage*"
     paths:
-      - "src/datajoint"
-      - "tests"
+      - "src/datajoint/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "pixi.lock"
+      - ".github/workflows/test.yaml"
   pull_request:
     branches:
-      - "**" # every branch
-      - "!gh-pages" # exclude gh-pages branch
-      - "!stage*" # exclude branches beginning with stage
+      - "**"
+      - "!gh-pages"
+      - "!stage*"
     paths:
-      - "src/datajoint"
-      - "tests"
+      - "src/datajoint/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "pixi.lock"
+      - ".github/workflows/test.yaml"
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        py_ver: ["3.10", "3.11", "3.12", "3.13"]
-        mysql_ver: ["8.0"]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v5
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.9.3
         with:
-          python-version: ${{matrix.py_ver}}
-      - name: Integration test
-        env:
-          MYSQL_VER: ${{matrix.mysql_ver}}
-        run: |
-          pip install -e ".[test]"
-          pytest --cov-report term-missing --cov=datajoint tests
+          cache: true
+          locked: false
+
+      - name: Run tests
+        run: pixi run -e test test-cov
+
+  # Unit tests run without containers (faster feedback)
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.9.3
+        with:
+          cache: true
+          locked: false
+
+      - name: Run unit tests
+        run: pixi run -e test pytest tests/unit -v

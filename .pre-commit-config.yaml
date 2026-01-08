@@ -36,6 +36,24 @@ repos:
   hooks:
   # lint github actions workflow yaml
   - id: actionlint
-
-## Suggest to add pytest hook that runs unit test | Prerequisite: split unit/integration test
-## https://github.com/datajoint/datajoint-python/issues/1211
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.14.1
+  hooks:
+    - id: mypy
+      files: ^src/datajoint/
+      additional_dependencies:
+        - pydantic
+        - pydantic-settings
+        - types-PyMySQL
+        - types-tqdm
+        - pandas-stubs
+        - numpy
+- repo: local
+  hooks:
+    - id: unit-tests
+      name: unit tests
+      entry: pytest tests/unit/ -v --tb=short
+      language: system
+      pass_filenames: false
+      always_run: true
+      stages: [pre-commit]

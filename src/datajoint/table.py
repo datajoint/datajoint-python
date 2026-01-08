@@ -813,8 +813,7 @@ class Table(QueryExpression):
         self,
         transaction: bool = True,
         prompt: bool | None = None,
-        force_parts: bool = False,
-        force_masters: bool = False,
+        part_integrity: str = "enforce",
     ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
@@ -825,9 +824,10 @@ class Table(QueryExpression):
                 nested within another transaction.
             prompt: If `True`, show what will be deleted and ask for confirmation.
                 If `False`, delete without confirmation. Default is `dj.config['safemode']`.
-            force_parts: Delete from parts even when not deleting from their masters.
-            force_masters: If `True`, include part/master pairs in the cascade.
-                Default is `False`.
+            part_integrity: Policy for master-part integrity. One of:
+                - ``"enforce"`` (default): Error if parts would be deleted without masters.
+                - ``"ignore"``: Allow deleting parts without masters (breaks integrity).
+                - ``"cascade"``: Also delete masters when parts are deleted (maintains integrity).
 
         Returns:
             Number of deleted rows (excluding those from dependent tables).
@@ -835,8 +835,11 @@ class Table(QueryExpression):
         Raises:
             DataJointError: Delete exceeds maximum number of delete attempts.
             DataJointError: When deleting within an existing transaction.
-            DataJointError: Deleting a part table before its master.
+            DataJointError: Deleting a part table before its master (when part_integrity="enforce").
+            ValueError: Invalid part_integrity value.
         """
+        if part_integrity not in ("enforce", "ignore", "cascade"):
+            raise ValueError(f"part_integrity must be 'enforce', 'ignore', or 'cascade', got {part_integrity!r}")
         deleted = set()
         visited_masters = set()
 
@@ -892,7 +895,7 @@ class Table(QueryExpression):
 
                     master_name = get_master(child.full_table_name)
                     if (
-                        force_masters
+                        part_integrity == "cascade"
                         and master_name
                         and master_name != table.full_table_name
                         and master_name not in visited_masters
@@ -941,15 +944,16 @@ class Table(QueryExpression):
                 self.connection.cancel_transaction()
             raise
 
-        if not force_parts:
-            # Avoid deleting from child before master (See issue #151)
+        if part_integrity == "enforce":
+            # Avoid deleting from part before master (See issue #151)
             for part in deleted:
                 master = get_master(part)
                 if master and master not in deleted:
                     if transaction:
                         self.connection.cancel_transaction()
                     raise DataJointError(
-                        "Attempt to delete part table {part} before deleting from its master {master} first.".format(
+                        "Attempt to delete part table {part} before deleting from its master {master} first. "
+                        "Use part_integrity='ignore' to allow, or part_integrity='cascade' to also delete master.".format(
                             part=part, master=master
                         )
                     )

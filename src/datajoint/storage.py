@@ -287,7 +287,7 @@ class StorageBackend:
     def _create_filesystem(self) -> fsspec.AbstractFileSystem:
         """Create fsspec filesystem based on protocol."""
         if self.protocol == "file":
-            return fsspec.filesystem("file")
+            return fsspec.filesystem("file", auto_mkdir=True)
 
         elif self.protocol == "s3":
             # Build S3 configuration

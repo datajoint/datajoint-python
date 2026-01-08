@@ -627,3 +627,49 @@ class TestDjTop:
         assert "TypeError: Top limit must be an integer" == str(err3.exconly())
         assert "TypeError: Top order_by attributes must all be strings" == str(err4.exconly())
         assert "TypeError: The offset argument must be an integer" == str(err5.exconly())
+
+    def test_top_inherit_order(self, schema_simp_pop):
+        """Test that dj.Top(order_by=None) inherits existing ordering."""
+        # First Top sets descending order, second Top inherits it
+        query = L() & dj.Top(10, "id_l desc") & dj.Top(3, order_by=None)
+        result = query.to_dicts()
+        assert len(result) == 3
+        # Should be top 3 by descending id_l (L has ids 0-29)
+        assert result[0]["id_l"] > result[1]["id_l"] > result[2]["id_l"]
+        assert [r["id_l"] for r in result] == [29, 28, 27]
+
+    def test_top_merge_identical_order(self, schema_simp_pop):
+        """Test that Tops with identical order_by are merged."""
+        # Both Tops specify same ordering - should merge
+        query = L() & dj.Top(10, "id_l desc") & dj.Top(5, "id_l desc")
+        result = query.to_dicts()
+        # Merged limit is min(10, 5) = 5
+        assert len(result) == 5
+        assert [r["id_l"] for r in result] == [29, 28, 27, 26, 25]
+
+    def test_top_merge_offsets_add(self, schema_simp_pop):
+        """Test that offsets are added when merging Tops."""
+        # First Top: offset 2, second Top: offset 3, inherited order
+        query = L() & dj.Top(10, "id_l desc", offset=2) & dj.Top(3, order_by=None, offset=3)
+        result = query.to_dicts()
+        # Total offset = 2 + 3 = 5, so starts at 6th element (id_l=24)
+        assert len(result) == 3
+        assert [r["id_l"] for r in result] == [24, 23, 22]
+
+    def test_preview_respects_order(self, schema_simp_pop):
+        """Test that preview (to_arrays with limit) respects Top ordering (issue #1242)."""
+        # Apply descending order with no limit (None = unlimited)
+        query = L() & dj.Top(None, order_by="id_l desc")
+        # Preview should respect the ordering (single attr returns array directly)
+        id_l = query.to_arrays("id_l", limit=5)
+        assert list(id_l) == [29, 28, 27, 26, 25]
+
+    def test_top_different_order_subquery(self, schema_simp_pop):
+        """Test that different orderings create subquery."""
+        # First Top: descending, second Top: ascending - cannot merge
+        query = L() & dj.Top(10, "id_l desc") & dj.Top(3, "id_l asc")
+        result = query.to_dicts()
+        # Second Top reorders the result of first Top
+        # First Top gives ids 29-20, second Top takes lowest 3 of those
+        assert len(result) == 3
+        assert [r["id_l"] for r in result] == [20, 21, 22]

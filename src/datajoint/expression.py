@@ -132,7 +132,9 @@ class QueryExpression:
     def sorting_clauses(self):
         if not self._top:
             return ""
-        clause = ", ".join(_wrap_attributes(_flatten_attribute_list(self.primary_key, self._top.order_by)))
+        # Default to KEY ordering if order_by is None (inherit with no existing order)
+        order_by = self._top.order_by if self._top.order_by is not None else ["KEY"]
+        clause = ", ".join(_wrap_attributes(_flatten_attribute_list(self.primary_key, order_by)))
         if clause:
             clause = f" ORDER BY {clause}"
         if self._top.limit is not None:
@@ -216,10 +218,18 @@ class QueryExpression:
         """
         attributes = set()
         if isinstance(restriction, Top):
-            result = (
-                self.make_subquery() if self._top and not self._top.__eq__(restriction) else copy.copy(self)
-            )  # make subquery to avoid overwriting existing Top
-            result._top = restriction
+            if self._top is None:
+                # No existing Top — apply new one directly
+                result = copy.copy(self)
+                result._top = restriction
+            elif restriction.order_by is None or restriction.order_by == self._top.order_by:
+                # Merge: new Top inherits or matches existing ordering
+                result = copy.copy(self)
+                result._top = self._top.merge(restriction)
+            else:
+                # Different ordering — need subquery
+                result = self.make_subquery()
+                result._top = restriction
             return result
         new_condition = make_condition(self, restriction, attributes, semantic_check=semantic_check)
         if new_condition is True:

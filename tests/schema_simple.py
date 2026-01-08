@@ -141,9 +141,9 @@ class E(dj.Computed):
         """
 
     class M(dj.Part):
-        definition = """ # test force_masters revisit
+        definition = """ # test part_integrity cascade
         -> E
-        id_m :int
+        id_m : uint16
         ---
         -> E.H
         """

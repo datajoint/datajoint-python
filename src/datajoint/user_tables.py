@@ -213,32 +213,50 @@ class Part(UserTable, metaclass=PartMeta):
         + ")"
     )
 
-    def delete(self, force=False, **kwargs):
+    def delete(self, part_integrity: str = "enforce", **kwargs):
         """
         Delete from a Part table.
 
         Args:
-            force: If True, allow direct deletion from Part table.
-                   If False (default), raise an error.
+            part_integrity: Policy for master-part integrity. One of:
+                - ``"enforce"`` (default): Error - delete from master instead.
+                - ``"ignore"``: Allow direct deletion (breaks master-part integrity).
+                - ``"cascade"``: Delete parts AND cascade up to delete master.
             **kwargs: Additional arguments passed to Table.delete()
-                      (transaction, prompt, force_masters)
+                      (transaction, prompt)
 
         Raises:
-            DataJointError: If force is False (direct Part deletes are prohibited)
+            DataJointError: If part_integrity="enforce" (direct Part deletes prohibited)
         """
-        if force:
-            super().delete(force_parts=True, **kwargs)
-        else:
-            raise DataJointError("Cannot delete from a Part directly. Delete from master instead")
+        if part_integrity == "enforce":
+            raise DataJointError(
+                "Cannot delete from a Part directly. Delete from master instead, "
+                "or use part_integrity='ignore' to break integrity, "
+                "or part_integrity='cascade' to also delete master."
+            )
+        super().delete(part_integrity=part_integrity, **kwargs)
 
-    def drop(self, force=False):
+    def drop(self, part_integrity: str = "enforce"):
         """
-        unless force is True, prohibits direct deletes from parts.
+        Drop a Part table.
+
+        Args:
+            part_integrity: Policy for master-part integrity. One of:
+                - ``"enforce"`` (default): Error - drop master instead.
+                - ``"ignore"``: Allow direct drop (breaks master-part structure).
+                Note: ``"cascade"`` is not supported for drop (too destructive).
+
+        Raises:
+            DataJointError: If part_integrity="enforce" (direct Part drops prohibited)
         """
-        if force:
+        if part_integrity == "ignore":
             super().drop()
+        elif part_integrity == "enforce":
+            raise DataJointError(
+                "Cannot drop a Part directly. Drop master instead, " "or use part_integrity='ignore' to force."
+            )
         else:
-            raise DataJointError("Cannot drop a Part directly.  Delete from master instead")
+            raise ValueError(f"part_integrity for drop must be 'enforce' or 'ignore', got {part_integrity!r}")
 
     def alter(self, prompt=True, context=None):
         # without context, use declaration context which maps master keyword to master table

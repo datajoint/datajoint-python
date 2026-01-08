@@ -26,6 +26,6 @@ Entities in a [part table](../design/tables/master-part.md) are usually removed 
 consequence of deleting the master table.
 
 To enforce this workflow, calling `delete` directly on a part table produces an error.
-In some cases, it may be necessary to override this behavior.
-To remove entities from a part table without calling `delete` master, use the argument `force_parts=True`.
-To include the corresponding entries in the master table, use the argument `force_masters=True`.
+In some cases, it may be necessary to override this behavior using the `part_integrity` parameter:
+- `part_integrity="ignore"`: Remove entities from a part table without deleting from master (breaks integrity).
+- `part_integrity="cascade"`: Delete from parts and also cascade up to delete the corresponding master entries.

@@ -107,32 +107,73 @@ class Top:
     ----------
     limit : int, optional
         Maximum number of rows to return. Default 1.
-    order_by : str or list[str], optional
-        Attributes to order by. ``"KEY"`` for primary key. Default ``"KEY"``.
+    order_by : str or list[str] or None, optional
+        Attributes to order by. ``"KEY"`` for primary key order.
+        ``None`` means inherit ordering from an existing Top (or default to KEY).
+        Default ``"KEY"``.
     offset : int, optional
         Number of rows to skip. Default 0.
+
+    Examples
+    --------
+    >>> query & dj.Top(5)                    # Top 5 by primary key
+    >>> query & dj.Top(10, 'score DESC')     # Top 10 by score descending
+    >>> query & dj.Top(10, order_by=None)    # Top 10, inherit existing order
+    >>> query & dj.Top(5, offset=10)         # Skip 10, take 5
     """
 
     limit: int | None = 1
-    order_by: str | list[str] = "KEY"
+    order_by: str | list[str] | None = "KEY"
     offset: int = 0
 
     def __post_init__(self) -> None:
-        self.order_by = self.order_by or ["KEY"]
         self.offset = self.offset or 0
 
         if self.limit is not None and not isinstance(self.limit, int):
             raise TypeError("Top limit must be an integer")
-        if not isinstance(self.order_by, (str, collections.abc.Sequence)) or not all(
-            isinstance(r, str) for r in self.order_by
-        ):
-            raise TypeError("Top order_by attributes must all be strings")
+        if self.order_by is not None:
+            if not isinstance(self.order_by, (str, collections.abc.Sequence)) or not all(
+                isinstance(r, str) for r in self.order_by
+            ):
+                raise TypeError("Top order_by attributes must all be strings")
+            if isinstance(self.order_by, str):
+                self.order_by = [self.order_by]
         if not isinstance(self.offset, int):
             raise TypeError("The offset argument must be an integer")
         if self.offset and self.limit is None:
             self.limit = 999999999999  # arbitrary large number to allow query
-        if isinstance(self.order_by, str):
-            self.order_by = [self.order_by]
+
+    def merge(self, other: "Top") -> "Top":
+        """
+        Merge another Top into this one (when other inherits ordering).
+
+        Used when ``other.order_by`` is None or matches ``self.order_by``.
+
+        Parameters
+        ----------
+        other : Top
+            The Top to merge. Its order_by should be None or equal to self.order_by.
+
+        Returns
+        -------
+        Top
+            New Top with merged limit/offset and preserved ordering.
+        """
+        # Compute effective limit (minimum of defined limits)
+        if self.limit is None and other.limit is None:
+            new_limit = None
+        elif self.limit is None:
+            new_limit = other.limit
+        elif other.limit is None:
+            new_limit = self.limit
+        else:
+            new_limit = min(self.limit, other.limit)
+
+        return Top(
+            limit=new_limit,
+            order_by=self.order_by,  # preserve existing ordering
+            offset=self.offset + other.offset,  # offsets add
+        )
 
 
 class Not:

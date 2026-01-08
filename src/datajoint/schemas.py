@@ -390,27 +390,27 @@ class Schema:
             self._decorate_table(part_class, context=context, assert_declared=True)
             setattr(master_class, class_name, part_class)
 
-    def drop(self, force: bool = False) -> None:
+    def drop(self, prompt: bool | None = None) -> None:
         """
         Drop the associated schema and all its tables.
 
         Parameters
         ----------
-        force : bool, optional
-            If True, skip confirmation prompt. Default False.
+        prompt : bool, optional
+            If True, show confirmation prompt before dropping.
+            If False, drop without confirmation.
+            If None (default), use ``dj.config['safemode']`` setting.
 
         Raises
         ------
         AccessError
             If insufficient permissions to drop the schema.
         """
+        prompt = config["safemode"] if prompt is None else prompt
+
         if not self.exists:
             logger.info("Schema named `{database}` does not exist. Doing nothing.".format(database=self.database))
-        elif (
-            not config["safemode"]
-            or force
-            or user_choice("Proceed to delete entire schema `%s`?" % self.database, default="no") == "yes"
-        ):
+        elif not prompt or user_choice("Proceed to delete entire schema `%s`?" % self.database, default="no") == "yes":
             logger.debug("Dropping `{database}`.".format(database=self.database))
             try:
                 self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
