@@ -39,7 +39,7 @@ class TestVirtualSchema:
         """Tables from virtual_schema can be queried."""
         lab = dj.virtual_schema(schema_any.database, connection=connection_test)
         # Should not raise
-        lab.Experiment.fetch()
+        lab.Experiment().to_dicts()
 
 
 class TestSchemaGetTable:
@@ -75,7 +75,7 @@ class TestSchemaGetItem:
         """Table from __getitem__ can be queried."""
         table = schema_any["Experiment"]
         # Should not raise
-        table.fetch()
+        table.to_dicts()
 
 
 class TestSchemaIteration:
