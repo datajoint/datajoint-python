@@ -10,6 +10,7 @@ on:
       - "src/datajoint/**"
       - "tests/**"
       - "pyproject.toml"
+      - "docker-compose.yaml"
       - ".github/workflows/test.yaml"
   pull_request:
     branches:
@@ -20,6 +21,7 @@ on:
       - "src/datajoint/**"
       - "tests/**"
       - "pyproject.toml"
+      - "docker-compose.yaml"
       - ".github/workflows/test.yaml"
 
 jobs:
@@ -31,38 +33,13 @@ jobs:
         py_ver: ["3.10", "3.11", "3.12", "3.13"]
         mysql_ver: ["8.0"]
 
-    services:
-      mysql:
-        image: mysql:${{ matrix.mysql_ver }}
-        env:
-          MYSQL_ROOT_PASSWORD: password
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start MinIO
-        run: |
-          docker run -d --name minio \
-            -p 9000:9000 \
-            -e MINIO_ROOT_USER=datajoint \
-            -e MINIO_ROOT_PASSWORD=datajoint \
-            minio/minio:latest server /data
-          # Wait for MinIO to be ready
-          for i in {1..30}; do
-            if curl -sf http://127.0.0.1:9000/minio/health/live; then
-              echo "MinIO is ready"
-              break
-            fi
-            echo "Waiting for MinIO... ($i/30)"
-            sleep 2
-          done
+      - name: Start services
+        run: docker compose up -d db minio --wait
+        env:
+          MYSQL_VER: ${{ matrix.mysql_ver }}
 
       - name: Set up Python ${{ matrix.py_ver }}
         uses: actions/setup-python@v5
@@ -83,6 +60,10 @@ jobs:
           S3_ACCESS_KEY: datajoint
           S3_SECRET_KEY: datajoint
         run: pytest --cov-report term-missing --cov=datajoint tests -v
+
+      - name: Stop services
+        if: always()
+        run: docker compose down
 
   # Unit tests run without containers (faster feedback)
   unit-tests:
