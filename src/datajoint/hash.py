@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import hashlib
 import uuid
+from typing import Any
 
 
-def key_hash(mapping):
+def key_hash(mapping: dict[str, Any]) -> str:
     """
     32-byte hash of the mapping's key values sorted by the key name.
     This is often used to convert a long primary key value into a shorter hash.
@@ -13,7 +16,7 @@ def key_hash(mapping):
     return hashed.hexdigest()
 
 
-def uuid_from_buffer(buffer=b"", *, init_string=""):
+def uuid_from_buffer(buffer: bytes = b"", *, init_string: str = "") -> uuid.UUID:
     """
     Compute MD5 hash of buffer data, returned as UUID.
 

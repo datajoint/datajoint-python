@@ -166,6 +166,8 @@ check_untyped_defs = true
 [[tool.mypy.overrides]]
 module = [
     "datajoint.content_registry",
+    "datajoint.errors",
+    "datajoint.hash",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
@@ -185,10 +187,8 @@ module = [
     "datajoint.declare",
     "datajoint.dependencies",
     "datajoint.diagram",
-    "datajoint.errors",
     "datajoint.expression",
     "datajoint.gc",
-    "datajoint.hash",
     "datajoint.heading",
     "datajoint.jobs",
     "datajoint.lineage",
