@@ -38,7 +38,7 @@ def test_delete_tree(schema_simp_pop):
 def test_stepwise_delete(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"
     assert L() and A() and B() and B.C(), "schema population failed"
-    B.C().delete(force=True)
+    B.C().delete(part_integrity="ignore")
     assert not B.C(), "failed to delete child tables"
     B().delete()
     assert not B(), "failed to delete from the parent table following child table deletion"
@@ -113,19 +113,19 @@ def test_delete_parts_error(schema_simp_pop):
     """test issue #151"""
     with pytest.raises(dj.DataJointError):
         Profile().populate_random()
-        Website().delete(force_masters=False)
+        Website().delete(part_integrity="enforce")
 
 
 def test_delete_parts(schema_simp_pop):
     """test issue #151"""
     Profile().populate_random()
-    Website().delete(force_masters=True)
+    Website().delete(part_integrity="cascade")
 
 
 def test_delete_parts_complex(schema_simp_pop):
     """test issue #151 with complex master/part. PR #1158."""
     prev_len = len(G())
-    (A() & "id_a=1").delete(force_masters=True)
+    (A() & "id_a=1").delete(part_integrity="cascade")
     assert prev_len - len(G()) == 16, "Failed to delete parts"
 
 
