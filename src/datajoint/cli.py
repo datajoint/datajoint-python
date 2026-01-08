@@ -61,7 +61,7 @@ def cli(args: list = None):
     if kwargs["schemas"]:
         for vm in kwargs["schemas"]:
             d, m = vm.split(":")
-            mods[m] = dj.virtual_schema(d)
+            mods[m] = dj.VirtualModule(m, d)
 
     banner = "dj repl\n"
     if mods:
