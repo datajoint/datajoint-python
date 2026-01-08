@@ -152,6 +152,60 @@ quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
 
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+# Start with lenient settings, gradually enable stricter checks
+warn_return_any = false
+warn_unused_ignores = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+
+# Modules with complete type coverage - strict checking enabled
+[[tool.mypy.overrides]]
+module = [
+    "datajoint.content_registry",
+]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_return_any = true
+
+# Modules excluded from type checking until fully typed
+[[tool.mypy.overrides]]
+module = [
+    "datajoint.admin",
+    "datajoint.autopopulate",
+    "datajoint.blob",
+    "datajoint.builtin_codecs",
+    "datajoint.cli",
+    "datajoint.codecs",
+    "datajoint.condition",
+    "datajoint.connection",
+    "datajoint.declare",
+    "datajoint.dependencies",
+    "datajoint.diagram",
+    "datajoint.errors",
+    "datajoint.expression",
+    "datajoint.gc",
+    "datajoint.hash",
+    "datajoint.heading",
+    "datajoint.jobs",
+    "datajoint.lineage",
+    "datajoint.logging",
+    "datajoint.migrate",
+    "datajoint.objectref",
+    "datajoint.preview",
+    "datajoint.schemas",
+    "datajoint.settings",
+    "datajoint.staged_insert",
+    "datajoint.storage",
+    "datajoint.table",
+    "datajoint.user_tables",
+    "datajoint.utils",
+]
+ignore_errors = true
+
 [tool.setuptools]
 packages = ["datajoint"]
 package-dir = {"" = "src"}
