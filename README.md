@@ -100,23 +100,25 @@ Scientific data includes both structured metadata and large data objects (time s
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) (Docker daemon must be running)
-- Python 3.10+
+- [pixi](https://pixi.sh) (recommended) or Python 3.10+
 
-### Quick Start
+### Quick Start with pixi (Recommended)
+
+[pixi](https://pixi.sh) manages all dependencies including Python, graphviz, and test tools:
 
 ```bash
-# Clone and install
+# Clone the repo
 git clone https://github.com/datajoint/datajoint-python.git
 cd datajoint-python
-pip install -e ".[test]"
 
-# Run all tests (containers start automatically via testcontainers)
-pytest tests/
+# Install dependencies and run tests (containers managed by testcontainers)
+pixi run test
 
-# Install and run pre-commit hooks
-pip install pre-commit
-pre-commit install
-pre-commit run --all-files
+# Run with coverage
+pixi run test-cov
+
+# Run pre-commit hooks
+pixi run pre-commit run --all-files
 ```
 
 ### Running Tests
@@ -126,16 +128,30 @@ Tests use [testcontainers](https://testcontainers.com/) to automatically manage 
 
 ```bash
 # Run all tests (recommended)
-pytest tests/
+pixi run test
 
 # Run with coverage report
-pytest --cov-report term-missing --cov=datajoint tests/
-
-# Run specific test file
-pytest tests/integration/test_blob.py -v
+pixi run test-cov
 
 # Run only unit tests (no containers needed)
-pytest tests/unit/
+pixi run -e test pytest tests/unit/
+
+# Run specific test file
+pixi run -e test pytest tests/integration/test_blob.py -v
+```
+
+**macOS Docker Desktop users:** If tests fail to connect to Docker, set `DOCKER_HOST`:
+```bash
+export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock
+```
+
+### Alternative: Using pip
+
+If you prefer pip over pixi:
+
+```bash
+pip install -e ".[test]"
+pytest tests/
 ```
 
 ### Alternative: External Containers
@@ -147,7 +163,8 @@ For development/debugging, you may prefer persistent containers that survive tes
 docker compose up -d db minio
 
 # Run tests using external containers
-DJ_USE_EXTERNAL_CONTAINERS=1 pytest tests/
+DJ_USE_EXTERNAL_CONTAINERS=1 pixi run test
+# Or with pip: DJ_USE_EXTERNAL_CONTAINERS=1 pytest tests/
 
 # Stop containers when done
 docker compose down
@@ -161,15 +178,6 @@ Run tests entirely in Docker (no local Python needed):
 docker compose --profile test up djtest --build
 ```
 
-### Alternative: Using pixi
-
-[pixi](https://pixi.sh) users can run tests with:
-
-```bash
-pixi install        # First time setup
-pixi run test       # Runs tests (testcontainers manages containers)
-```
-
 ### Pre-commit Hooks
 
 Pre-commit hooks run automatically on `git commit` to check code quality.
@@ -177,15 +185,14 @@ Pre-commit hooks run automatically on `git commit` to check code quality.
 
 ```bash
 # Install hooks (first time only)
-pip install pre-commit
-pre-commit install
+pixi run pre-commit install
+# Or with pip: pip install pre-commit && pre-commit install
 
 # Run all checks manually
-pre-commit run --all-files
+pixi run pre-commit run --all-files
 
 # Run specific hook
-pre-commit run ruff --all-files
-pre-commit run codespell --all-files
+pixi run pre-commit run ruff --all-files
 ```
 
 Hooks include:
@@ -196,9 +203,9 @@ Hooks include:
 
 ### Before Submitting a PR
 
-1. **Run all tests**: `pytest tests/`
-2. **Run pre-commit**: `pre-commit run --all-files`
-3. **Check coverage**: `pytest --cov-report term-missing --cov=datajoint tests/`
+1. **Run all tests**: `pixi run test`
+2. **Run pre-commit**: `pixi run pre-commit run --all-files`
+3. **Check coverage**: `pixi run test-cov`
 
 ### Environment Variables
 
