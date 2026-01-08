@@ -93,27 +93,40 @@ class AutoPopulate:
     _allow_insert = False
     _jobs = None
 
-    @property
-    def jobs(self) -> Job:
-        """
-        Access the job table for this auto-populated table.
+    class _JobsDescriptor:
+        """Descriptor allowing jobs access on both class and instance."""
 
-        The job table (``~~table_name``) is created lazily on first access.
-        It tracks job status, priority, scheduling, and error information
-        for distributed populate operations.
+        def __get__(self, obj, objtype=None):
+            """
+            Access the job table for this auto-populated table.
 
-        Returns
-        -------
-        Job
-            Job management object for this table.
-        """
-        if self._jobs is None:
-            from .jobs import Job
+            The job table (``~~table_name``) is created lazily on first access.
+            It tracks job status, priority, scheduling, and error information
+            for distributed populate operations.
 
-            self._jobs = Job(self)
-            if not self._jobs.is_declared:
-                self._jobs.declare()
-        return self._jobs
+            Can be accessed on either the class or an instance::
+
+                # Both work equivalently
+                Analysis.jobs.refresh()
+                Analysis().jobs.refresh()
+
+            Returns
+            -------
+            Job
+                Job management object for this table.
+            """
+            if obj is None:
+                # Accessed on class - instantiate first
+                obj = objtype()
+            if obj._jobs is None:
+                from .jobs import Job
+
+                obj._jobs = Job(obj)
+                if not obj._jobs.is_declared:
+                    obj._jobs.declare()
+            return obj._jobs
+
+    jobs: Job = _JobsDescriptor()
 
     def _declare_check(self, primary_key: list[str], fk_attribute_map: dict[str, tuple[str, str]]) -> None:
         """
