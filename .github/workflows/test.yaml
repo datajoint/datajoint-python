@@ -10,7 +10,7 @@ on:
       - "src/datajoint/**"
       - "tests/**"
       - "pyproject.toml"
-      - "docker-compose.yaml"
+      - "pixi.lock"
       - ".github/workflows/test.yaml"
   pull_request:
     branches:
@@ -21,69 +21,33 @@ on:
       - "src/datajoint/**"
       - "tests/**"
       - "pyproject.toml"
-      - "docker-compose.yaml"
+      - "pixi.lock"
       - ".github/workflows/test.yaml"
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        py_ver: ["3.10", "3.11", "3.12", "3.13"]
-        mysql_ver: ["8.0"]
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y graphviz
-
-      - name: Start services
-        run: docker compose up -d db minio --wait
-        env:
-          MYSQL_VER: ${{ matrix.mysql_ver }}
-
-      - name: Set up Python ${{ matrix.py_ver }}
-        uses: actions/setup-python@v5
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.9.3
         with:
-          python-version: ${{ matrix.py_ver }}
-
-      - name: Install dependencies
-        run: pip install -e ".[test]"
+          cache: true
 
       - name: Run tests
-        env:
-          DJ_USE_EXTERNAL_CONTAINERS: "1"
-          DJ_HOST: 127.0.0.1
-          DJ_PORT: 3306
-          DJ_USER: root
-          DJ_PASS: password
-          S3_ENDPOINT: 127.0.0.1:9000
-          S3_ACCESS_KEY: datajoint
-          S3_SECRET_KEY: datajoint
-        run: pytest --cov-report term-missing --cov=datajoint tests -v
-
-      - name: Stop services
-        if: always()
-        run: docker compose down
+        run: pixi run -e test test-cov
 
   # Unit tests run without containers (faster feedback)
   unit-tests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        py_ver: ["3.11"]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.py_ver }}
-        uses: actions/setup-python@v5
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.9.3
         with:
-          python-version: ${{ matrix.py_ver }}
-
-      - name: Install dependencies
-        run: pip install -e ".[test]"
+          cache: true
 
       - name: Run unit tests
-        run: pytest tests/unit -v
+        run: pixi run -e test pytest tests/unit -v
