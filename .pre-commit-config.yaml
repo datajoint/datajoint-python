@@ -1,8 +1,7 @@
-# pip install datajoint[test]
 # pre-commit install
 # pre-commit run --all-files
 # pre-commit autoupdate
-# SKIP=flake8 git commit -m "foo"
+# SKIP=ruff git commit -m "foo"
 
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
