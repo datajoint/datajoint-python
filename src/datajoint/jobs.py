@@ -348,7 +348,7 @@ class Job(Table):
         3. Remove stale jobs: jobs older than stale_timeout whose keys not in key_source
         4. Remove orphaned jobs: reserved jobs older than orphan_timeout (if specified)
         """
-        from datetime import datetime, timedelta
+        from datetime import timedelta
 
         from .settings import config
 
@@ -363,7 +363,6 @@ class Job(Table):
             stale_timeout = config.jobs.stale_timeout
 
         result = {"added": 0, "removed": 0, "orphaned": 0, "re_pended": 0}
-        now = datetime.now()
 
         # 1. Add new jobs
         key_source = self._target.key_source
@@ -378,14 +377,21 @@ class Job(Table):
         new_key_list = new_keys.keys()
 
         if new_key_list:
-            scheduled_time = now + timedelta(seconds=delay) if delay > 0 else now
+            # Get MySQL server time for delayed scheduling (delay > 0 only)
+            # When delay == 0, omit scheduled_time to use MySQL's CURRENT_TIMESTAMP default
+            scheduled_time = None
+            if delay > 0:
+                server_now = self.connection.query("SELECT NOW()").fetchone()[0]
+                scheduled_time = server_now + timedelta(seconds=delay)
+
             for key in new_key_list:
                 job_entry = {
                     **key,
                     "status": "pending",
                     "priority": priority,
-                    "scheduled_time": scheduled_time,
                 }
+                if scheduled_time is not None:
+                    job_entry["scheduled_time"] = scheduled_time
                 try:
                     self.insert1(job_entry, ignore_extra_fields=True)
                     result["added"] += 1
@@ -403,10 +409,9 @@ class Job(Table):
                 self.insert1({**key, "status": "pending", "priority": priority})
                 result["re_pended"] += 1
 
-        # 3. Remove stale jobs (not ignore status)
+        # 3. Remove stale jobs (not ignore status) - use MySQL NOW() for consistent timing
         if stale_timeout > 0:
-            stale_cutoff = now - timedelta(seconds=stale_timeout)
-            old_jobs = self & f'created_time < "{stale_cutoff}"' & 'status != "ignore"'
+            old_jobs = self & f"created_time < NOW() - INTERVAL {stale_timeout} SECOND" & 'status != "ignore"'
 
             for key in old_jobs.keys():
                 # Check if key still in key_source
@@ -414,10 +419,9 @@ class Job(Table):
                     (self & key).delete_quick()
                     result["removed"] += 1
 
-        # 4. Handle orphaned reserved jobs
+        # 4. Handle orphaned reserved jobs - use MySQL NOW() for consistent timing
         if orphan_timeout is not None and orphan_timeout > 0:
-            orphan_cutoff = now - timedelta(seconds=orphan_timeout)
-            orphaned_jobs = self.reserved & f'reserved_time < "{orphan_cutoff}"'
+            orphaned_jobs = self.reserved & f"reserved_time < NOW() - INTERVAL {orphan_timeout} SECOND"
 
             for key in orphaned_jobs.keys():
                 (self & key).delete_quick()
@@ -443,21 +447,21 @@ class Job(Table):
         bool
             True if reservation successful, False if job not available.
         """
-        from datetime import datetime
-
-        # Check if job is pending and scheduled
-        now = datetime.now()
-        job = (self & key & 'status="pending"' & f'scheduled_time <= "{now}"').to_dicts()
+        # Check if job is pending and scheduled (use MySQL NOW() for consistent timing)
+        job = (self & key & 'status="pending"' & "scheduled_time <= NOW()").to_dicts()
 
         if not job:
             return False
+
+        # Get MySQL server time for reserved_time
+        server_now = self.connection.query("SELECT NOW()").fetchone()[0]
 
         # Build update row with primary key and new values
         pk = self._get_pk(key)
         update_row = {
             **pk,
             "status": "reserved",
-            "reserved_time": now,
+            "reserved_time": server_now,
             "host": platform.node(),
             "pid": os.getpid(),
             "connection_id": self.connection.connection_id,
@@ -489,16 +493,16 @@ class Job(Table):
         - If True: updates status to ``'success'`` with completion time and duration
         - If False: deletes the job entry
         """
-        from datetime import datetime
-
         from .settings import config
 
         if config.jobs.keep_completed:
+            # Use MySQL server time for completed_time
+            server_now = self.connection.query("SELECT NOW()").fetchone()[0]
             pk = self._get_pk(key)
             update_row = {
                 **pk,
                 "status": "success",
-                "completed_time": datetime.now(),
+                "completed_time": server_now,
             }
             if duration is not None:
                 update_row["duration"] = duration
@@ -519,16 +523,17 @@ class Job(Table):
         error_stack : str, optional
             Full stack trace.
         """
-        from datetime import datetime
-
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
+
+        # Use MySQL server time for completed_time
+        server_now = self.connection.query("SELECT NOW()").fetchone()[0]
 
         pk = self._get_pk(key)
         update_row = {
             **pk,
             "status": "error",
-            "completed_time": datetime.now(),
+            "completed_time": server_now,
             "error_message": error_message,
         }
         if error_stack is not None:
