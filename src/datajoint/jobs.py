@@ -348,8 +348,6 @@ class Job(Table):
         3. Remove stale jobs: jobs older than stale_timeout whose keys not in key_source
         4. Remove orphaned jobs: reserved jobs older than orphan_timeout (if specified)
         """
-        from datetime import timedelta
-
         from .settings import config
 
         # Ensure jobs table exists
@@ -377,21 +375,16 @@ class Job(Table):
         new_key_list = new_keys.keys()
 
         if new_key_list:
-            # Get MySQL server time for delayed scheduling (delay > 0 only)
-            # When delay == 0, omit scheduled_time to use MySQL's CURRENT_TIMESTAMP default
-            scheduled_time = None
-            if delay > 0:
-                server_now = self.connection.query("SELECT NOW()").fetchone()[0]
-                scheduled_time = server_now + timedelta(seconds=delay)
+            # Always use MySQL server time for scheduling (NOW(3) matches datetime(3) precision)
+            scheduled_time = self.connection.query(f"SELECT NOW(3) + INTERVAL {delay} SECOND").fetchone()[0]
 
             for key in new_key_list:
                 job_entry = {
                     **key,
                     "status": "pending",
                     "priority": priority,
+                    "scheduled_time": scheduled_time,
                 }
-                if scheduled_time is not None:
-                    job_entry["scheduled_time"] = scheduled_time
                 try:
                     self.insert1(job_entry, ignore_extra_fields=True)
                     result["added"] += 1
