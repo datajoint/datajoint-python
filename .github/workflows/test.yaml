@@ -34,6 +34,7 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.9.3
         with:
           cache: true
+          locked: false
 
       - name: Run tests
         run: pixi run -e test test-cov
@@ -48,6 +49,7 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.9.3
         with:
           cache: true
+          locked: false
 
       - name: Run unit tests
         run: pixi run -e test pytest tests/unit -v
