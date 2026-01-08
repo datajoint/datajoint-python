@@ -41,20 +41,23 @@ description = "DataJoint for Python is a framework for scientific workflow manag
 readme = "README.md"
 license = {file = "LICENSE"}
 keywords = [
-    "database",
-    "automated",
-    "automation",
-    "compute",
-    "data",
-    "pipeline",
-    "workflow",
-    "scientific",
-    "science",
-    "research",
-    "neuroscience",
-    "bioinformatics",
-    "bio-informatics",
     "datajoint",
+    "data-pipelines",
+    "workflow-management",
+    "data-engineering",
+    "scientific-computing",
+    "neuroscience",
+    "research-software",
+    "data-integrity",
+    "reproducibility",
+    "declarative",
+    "etl",
+    "object-storage",
+    "schema-management",
+    "data-lineage",
+    "relational-model",
+    "mysql",
+    "postgresql",
 ]
 # https://pypi.org/classifiers/
 classifiers = [
