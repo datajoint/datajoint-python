@@ -196,7 +196,7 @@ def scan_references(
         for table_name in schema.list_tables():
             try:
                 # Get table class
-                table = schema.spawn_table(table_name)
+                table = schema.get_table(table_name)
 
                 # Check each attribute for content storage
                 for attr_name, attr in table.heading.attributes.items():
@@ -259,7 +259,7 @@ def scan_object_references(
         for table_name in schema.list_tables():
             try:
                 # Get table class
-                table = schema.spawn_table(table_name)
+                table = schema.get_table(table_name)
 
                 # Check each attribute for object storage
                 for attr_name, attr in table.heading.attributes.items():
