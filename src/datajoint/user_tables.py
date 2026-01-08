@@ -253,13 +253,10 @@ class Part(UserTable, metaclass=PartMeta):
             super().drop()
         elif part_integrity == "enforce":
             raise DataJointError(
-                "Cannot drop a Part directly. Drop master instead, "
-                "or use part_integrity='ignore' to force."
+                "Cannot drop a Part directly. Drop master instead, " "or use part_integrity='ignore' to force."
             )
         else:
-            raise ValueError(
-                f"part_integrity for drop must be 'enforce' or 'ignore', got {part_integrity!r}"
-            )
+            raise ValueError(f"part_integrity for drop must be 'enforce' or 'ignore', got {part_integrity!r}")
 
     def alter(self, prompt=True, context=None):
         # without context, use declaration context which maps master keyword to master table
