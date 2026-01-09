@@ -9,21 +9,15 @@ Python 3.10+ is required.
 
 from __future__ import annotations
 
-from typing import Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 # Primary key types
 PrimaryKey: TypeAlias = dict[str, Any]
 """A dictionary mapping attribute names to values that uniquely identify an entity."""
 
-PrimaryKeyList: TypeAlias = list[dict[str, Any]]
-"""A list of primary key dictionaries."""
-
 # Row/record types
 Row: TypeAlias = dict[str, Any]
 """A single row/record as a dictionary mapping attribute names to values."""
-
-RowList: TypeAlias = list[dict[str, Any]]
-"""A list of rows/records."""
 
 # Attribute types
 AttributeName: TypeAlias = str
@@ -47,7 +41,7 @@ ForeignKeyMap: TypeAlias = dict[str, tuple[str, str]]
 """Mapping of child_attr -> (parent_table, parent_attr) for foreign keys."""
 
 # Restriction types
-Restriction: TypeAlias = str | dict[str, Any] | bool | "QueryExpression" | list | None
+Restriction: TypeAlias = str | dict[str, Any] | bool | "QueryExpression" | list[Any] | None
 """Valid restriction types for query operations."""
 
 # Fetch result types
@@ -56,5 +50,5 @@ FetchResult: TypeAlias = list[dict[str, Any]]
 
 
 # For avoiding circular imports
-if False:  # TYPE_CHECKING equivalent that's always False
+if TYPE_CHECKING:
     from .expression import QueryExpression

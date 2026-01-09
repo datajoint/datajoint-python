@@ -42,8 +42,6 @@ def is_remote_url(path: str) -> bool:
     bool
         True if path starts with a supported remote protocol.
     """
-    if not isinstance(path, str):
-        return False
     return path.lower().startswith(REMOTE_PROTOCOLS)
 
 
