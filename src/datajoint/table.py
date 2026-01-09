@@ -148,8 +148,15 @@ class Table(QueryExpression):
         try:
             self.connection.query(sql)
         except AccessError:
-            # skip if no create privilege
-            return
+            # Only suppress if table already exists (idempotent declaration)
+            # Otherwise raise - user needs to know about permission issues
+            if self.is_declared:
+                return
+            raise AccessError(
+                f"Cannot declare table {self.full_table_name}. "
+                f"Check that you have CREATE privilege on schema `{self.database}` "
+                f"and REFERENCES privilege on any referenced parent tables."
+            ) from None
 
         # Populate lineage table for this table's attributes
         self._populate_lineage(primary_key, fk_attribute_map)
