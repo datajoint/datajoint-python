@@ -46,6 +46,36 @@ def test_dj_connection_class(connection_test):
     assert connection_test.is_connected
 
 
+def test_connection_context_manager(db_creds_test):
+    """
+    Connection should support context manager protocol for automatic cleanup.
+    """
+    # Test basic context manager usage
+    with dj.Connection(**db_creds_test) as conn:
+        assert conn.is_connected
+        # Verify we can use the connection
+        result = conn.query("SELECT 1").fetchone()
+        assert result[0] == 1
+
+    # Connection should be closed after exiting context
+    assert not conn.is_connected
+
+
+def test_connection_context_manager_exception(db_creds_test):
+    """
+    Connection should close even when exception is raised inside context.
+    """
+    conn = None
+    with pytest.raises(ValueError):
+        with dj.Connection(**db_creds_test) as conn:
+            assert conn.is_connected
+            raise ValueError("Test exception")
+
+    # Connection should still be closed after exception
+    assert conn is not None
+    assert not conn.is_connected
+
+
 def test_persistent_dj_conn(db_creds_root):
     """
     conn() method should provide persistent connection across calls.
