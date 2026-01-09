@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__.split(".")[0])
 # Characters safe for use in filenames and URLs
 TOKEN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
-# Supported remote URL protocols for copy insert
-REMOTE_PROTOCOLS = ("s3://", "gs://", "gcs://", "az://", "abfs://", "http://", "https://")
+# Supported URL protocols
+URL_PROTOCOLS = ("file://", "s3://", "gs://", "gcs://", "az://", "abfs://", "http://", "https://")
 
 
-def is_remote_url(path: str) -> bool:
+def is_url(path: str) -> bool:
     """
-    Check if a path is a remote URL.
+    Check if a path is a URL.
 
     Parameters
     ----------
@@ -40,19 +40,57 @@ def is_remote_url(path: str) -> bool:
     Returns
     -------
     bool
-        True if path starts with a supported remote protocol.
+        True if path starts with a supported URL protocol.
     """
-    return path.lower().startswith(REMOTE_PROTOCOLS)
+    return path.lower().startswith(URL_PROTOCOLS)
 
 
-def parse_remote_url(url: str) -> tuple[str, str]:
+def normalize_to_url(path: str) -> str:
     """
-    Parse a remote URL into protocol and path.
+    Normalize a path to URL form.
+
+    Converts local filesystem paths to file:// URLs. URLs are returned unchanged.
+
+    Parameters
+    ----------
+    path : str
+        Path string (local path or URL).
+
+    Returns
+    -------
+    str
+        URL form of the path.
+
+    Examples
+    --------
+    >>> normalize_to_url("/data/file.dat")
+    'file:///data/file.dat'
+    >>> normalize_to_url("s3://bucket/key")
+    's3://bucket/key'
+    >>> normalize_to_url("file:///already/url")
+    'file:///already/url'
+    """
+    if is_url(path):
+        return path
+    # Convert local path to file:// URL
+    # Ensure absolute path and proper format
+    abs_path = str(Path(path).resolve())
+    # Handle Windows paths (C:\...) vs Unix paths (/...)
+    if abs_path.startswith("/"):
+        return f"file://{abs_path}"
+    else:
+        # Windows: file:///C:/path
+        return f"file:///{abs_path.replace(chr(92), '/')}"
+
+
+def parse_url(url: str) -> tuple[str, str]:
+    """
+    Parse a URL into protocol and path.
 
     Parameters
     ----------
     url : str
-        Remote URL (e.g., ``'s3://bucket/path/file.dat'``).
+        URL (e.g., ``'s3://bucket/path/file.dat'`` or ``'file:///path/to/file'``).
 
     Returns
     -------
@@ -63,11 +101,19 @@ def parse_remote_url(url: str) -> tuple[str, str]:
     ------
     DataJointError
         If URL protocol is not supported.
+
+    Examples
+    --------
+    >>> parse_url("s3://bucket/key/file.dat")
+    ('s3', 'bucket/key/file.dat')
+    >>> parse_url("file:///data/file.dat")
+    ('file', '/data/file.dat')
     """
     url_lower = url.lower()
 
     # Map URL schemes to fsspec protocols
     protocol_map = {
+        "file://": "file",
         "s3://": "s3",
         "gs://": "gcs",
         "gcs://": "gcs",
@@ -82,7 +128,7 @@ def parse_remote_url(url: str) -> tuple[str, str]:
             path = url[len(prefix) :]
             return protocol, path
 
-    raise errors.DataJointError(f"Unsupported remote URL protocol: {url}")
+    raise errors.DataJointError(f"Unsupported URL protocol: {url}")
 
 
 def generate_token(length: int = 8) -> str:
@@ -355,6 +401,53 @@ class StorageBackend:
             if location:
                 return str(Path(location) / path)
             return path
+
+    def get_url(self, path: str | PurePosixPath) -> str:
+        """
+        Get the full URL for a path in storage.
+
+        Returns a consistent URL representation for any storage backend,
+        including file:// URLs for local filesystem.
+
+        Parameters
+        ----------
+        path : str or PurePosixPath
+            Relative path within the storage location.
+
+        Returns
+        -------
+        str
+            Full URL (e.g., 's3://bucket/path' or 'file:///data/path').
+
+        Examples
+        --------
+        >>> backend = StorageBackend({"protocol": "file", "location": "/data"})
+        >>> backend.get_url("schema/table/file.dat")
+        'file:///data/schema/table/file.dat'
+
+        >>> backend = StorageBackend({"protocol": "s3", "bucket": "mybucket", ...})
+        >>> backend.get_url("schema/table/file.dat")
+        's3://mybucket/schema/table/file.dat'
+        """
+        full_path = self._full_path(path)
+
+        if self.protocol == "file":
+            # Ensure absolute path for file:// URL
+            abs_path = str(Path(full_path).resolve())
+            if abs_path.startswith("/"):
+                return f"file://{abs_path}"
+            else:
+                # Windows path
+                return f"file:///{abs_path.replace(chr(92), '/')}"
+        elif self.protocol == "s3":
+            return f"s3://{full_path}"
+        elif self.protocol == "gcs":
+            return f"gs://{full_path}"
+        elif self.protocol == "azure":
+            return f"az://{full_path}"
+        else:
+            # Fallback: use protocol prefix
+            return f"{self.protocol}://{full_path}"
 
     def put_file(self, local_path: str | Path, remote_path: str | PurePosixPath, metadata: dict | None = None) -> None:
         """
@@ -672,7 +765,7 @@ class StorageBackend:
         int
             Size of copied file in bytes.
         """
-        protocol, source_path = parse_remote_url(source_url)
+        protocol, source_path = parse_url(source_url)
         full_dest = self._full_path(dest_path)
 
         logger.debug(f"copy_from_url: {protocol}://{source_path} -> {self.protocol}:{full_dest}")
@@ -772,8 +865,8 @@ class StorageBackend:
         bool
             True if source is a directory.
         """
-        if is_remote_url(source):
-            protocol, path = parse_remote_url(source)
+        if is_url(source):
+            protocol, path = parse_url(source)
             source_fs = fsspec.filesystem(protocol)
             return source_fs.isdir(path)
         else:
@@ -793,8 +886,8 @@ class StorageBackend:
         bool
             True if source exists.
         """
-        if is_remote_url(source):
-            protocol, path = parse_remote_url(source)
+        if is_url(source):
+            protocol, path = parse_url(source)
             source_fs = fsspec.filesystem(protocol)
             return source_fs.exists(path)
         else:
@@ -815,8 +908,8 @@ class StorageBackend:
             Size in bytes, or None if directory or cannot determine.
         """
         try:
-            if is_remote_url(source):
-                protocol, path = parse_remote_url(source)
+            if is_url(source):
+                protocol, path = parse_url(source)
                 source_fs = fsspec.filesystem(protocol)
                 if source_fs.isdir(path):
                     return None

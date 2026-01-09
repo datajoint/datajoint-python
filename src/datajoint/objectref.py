@@ -128,32 +128,6 @@ class ObjectRef:
             data["item_count"] = self.item_count
         return data
 
-    def to_dict(self) -> dict:
-        """
-        Return the raw JSON metadata as a dictionary.
-
-        This is useful for inspecting the stored metadata without triggering
-        any storage backend operations. The returned dict matches the JSON
-        structure stored in the database.
-
-        Returns
-        -------
-        dict
-            Dict containing the object metadata:
-
-            - path: Relative storage path within the store
-            - url: Full URI (e.g., 's3://bucket/path') (optional)
-            - store: Store name (optional, None for default store)
-            - size: File/folder size in bytes (or None)
-            - hash: Content hash (or None)
-            - ext: File extension (or None)
-            - is_dir: True if folder
-            - timestamp: Upload timestamp
-            - mime_type: MIME type (files only, optional)
-            - item_count: Number of files (folders only, optional)
-        """
-        return self.to_json()
-
     def _ensure_backend(self):
         """Ensure storage backend is available for I/O operations."""
         if self._backend is None:
