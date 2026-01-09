@@ -90,18 +90,19 @@ class TestUnprivileged:
             UnprivilegedLanguage().insert1(("Socrates", "Greek"))
 
     def test_failure_to_create_table(self, connection_djview, schema_any):
+        """Table declaration should raise AccessError when user lacks CREATE privilege."""
         unprivileged = dj.Schema(schema_any.database, namespace, connection=connection_djview)
 
-        @unprivileged
-        class Try(dj.Manual):
-            definition = """  # should not matter really
-            id : int
-            ---
-            value : float
-            """
+        # Should raise AccessError at declaration time, not silently fail
+        with pytest.raises(dj.errors.AccessError):
 
-        with pytest.raises(dj.DataJointError):
-            Try().insert1((1, 1.5))
+            @unprivileged
+            class Try(dj.Manual):
+                definition = """  # should not matter really
+                id : int
+                ---
+                value : float
+                """
 
 
 class TestSubset:
