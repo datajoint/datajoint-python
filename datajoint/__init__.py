@@ -54,25 +54,88 @@ __all__ = [
     "logger",
     "cli",
 ]
+import importlib
+from typing import TYPE_CHECKING
 
-from . import errors
-from .admin import kill, set_password
-from .attribute_adapter import AttributeAdapter
-from .blob import MatCell, MatStruct
-from .cli import cli
-from .connection import Connection, conn
-from .diagram import Diagram
+from . import errors  
 from .errors import DataJointError
-from .expression import AndList, Not, Top, U
-from .fetch import key
-from .hash import key_hash
-from .logging import logger
-from .schemas import Schema, VirtualModule, list_schemas
-from .settings import config
-from .table import FreeTable, Table
-from .user_tables import Computed, Imported, Lookup, Manual, Part
-from .version import __version__
+from .logging import logger  
+from .settings import config  
+from .version import __version__  
 
-ERD = Di = Diagram  # Aliases for Diagram
-schema = Schema  # Aliases for Schema
-create_virtual_module = VirtualModule  # Aliases for VirtualModule
+from .connection import Connection, conn  
+
+if TYPE_CHECKING:
+    from .admin import kill, set_password
+    from .attribute_adapter import AttributeAdapter
+    from .blob import MatCell, MatStruct
+    from .cli import cli
+    from .diagram import Diagram
+    from .expression import AndList, Not, Top, U
+    from .fetch import key
+    from .hash import key_hash
+    from .schemas import Schema, VirtualModule, list_schemas
+    from .table import FreeTable, Table
+    from .user_tables import Computed, Imported, Lookup, Manual, Part
+
+
+_LAZY: dict[str, tuple[str, str]] = {
+    # admin
+    "kill": ("datajoint.admin", "kill"),
+    "set_password": ("datajoint.admin", "set_password"),
+
+    # core objects
+    "Schema": ("datajoint.schemas", "Schema"),
+    "VirtualModule": ("datajoint.schemas", "VirtualModule"),
+    "list_schemas": ("datajoint.schemas", "list_schemas"),
+
+    # tables
+    "Table": ("datajoint.table", "Table"),
+    "FreeTable": ("datajoint.table", "FreeTable"),
+    "Manual": ("datajoint.user_tables", "Manual"),
+    "Lookup": ("datajoint.user_tables", "Lookup"),
+    "Imported": ("datajoint.user_tables", "Imported"),
+    "Computed": ("datajoint.user_tables", "Computed"),
+    "Part": ("datajoint.user_tables", "Part"),
+
+    # diagram
+    "Diagram": ("datajoint.diagram", "Diagram"),
+
+    # expressions
+    "Not": ("datajoint.expression", "Not"),
+    "AndList": ("datajoint.expression", "AndList"),
+    "Top": ("datajoint.expression", "Top"),
+    "U": ("datajoint.expression", "U"),
+
+    # misc utilities
+    "MatCell": ("datajoint.blob", "MatCell"),
+    "MatStruct": ("datajoint.blob", "MatStruct"),
+    "AttributeAdapter": ("datajoint.attribute_adapter", "AttributeAdapter"),
+    "key": ("datajoint.fetch", "key"),
+    "key_hash": ("datajoint.hash", "key_hash"),
+    "cli": ("datajoint.cli", "cli"),
+}
+_ALIAS: dict[str, str] = {
+    "ERD": "Diagram",
+    "Di": "Diagram",
+    "schema": "Schema",
+    "create_virtual_module": "VirtualModule",
+}
+
+
+def __getattr__(name: str):
+    if name in _ALIAS:
+        target = _ALIAS[name]
+        value = getattr(importlib.import_module(_LAZY[target][0]), _LAZY[target][1])
+        globals()[target] = value
+        globals()[name] = value
+        return value
+
+    if name in _LAZY:
+        module_name, attr = _LAZY[name]
+        module = importlib.import_module(module_name)
+        value = getattr(module, attr)
+        globals()[name] = value  # cache
+        return value
+
+    raise AttributeError(f"module 'datajoint' has no attribute {name}")
