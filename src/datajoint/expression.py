@@ -728,7 +728,7 @@ class QueryExpression:
         try:
             import polars
         except ImportError:
-            raise ImportError("polars is required for to_polars(). " "Install with: pip install datajoint[polars]")
+            raise ImportError("polars is required for to_polars(). Install with: pip install datajoint[polars]")
         dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
         return polars.DataFrame(dicts)
 
@@ -747,7 +747,7 @@ class QueryExpression:
         try:
             import pyarrow
         except ImportError:
-            raise ImportError("pyarrow is required for to_arrow(). " "Install with: pip install datajoint[arrow]")
+            raise ImportError("pyarrow is required for to_arrow(). Install with: pip install datajoint[arrow]")
         dicts = self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
         if not dicts:
             return pyarrow.table({})
@@ -1039,7 +1039,7 @@ class Aggregation(QueryExpression):
         ).fetchone()[0]
 
     def __bool__(self):
-        return bool(self.connection.query("SELECT EXISTS({sql})".format(sql=self.make_sql())))
+        return bool(self.connection.query("SELECT EXISTS({sql})".format(sql=self.make_sql())).fetchone()[0])
 
 
 class Union(QueryExpression):
@@ -1101,7 +1101,7 @@ class Union(QueryExpression):
         ).fetchone()[0]
 
     def __bool__(self):
-        return bool(self.connection.query("SELECT EXISTS({sql})".format(sql=self.make_sql())))
+        return bool(self.connection.query("SELECT EXISTS({sql})".format(sql=self.make_sql())).fetchone()[0])
 
 
 class U:
