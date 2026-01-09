@@ -55,18 +55,21 @@ def cli(args: list[str] | None = None) -> None:
         epilog="Example: dj -s my_lab:lab --host localhost:3306",
     )
     parser.add_argument(
-        "-V", "--version",
+        "-V",
+        "--version",
         action="version",
         version=f"{dj.__name__} {dj.__version__}",
     )
     parser.add_argument(
-        "-u", "--user",
+        "-u",
+        "--user",
         type=str,
         default=None,
         help="Database username (default: from config)",
     )
     parser.add_argument(
-        "-p", "--password",
+        "-p",
+        "--password",
         type=str,
         default=None,
         help="Database password (default: from config)",
@@ -78,7 +81,8 @@ def cli(args: list[str] | None = None) -> None:
         help="Database host as host:port (default: from config)",
     )
     parser.add_argument(
-        "-s", "--schemas",
+        "-s",
+        "--schemas",
         nargs="+",
         type=str,
         metavar="DB:ALIAS",
