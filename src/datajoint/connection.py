@@ -66,7 +66,11 @@ def translate_query_error(client_error: Exception, query: str) -> Exception:
         # Integrity errors
         case 1062:
             return errors.DuplicateError(*args)
-        case 1217 | 1451 | 1452:
+        case 1217 | 1451 | 1452 | 3730:
+            # 1217: Cannot delete parent row (FK constraint)
+            # 1451: Cannot delete/update parent row (FK constraint)
+            # 1452: Cannot add/update child row (FK constraint)
+            # 3730: Cannot drop table referenced by FK constraint
             return errors.IntegrityError(*args)
 
         # Syntax errors
