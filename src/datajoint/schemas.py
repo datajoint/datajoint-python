@@ -628,6 +628,141 @@ class Schema:
             if d == self.database
         ]
 
+    def _find_table_name(self, name: str) -> str | None:
+        """
+        Find the actual SQL table name for a given base name.
+
+        Handles tier prefixes: Manual (none), Lookup (#), Imported (_), Computed (__).
+
+        Parameters
+        ----------
+        name : str
+            Base table name without tier prefix.
+
+        Returns
+        -------
+        str or None
+            The actual SQL table name, or None if not found.
+        """
+        tables = self.list_tables()
+        # Check exact match first
+        if name in tables:
+            return name
+        # Check with tier prefixes
+        for prefix in ("", "#", "_", "__"):
+            candidate = f"{prefix}{name}"
+            if candidate in tables:
+                return candidate
+        return None
+
+    def get_table(self, name: str) -> FreeTable:
+        """
+        Get a table instance by name.
+
+        Returns a FreeTable instance for the given table name. This is useful
+        for accessing tables when you don't have the Python class available.
+
+        Parameters
+        ----------
+        name : str
+            Table name (e.g., 'experiment', 'session__trial' for parts).
+            Can be snake_case (SQL name) or CamelCase (class name).
+            Tier prefixes are optional and will be auto-detected.
+
+        Returns
+        -------
+        FreeTable
+            A FreeTable instance for the table.
+
+        Raises
+        ------
+        DataJointError
+            If the table does not exist.
+
+        Examples
+        --------
+        >>> schema = dj.Schema('my_schema')
+        >>> experiment = schema.get_table('experiment')
+        >>> experiment.fetch()
+        """
+        self._assert_exists()
+        # Convert CamelCase to snake_case if needed
+        if name[0].isupper():
+            name = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+        table_name = self._find_table_name(name)
+        if table_name is None:
+            raise DataJointError(f"Table `{name}` does not exist in schema `{self.database}`.")
+
+        full_name = f"`{self.database}`.`{table_name}`"
+        return FreeTable(self.connection, full_name)
+
+    def __getitem__(self, name: str) -> FreeTable:
+        """
+        Get a table instance by name using bracket notation.
+
+        Parameters
+        ----------
+        name : str
+            Table name (snake_case or CamelCase).
+
+        Returns
+        -------
+        FreeTable
+            A FreeTable instance for the table.
+
+        Examples
+        --------
+        >>> schema = dj.Schema('my_schema')
+        >>> schema['Experiment'].fetch()
+        >>> schema['session'].fetch()
+        """
+        return self.get_table(name)
+
+    def __iter__(self):
+        """
+        Iterate over all tables in the schema.
+
+        Yields FreeTable instances for each table in topological order.
+
+        Yields
+        ------
+        FreeTable
+            Table instances in dependency order.
+
+        Examples
+        --------
+        >>> for table in schema:
+        ...     print(table.full_table_name, len(table))
+        """
+        self._assert_exists()
+        for table_name in self.list_tables():
+            yield self.get_table(table_name)
+
+    def __contains__(self, name: str) -> bool:
+        """
+        Check if a table exists in the schema.
+
+        Parameters
+        ----------
+        name : str
+            Table name (snake_case or CamelCase).
+            Tier prefixes are optional and will be auto-detected.
+
+        Returns
+        -------
+        bool
+            True if the table exists.
+
+        Examples
+        --------
+        >>> 'Experiment' in schema
+        True
+        """
+        if name[0].isupper():
+            name = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+        return self._find_table_name(name) is not None
+
 
 class VirtualModule(types.ModuleType):
     """
@@ -718,3 +853,57 @@ def list_schemas(connection: Connection | None = None) -> list[str]:
             'SELECT schema_name FROM information_schema.schemata WHERE schema_name <> "information_schema"'
         )
     ]
+
+
+def virtual_schema(
+    schema_name: str,
+    *,
+    connection: Connection | None = None,
+    create_schema: bool = False,
+    create_tables: bool = False,
+    add_objects: dict[str, Any] | None = None,
+) -> VirtualModule:
+    """
+    Create a virtual module for an existing database schema.
+
+    This is the recommended way to access database schemas when you don't have
+    the Python source code that defined them. Returns a module-like object with
+    table classes as attributes.
+
+    Parameters
+    ----------
+    schema_name : str
+        Database schema name.
+    connection : Connection, optional
+        Database connection. Defaults to ``dj.conn()``.
+    create_schema : bool, optional
+        If True, create the schema if it doesn't exist. Default False.
+    create_tables : bool, optional
+        If True, allow declaring new tables. Default False.
+    add_objects : dict, optional
+        Additional objects to add to the module namespace.
+
+    Returns
+    -------
+    VirtualModule
+        A module-like object with table classes as attributes.
+
+    Examples
+    --------
+    >>> lab = dj.virtual_schema('my_lab')
+    >>> lab.Subject.fetch()
+    >>> lab.Session & 'subject_id="M001"'
+
+    See Also
+    --------
+    Schema : For defining new schemas with Python classes.
+    VirtualModule : The underlying class (prefer virtual_schema function).
+    """
+    return VirtualModule(
+        schema_name,
+        schema_name,
+        connection=connection,
+        create_schema=create_schema,
+        create_tables=create_tables,
+        add_objects=add_objects,
+    )

@@ -26,7 +26,7 @@ __all__ = [
     "Schema",
     "schema",
     "VirtualModule",
-    "create_virtual_module",
+    "virtual_schema",
     "list_schemas",
     "Table",
     "FreeTable",
@@ -77,7 +77,7 @@ from .expression import AndList, Not, Top, U
 from .hash import key_hash
 from .logging import logger
 from .objectref import ObjectRef
-from .schemas import Schema, VirtualModule, list_schemas
+from .schemas import Schema, VirtualModule, list_schemas, virtual_schema
 from .settings import config
 from .table import FreeTable, Table, ValidationResult
 from .user_tables import Computed, Imported, Lookup, Manual, Part
@@ -85,4 +85,3 @@ from .version import __version__
 
 ERD = Di = Diagram  # Aliases for Diagram
 schema = Schema  # Aliases for Schema
-create_virtual_module = VirtualModule  # Aliases for VirtualModule

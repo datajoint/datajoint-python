@@ -11,13 +11,13 @@ from __future__ import annotations
 class DataJointError(Exception):
     """Base class for errors specific to DataJoint internal operation."""
 
-    def suggest(self, *args) -> "DataJointError":
+    def suggest(self, *args: object) -> "DataJointError":
         """
         Regenerate the exception with additional arguments.
 
         Parameters
         ----------
-        *args : any
+        *args : object
             Additional arguments to append to the exception.
 
         Returns
