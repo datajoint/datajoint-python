@@ -59,9 +59,25 @@ def test_lazy_cli_import():
     # CLI module should not be loaded yet
     assert "datajoint.cli" not in sys.modules, "cli module loaded eagerly"
 
-    # Access cli - should trigger lazy load
-    _ = dj.cli
+    # Access cli - should trigger lazy load and return the function
+    cli_func = dj.cli
     assert "datajoint.cli" in sys.modules, "cli module not loaded after access"
+    assert callable(cli_func), "dj.cli should be callable (the cli function)"
+
+
+def test_diagram_module_access():
+    """dj.diagram should return the diagram module for accessing module-level attrs."""
+    # Remove datajoint from sys.modules to get fresh import
+    modules_to_remove = [key for key in sys.modules if key.startswith("datajoint")]
+    for mod in modules_to_remove:
+        del sys.modules[mod]
+
+    import datajoint as dj
+
+    # Access dj.diagram should return the module
+    diagram_module = dj.diagram
+    assert hasattr(diagram_module, "diagram_active"), "diagram module should have diagram_active"
+    assert hasattr(diagram_module, "Diagram"), "diagram module should have Diagram class"
 
 
 def test_diagram_aliases():

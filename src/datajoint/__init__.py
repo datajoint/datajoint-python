@@ -96,6 +96,7 @@ _lazy_modules = {
     "Diagram": (".diagram", "Diagram"),
     "Di": (".diagram", "Diagram"),
     "ERD": (".diagram", "Diagram"),
+    "diagram": (".diagram", None),  # Return the module itself
     # kill imports pymysql via connection
     "kill": (".admin", "kill"),
     # cli imports click
@@ -110,5 +111,10 @@ def __getattr__(name: str):
         import importlib
 
         module = importlib.import_module(module_path, __package__)
-        return getattr(module, attr_name)
+        # If attr_name is None, return the module itself
+        attr = module if attr_name is None else getattr(module, attr_name)
+        # Cache in module __dict__ to avoid repeated __getattr__ calls
+        # and to override the submodule that importlib adds automatically
+        globals()[name] = attr
+        return attr
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
