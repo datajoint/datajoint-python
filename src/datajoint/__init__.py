@@ -60,18 +60,18 @@ __all__ = [
     "ValidationResult",
 ]
 
+# =============================================================================
+# Eager imports — core functionality needed immediately
+# =============================================================================
 from . import errors
 from . import migrate
-from .admin import kill
 from .codecs import (
     Codec,
     get_codec,
     list_codecs,
 )
 from .blob import MatCell, MatStruct
-from .cli import cli
 from .connection import Connection, conn
-from .diagram import Diagram
 from .errors import DataJointError
 from .expression import AndList, Not, Top, U
 from .hash import key_hash
@@ -83,5 +83,32 @@ from .table import FreeTable, Table, ValidationResult
 from .user_tables import Computed, Imported, Lookup, Manual, Part
 from .version import __version__
 
-ERD = Di = Diagram  # Aliases for Diagram
-schema = Schema  # Aliases for Schema
+schema = Schema  # Alias for Schema
+
+# =============================================================================
+# Lazy imports — heavy dependencies loaded on first access
+# =============================================================================
+# These modules import heavy dependencies (networkx, matplotlib, click, pymysql)
+# that slow down `import datajoint`. They are loaded on demand.
+
+_lazy_modules = {
+    # Diagram imports networkx and matplotlib
+    "Diagram": (".diagram", "Diagram"),
+    "Di": (".diagram", "Diagram"),
+    "ERD": (".diagram", "Diagram"),
+    # kill imports pymysql via connection
+    "kill": (".admin", "kill"),
+    # cli imports click
+    "cli": (".cli", "cli"),
+}
+
+
+def __getattr__(name: str):
+    """Lazy import for heavy dependencies."""
+    if name in _lazy_modules:
+        module_path, attr_name = _lazy_modules[name]
+        import importlib
+
+        module = importlib.import_module(module_path, __package__)
+        return getattr(module, attr_name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
