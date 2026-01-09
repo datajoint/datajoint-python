@@ -164,6 +164,34 @@ def repr_html(query_expression):
         .djtooltip:hover .djtooltiptext {
             visibility: visible;
         }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .Table th{
+                background: #4a4a4a; color: #ffffff; border:#555555 1px solid;
+            }
+            .Table td{
+                border:#555555 1px solid;
+            }
+            .Table tr:nth-child(odd){
+                background: #2d2d2d;
+                color: #e0e0e0;
+            }
+            .Table tr:nth-child(even){
+                background: #3d3d3d;
+                color: #e0e0e0;
+            }
+            .djtooltip .djtooltiptext {
+                background-color: #555555;
+                color: #ffffff;
+            }
+            #primary {
+                color: #bd93f9;
+            }
+            #nonprimary {
+                color: #e0e0e0;
+            }
+        }
     </style>
     """
     head_template = """<div class="djtooltip">
