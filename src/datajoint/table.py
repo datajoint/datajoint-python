@@ -1307,8 +1307,8 @@ def lookup_class_name(name, context, depth=3):
                                 depth=node["depth"] - 1,
                             )
                         )
-                    except ImportError:
-                        pass  # could not import, so do not attempt
+                    except (ImportError, TypeError):
+                        pass  # could not inspect module members, skip
     return None
 
 
