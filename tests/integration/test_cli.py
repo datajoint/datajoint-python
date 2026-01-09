@@ -83,9 +83,12 @@ def test_cli_schemas(prefix, connection_root, db_creds_root):
     process = subprocess.Popen(
         [
             "dj",
-            "-u", db_creds_root['user'],
-            "-p", db_creds_root['password'],
-            "--host", db_creds_root['host'],
+            "-u",
+            db_creds_root["user"],
+            "-p",
+            db_creds_root["password"],
+            "--host",
+            db_creds_root["host"],
             "-s",
             f"{prefix}_cli:test_schema",
         ],
