@@ -474,12 +474,30 @@ class Blob:
         )  # values
 
     def read_cell_array(self):
-        """deserialize MATLAB cell array"""
+        """
+        Deserialize MATLAB cell array.
+
+        Handles edge cases from MATLAB:
+        - Empty cell arrays ({})
+        - Cell arrays with empty elements ({[], [], []})
+        - Nested arrays ({[1,2], [3,4,5]}) - ragged arrays
+        - Cell matrices with mixed content
+        """
         n_dims = self.read_value()
         shape = self.read_value(count=n_dims)
         n_elem = int(np.prod(shape))
         result = [self.read_blob(n_bytes=self.read_value()) for _ in range(n_elem)]
-        return (self.squeeze(np.array(result).reshape(shape, order="F"), convert_to_scalar=False)).view(MatCell)
+
+        # Handle empty cell array
+        if n_elem == 0:
+            return np.empty(0, dtype=object).view(MatCell)
+
+        # Use object dtype to handle ragged/nested arrays without reshape errors.
+        # This avoids NumPy's array homogeneity requirements that cause failures
+        # with MATLAB cell arrays containing arrays of different sizes.
+        arr = np.empty(n_elem, dtype=object)
+        arr[:] = result
+        return self.squeeze(arr.reshape(shape, order="F"), convert_to_scalar=False).view(MatCell)
 
     def pack_cell_array(self, array):
         return (

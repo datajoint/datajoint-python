@@ -160,3 +160,71 @@ def test_iter(schema_blob_pop):
     from_iter = {d["id"]: d for d in Blob()}
     assert len(from_iter) == len(Blob())
     assert from_iter[1]["blob"] == "character string"
+
+
+def test_cell_array_with_nested_arrays():
+    """
+    Test unpacking MATLAB cell arrays containing arrays of different sizes.
+    Regression test for issue #1098.
+    """
+    # Create a cell array with nested arrays of different sizes (ragged)
+    cell = np.empty(2, dtype=object)
+    cell[0] = np.array([1, 2, 3])
+    cell[1] = np.array([4, 5, 6, 7, 8])
+    cell = cell.reshape((1, 2)).view(dj.MatCell)
+
+    # Pack and unpack
+    packed = pack(cell)
+    unpacked = unpack(packed)
+
+    # Should preserve structure
+    assert isinstance(unpacked, dj.MatCell)
+    assert unpacked.shape == (1, 2)
+    assert_array_equal(unpacked[0, 0], np.array([1, 2, 3]))
+    assert_array_equal(unpacked[0, 1], np.array([4, 5, 6, 7, 8]))
+
+
+def test_cell_array_with_empty_elements():
+    """
+    Test unpacking MATLAB cell arrays containing empty arrays.
+    Regression test for issue #1056.
+    """
+    # Create a cell array with empty elements: {[], [], []}
+    cell = np.empty(3, dtype=object)
+    cell[0] = np.array([])
+    cell[1] = np.array([])
+    cell[2] = np.array([])
+    cell = cell.reshape((3, 1)).view(dj.MatCell)
+
+    # Pack and unpack
+    packed = pack(cell)
+    unpacked = unpack(packed)
+
+    # Should preserve structure
+    assert isinstance(unpacked, dj.MatCell)
+    assert unpacked.shape == (3, 1)
+    for i in range(3):
+        assert unpacked[i, 0].size == 0
+
+
+def test_cell_array_mixed_empty_nonempty():
+    """
+    Test unpacking MATLAB cell arrays with mixed empty and non-empty elements.
+    """
+    # Create a cell array: {[1,2], [], [3,4,5]}
+    cell = np.empty(3, dtype=object)
+    cell[0] = np.array([1, 2])
+    cell[1] = np.array([])
+    cell[2] = np.array([3, 4, 5])
+    cell = cell.reshape((3, 1)).view(dj.MatCell)
+
+    # Pack and unpack
+    packed = pack(cell)
+    unpacked = unpack(packed)
+
+    # Should preserve structure
+    assert isinstance(unpacked, dj.MatCell)
+    assert unpacked.shape == (3, 1)
+    assert_array_equal(unpacked[0, 0], np.array([1, 2]))
+    assert unpacked[1, 0].size == 0
+    assert_array_equal(unpacked[2, 0], np.array([3, 4, 5]))
