@@ -7,6 +7,8 @@ repo_name: datajoint/datajoint-python
 nav:
   - Home: index.md
   - Contributing: develop.md
+  - How-To Guides:
+    - Deferred Schema Activation: how-to/deferred-schema-activation.md
   - Architecture:
     - architecture/index.md
     - SQL Transpilation: architecture/transpilation.md

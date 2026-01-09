@@ -183,6 +183,8 @@ cython_debug/
 
 # Datajoint related files
 dj_local_conf.json
+datajoint.json
+.secrets/
 *.env
 !.vscode/launch.json
 # pixi environments
