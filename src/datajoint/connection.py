@@ -287,6 +287,45 @@ class Connection:
         """Close the database connection."""
         self._conn.close()
 
+    def __enter__(self) -> "Connection":
+        """
+        Enter context manager.
+
+        Returns
+        -------
+        Connection
+            This connection object.
+
+        Examples
+        --------
+        >>> with dj.Connection(host, user, password) as conn:
+        ...     schema = dj.schema('my_schema', connection=conn)
+        ...     # perform operations
+        ... # connection automatically closed
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        """
+        Exit context manager and close connection.
+
+        Parameters
+        ----------
+        exc_type : type or None
+            Exception type if an exception was raised.
+        exc_val : Exception or None
+            Exception instance if an exception was raised.
+        exc_tb : traceback or None
+            Traceback if an exception was raised.
+
+        Returns
+        -------
+        bool
+            False to propagate exceptions.
+        """
+        self.close()
+        return False
+
     def register(self, schema) -> None:
         """
         Register a schema with this connection.
