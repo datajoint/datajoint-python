@@ -44,7 +44,7 @@ class ObjectRef:
         ext: File extension as tooling hint (e.g., ".dat", ".zarr") or None.
             This is a conventional suffix for tooling, not a content-type declaration.
         is_dir: True if stored content is a directory/key-prefix (e.g., Zarr store)
-        timestamp: ISO 8601 upload timestamp
+        timestamp: ISO 8601 upload timestamp, or None if not recorded
         mime_type: MIME type (files only, auto-detected from extension)
         item_count: Number of files (folders only), or None if not computed
     """
@@ -54,7 +54,7 @@ class ObjectRef:
     hash: str | None
     ext: str | None
     is_dir: bool
-    timestamp: datetime
+    timestamp: datetime | None
     url: str | None = None
     store: str | None = None
     mime_type: str | None = None
