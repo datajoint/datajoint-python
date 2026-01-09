@@ -977,6 +977,7 @@ class Table(QueryExpression):
                     self.connection.cancel_transaction()
                 if prompt:
                     logger.warning("Delete cancelled")
+                delete_count = 0  # Reset count when delete is cancelled
         return delete_count
 
     def drop_quick(self):
