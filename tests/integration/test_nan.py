@@ -40,9 +40,9 @@ def test_insert_nan(schema_nan_pop, arr_a):
     # Convert None to np.nan for comparison
     b_float = np.array([np.nan if v is None else v for v in b], dtype=float)
     assert (np.isnan(arr_a) == np.isnan(b_float)).all(), "incorrect handling of Nans"
-    assert np.allclose(arr_a[np.logical_not(np.isnan(arr_a))], b_float[np.logical_not(np.isnan(b_float))]), (
-        "incorrect storage of floats"
-    )
+    assert np.allclose(
+        arr_a[np.logical_not(np.isnan(arr_a))], b_float[np.logical_not(np.isnan(b_float))]
+    ), "incorrect storage of floats"
 
 
 def test_nulls_do_not_affect_primary_keys(schema_nan_pop, arr_a):

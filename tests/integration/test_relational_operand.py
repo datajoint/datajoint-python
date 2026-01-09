@@ -78,9 +78,9 @@ def test_rename(schema_simp_pop):
     x = B().proj(i="id_a") & "i in (1,2,3,4)"
     lenx = len(x)
     assert len(x) == len(B() & "id_a in (1,2,3,4)"), "incorrect restriction of renamed attributes"
-    assert len(x & "id_b in (1,2)") == len(B() & "id_b in (1,2) and id_a in (1,2,3,4)"), (
-        "incorrect restriction of renamed restriction"
-    )
+    assert len(x & "id_b in (1,2)") == len(
+        B() & "id_b in (1,2) and id_a in (1,2,3,4)"
+    ), "incorrect restriction of renamed restriction"
     assert len(x) == lenx, "restriction modified original"
     y = x.proj(j="i")
     assert len(y) == len(B() & "id_a in (1,2,3,4)"), "incorrect projection of restriction"
@@ -184,9 +184,9 @@ def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_po
     schema = prefix + "_test1"
     connection_test.query(f"CREATE TABLE {schema}.test_table (oldID int PRIMARY KEY)").fetchall()
     mySchema = dj.VirtualModule(schema, schema, connection=connection_test)
-    assert "oldID" not in mySchema.TestTable.proj(new_name="oldID").heading.attributes.keys(), (
-        "Failed to rename attribute correctly"
-    )
+    assert (
+        "oldID" not in mySchema.TestTable.proj(new_name="oldID").heading.attributes.keys()
+    ), "Failed to rename attribute correctly"
     connection_test.query(f"DROP TABLE {schema}.test_table")
 
 

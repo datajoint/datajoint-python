@@ -158,23 +158,23 @@ def test_restrict(schema_json):
 
     assert (Team & "`car`->>'$.length' > 30").fetch1("name") == "business", "<= 30"
 
-    assert (Team & "JSON_VALUE(`car`, '$.safety_inspected' RETURNING UNSIGNED) = 0").fetch1("name") == "business", (
-        "Has `safety_inspected` set to `true`"
-    )
+    assert (Team & "JSON_VALUE(`car`, '$.safety_inspected' RETURNING UNSIGNED) = 0").fetch1(
+        "name"
+    ) == "business", "Has `safety_inspected` set to `true`"
 
-    assert (Team & "`car`->>'$.headlights[0].hyper_white' = 'null'").fetch1("name") == "engineering", (
-        "Has 1st `headlight` with `hyper_white` not set to `null`"
-    )
+    assert (Team & "`car`->>'$.headlights[0].hyper_white' = 'null'").fetch1(
+        "name"
+    ) == "engineering", "Has 1st `headlight` with `hyper_white` not set to `null`"
 
     assert (Team & "`car`->>'$.inspected' IS NOT NULL").fetch1("name") == "engineering", "Missing `inspected` key"
 
-    assert (Team & "`car`->>'$.tire_pressure' = '[34, 30, 27, 32]'").fetch1("name") == "business", (
-        "`tire_pressure` array did not match"
-    )
+    assert (Team & "`car`->>'$.tire_pressure' = '[34, 30, 27, 32]'").fetch1(
+        "name"
+    ) == "business", "`tire_pressure` array did not match"
 
-    assert (Team & """`car`->>'$.headlights[1]' = '{"side": "right", "hyper_white": true}'""").fetch1("name") == "business", (
-        "2nd `headlight` object did not match"
-    )
+    assert (Team & """`car`->>'$.headlights[1]' = '{"side": "right", "hyper_white": true}'""").fetch1(
+        "name"
+    ) == "business", "2nd `headlight` object did not match"
 
 
 def test_proj(schema_json):
