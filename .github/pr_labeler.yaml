@@ -1,8 +1,8 @@
 # https://github.com/actions/labeler
 breaking:
-- head-branch: ['breaking', 'BREAKING']
+- head-branch: ['breaking', 'BREAKING', 'pre/v2.0']
 bug:
-- head-branch: ['fix', 'FIX', 'bug', 'BUG']
+- head-branch: ['fix', 'FIX', 'bug', 'BUG', 'pre/v2.0']
 feature:
 - head-branch: ['feat', 'FEAT']
 documentation:
