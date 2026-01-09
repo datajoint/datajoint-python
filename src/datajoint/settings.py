@@ -389,7 +389,7 @@ class Config(BaseSettings):
         if protocol not in supported_protocols:
             raise DataJointError(
                 f'Missing or invalid protocol in config.stores["{store}"]. '
-                f'Supported protocols: {", ".join(supported_protocols)}'
+                f"Supported protocols: {', '.join(supported_protocols)}"
             )
 
         # Define required and allowed keys by protocol
@@ -479,7 +479,7 @@ class Config(BaseSettings):
         supported_protocols = ("file", "s3", "gcs", "azure")
         if protocol not in supported_protocols:
             raise DataJointError(
-                f"Invalid object_storage.protocol: {protocol}. " f'Supported protocols: {", ".join(supported_protocols)}'
+                f"Invalid object_storage.protocol: {protocol}. Supported protocols: {', '.join(supported_protocols)}"
             )
 
         # Build spec dict
@@ -555,8 +555,7 @@ class Config(BaseSettings):
         supported_protocols = ("file", "s3", "gcs", "azure")
         if protocol not in supported_protocols:
             raise DataJointError(
-                f"Invalid protocol for store '{store_name}': {protocol}. "
-                f'Supported protocols: {", ".join(supported_protocols)}'
+                f"Invalid protocol for store '{store_name}': {protocol}. Supported protocols: {', '.join(supported_protocols)}"
             )
 
         # Use project_name from default config if not specified in store

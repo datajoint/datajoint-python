@@ -112,7 +112,7 @@ class Codec(ABC):
             existing = _codec_registry[cls.name]
             if type(existing) is not cls:
                 raise DataJointError(
-                    f"Codec <{cls.name}> already registered by " f"{type(existing).__module__}.{type(existing).__name__}"
+                    f"Codec <{cls.name}> already registered by {type(existing).__module__}.{type(existing).__name__}"
                 )
             return  # Same class, idempotent
 
@@ -301,7 +301,7 @@ def get_codec(name: str) -> Codec:
         return _codec_registry[type_name]
 
     raise DataJointError(
-        f"Unknown codec: <{type_name}>. " f"Ensure the codec is defined (inherit from dj.Codec with name='{type_name}')."
+        f"Unknown codec: <{type_name}>. Ensure the codec is defined (inherit from dj.Codec with name='{type_name}')."
     )
 
 
@@ -499,7 +499,7 @@ def lookup_codec(codec_spec: str) -> tuple[Codec, str | None]:
     if is_codec_registered(type_name):
         return get_codec(type_name), store_name
 
-    raise DataJointError(f"Codec <{type_name}> is not registered. " "Define a Codec subclass with name='{type_name}'.")
+    raise DataJointError(f"Codec <{type_name}> is not registered. Define a Codec subclass with name='{{type_name}}'.")
 
 
 # =============================================================================

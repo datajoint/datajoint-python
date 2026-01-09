@@ -145,7 +145,7 @@ class Job(Table):
 
         if not pk_attrs:
             raise DataJointError(
-                f"Cannot create jobs table for {self._target.full_table_name}: " "no FK-derived primary key attributes found."
+                f"Cannot create jobs table for {self._target.full_table_name}: no FK-derived primary key attributes found."
             )
 
         pk_lines = "\n    ".join(f"{name} : {dtype}" for name, dtype in pk_attrs)
