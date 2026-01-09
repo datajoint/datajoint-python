@@ -120,6 +120,9 @@ class Table(QueryExpression):
     def class_name(self):
         return self.__class__.__name__
 
+    # Base tier class names that should not raise errors when heading is None
+    _base_tier_classes = frozenset({"Table", "UserTable", "Lookup", "Manual", "Imported", "Computed", "Part"})
+
     @property
     def heading(self):
         """
@@ -127,8 +130,13 @@ class Table(QueryExpression):
 
         Overrides QueryExpression.heading to provide a clear error message
         when the table is not properly associated with an activated schema.
+        For base tier classes (Lookup, Manual, etc.), returns None to support
+        introspection (e.g., help()).
         """
         if self._heading is None:
+            # Don't raise error for base tier classes - they're used for introspection
+            if self.__class__.__name__ in self._base_tier_classes:
+                return None
             raise DataJointError(
                 f"Table `{self.__class__.__name__}` is not properly configured. "
                 "Ensure the schema is activated before using the table. "
