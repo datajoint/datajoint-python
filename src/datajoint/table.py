@@ -121,6 +121,22 @@ class Table(QueryExpression):
         return self.__class__.__name__
 
     @property
+    def heading(self):
+        """
+        Return the table's heading, or raise a helpful error if not configured.
+
+        Overrides QueryExpression.heading to provide a clear error message
+        when the table is not properly associated with an activated schema.
+        """
+        if self._heading is None:
+            raise DataJointError(
+                f"Table `{self.__class__.__name__}` is not properly configured. "
+                "Ensure the schema is activated before using the table. "
+                "Example: schema.activate('database_name') or schema = dj.Schema('database_name')"
+            )
+        return self._heading
+
+    @property
     def definition(self):
         raise NotImplementedError("Subclasses of Table must implement the `definition` property")
 

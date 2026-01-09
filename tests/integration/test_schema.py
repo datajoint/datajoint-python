@@ -110,6 +110,32 @@ def test_undecorated_table():
         print(a.full_table_name)
 
 
+def test_non_activated_schema_heading_error():
+    """
+    Tables from non-activated schemas should raise informative errors.
+    Regression test for issue #1039.
+    """
+    # Create schema without activating (no database name)
+    schema = dj.Schema()
+
+    @schema
+    class TableA(dj.Manual):
+        definition = """
+        id : int
+        ---
+        value : float
+        """
+
+    # Accessing heading should raise a helpful error
+    instance = TableA()
+    with pytest.raises(dj.DataJointError, match="not properly configured"):
+        _ = instance.heading
+
+    # Operations that use heading should also raise helpful errors
+    with pytest.raises(dj.DataJointError, match="not properly configured"):
+        _ = instance.primary_key  # Uses heading.primary_key
+
+
 def test_reject_decorated_part(schema_any):
     """
     Decorating a dj.Part table should raise an informative exception.
