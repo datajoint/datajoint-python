@@ -34,9 +34,11 @@ Use these portable, scientist-friendly types for cross-database compatibility.
 
 -  `char(n)`: fixed-length string of exactly *n* characters.
 -  `varchar(n)`: variable-length string up to *n* characters.
--  `text`: unlimited-length text for long-form content (notes, descriptions, abstracts).
 -  `enum(...)`: one of several enumerated values, e.g., `enum("low", "medium", "high")`.
    Do not use enums in primary keys due to difficulty changing definitions.
+
+> **Note:** For unlimited text, use `varchar` with a generous limit, `json` for structured content,
+> or `<object>` for large text files. Native SQL `text` types are supported but not portable.
 
 **Encoding policy:** All strings use UTF-8 encoding (`utf8mb4` in MySQL, `UTF8` in PostgreSQL).
 Character encoding and collation are database-level configuration, not part of type definitions.

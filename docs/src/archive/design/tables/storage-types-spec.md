@@ -75,7 +75,9 @@ MySQL and PostgreSQL backends. Users should prefer these over native database ty
 |-----------|-------------|-------|------------|
 | `char(n)` | Fixed-length | `CHAR(n)` | `CHAR(n)` |
 | `varchar(n)` | Variable-length | `VARCHAR(n)` | `VARCHAR(n)` |
-| `text` | Unlimited text | `TEXT` | `TEXT` |
+
+> **Note:** Native SQL `text` types (`text`, `tinytext`, `mediumtext`, `longtext`) are supported
+> but not portable. Prefer `varchar(n)`, `json`, or `<object>` for portable schemas.
 
 **Encoding:** All strings use UTF-8 (`utf8mb4` in MySQL, `UTF8` in PostgreSQL).
 See [Encoding and Collation Policy](#encoding-and-collation-policy) for details.

@@ -45,8 +45,6 @@ CORE_TYPES = {
     # String types (with parameters)
     "char": (r"char\s*\(\d+\)$", None),
     "varchar": (r"varchar\s*\(\d+\)$", None),
-    # Unlimited text
-    "text": (r"text$", None),
     # Enumeration
     "enum": (r"enum\s*\(.+\)$", None),
     # Fixed-point decimal
@@ -78,7 +76,7 @@ TYPE_PATTERN = {
         STRING=r"(var)?char\s*\(.+\)$",  # Catches char/varchar not matched by core types
         TEMPORAL=r"(time|timestamp|year)(\s*\(.+\))?$",  # time, timestamp, year (not date/datetime)
         NATIVE_BLOB=r"(tiny|small|medium|long)blob$",  # Specific blob variants
-        NATIVE_TEXT=r"(tiny|small|medium|long)text$",  # Text variants (use plain 'text' instead)
+        NATIVE_TEXT=r"(tiny|small|medium|long)?text$",  # Native text types (not portable)
         # Codecs use angle brackets
         CODEC=r"<.+>$",
     ).items()
