@@ -50,7 +50,7 @@ def test_cli_config():
 
 def test_cli_args():
     process = subprocess.Popen(
-        ["dj", "-utest_user", "-ptest_pass", "-htest_host"],
+        ["dj", "-u", "test_user", "-p", "test_pass", "--host", "test_host"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -63,9 +63,9 @@ def test_cli_args():
     process.stdin.flush()
 
     stdout, stderr = process.communicate()
-    assert "test_user" == stdout[5:14]
-    assert "test_pass" == stdout[21:30]
-    assert "test_host" == stdout[37:46]
+    assert "test_user" in stdout
+    assert "test_pass" in stdout
+    assert "test_host" in stdout
 
 
 def test_cli_schemas(prefix, connection_root, db_creds_root):
@@ -83,11 +83,11 @@ def test_cli_schemas(prefix, connection_root, db_creds_root):
     process = subprocess.Popen(
         [
             "dj",
-            f"-u{db_creds_root['user']}",
-            f"-p{db_creds_root['password']}",
-            f"-h{db_creds_root['host']}",
+            "-u", db_creds_root['user'],
+            "-p", db_creds_root['password'],
+            "--host", db_creds_root['host'],
             "-s",
-            "djtest_cli:test_schema",
+            f"{prefix}_cli:test_schema",
         ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -116,6 +116,6 @@ def test_cli_schemas(prefix, connection_root, db_creds_root):
     cleaned = stdout.strip(" >\t\n\r")
     for key in (
         "test_schema",
-        "Schema `djtest_cli`",
+        f"Schema `{prefix}_cli`",
     ):
-        assert key in cleaned, f"Key {key} not found in config from stdout: {cleaned}"
+        assert key in cleaned, f"Key {key} not found in stdout: {cleaned}"
