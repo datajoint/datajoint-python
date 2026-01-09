@@ -963,8 +963,7 @@ class Table(QueryExpression):
                     transaction = False
                 else:
                     raise DataJointError(
-                        "Delete cannot use a transaction within an ongoing transaction. "
-                        "Set transaction=False or prompt=False."
+                        "Delete cannot use a transaction within an ongoing transaction. Set transaction=False or prompt=False."
                     )
 
         # Cascading delete

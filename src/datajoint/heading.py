@@ -41,17 +41,17 @@ class _MissingType(Codec, register=False):
 
     def get_dtype(self, is_external: bool) -> str:
         raise DataJointError(
-            f"Codec <{self._codec_name}> is not registered. " f"Define a Codec subclass with name='{self._codec_name}'."
+            f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
         )
 
     def encode(self, value, *, key=None, store_name=None):
         raise DataJointError(
-            f"Codec <{self._codec_name}> is not registered. " f"Define a Codec subclass with name='{self._codec_name}'."
+            f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
         )
 
     def decode(self, stored, *, key=None):
         raise DataJointError(
-            f"Codec <{self._codec_name}> is not registered. " f"Define a Codec subclass with name='{self._codec_name}'."
+            f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
         )
 
 

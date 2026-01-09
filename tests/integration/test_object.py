@@ -759,5 +759,3 @@ class TestStagedInsert:
             with table.staged_insert1 as staged:
                 # Don't set primary key
                 staged.store("data_file", ".dat")
-
-

@@ -277,9 +277,9 @@ def test_table_regexp(schema_any):
     for name, rel in getmembers(schema, relation_selector):
         assert re.match(rel.tier_regexp, rel.table_name), "Regular expression does not match for {name}".format(name=name)
         for tier in tiers:
-            assert issubclass(rel, tier) or not re.match(
-                tier.tier_regexp, rel.table_name
-            ), "Regular expression matches for {name} but should not".format(name=name)
+            assert issubclass(rel, tier) or not re.match(tier.tier_regexp, rel.table_name), (
+                "Regular expression matches for {name} but should not".format(name=name)
+            )
 
 
 def test_table_size(experiment):

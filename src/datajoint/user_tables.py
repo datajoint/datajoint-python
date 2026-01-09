@@ -252,9 +252,7 @@ class Part(UserTable, metaclass=PartMeta):
         if part_integrity == "ignore":
             super().drop()
         elif part_integrity == "enforce":
-            raise DataJointError(
-                "Cannot drop a Part directly. Drop master instead, " "or use part_integrity='ignore' to force."
-            )
+            raise DataJointError("Cannot drop a Part directly. Drop master instead, or use part_integrity='ignore' to force.")
         else:
             raise ValueError(f"part_integrity for drop must be 'enforce' or 'ignore', got {part_integrity!r}")
 
