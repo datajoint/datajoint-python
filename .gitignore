@@ -188,3 +188,7 @@ dj_local_conf.json
 # pixi environments
 .pixi
 _content/
+
+# Local config
+.secrets/
+datajoint.json
