@@ -121,11 +121,11 @@ def repr_html(query_expression):
             border-collapse:collapse;
         }
         .Table th{
-            background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
-            font-weight: normal; font-family: monospace; font-size: 100%;
+            background: #A0A0A0; color: #ffffff; padding:2px 4px; border:#f0e0e0 1px solid;
+            font-weight: normal; font-family: monospace; font-size: 75%;
         }
         .Table td{
-            padding:4px; border:#f0e0e0 1px solid; font-size:100%;
+            padding:2px 4px; border:#f0e0e0 1px solid; font-size: 75%;
         }
         .Table tr:nth-child(odd){
             background: #ffffff;
