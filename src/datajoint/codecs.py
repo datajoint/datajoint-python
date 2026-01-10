@@ -27,7 +27,7 @@ Example:
     # Then use in table definitions:
     class MyTable(dj.Manual):
         definition = '''
-        id : int
+        id : uint16
         ---
         data : <graph>
         '''
@@ -81,7 +81,7 @@ class Codec(ABC):
 
         class Connectivity(dj.Manual):
             definition = '''
-            id : int
+            id : uint16
             ---
             graph_data : <graph>
             '''
