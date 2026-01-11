@@ -1,0 +1,107 @@
+title: "[RFC] "
+labels:
+  - rfc
+  - "status: proposed"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## DataJoint Enhancement Proposal
+
+        Use this template to propose changes to DataJoint specifications, APIs, or documentation structure.
+
+        **Before submitting:**
+        - Search existing discussions to avoid duplicates
+        - Consider starting with an informal discussion in the Ideas category first
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A brief, one-paragraph explanation of the proposal.
+      placeholder: This proposal adds/changes/removes...
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: |
+        Why is this change needed? What problem does it solve?
+        Include concrete use cases and examples where possible.
+      placeholder: |
+        Currently, users need to...
+        This causes problems when...
+        With this change, users could...
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Proposed Design
+      description: |
+        Detailed explanation of the proposed solution.
+        Include code examples, API signatures, or schema definitions as appropriate.
+      placeholder: |
+        ## API Changes
+        ```python
+        # Example usage
+        ```
+
+        ## Behavior
+        - When X happens, Y should occur
+        - Error handling: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches were considered and why were they not chosen?
+      placeholder: |
+        1. Alternative A: ...
+           Rejected because: ...
+
+        2. Alternative B: ...
+           Rejected because: ...
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Backwards Compatibility
+      description: |
+        How does this affect existing users?
+        - Breaking changes?
+        - Migration path?
+        - Deprecation timeline?
+      placeholder: |
+        This change is/is not backwards compatible.
+
+        Migration path:
+        1. ...
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Notes
+      description: |
+        Optional: Technical details, affected files, estimated scope.
+        Prototyping in parallel with RFC discussion is encouraged.
+      placeholder: |
+        Affected components:
+        - datajoint-python/src/datajoint/...
+
+        Estimated scope: small/medium/large
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing discussions and issues for duplicates
+          required: true
+        - label: I have considered backwards compatibility
+          required: true

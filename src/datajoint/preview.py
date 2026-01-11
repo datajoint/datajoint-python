@@ -122,7 +122,10 @@ def repr_html(query_expression):
         }
         .Table th{
             background: #A0A0A0; color: #ffffff; padding:2px 4px; border:#f0e0e0 1px solid;
-            font-weight: normal; font-family: monospace; font-size: 75%;
+            font-weight: normal; font-family: monospace; font-size: 75%; text-align: center;
+        }
+        .Table th p{
+            margin: 0;
         }
         .Table td{
             padding:2px 4px; border:#f0e0e0 1px solid; font-size: 75%;
@@ -168,7 +171,7 @@ def repr_html(query_expression):
         /* Dark mode support */
         @media (prefers-color-scheme: dark) {
             .Table th{
-                background: #4a4a4a; color: #ffffff; border:#555555 1px solid;
+                background: #4a4a4a; color: #ffffff; border:#555555 1px solid; text-align: center;
             }
             .Table td{
                 border:#555555 1px solid;
@@ -203,7 +206,7 @@ def repr_html(query_expression):
     {title}
         <div style="max-height:1000px;max-width:1500px;overflow:auto;">
         <table border="1" class="Table">
-            <thead> <tr style="text-align: right;"> <th> {head} </th> </tr> </thead>
+            <thead> <tr> <th> {head} </th> </tr> </thead>
             <tbody> <tr> {body} </tr> </tbody>
         </table>
         {ellipsis}
