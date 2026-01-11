@@ -1,7 +1,15 @@
-## Release notes
+# Changelog Archive
 
-**Note:** This file is no longer updated. See the GitHub change log page for the
-latest release notes: <https://github.com/datajoint/datajoint-python/releases>.
+> **This file is archived.** For current release notes, see:
+>
+> **[GitHub Releases](https://github.com/datajoint/datajoint-python/releases)**
+>
+> Release notes are now automatically generated from pull request labels and descriptions.
+> This file preserves the history of releases through version 0.14.3.
+
+---
+
+## Historical Release Notes
 
 ### 0.14.3 -- Sep 23, 2024
 - Added - `dj.Top` restriction - PR [#1024](https://github.com/datajoint/datajoint-python/issues/1024)) PR [#1084](https://github.com/datajoint/datajoint-python/pull/1084)

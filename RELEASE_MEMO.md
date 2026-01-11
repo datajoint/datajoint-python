@@ -1,4 +1,67 @@
-# DataJoint 2.0 Release Memo
+# DataJoint Release Memo
+
+## Writing Release Notes
+
+Good release notes help users understand what changed and whether they need to take action.
+
+### Categories
+
+Organize changes into these categories (in order):
+
+| Category | When to Use | Example |
+|----------|-------------|---------|
+| **BREAKING** | Changes that require user action | API changes, removed features |
+| **Added** | New features | New methods, new options |
+| **Changed** | Behavior changes (non-breaking) | Performance improvements, defaults |
+| **Deprecated** | Features marked for removal | Old syntax warnings |
+| **Fixed** | Bug fixes | Error corrections |
+| **Security** | Security patches | Vulnerability fixes |
+
+### Format
+
+```markdown
+## What's Changed
+
+### BREAKING CHANGES
+- **`fetch()` removed** — Use `to_dicts()`, `to_pandas()`, or `to_arrays()` instead (#123)
+
+### Added
+- New `to_polars()` method for Polars DataFrame output (#456)
+- Support for custom codecs via `@codec` decorator (#789)
+
+### Changed
+- Improved query performance for complex joins (2-3x faster)
+- Default connection timeout increased to 30s
+
+### Fixed
+- Fixed incorrect NULL handling in aggregations (#234)
+
+### Full Changelog
+https://github.com/datajoint/datajoint-python/compare/v0.14.3...v2.0.0
+```
+
+### Guidelines
+
+1. **Lead with breaking changes** — Users need to see these first
+2. **Explain the "why"** — Not just what changed, but why it matters
+3. **Link to PRs/issues** — For users who want details
+4. **Use imperative mood** — "Add feature" not "Added feature"
+5. **Be concise** — One line per change, details in PR
+
+### PR Labels
+
+The release drafter uses PR labels to categorize changes:
+
+| Label | Category |
+|-------|----------|
+| `breaking` | BREAKING CHANGES |
+| `enhancement` | Added |
+| `bug` | Fixed |
+| `documentation` | (usually excluded) |
+
+Ensure PRs have appropriate labels before merging.
+
+---
 
 ## PyPI Release Process
 
