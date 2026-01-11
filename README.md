@@ -84,16 +84,11 @@ Scientific data includes both structured metadata and large data objects (time s
      pip install datajoint
      ```
 
-- [Documentation & Tutorials](https://docs.datajoint.com/core/datajoint-python/)
+- [Documentation & Tutorials](https://docs.datajoint.com)
 
-- [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials) on GitHub Codespaces
+- [DataJoint Elements](https://datajoint.com/docs/elements/) — Catalog of example pipelines for neuroscience experiments
 
-- [DataJoint Elements](https://docs.datajoint.com/elements/) - Catalog of example pipelines for neuroscience experiments
-
-- Contribute
-  - [Contribution Guidelines](https://docs.datajoint.com/about/contribute/)
-
-  - [Developer Guide](https://docs.datajoint.com/core/datajoint-python/latest/develop/)
+- [Architecture](ARCHITECTURE.md) — Internal design documentation for contributors
 
 ## Developer Guide
 
