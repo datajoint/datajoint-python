@@ -24,6 +24,21 @@ def _format_object_display(json_data):
         return "=OBJ[file]="
 
 
+def _get_blob_placeholder(heading, field_name, html_escape=False):
+    """Get display placeholder for a blob/json field based on its codec."""
+    attr = heading.attributes.get(field_name)
+    if attr is None:
+        return "bytes"
+    if attr.codec is not None:
+        name = attr.codec.name
+        if html_escape:
+            return f"&lt;{name}&gt;"
+        return f"<{name}>"
+    if attr.json:
+        return "json"
+    return "bytes"
+
+
 def preview(query_expression, limit, width):
     heading = query_expression.heading
     rel = query_expression.proj(*heading.non_blobs)
@@ -55,7 +70,7 @@ def preview(query_expression, limit, width):
     def get_placeholder(f):
         if f in object_fields:
             return "=OBJ[.xxx]="
-        return "=BLOB="
+        return _get_blob_placeholder(heading, f)
 
     widths = {
         f: min(
@@ -72,7 +87,7 @@ def preview(query_expression, limit, width):
         elif f in object_fields and idx < len(object_data_list):
             return _format_object_display(object_data_list[idx].get(f))
         else:
-            return "=BLOB="
+            return _get_blob_placeholder(heading, f)
 
     return (
         " ".join([templates[f] % ("*" + f if f in rel.primary_key else f) for f in columns])
@@ -113,7 +128,7 @@ def repr_html(query_expression):
         elif name in object_fields and idx < len(object_data_list):
             return _format_object_display(object_data_list[idx].get(name))
         else:
-            return "=BLOB="
+            return _get_blob_placeholder(heading, name, html_escape=True)
 
     css = """
     <style type="text/css">
