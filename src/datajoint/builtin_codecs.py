@@ -11,6 +11,7 @@ Built-in Codecs:
     - ``<object>``: Path-addressed storage for files/folders (Zarr, HDF5)
     - ``<attach>``: File attachment (internal) or external with dedup
     - ``<filepath@store>``: Reference to existing file in store
+    - ``<npy@>``: Store numpy arrays as portable .npy files (external only)
 
 Example - Creating a Custom Codec:
     Here's how to define your own codec, modeled after the built-in codecs::
@@ -23,7 +24,7 @@ Example - Creating a Custom Codec:
 
             name = "graph"  # Use as <graph> in definitions
 
-            def get_dtype(self, is_external: bool) -> str:
+            def get_dtype(self, is_store: bool) -> str:
                 return "<blob>"  # Compose with blob for serialization
 
             def encode(self, graph, *, key=None, store_name=None):
@@ -102,9 +103,9 @@ class BlobCodec(Codec):
 
     name = "blob"
 
-    def get_dtype(self, is_external: bool) -> str:
+    def get_dtype(self, is_store: bool) -> str:
         """Return bytes for internal, <hash> for external storage."""
-        return "<hash>" if is_external else "bytes"
+        return "<hash>" if is_store else "bytes"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
         """Serialize a Python object to DataJoint's blob format."""
@@ -157,9 +158,9 @@ class HashCodec(Codec):
 
     name = "hash"
 
-    def get_dtype(self, is_external: bool) -> str:
+    def get_dtype(self, is_store: bool) -> str:
         """Hash storage is external only."""
-        if not is_external:
+        if not is_store:
             raise DataJointError("<hash> requires @ (external storage only)")
         return "json"
 
@@ -212,26 +213,186 @@ class HashCodec(Codec):
 
 
 # =============================================================================
-# Path-Addressed Storage Codec (OAS - Object-Augmented Schema)
+# Schema-Addressed Storage Base Class
 # =============================================================================
 
 
-class ObjectCodec(Codec):
+class SchemaCodec(Codec, register=False):
     """
-    Path-addressed storage for files and folders.
+    Abstract base class for schema-addressed codecs.
 
-    The ``<object@>`` codec provides managed file/folder storage where the path
-    is derived from the primary key: ``{schema}/{table}/{pk}/{field}/``
+    Schema-addressed storage is an OAS (Object-Augmented Schema) addressing
+    scheme where paths mirror the database schema structure:
+    ``{schema}/{table}/{pk}/{attribute}``. This creates a browsable
+    organization in object storage that reflects the schema design.
 
-    Unlike ``<hash@>`` (hash-addressed), each row has its own storage path,
-    and content is deleted when the row is deleted. This is ideal for:
+    Subclasses must implement:
+        - ``name``: Codec name for ``<name@>`` syntax
+        - ``encode()``: Serialize and upload content
+        - ``decode()``: Create lazy reference from metadata
+        - ``validate()``: Validate input values
+
+    Helper Methods:
+        - ``_extract_context()``: Parse key dict into schema/table/field/pk
+        - ``_build_path()``: Construct storage path from context
+        - ``_get_backend()``: Get storage backend by name
+
+    Comparison with Hash-addressed:
+        - **Schema-addressed** (this): Path from schema structure, no dedup
+        - **Hash-addressed**: Path from content hash, automatic dedup
+
+    Example::
+
+        class MyCodec(SchemaCodec):
+            name = "my"
+
+            def encode(self, value, *, key=None, store_name=None):
+                schema, table, field, pk = self._extract_context(key)
+                path, _ = self._build_path(schema, table, field, pk, ext=".dat")
+                backend = self._get_backend(store_name)
+                backend.put_buffer(serialize(value), path)
+                return {"path": path, "store": store_name, ...}
+
+            def decode(self, stored, *, key=None):
+                backend = self._get_backend(stored.get("store"))
+                return MyRef(stored, backend)
+
+    See Also
+    --------
+    HashCodec : Hash-addressed storage with content deduplication.
+    ObjectCodec : Schema-addressed storage for files/folders.
+    NpyCodec : Schema-addressed storage for numpy arrays.
+    """
+
+    def get_dtype(self, is_store: bool) -> str:
+        """
+        Return storage dtype. Schema-addressed codecs require @ modifier.
+
+        Parameters
+        ----------
+        is_store : bool
+            Must be True for schema-addressed codecs.
+
+        Returns
+        -------
+        str
+            "json" for metadata storage.
+
+        Raises
+        ------
+        DataJointError
+            If is_store is False (@ modifier missing).
+        """
+        if not is_store:
+            raise DataJointError(f"<{self.name}> requires @ (store only)")
+        return "json"
+
+    def _extract_context(self, key: dict | None) -> tuple[str, str, str, dict]:
+        """
+        Extract schema, table, field, and primary key from context dict.
+
+        Parameters
+        ----------
+        key : dict or None
+            Context dict with ``_schema``, ``_table``, ``_field``,
+            and primary key values.
+
+        Returns
+        -------
+        tuple[str, str, str, dict]
+            ``(schema, table, field, primary_key)``
+        """
+        key = dict(key) if key else {}
+        schema = key.pop("_schema", "unknown")
+        table = key.pop("_table", "unknown")
+        field = key.pop("_field", "data")
+        primary_key = {k: v for k, v in key.items() if not k.startswith("_")}
+        return schema, table, field, primary_key
+
+    def _build_path(
+        self,
+        schema: str,
+        table: str,
+        field: str,
+        primary_key: dict,
+        ext: str | None = None,
+    ) -> tuple[str, str]:
+        """
+        Build schema-addressed storage path.
+
+        Constructs a path that mirrors the database schema structure:
+        ``{schema}/{table}/{pk_values}/{field}{ext}``
+
+        Parameters
+        ----------
+        schema : str
+            Schema name.
+        table : str
+            Table name.
+        field : str
+            Field/attribute name.
+        primary_key : dict
+            Primary key values.
+        ext : str, optional
+            File extension (e.g., ".npy", ".zarr").
+
+        Returns
+        -------
+        tuple[str, str]
+            ``(path, token)`` where path is the storage path and token
+            is a unique identifier.
+        """
+        from .storage import build_object_path
+
+        return build_object_path(
+            schema=schema,
+            table=table,
+            field=field,
+            primary_key=primary_key,
+            ext=ext,
+        )
+
+    def _get_backend(self, store_name: str | None = None):
+        """
+        Get storage backend by name.
+
+        Parameters
+        ----------
+        store_name : str, optional
+            Store name. If None, returns default store.
+
+        Returns
+        -------
+        StorageBackend
+            Storage backend instance.
+        """
+        from .content_registry import get_store_backend
+
+        return get_store_backend(store_name)
+
+
+# =============================================================================
+# Object Codec (Schema-Addressed Files/Folders)
+# =============================================================================
+
+
+class ObjectCodec(SchemaCodec):
+    """
+    Schema-addressed storage for files and folders.
+
+    The ``<object@>`` codec provides managed file/folder storage using
+    schema-addressed paths: ``{schema}/{table}/{pk}/{field}/``. This creates
+    a browsable organization in object storage that mirrors the database schema.
+
+    Unlike hash-addressed storage (``<hash@>``), each row has its own path
+    and content is deleted when the row is deleted. Ideal for:
 
     - Zarr arrays (hierarchical chunked data)
     - HDF5 files
     - Complex multi-file outputs
     - Any content that shouldn't be deduplicated
 
-    External only - requires @ modifier.
+    Store only - requires @ modifier.
 
     Example::
 
@@ -258,23 +419,23 @@ class ObjectCodec(Codec):
 
             {store_root}/{schema}/{table}/{pk}/{field}/
 
-    Comparison with ``<hash@>``::
+    Comparison with hash-addressed::
 
-        | Aspect         | <object@>         | <hash@>             |
-        |----------------|-------------------|---------------------|
-        | Addressing     | Path (by PK)      | Hash (by content)   |
-        | Deduplication  | No                | Yes                 |
-        | Deletion       | With row          | GC when unreferenced|
-        | Use case       | Zarr, HDF5        | Blobs, attachments  |
+        | Aspect         | <object@>           | <hash@>             |
+        |----------------|---------------------|---------------------|
+        | Addressing     | Schema-addressed    | Hash-addressed      |
+        | Deduplication  | No                  | Yes                 |
+        | Deletion       | With row            | GC when unreferenced|
+        | Use case       | Zarr, HDF5          | Blobs, attachments  |
+
+    See Also
+    --------
+    SchemaCodec : Base class for schema-addressed codecs.
+    NpyCodec : Schema-addressed storage for numpy arrays.
+    HashCodec : Hash-addressed storage with deduplication.
     """
 
     name = "object"
-
-    def get_dtype(self, is_external: bool) -> str:
-        """Object storage is external only."""
-        if not is_external:
-            raise DataJointError("<object> requires @ (external storage only)")
-        return "json"
 
     def encode(
         self,
@@ -304,15 +465,8 @@ class ObjectCodec(Codec):
         from datetime import datetime, timezone
         from pathlib import Path
 
-        from .content_registry import get_store_backend
-        from .storage import build_object_path
-
-        # Extract context from key
-        key = key or {}
-        schema = key.pop("_schema", "unknown")
-        table = key.pop("_table", "unknown")
-        field = key.pop("_field", "data")
-        primary_key = {k: v for k, v in key.items() if not k.startswith("_")}
+        # Extract context using inherited helper
+        schema, table, field, primary_key = self._extract_context(key)
 
         # Check for pre-computed metadata (from staged insert)
         if isinstance(value, dict) and "path" in value:
@@ -353,17 +507,11 @@ class ObjectCodec(Codec):
         else:
             raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
 
-        # Build storage path
-        path, token = build_object_path(
-            schema=schema,
-            table=table,
-            field=field,
-            primary_key=primary_key,
-            ext=ext,
-        )
+        # Build storage path using inherited helper
+        path, token = self._build_path(schema, table, field, primary_key, ext=ext)
 
-        # Get storage backend
-        backend = get_store_backend(store_name)
+        # Get storage backend using inherited helper
+        backend = self._get_backend(store_name)
 
         # Upload content
         if is_dir:
@@ -406,10 +554,8 @@ class ObjectCodec(Codec):
             Handle for accessing the stored content.
         """
         from .objectref import ObjectRef
-        from .content_registry import get_store_backend
 
-        store_name = stored.get("store")
-        backend = get_store_backend(store_name)
+        backend = self._get_backend(stored.get("store"))
         return ObjectRef.from_json(stored, backend=backend)
 
     def validate(self, value: Any) -> None:
@@ -472,9 +618,9 @@ class AttachCodec(Codec):
 
     name = "attach"
 
-    def get_dtype(self, is_external: bool) -> str:
+    def get_dtype(self, is_store: bool) -> str:
         """Return bytes for internal, <hash> for external storage."""
-        return "<hash>" if is_external else "bytes"
+        return "<hash>" if is_store else "bytes"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
         """
@@ -610,9 +756,9 @@ class FilepathCodec(Codec):
 
     name = "filepath"
 
-    def get_dtype(self, is_external: bool) -> str:
+    def get_dtype(self, is_store: bool) -> str:
         """Filepath is external only."""
-        if not is_external:
+        if not is_store:
             raise DataJointError("<filepath> requires @store")
         return "json"
 
@@ -688,3 +834,323 @@ class FilepathCodec(Codec):
 
         if not isinstance(value, (str, Path)):
             raise TypeError(f"<filepath> expects a path string or Path, got {type(value).__name__}")
+
+
+# =============================================================================
+# NumPy Array Codec (.npy format)
+# =============================================================================
+
+
+class NpyRef:
+    """
+    Lazy reference to a numpy array stored as a .npy file.
+
+    This class provides metadata access without I/O and transparent
+    integration with numpy operations via the ``__array__`` protocol.
+
+    Attributes
+    ----------
+    shape : tuple[int, ...]
+        Array shape (from metadata, no I/O).
+    dtype : numpy.dtype
+        Array dtype (from metadata, no I/O).
+    path : str
+        Storage path within the store.
+    store : str or None
+        Store name (None for default).
+
+    Examples
+    --------
+    Metadata access without download::
+
+        ref = (Recording & key).fetch1('waveform')
+        print(ref.shape)  # (1000, 32) - no download
+        print(ref.dtype)  # float64 - no download
+
+    Explicit loading::
+
+        arr = ref.load()  # Downloads and returns np.ndarray
+
+    Transparent numpy integration::
+
+        # These all trigger automatic download via __array__
+        result = ref + 1
+        result = np.mean(ref)
+        result = ref[0:100]  # Slicing works too
+    """
+
+    __slots__ = ("_meta", "_backend", "_cached")
+
+    def __init__(self, metadata: dict, backend: Any):
+        """
+        Initialize NpyRef from metadata and storage backend.
+
+        Parameters
+        ----------
+        metadata : dict
+            JSON metadata containing path, store, dtype, shape.
+        backend : StorageBackend
+            Storage backend for file operations.
+        """
+        self._meta = metadata
+        self._backend = backend
+        self._cached = None
+
+    @property
+    def shape(self) -> tuple:
+        """Array shape (no I/O required)."""
+        return tuple(self._meta["shape"])
+
+    @property
+    def dtype(self):
+        """Array dtype (no I/O required)."""
+        import numpy as np
+
+        return np.dtype(self._meta["dtype"])
+
+    @property
+    def ndim(self) -> int:
+        """Number of dimensions (no I/O required)."""
+        return len(self._meta["shape"])
+
+    @property
+    def size(self) -> int:
+        """Total number of elements (no I/O required)."""
+        import math
+
+        return math.prod(self._meta["shape"])
+
+    @property
+    def nbytes(self) -> int:
+        """Total bytes (estimated from shape and dtype, no I/O required)."""
+        return self.size * self.dtype.itemsize
+
+    @property
+    def path(self) -> str:
+        """Storage path within the store."""
+        return self._meta["path"]
+
+    @property
+    def store(self) -> str | None:
+        """Store name (None for default store)."""
+        return self._meta.get("store")
+
+    @property
+    def is_loaded(self) -> bool:
+        """True if array data has been downloaded and cached."""
+        return self._cached is not None
+
+    def load(self):
+        """
+        Download and return the array.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array data.
+
+        Notes
+        -----
+        The array is cached after first load. Subsequent calls return
+        the cached copy without additional I/O.
+        """
+        import io
+
+        import numpy as np
+
+        if self._cached is None:
+            buffer = self._backend.get_buffer(self.path)
+            self._cached = np.load(io.BytesIO(buffer), allow_pickle=False)
+        return self._cached
+
+    def __array__(self, dtype=None):
+        """
+        NumPy array protocol for transparent integration.
+
+        This method is called automatically when the NpyRef is used
+        in numpy operations (arithmetic, ufuncs, etc.).
+
+        Parameters
+        ----------
+        dtype : numpy.dtype, optional
+            Desired output dtype.
+
+        Returns
+        -------
+        numpy.ndarray
+            The array data, optionally cast to dtype.
+        """
+        arr = self.load()
+        if dtype is not None:
+            return arr.astype(dtype)
+        return arr
+
+    def __getitem__(self, key):
+        """Support indexing/slicing by loading then indexing."""
+        return self.load()[key]
+
+    def __len__(self) -> int:
+        """Length of first dimension."""
+        if not self._meta["shape"]:
+            raise TypeError("len() of 0-dimensional array")
+        return self._meta["shape"][0]
+
+    def __repr__(self) -> str:
+        status = "loaded" if self.is_loaded else "not loaded"
+        return f"NpyRef(shape={self.shape}, dtype={self.dtype}, {status})"
+
+    def __str__(self) -> str:
+        return repr(self)
+
+
+class NpyCodec(SchemaCodec):
+    """
+    Schema-addressed storage for numpy arrays as .npy files.
+
+    The ``<npy@>`` codec stores numpy arrays as standard ``.npy`` files
+    using schema-addressed paths: ``{schema}/{table}/{pk}/{attribute}.npy``.
+    Arrays are fetched lazily via ``NpyRef``, which provides metadata access
+    without I/O and transparent numpy integration via ``__array__``.
+
+    Store only - requires ``@`` modifier.
+
+    Key Features:
+        - **Portable**: Standard .npy format readable by numpy, MATLAB, etc.
+        - **Lazy loading**: Metadata (shape, dtype) available without download
+        - **Transparent**: Use in numpy operations triggers automatic download
+        - **Safe bulk fetch**: Fetching many rows doesn't download until needed
+        - **Schema-addressed**: Browsable paths that mirror database structure
+
+    Example::
+
+        @schema
+        class Recording(dj.Manual):
+            definition = '''
+            recording_id : int
+            ---
+            waveform : <npy@>           # default store
+            spectrogram : <npy@archive>  # specific store
+            '''
+
+        # Insert - just pass the array
+        Recording.insert1({
+            'recording_id': 1,
+            'waveform': np.random.randn(1000, 32),
+        })
+
+        # Fetch - returns NpyRef (lazy)
+        ref = (Recording & 'recording_id=1').fetch1('waveform')
+        ref.shape   # (1000, 32) - no download
+        ref.dtype   # float64 - no download
+
+        # Use in numpy ops - downloads automatically
+        result = np.mean(ref, axis=0)
+
+        # Or load explicitly
+        arr = ref.load()
+
+    Storage Details:
+        - File format: NumPy .npy (version 1.0 or 2.0)
+        - Path: ``{schema}/{table}/{pk}/{attribute}.npy``
+        - Database column: JSON with ``{path, store, dtype, shape}``
+
+    See Also
+    --------
+    NpyRef : The lazy array reference returned on fetch.
+    SchemaCodec : Base class for schema-addressed codecs.
+    ObjectCodec : Schema-addressed storage for files/folders.
+    """
+
+    name = "npy"
+
+    def validate(self, value: Any) -> None:
+        """
+        Validate that value is a numpy array suitable for .npy storage.
+
+        Parameters
+        ----------
+        value : Any
+            Value to validate.
+
+        Raises
+        ------
+        DataJointError
+            If value is not a numpy array or has object dtype.
+        """
+        import numpy as np
+
+        if not isinstance(value, np.ndarray):
+            raise DataJointError(f"<npy> requires numpy.ndarray, got {type(value).__name__}")
+        if value.dtype == object:
+            raise DataJointError("<npy> does not support object dtype arrays")
+
+    def encode(
+        self,
+        value: Any,
+        *,
+        key: dict | None = None,
+        store_name: str | None = None,
+    ) -> dict:
+        """
+        Serialize array to .npy and upload to storage.
+
+        Parameters
+        ----------
+        value : numpy.ndarray
+            Array to store.
+        key : dict, optional
+            Context dict with ``_schema``, ``_table``, ``_field``,
+            and primary key values for path construction.
+        store_name : str, optional
+            Target store. If None, uses default store.
+
+        Returns
+        -------
+        dict
+            JSON metadata: ``{path, store, dtype, shape}``.
+        """
+        import io
+
+        import numpy as np
+
+        # Extract context using inherited helper
+        schema, table, field, primary_key = self._extract_context(key)
+
+        # Build schema-addressed storage path
+        path, _ = self._build_path(schema, table, field, primary_key, ext=".npy")
+
+        # Serialize to .npy format
+        buffer = io.BytesIO()
+        np.save(buffer, value, allow_pickle=False)
+        npy_bytes = buffer.getvalue()
+
+        # Upload to storage using inherited helper
+        backend = self._get_backend(store_name)
+        backend.put_buffer(npy_bytes, path)
+
+        # Return metadata (includes numpy-specific shape/dtype)
+        return {
+            "path": path,
+            "store": store_name,
+            "dtype": str(value.dtype),
+            "shape": list(value.shape),
+        }
+
+    def decode(self, stored: dict, *, key: dict | None = None) -> NpyRef:
+        """
+        Create lazy NpyRef from stored metadata.
+
+        Parameters
+        ----------
+        stored : dict
+            JSON metadata from database.
+        key : dict, optional
+            Primary key values (unused).
+
+        Returns
+        -------
+        NpyRef
+            Lazy array reference with metadata access and numpy integration.
+        """
+        backend = self._get_backend(stored.get("store"))
+        return NpyRef(stored, backend)

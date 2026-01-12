@@ -8,7 +8,6 @@ explicit `<blob>` type declarations.
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 from typing import TYPE_CHECKING
@@ -495,9 +494,7 @@ def _find_external_columns(schema: Schema) -> list[dict]:
             AND DATA_TYPE = 'binary'
             AND CHARACTER_MAXIMUM_LENGTH = 16
         """
-        columns = connection.query(
-            columns_query, args=(schema.database, table_name)
-        ).fetchall()
+        columns = connection.query(columns_query, args=(schema.database, table_name)).fetchall()
 
         for column_name, column_type, comment in columns:
             comment = comment or ""
@@ -506,28 +503,32 @@ def _find_external_columns(schema: Schema) -> list[dict]:
             blob_match = EXTERNAL_PATTERNS["blob"].search(comment)
             if blob_match:
                 store_name = blob_match.group(1) or "external"
-                results.append({
-                    "table_name": table_name,
-                    "column_name": column_name,
-                    "column_type": column_type,
-                    "comment": comment,
-                    "store_name": store_name,
-                    "external_type": "blob",
-                })
+                results.append(
+                    {
+                        "table_name": table_name,
+                        "column_name": column_name,
+                        "column_type": column_type,
+                        "comment": comment,
+                        "store_name": store_name,
+                        "external_type": "blob",
+                    }
+                )
                 continue
 
             # Check for external attach pattern
             attach_match = EXTERNAL_PATTERNS["attach"].search(comment)
             if attach_match:
                 store_name = attach_match.group(1) or "external"
-                results.append({
-                    "table_name": table_name,
-                    "column_name": column_name,
-                    "column_type": column_type,
-                    "comment": comment,
-                    "store_name": store_name,
-                    "external_type": "attach",
-                })
+                results.append(
+                    {
+                        "table_name": table_name,
+                        "column_name": column_name,
+                        "column_type": column_type,
+                        "comment": comment,
+                        "store_name": store_name,
+                        "external_type": "attach",
+                    }
+                )
 
     return results
 
@@ -561,22 +562,22 @@ def _find_filepath_columns(schema: Schema) -> list[dict]:
             AND DATA_TYPE = 'varchar'
             AND COLUMN_COMMENT LIKE '%%:filepath%%'
         """
-        columns = connection.query(
-            columns_query, args=(schema.database, table_name)
-        ).fetchall()
+        columns = connection.query(columns_query, args=(schema.database, table_name)).fetchall()
 
         for column_name, column_type, comment in columns:
             comment = comment or ""
             match = FILEPATH_PATTERN.search(comment)
             if match:
                 store_name = match.group(1) or "external"
-                results.append({
-                    "table_name": table_name,
-                    "column_name": column_name,
-                    "column_type": column_type,
-                    "comment": comment,
-                    "store_name": store_name,
-                })
+                results.append(
+                    {
+                        "table_name": table_name,
+                        "column_name": column_name,
+                        "column_type": column_type,
+                        "comment": comment,
+                        "store_name": store_name,
+                    }
+                )
 
     return results
 
@@ -751,10 +752,7 @@ def migrate_external(
                 count = connection.query(count_sql).fetchone()[0]
                 detail["rows"] = count
                 detail["status"] = "dry_run"
-                logger.info(
-                    f"Would migrate {database}.{table_name}.{column_name}: "
-                    f"{count} rows, store={store_name}"
-                )
+                logger.info(f"Would migrate {database}.{table_name}.{column_name}: " f"{count} rows, store={store_name}")
             else:
                 try:
                     # Add new JSON column
@@ -771,6 +769,7 @@ def migrate_external(
 
                     # Get store config for URL building
                     from .settings import config
+
                     store_config = config.get("stores", {}).get(store_name, {})
                     protocol = store_config.get("protocol", "file")
                     location = store_config.get("location", "")
@@ -800,16 +799,11 @@ def migrate_external(
                     result["columns_migrated"] += 1
                     result["rows_migrated"] += count
 
-                    logger.info(
-                        f"Migrated {database}.{table_name}.{column_name}: "
-                        f"{count} rows"
-                    )
+                    logger.info(f"Migrated {database}.{table_name}.{column_name}: " f"{count} rows")
                 except Exception as e:
                     detail["status"] = "error"
                     detail["error"] = str(e)
-                    logger.error(
-                        f"Failed to migrate {table_name}.{column_name}: {e}"
-                    )
+                    logger.error(f"Failed to migrate {table_name}.{column_name}: {e}")
                     raise DataJointError(f"Migration failed: {e}") from e
 
         result["details"].append(detail)
@@ -897,9 +891,7 @@ def migrate_filepath(
             detail["action"] = "finalize"
 
             if dry_run:
-                logger.info(
-                    f"Would finalize {database}.{table_name}.{column_name}"
-                )
+                logger.info(f"Would finalize {database}.{table_name}.{column_name}")
                 detail["status"] = "dry_run"
             else:
                 try:
@@ -952,14 +944,12 @@ def migrate_filepath(
                 count = connection.query(count_sql).fetchone()[0]
                 detail["rows"] = count
                 detail["status"] = "dry_run"
-                logger.info(
-                    f"Would migrate {database}.{table_name}.{column_name}: "
-                    f"{count} rows"
-                )
+                logger.info(f"Would migrate {database}.{table_name}.{column_name}: " f"{count} rows")
             else:
                 try:
                     # Get store config
                     from .settings import config
+
                     store_config = config.get("stores", {}).get(store_name, {})
                     protocol = store_config.get("protocol", "file")
                     location = store_config.get("location", "")
@@ -992,10 +982,7 @@ def migrate_filepath(
                     result["columns_migrated"] += 1
                     result["rows_migrated"] += count
 
-                    logger.info(
-                        f"Migrated {database}.{table_name}.{column_name}: "
-                        f"{count} rows"
-                    )
+                    logger.info(f"Migrated {database}.{table_name}.{column_name}: " f"{count} rows")
                 except Exception as e:
                     detail["status"] = "error"
                     detail["error"] = str(e)

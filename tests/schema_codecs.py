@@ -10,7 +10,7 @@ class GraphCodec(dj.Codec):
 
     name = "graph"
 
-    def get_dtype(self, is_external: bool) -> str:
+    def get_dtype(self, is_store: bool) -> str:
         """Chain to blob for serialization."""
         return "<blob>"
 
@@ -29,7 +29,7 @@ class LayoutCodec(dj.Codec):
 
     name = "layout"
 
-    def get_dtype(self, is_external: bool) -> str:
+    def get_dtype(self, is_store: bool) -> str:
         """Chain to blob for serialization."""
         return "<blob>"
 

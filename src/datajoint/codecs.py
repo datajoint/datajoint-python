@@ -11,7 +11,7 @@ Example:
     class GraphCodec(dj.Codec):
         name = "graph"
 
-        def get_dtype(self, is_external: bool) -> str:
+        def get_dtype(self, is_store: bool) -> str:
             return "<blob>"
 
         def encode(self, graph, *, key=None, store_name=None):
@@ -64,7 +64,7 @@ class Codec(ABC):
     >>> class GraphCodec(dj.Codec):
     ...     name = "graph"
     ...
-    ...     def get_dtype(self, is_external: bool) -> str:
+    ...     def get_dtype(self, is_store: bool) -> str:
     ...         return "<blob>"
     ...
     ...     def encode(self, graph, *, key=None, store_name=None):
@@ -120,14 +120,14 @@ class Codec(ABC):
         logger.debug(f"Registered codec <{cls.name}> from {cls.__module__}.{cls.__name__}")
 
     @abstractmethod
-    def get_dtype(self, is_external: bool) -> str:
+    def get_dtype(self, is_store: bool) -> str:
         """
         Return the storage dtype for this codec.
 
         Parameters
         ----------
-        is_external : bool
-            True if ``@`` modifier present (external storage).
+        is_store : bool
+            True if ``@`` modifier present (object store vs inline).
 
         Returns
         -------
@@ -138,7 +138,7 @@ class Codec(ABC):
         Raises
         ------
         DataJointError
-            If external storage not supported but requested.
+            If store mode not supported but requested.
         """
         ...
 
@@ -450,11 +450,11 @@ def resolve_dtype(
         codec = get_codec(type_name)
         chain.append(codec)
 
-        # Determine if external based on whether @ is present
-        is_external = effective_store is not None
+        # Determine if store mode based on whether @ is present
+        is_store = effective_store is not None
 
         # Get the inner dtype from the codec
-        inner_dtype = codec.get_dtype(is_external)
+        inner_dtype = codec.get_dtype(is_store)
 
         # Recursively resolve the inner dtype, propagating store
         final_dtype, inner_chain, resolved_store = resolve_dtype(inner_dtype, seen, effective_store)
