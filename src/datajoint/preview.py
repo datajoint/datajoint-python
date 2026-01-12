@@ -26,9 +26,11 @@ def _format_object_display(json_data):
 
 def _get_blob_placeholder(heading, field_name, html_escape=False):
     """Get display placeholder for a blob/json field based on its codec."""
+    from .errors import DataJointError
+
     attr = heading.attributes.get(field_name)
     if attr is None:
-        return "bytes"
+        raise DataJointError(f"Field '{field_name}' not found in heading")
     if attr.codec is not None:
         name = attr.codec.name
         if html_escape:
