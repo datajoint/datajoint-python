@@ -1177,6 +1177,19 @@ class Table(QueryExpression):
             # Resolve full type chain
             _, type_chain, resolved_store = resolve_dtype(f"<{attr.codec.name}>", store_name=attr.store)
 
+            # Build context dict for schema-addressed codecs
+            # Include _schema, _table, _field, and primary key values
+            context = {
+                "_schema": self.database,
+                "_table": self.table_name,
+                "_field": name,
+            }
+            # Add primary key values from row if available
+            if row is not None:
+                for pk_name in self.primary_key:
+                    if pk_name in row:
+                        context[pk_name] = row[pk_name]
+
             # Apply encoders from outermost to innermost
             for attr_type in type_chain:
                 # Pass store_name to encoders that support it (check via introspection)
@@ -1184,9 +1197,9 @@ class Table(QueryExpression):
 
                 sig = inspect.signature(attr_type.encode)
                 if "store_name" in sig.parameters:
-                    value = attr_type.encode(value, key=None, store_name=resolved_store)
+                    value = attr_type.encode(value, key=context, store_name=resolved_store)
                 else:
-                    value = attr_type.encode(value, key=None)
+                    value = attr_type.encode(value, key=context)
 
         # Handle NULL values
         if value is None or (attr.numeric and (value == "" or np.isnan(float(value)))):
