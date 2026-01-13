@@ -10,12 +10,8 @@ import pytest
 from datajoint.hash_registry import (
     build_hash_path,
     compute_hash,
-    hash_exists,
     delete_path,
-    delete_hash,
     get_hash,
-    get_size,
-    get_hash_size,
     put_hash,
 )
 from datajoint.errors import DataJointError
@@ -192,34 +188,6 @@ class TestGetHash:
             get_hash(metadata)
 
 
-class TestHashExists:
-    """Tests for hash_exists function."""
-
-    @patch("datajoint.hash_registry.get_store_subfolding")
-    @patch("datajoint.hash_registry.get_store_backend")
-    def test_returns_true_when_exists(self, mock_get_backend, mock_get_subfolding):
-        """Test that True is returned when content exists."""
-        mock_backend = MagicMock()
-        mock_backend.exists.return_value = True
-        mock_get_backend.return_value = mock_backend
-        mock_get_subfolding.return_value = None
-
-        content_hash = "abcdefghijklmnopqrstuvwxyz"[:26]  # Valid base32
-        assert hash_exists(content_hash, schema_name="test_schema", store_name="test_store") is True
-
-    @patch("datajoint.hash_registry.get_store_subfolding")
-    @patch("datajoint.hash_registry.get_store_backend")
-    def test_returns_false_when_not_exists(self, mock_get_backend, mock_get_subfolding):
-        """Test that False is returned when content doesn't exist."""
-        mock_backend = MagicMock()
-        mock_backend.exists.return_value = False
-        mock_get_backend.return_value = mock_backend
-        mock_get_subfolding.return_value = None
-
-        content_hash = "abcdefghijklmnopqrstuvwxyz"[:26]  # Valid base32
-        assert hash_exists(content_hash, schema_name="test_schema", store_name="test_store") is False
-
-
 class TestDeletePath:
     """Tests for delete_path function."""
 
@@ -248,57 +216,3 @@ class TestDeletePath:
 
         assert result is False
         mock_backend.remove.assert_not_called()
-
-
-class TestDeleteHash:
-    """Tests for delete_hash function (backward compatibility)."""
-
-    @patch("datajoint.hash_registry.get_store_subfolding")
-    @patch("datajoint.hash_registry.get_store_backend")
-    def test_deletes_existing_content(self, mock_get_backend, mock_get_subfolding):
-        """Test deleting existing content by hash."""
-        mock_backend = MagicMock()
-        mock_backend.exists.return_value = True
-        mock_get_backend.return_value = mock_backend
-        mock_get_subfolding.return_value = None
-
-        content_hash = "abcdefghijklmnopqrstuvwxyz"[:26]  # Valid base32
-        result = delete_hash(content_hash, schema_name="test_schema", store_name="test_store")
-
-        assert result is True
-        mock_backend.remove.assert_called_once()
-
-
-class TestGetSize:
-    """Tests for get_size function."""
-
-    @patch("datajoint.hash_registry.get_store_backend")
-    def test_returns_size(self, mock_get_backend):
-        """Test getting content size by path."""
-        mock_backend = MagicMock()
-        mock_backend.size.return_value = 1024
-        mock_get_backend.return_value = mock_backend
-
-        path = "_hash/test_schema/abcdefghijklmnopqrst"
-        result = get_size(path, store_name="test_store")
-
-        assert result == 1024
-        mock_backend.size.assert_called_once_with(path)
-
-
-class TestGetHashSize:
-    """Tests for get_hash_size function (backward compatibility)."""
-
-    @patch("datajoint.hash_registry.get_store_subfolding")
-    @patch("datajoint.hash_registry.get_store_backend")
-    def test_returns_size(self, mock_get_backend, mock_get_subfolding):
-        """Test getting content size by hash."""
-        mock_backend = MagicMock()
-        mock_backend.size.return_value = 1024
-        mock_get_backend.return_value = mock_backend
-        mock_get_subfolding.return_value = None
-
-        content_hash = "abcdefghijklmnopqrstuvwxyz"[:26]  # Valid base32
-        result = get_hash_size(content_hash, schema_name="test_schema", store_name="test_store")
-
-        assert result == 1024
