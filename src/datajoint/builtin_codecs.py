@@ -7,8 +7,8 @@ want to create their own custom codecs.
 
 Built-in Codecs:
     - ``<blob>``: Serialize Python objects (internal) or external with dedup
-    - ``<hash>``: Hash-addressed storage with MD5 deduplication
-    - ``<object>``: Path-addressed storage for files/folders (Zarr, HDF5)
+    - ``<hash>``: Hash-addressed storage with SHA256 deduplication
+    - ``<object>``: Schema-addressed storage for files/folders (Zarr, HDF5)
     - ``<attach>``: File attachment (internal) or external with dedup
     - ``<filepath@store>``: Reference to existing file in store
     - ``<npy@>``: Store numpy arrays as portable .npy files (external only)
@@ -127,14 +127,16 @@ class BlobCodec(Codec):
 
 class HashCodec(Codec):
     """
-    Hash-addressed storage with MD5 deduplication.
+    Hash-addressed storage with SHA256 deduplication.
 
-    The ``<hash@>`` codec stores raw bytes using content-addressed storage.
-    Data is identified by its MD5 hash and stored in a hierarchical directory:
+    The ``<hash@>`` codec stores raw bytes using hash-addressed storage.
+    Data is identified by its SHA256 hash and stored in a hierarchical directory:
     ``_hash/{hash[:2]}/{hash[2:4]}/{hash}``
 
     The database column stores JSON metadata: ``{hash, store, size}``.
-    Duplicate content is automatically deduplicated.
+    Duplicate content is automatically deduplicated across all tables.
+
+    Deletion: Requires garbage collection via ``dj.gc.collect()``.
 
     External only - requires @ modifier.
 
@@ -154,6 +156,10 @@ class HashCodec(Codec):
     Note:
         This codec accepts only ``bytes``. For Python objects, use ``<blob@>``.
         Typically used indirectly via ``<blob@>`` or ``<attach@>`` rather than directly.
+
+    See Also
+    --------
+    datajoint.gc : Garbage collection for orphaned storage.
     """
 
     name = "hash"
@@ -173,38 +179,39 @@ class HashCodec(Codec):
         value : bytes
             Raw bytes to store.
         key : dict, optional
-            Primary key values (unused).
+            Context dict with ``_schema`` for path isolation.
         store_name : str, optional
             Store to use. If None, uses default store.
 
         Returns
         -------
         dict
-            Metadata dict: ``{hash, store, size}``.
+            Metadata dict: ``{hash, path, schema, store, size}``.
         """
-        from .content_registry import put_content
+        from .hash_registry import put_hash
 
-        return put_content(value, store_name=store_name)
+        schema_name = (key or {}).get("_schema", "unknown")
+        return put_hash(value, schema_name=schema_name, store_name=store_name)
 
     def decode(self, stored: dict, *, key: dict | None = None) -> bytes:
         """
-        Retrieve content by hash.
+        Retrieve content using stored metadata.
 
         Parameters
         ----------
         stored : dict
-            Metadata dict with ``'hash'`` and optionally ``'store'``.
+            Metadata dict with ``'path'``, ``'hash'``, and optionally ``'store'``.
         key : dict, optional
-            Primary key values (unused).
+            Context dict (unused - path is in metadata).
 
         Returns
         -------
         bytes
             Original bytes.
         """
-        from .content_registry import get_content
+        from .hash_registry import get_hash
 
-        return get_content(stored["hash"], store_name=stored.get("store"))
+        return get_hash(stored)
 
     def validate(self, value: Any) -> None:
         """Validate that value is bytes."""
@@ -366,7 +373,7 @@ class SchemaCodec(Codec, register=False):
         StorageBackend
             Storage backend instance.
         """
-        from .content_registry import get_store_backend
+        from .hash_registry import get_store_backend
 
         return get_store_backend(store_name)
 
@@ -384,8 +391,8 @@ class ObjectCodec(SchemaCodec):
     schema-addressed paths: ``{schema}/{table}/{pk}/{field}/``. This creates
     a browsable organization in object storage that mirrors the database schema.
 
-    Unlike hash-addressed storage (``<hash@>``), each row has its own path
-    and content is deleted when the row is deleted. Ideal for:
+    Unlike hash-addressed storage (``<hash@>``), each row has its own unique path
+    (no deduplication). Ideal for:
 
     - Zarr arrays (hierarchical chunked data)
     - HDF5 files
@@ -419,17 +426,20 @@ class ObjectCodec(SchemaCodec):
 
             {store_root}/{schema}/{table}/{pk}/{field}/
 
+    Deletion: Requires garbage collection via ``dj.gc.collect()``.
+
     Comparison with hash-addressed::
 
         | Aspect         | <object@>           | <hash@>             |
         |----------------|---------------------|---------------------|
         | Addressing     | Schema-addressed    | Hash-addressed      |
         | Deduplication  | No                  | Yes                 |
-        | Deletion       | With row            | GC when unreferenced|
+        | Deletion       | GC required         | GC required         |
         | Use case       | Zarr, HDF5          | Blobs, attachments  |
 
     See Also
     --------
+    datajoint.gc : Garbage collection for orphaned storage.
     SchemaCodec : Base class for schema-addressed codecs.
     NpyCodec : Schema-addressed storage for numpy arrays.
     HashCodec : Hash-addressed storage with deduplication.
@@ -782,7 +792,7 @@ class FilepathCodec(Codec):
         """
         from datetime import datetime, timezone
 
-        from .content_registry import get_store_backend
+        from .hash_registry import get_store_backend
 
         path = str(value)
 
@@ -822,7 +832,7 @@ class FilepathCodec(Codec):
             Handle for accessing the file.
         """
         from .objectref import ObjectRef
-        from .content_registry import get_store_backend
+        from .hash_registry import get_store_backend
 
         store_name = stored.get("store")
         backend = get_store_backend(store_name)
@@ -1103,8 +1113,11 @@ class NpyCodec(SchemaCodec):
         - Path: ``{schema}/{table}/{pk}/{attribute}.npy``
         - Database column: JSON with ``{path, store, dtype, shape}``
 
+    Deletion: Requires garbage collection via ``dj.gc.collect()``.
+
     See Also
     --------
+    datajoint.gc : Garbage collection for orphaned storage.
     NpyRef : The lazy array reference returned on fetch.
     SchemaCodec : Base class for schema-addressed codecs.
     ObjectCodec : Schema-addressed storage for files/folders.

@@ -1,25 +1,37 @@
 """
 Garbage collection for external storage.
 
-This module provides utilities to identify and remove orphaned content
-from external storage. Content becomes orphaned when all database rows
-referencing it are deleted.
+This module provides utilities to identify and remove orphaned items
+from external storage. Storage items become orphaned when all database rows
+referencing them are deleted.
 
-Supports two storage patterns:
-- Content-addressed storage: <hash@>, <blob@>, <attach@>
-  Stored at: _content/{hash[:2]}/{hash[2:4]}/{hash}
+DataJoint uses two external storage patterns:
 
-- Path-addressed storage: <object@>
-  Stored at: {schema}/{table}/objects/{pk}/{field}_{token}/
+Hash-addressed storage
+    Types: ``<hash@>``, ``<blob@>``, ``<attach@>``
+    Path: ``_hash/{schema}/{hash}`` (with optional subfolding)
+    Deduplication: Per-schema (identical data within a schema shares storage)
+    Deletion: Requires garbage collection
 
-Usage:
+Schema-addressed storage
+    Types: ``<object@>``, ``<npy@>``
+    Path: ``{schema}/{table}/{pk}/{field}/``
+    Deduplication: None (each entity has unique path)
+    Deletion: Requires garbage collection
+
+Usage::
+
     import datajoint as dj
 
-    # Scan schemas and find orphaned content
+    # Scan schemas and find orphaned items
     stats = dj.gc.scan(schema1, schema2, store_name='mystore')
 
-    # Remove orphaned content (dry_run=False to actually delete)
+    # Remove orphaned items (dry_run=False to actually delete)
     stats = dj.gc.collect(schema1, schema2, store_name='mystore', dry_run=True)
+
+See Also
+--------
+datajoint.builtin_codecs : Codec implementations for external storage types.
 """
 
 from __future__ import annotations
@@ -28,7 +40,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .content_registry import delete_content, get_store_backend
+from .hash_registry import delete_path, get_store_backend
 from .errors import DataJointError
 
 if TYPE_CHECKING:
@@ -37,14 +49,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def _uses_content_storage(attr) -> bool:
+def _uses_hash_storage(attr) -> bool:
     """
-    Check if an attribute uses content-addressed storage.
+    Check if an attribute uses hash-addressed storage.
 
-    This includes types that chain to <hash> for external storage:
-    - <hash@store> directly
-    - <blob@store> (chains to <hash>)
-    - <attach@store> (chains to <hash>)
+    Hash-addressed types use content deduplication via MD5/Base32 hashing:
+
+    - ``<hash@store>`` - raw hash storage
+    - ``<blob@store>`` - chains to ``<hash>``
+    - ``<attach@store>`` - chains to ``<hash>``
 
     Parameters
     ----------
@@ -54,29 +67,33 @@ def _uses_content_storage(attr) -> bool:
     Returns
     -------
     bool
-        True if the attribute stores content hashes.
+        True if the attribute uses hash-addressed storage.
     """
     if not attr.codec:
         return False
 
-    # Check if this type uses content storage
     codec_name = getattr(attr.codec, "name", "")
     store = getattr(attr, "store", None)
 
-    # <hash> always uses content storage (external only)
+    # <hash> always uses hash-addressed storage (external only)
     if codec_name == "hash":
         return True
 
-    # <blob@> and <attach@> use content storage when external (has store)
+    # <blob@> and <attach@> use hash-addressed storage when external
     if codec_name in ("blob", "attach") and store is not None:
         return True
 
     return False
 
 
-def _uses_object_storage(attr) -> bool:
+def _uses_schema_storage(attr) -> bool:
     """
-    Check if an attribute uses path-addressed object storage.
+    Check if an attribute uses schema-addressed storage.
+
+    Schema-addressed types store data at paths derived from the schema structure:
+
+    - ``<object@store>`` - arbitrary objects (pickled or native formats)
+    - ``<npy@store>`` - NumPy arrays with lazy loading
 
     Parameters
     ----------
@@ -86,28 +103,31 @@ def _uses_object_storage(attr) -> bool:
     Returns
     -------
     bool
-        True if the attribute stores object paths.
+        True if the attribute uses schema-addressed storage.
     """
     if not attr.codec:
         return False
 
     codec_name = getattr(attr.codec, "name", "")
-    return codec_name == "object"
+    return codec_name in ("object", "npy")
 
 
-def _extract_content_refs(value: Any) -> list[tuple[str, str | None]]:
+def _extract_hash_refs(value: Any) -> list[tuple[str, str | None]]:
     """
-    Extract content references from a stored value.
+    Extract path references from hash-addressed storage metadata.
+
+    Hash-addressed storage stores metadata as JSON with ``path`` and ``hash`` keys.
+    The path is used for file operations; the hash is for integrity verification.
 
     Parameters
     ----------
     value : Any
-        The stored value (could be JSON string or dict).
+        The stored value (JSON string or dict).
 
     Returns
     -------
     list[tuple[str, str | None]]
-        List of (content_hash, store_name) tuples.
+        List of (path, store_name) tuples.
     """
     refs = []
 
@@ -121,21 +141,23 @@ def _extract_content_refs(value: Any) -> list[tuple[str, str | None]]:
         except (json.JSONDecodeError, TypeError):
             return refs
 
-    # Extract hash from dict
-    if isinstance(value, dict) and "hash" in value:
-        refs.append((value["hash"], value.get("store")))
+    # Extract path from dict (path is required for new data, hash for legacy)
+    if isinstance(value, dict) and "path" in value:
+        refs.append((value["path"], value.get("store")))
 
     return refs
 
 
-def _extract_object_refs(value: Any) -> list[tuple[str, str | None]]:
+def _extract_schema_refs(value: Any) -> list[tuple[str, str | None]]:
     """
-    Extract object path references from a stored value.
+    Extract schema-addressed path references from a stored value.
+
+    Schema-addressed storage stores metadata as JSON with a ``path`` key.
 
     Parameters
     ----------
     value : Any
-        The stored value (could be JSON string or dict).
+        The stored value (JSON string or dict).
 
     Returns
     -------
@@ -161,16 +183,17 @@ def _extract_object_refs(value: Any) -> list[tuple[str, str | None]]:
     return refs
 
 
-def scan_references(
+def scan_hash_references(
     *schemas: "Schema",
     store_name: str | None = None,
     verbose: bool = False,
 ) -> set[str]:
     """
-    Scan schemas for content references.
+    Scan schemas for hash-addressed storage references.
 
-    Examines all tables in the given schemas and extracts content hashes
-    from columns that use content-addressed storage (<hash@>, <blob@>, <attach@>).
+    Examines all tables in the given schemas and extracts storage paths
+    from columns that use hash-addressed storage (``<hash@>``, ``<blob@>``,
+    ``<attach@>``).
 
     Parameters
     ----------
@@ -184,7 +207,7 @@ def scan_references(
     Returns
     -------
     set[str]
-        Set of content hashes that are referenced.
+        Set of storage paths that are referenced.
     """
     referenced: set[str] = set()
 
@@ -198,23 +221,22 @@ def scan_references(
                 # Get table class
                 table = schema.get_table(table_name)
 
-                # Check each attribute for content storage
+                # Check each attribute for hash-addressed storage
                 for attr_name, attr in table.heading.attributes.items():
-                    if not _uses_content_storage(attr):
+                    if not _uses_hash_storage(attr):
                         continue
 
                     if verbose:
                         logger.info(f"  Scanning {table_name}.{attr_name}")
 
                     # Fetch all values for this attribute
-                    # Use to_arrays to get attribute values
                     try:
                         values = table.to_arrays(attr_name)
                         for value in values:
-                            for content_hash, ref_store in _extract_content_refs(value):
+                            for path, ref_store in _extract_hash_refs(value):
                                 # Filter by store if specified
                                 if store_name is None or ref_store == store_name:
-                                    referenced.add(content_hash)
+                                    referenced.add(path)
                     except Exception as e:
                         logger.warning(f"Error scanning {table_name}.{attr_name}: {e}")
 
@@ -224,16 +246,16 @@ def scan_references(
     return referenced
 
 
-def scan_object_references(
+def scan_schema_references(
     *schemas: "Schema",
     store_name: str | None = None,
     verbose: bool = False,
 ) -> set[str]:
     """
-    Scan schemas for object path references.
+    Scan schemas for schema-addressed storage references.
 
-    Examines all tables in the given schemas and extracts object paths
-    from columns that use path-addressed storage (<object>).
+    Examines all tables in the given schemas and extracts paths from columns
+    that use schema-addressed storage (``<object@>``, ``<npy@>``).
 
     Parameters
     ----------
@@ -247,13 +269,13 @@ def scan_object_references(
     Returns
     -------
     set[str]
-        Set of object paths that are referenced.
+        Set of storage paths that are referenced.
     """
     referenced: set[str] = set()
 
     for schema in schemas:
         if verbose:
-            logger.info(f"Scanning schema for objects: {schema.database}")
+            logger.info(f"Scanning schema for schema-addressed storage: {schema.database}")
 
         # Get all tables in schema
         for table_name in schema.list_tables():
@@ -261,9 +283,9 @@ def scan_object_references(
                 # Get table class
                 table = schema.get_table(table_name)
 
-                # Check each attribute for object storage
+                # Check each attribute for schema-addressed storage
                 for attr_name, attr in table.heading.attributes.items():
-                    if not _uses_object_storage(attr):
+                    if not _uses_schema_storage(attr):
                         continue
 
                     if verbose:
@@ -273,7 +295,7 @@ def scan_object_references(
                     try:
                         values = table.to_arrays(attr_name)
                         for value in values:
-                            for path, ref_store in _extract_object_refs(value):
+                            for path, ref_store in _extract_schema_refs(value):
                                 # Filter by store if specified
                                 if store_name is None or ref_store == store_name:
                                     referenced.add(path)
@@ -286,12 +308,13 @@ def scan_object_references(
     return referenced
 
 
-def list_stored_content(store_name: str | None = None) -> dict[str, int]:
+def list_stored_hashes(store_name: str | None = None) -> dict[str, int]:
     """
-    List all content hashes in storage.
+    List all hash-addressed items in storage.
 
-    Scans the _content/ directory in the specified store and returns
-    all content hashes found.
+    Scans the ``_hash/`` directory in the specified store and returns
+    all storage paths found. These correspond to ``<hash@>``, ``<blob@>``,
+    and ``<attach@>`` types.
 
     Parameters
     ----------
@@ -301,17 +324,20 @@ def list_stored_content(store_name: str | None = None) -> dict[str, int]:
     Returns
     -------
     dict[str, int]
-        Dict mapping content_hash to size in bytes.
+        Dict mapping storage path to size in bytes.
     """
+    import re
+
     backend = get_store_backend(store_name)
     stored: dict[str, int] = {}
 
-    # Content is stored at _content/{hash[:2]}/{hash[2:4]}/{hash}
-    content_prefix = "_content/"
+    # Hash-addressed storage: _hash/{schema}/{subfolders...}/{hash}
+    hash_prefix = "_hash/"
+    # Base32 pattern: 26 lowercase alphanumeric chars
+    base32_pattern = re.compile(r"^[a-z2-7]{26}$")
 
     try:
-        # List all files under _content/
-        full_prefix = backend._full_path(content_prefix)
+        full_prefix = backend._full_path(hash_prefix)
 
         for root, dirs, files in backend.fs.walk(full_prefix):
             for filename in files:
@@ -319,33 +345,36 @@ def list_stored_content(store_name: str | None = None) -> dict[str, int]:
                 if filename.endswith(".manifest.json"):
                     continue
 
-                # The filename is the full hash
+                # The filename is the base32 hash
                 content_hash = filename
 
-                # Validate it looks like a hash (64 hex chars)
-                if len(content_hash) == 64 and all(c in "0123456789abcdef" for c in content_hash):
+                # Validate it looks like a base32 hash
+                if base32_pattern.match(content_hash):
                     try:
                         file_path = f"{root}/{filename}"
                         size = backend.fs.size(file_path)
-                        stored[content_hash] = size
+                        # Build relative path for comparison with stored metadata
+                        # Path format: _hash/{schema}/{subfolders...}/{hash}
+                        relative_path = file_path.replace(backend._full_path(""), "").lstrip("/")
+                        stored[relative_path] = size
                     except Exception:
-                        stored[content_hash] = 0
+                        pass
 
     except FileNotFoundError:
-        # No _content/ directory exists yet
+        # No _hash/ directory exists yet
         pass
     except Exception as e:
-        logger.warning(f"Error listing stored content: {e}")
+        logger.warning(f"Error listing stored hashes: {e}")
 
     return stored
 
 
-def list_stored_objects(store_name: str | None = None) -> dict[str, int]:
+def list_schema_paths(store_name: str | None = None) -> dict[str, int]:
     """
-    List all object paths in storage.
+    List all schema-addressed items in storage.
 
-    Scans for directories matching the object storage pattern:
-    {schema}/{table}/objects/{pk}/{field}_{token}/
+    Scans for directories matching the schema-addressed storage pattern:
+    ``{schema}/{table}/{pk}/{field}/``
 
     Parameters
     ----------
@@ -355,55 +384,57 @@ def list_stored_objects(store_name: str | None = None) -> dict[str, int]:
     Returns
     -------
     dict[str, int]
-        Dict mapping object_path to size in bytes.
+        Dict mapping storage path to size in bytes.
     """
     backend = get_store_backend(store_name)
     stored: dict[str, int] = {}
 
     try:
-        # Walk the storage looking for /objects/ directories
+        # Walk the storage looking for schema-addressed paths
         full_prefix = backend._full_path("")
 
         for root, dirs, files in backend.fs.walk(full_prefix):
-            # Skip _content directory
-            if "_content" in root:
+            # Skip _hash directory (hash-addressed storage)
+            if "_hash" in root:
                 continue
 
-            # Look for "objects" directory pattern
-            if "/objects/" in root:
-                # This could be an object storage path
-                # Path pattern: {schema}/{table}/objects/{pk}/{field}_{token}
-                relative_path = root.replace(full_prefix, "").lstrip("/")
+            # Look for schema-addressed pattern (has files, not in _hash)
+            # Schema-addressed paths: {schema}/{table}/{pk}/{field}/
+            relative_path = root.replace(full_prefix, "").lstrip("/")
 
-                # Calculate total size of this object directory
-                total_size = 0
-                for file in files:
-                    try:
-                        file_path = f"{root}/{file}"
-                        total_size += backend.fs.size(file_path)
-                    except Exception:
-                        pass
+            # Skip empty paths and root-level directories
+            if not relative_path or relative_path.count("/") < 2:
+                continue
 
-                # Only count directories with files (actual objects)
-                if total_size > 0 or files:
-                    stored[relative_path] = total_size
+            # Calculate total size of this directory
+            total_size = 0
+            for file in files:
+                try:
+                    file_path = f"{root}/{file}"
+                    total_size += backend.fs.size(file_path)
+                except Exception:
+                    pass
+
+            # Only count directories with files (actual objects)
+            if total_size > 0 or files:
+                stored[relative_path] = total_size
 
     except FileNotFoundError:
         pass
     except Exception as e:
-        logger.warning(f"Error listing stored objects: {e}")
+        logger.warning(f"Error listing stored schemas: {e}")
 
     return stored
 
 
-def delete_object(path: str, store_name: str | None = None) -> bool:
+def delete_schema_path(path: str, store_name: str | None = None) -> bool:
     """
-    Delete an object directory from storage.
+    Delete a schema-addressed directory from storage.
 
     Parameters
     ----------
     path : str
-        Object path (relative to store root).
+        Storage path (relative to store root).
     store_name : str, optional
         Store name (None = default store).
 
@@ -419,10 +450,10 @@ def delete_object(path: str, store_name: str | None = None) -> bool:
         if backend.fs.exists(full_path):
             # Remove entire directory tree
             backend.fs.rm(full_path, recursive=True)
-            logger.debug(f"Deleted object: {path}")
+            logger.debug(f"Deleted schema path: {path}")
             return True
     except Exception as e:
-        logger.warning(f"Error deleting object {path}: {e}")
+        logger.warning(f"Error deleting schema path {path}: {e}")
 
     return False
 
@@ -433,10 +464,10 @@ def scan(
     verbose: bool = False,
 ) -> dict[str, Any]:
     """
-    Scan for orphaned content and objects without deleting.
+    Scan for orphaned storage items without deleting.
 
-    Scans both content-addressed storage (for <hash@>, <blob@>, <attach@>)
-    and path-addressed storage (for <object>).
+    Scans both hash-addressed storage (for ``<hash@>``, ``<blob@>``, ``<attach@>``)
+    and schema-addressed storage (for ``<object@>``, ``<npy@>``).
 
     Parameters
     ----------
@@ -452,50 +483,50 @@ def scan(
     dict[str, Any]
         Dict with scan statistics:
 
-        - content_referenced: Number of content items referenced in database
-        - content_stored: Number of content items in storage
-        - content_orphaned: Number of unreferenced content items
-        - content_orphaned_bytes: Total size of orphaned content
+        - hash_referenced: Number of hash items referenced in database
+        - hash_stored: Number of hash items in storage
+        - hash_orphaned: Number of unreferenced hash items
+        - hash_orphaned_bytes: Total size of orphaned hashes
         - orphaned_hashes: List of orphaned content hashes
-        - object_referenced: Number of objects referenced in database
-        - object_stored: Number of objects in storage
-        - object_orphaned: Number of unreferenced objects
-        - object_orphaned_bytes: Total size of orphaned objects
-        - orphaned_paths: List of orphaned object paths
+        - schema_paths_referenced: Number of schema items referenced in database
+        - schema_paths_stored: Number of schema items in storage
+        - schema_paths_orphaned: Number of unreferenced schema items
+        - schema_paths_orphaned_bytes: Total size of orphaned schema items
+        - orphaned_paths: List of orphaned schema paths
     """
     if not schemas:
         raise DataJointError("At least one schema must be provided")
 
-    # --- Content-addressed storage ---
-    content_referenced = scan_references(*schemas, store_name=store_name, verbose=verbose)
-    content_stored = list_stored_content(store_name)
-    orphaned_hashes = set(content_stored.keys()) - content_referenced
-    content_orphaned_bytes = sum(content_stored.get(h, 0) for h in orphaned_hashes)
+    # --- Hash-addressed storage ---
+    hash_referenced = scan_hash_references(*schemas, store_name=store_name, verbose=verbose)
+    hash_stored = list_stored_hashes(store_name)
+    orphaned_hashes = set(hash_stored.keys()) - hash_referenced
+    hash_orphaned_bytes = sum(hash_stored.get(h, 0) for h in orphaned_hashes)
 
-    # --- Path-addressed storage (objects) ---
-    object_referenced = scan_object_references(*schemas, store_name=store_name, verbose=verbose)
-    object_stored = list_stored_objects(store_name)
-    orphaned_paths = set(object_stored.keys()) - object_referenced
-    object_orphaned_bytes = sum(object_stored.get(p, 0) for p in orphaned_paths)
+    # --- Schema-addressed storage ---
+    schema_paths_referenced = scan_schema_references(*schemas, store_name=store_name, verbose=verbose)
+    schema_paths_stored = list_schema_paths(store_name)
+    orphaned_paths = set(schema_paths_stored.keys()) - schema_paths_referenced
+    schema_paths_orphaned_bytes = sum(schema_paths_stored.get(p, 0) for p in orphaned_paths)
 
     return {
-        # Content-addressed storage stats
-        "content_referenced": len(content_referenced),
-        "content_stored": len(content_stored),
-        "content_orphaned": len(orphaned_hashes),
-        "content_orphaned_bytes": content_orphaned_bytes,
+        # Hash-addressed storage stats
+        "hash_referenced": len(hash_referenced),
+        "hash_stored": len(hash_stored),
+        "hash_orphaned": len(orphaned_hashes),
+        "hash_orphaned_bytes": hash_orphaned_bytes,
         "orphaned_hashes": sorted(orphaned_hashes),
-        # Path-addressed storage stats
-        "object_referenced": len(object_referenced),
-        "object_stored": len(object_stored),
-        "object_orphaned": len(orphaned_paths),
-        "object_orphaned_bytes": object_orphaned_bytes,
+        # Schema-addressed storage stats
+        "schema_paths_referenced": len(schema_paths_referenced),
+        "schema_paths_stored": len(schema_paths_stored),
+        "schema_paths_orphaned": len(orphaned_paths),
+        "schema_paths_orphaned_bytes": schema_paths_orphaned_bytes,
         "orphaned_paths": sorted(orphaned_paths),
         # Combined totals
-        "referenced": len(content_referenced) + len(object_referenced),
-        "stored": len(content_stored) + len(object_stored),
+        "referenced": len(hash_referenced) + len(schema_paths_referenced),
+        "stored": len(hash_stored) + len(schema_paths_stored),
         "orphaned": len(orphaned_hashes) + len(orphaned_paths),
-        "orphaned_bytes": content_orphaned_bytes + object_orphaned_bytes,
+        "orphaned_bytes": hash_orphaned_bytes + schema_paths_orphaned_bytes,
     }
 
 
@@ -506,10 +537,10 @@ def collect(
     verbose: bool = False,
 ) -> dict[str, Any]:
     """
-    Remove orphaned content and objects from storage.
+    Remove orphaned storage items.
 
-    Scans the given schemas for content and object references, then removes any
-    storage items that are not referenced.
+    Scans the given schemas for storage references, then removes any
+    items that are not referenced.
 
     Parameters
     ----------
@@ -530,66 +561,66 @@ def collect(
         - referenced: Total items referenced in database
         - stored: Total items in storage
         - orphaned: Total unreferenced items
-        - content_deleted: Number of content items deleted
-        - object_deleted: Number of object items deleted
+        - hash_deleted: Number of hash items deleted
+        - schema_paths_deleted: Number of schema items deleted
         - deleted: Total items deleted (0 if dry_run)
         - bytes_freed: Bytes freed (0 if dry_run)
         - errors: Number of deletion errors
     """
-    # First scan to find orphaned content and objects
+    # First scan to find orphaned items
     stats = scan(*schemas, store_name=store_name, verbose=verbose)
 
-    content_deleted = 0
-    object_deleted = 0
+    hash_deleted = 0
+    schema_paths_deleted = 0
     bytes_freed = 0
     errors = 0
 
     if not dry_run:
-        # Delete orphaned content (hash-addressed)
-        if stats["content_orphaned"] > 0:
-            content_stored = list_stored_content(store_name)
+        # Delete orphaned hashes
+        if stats["hash_orphaned"] > 0:
+            hash_stored = list_stored_hashes(store_name)
 
-            for content_hash in stats["orphaned_hashes"]:
+            for path in stats["orphaned_hashes"]:
                 try:
-                    size = content_stored.get(content_hash, 0)
-                    if delete_content(content_hash, store_name):
-                        content_deleted += 1
+                    size = hash_stored.get(path, 0)
+                    if delete_path(path, store_name):
+                        hash_deleted += 1
                         bytes_freed += size
                         if verbose:
-                            logger.info(f"Deleted content: {content_hash[:16]}... ({size} bytes)")
+                            logger.info(f"Deleted: {path} ({size} bytes)")
                 except Exception as e:
                     errors += 1
-                    logger.warning(f"Failed to delete content {content_hash[:16]}...: {e}")
+                    logger.warning(f"Failed to delete {path}: {e}")
 
-        # Delete orphaned objects (path-addressed)
-        if stats["object_orphaned"] > 0:
-            object_stored = list_stored_objects(store_name)
+        # Delete orphaned schema paths
+        if stats["schema_paths_orphaned"] > 0:
+            schema_paths_stored = list_schema_paths(store_name)
 
             for path in stats["orphaned_paths"]:
                 try:
-                    size = object_stored.get(path, 0)
-                    if delete_object(path, store_name):
-                        object_deleted += 1
+                    size = schema_paths_stored.get(path, 0)
+                    if delete_schema_path(path, store_name):
+                        schema_paths_deleted += 1
                         bytes_freed += size
                         if verbose:
-                            logger.info(f"Deleted object: {path} ({size} bytes)")
+                            logger.info(f"Deleted schema path: {path} ({size} bytes)")
                 except Exception as e:
                     errors += 1
-                    logger.warning(f"Failed to delete object {path}: {e}")
+                    logger.warning(f"Failed to delete schema path {path}: {e}")
 
     return {
         "referenced": stats["referenced"],
         "stored": stats["stored"],
         "orphaned": stats["orphaned"],
-        "content_deleted": content_deleted,
-        "object_deleted": object_deleted,
-        "deleted": content_deleted + object_deleted,
+        "hash_deleted": hash_deleted,
+        "schema_paths_deleted": schema_paths_deleted,
+        "deleted": hash_deleted + schema_paths_deleted,
         "bytes_freed": bytes_freed,
         "errors": errors,
         "dry_run": dry_run,
         # Include detailed stats
-        "content_orphaned": stats["content_orphaned"],
-        "object_orphaned": stats["object_orphaned"],
+        "hash_orphaned": stats["hash_orphaned"],
+        "schema_paths_orphaned": stats["schema_paths_orphaned"],
     }
 
 
@@ -609,26 +640,26 @@ def format_stats(stats: dict[str, Any]) -> str:
     """
     lines = ["External Storage Statistics:"]
 
-    # Show content-addressed storage stats if present
-    if "content_referenced" in stats:
+    # Show hash-addressed storage stats if present
+    if "hash_referenced" in stats:
         lines.append("")
-        lines.append("Content-Addressed Storage (<hash@>, <blob@>, <attach@>):")
-        lines.append(f"  Referenced: {stats['content_referenced']}")
-        lines.append(f"  Stored:     {stats['content_stored']}")
-        lines.append(f"  Orphaned:   {stats['content_orphaned']}")
-        if "content_orphaned_bytes" in stats:
-            size_mb = stats["content_orphaned_bytes"] / (1024 * 1024)
+        lines.append("Hash-Addressed Storage (<hash@>, <blob@>, <attach@>):")
+        lines.append(f"  Referenced: {stats['hash_referenced']}")
+        lines.append(f"  Stored:     {stats['hash_stored']}")
+        lines.append(f"  Orphaned:   {stats['hash_orphaned']}")
+        if "hash_orphaned_bytes" in stats:
+            size_mb = stats["hash_orphaned_bytes"] / (1024 * 1024)
             lines.append(f"  Orphaned size: {size_mb:.2f} MB")
 
-    # Show path-addressed storage stats if present
-    if "object_referenced" in stats:
+    # Show schema-addressed storage stats if present
+    if "schema_paths_referenced" in stats:
         lines.append("")
-        lines.append("Path-Addressed Storage (<object>):")
-        lines.append(f"  Referenced: {stats['object_referenced']}")
-        lines.append(f"  Stored:     {stats['object_stored']}")
-        lines.append(f"  Orphaned:   {stats['object_orphaned']}")
-        if "object_orphaned_bytes" in stats:
-            size_mb = stats["object_orphaned_bytes"] / (1024 * 1024)
+        lines.append("Schema-Addressed Storage (<object@>, <npy@>):")
+        lines.append(f"  Referenced: {stats['schema_paths_referenced']}")
+        lines.append(f"  Stored:     {stats['schema_paths_stored']}")
+        lines.append(f"  Orphaned:   {stats['schema_paths_orphaned']}")
+        if "schema_paths_orphaned_bytes" in stats:
+            size_mb = stats["schema_paths_orphaned_bytes"] / (1024 * 1024)
             lines.append(f"  Orphaned size: {size_mb:.2f} MB")
 
     # Show totals
@@ -649,10 +680,10 @@ def format_stats(stats: dict[str, Any]) -> str:
             lines.append("  [DRY RUN - no changes made]")
         else:
             lines.append(f"  Deleted:     {stats['deleted']}")
-            if "content_deleted" in stats:
-                lines.append(f"    Content: {stats['content_deleted']}")
-            if "object_deleted" in stats:
-                lines.append(f"    Objects: {stats['object_deleted']}")
+            if "hash_deleted" in stats:
+                lines.append(f"    Hash items:   {stats['hash_deleted']}")
+            if "schema_paths_deleted" in stats:
+                lines.append(f"    Schema paths: {stats['schema_paths_deleted']}")
             freed_mb = stats["bytes_freed"] / (1024 * 1024)
             lines.append(f"  Bytes freed: {freed_mb:.2f} MB")
             if stats.get("errors", 0) > 0:
