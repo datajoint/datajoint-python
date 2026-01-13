@@ -29,7 +29,7 @@ def schema_empty_module(schema_any, schema_empty):
     """
     Mock the module tests_old.schema_empty.
     The test `test_namespace_population` will check that the module contains all the
-    classes in schema_any, after running `spawn_missing_classes`.
+    classes in schema_any, after running `make_classes`.
     """
     namespace_dict = {
         "_": schema_any,
@@ -51,7 +51,7 @@ def schema_empty(connection_test, schema_any, prefix):
     schema_empty = dj.Schema(prefix + "_test1", context=context, connection=connection_test)
     schema_empty(Ephys)
     # load the rest of the classes
-    schema_empty.spawn_missing_classes(context=context)
+    schema_empty.make_classes(into=context)
     yield schema_empty
     # Don't drop the schema since schema_any still needs it
 
@@ -77,12 +77,12 @@ def test_drop_unauthorized(connection_test):
 def test_namespace_population(schema_empty_module):
     """
     With the schema_empty_module fixture, this test
-    mimics the behavior of `spawn_missing_classes`, as if the schema
-    was declared in a separate module and `spawn_missing_classes` was called in that namespace.
+    mimics the behavior of `make_classes`, as if the schema
+    was declared in a separate module and `make_classes` was called in that namespace.
     """
-    # Spawn missing classes in the caller's (self) namespace.
+    # Create classes in the caller's (self) namespace.
     schema_empty_module.schema.context = None
-    schema_empty_module.schema.spawn_missing_classes(context=None)
+    schema_empty_module.schema.make_classes(into=None)
     # Then add them to the mock module's namespace.
     for k, v in locals().items():
         if inspect.isclass(v):

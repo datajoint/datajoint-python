@@ -39,7 +39,7 @@ class _MissingType(Codec, register=False):
     def name(self) -> str:
         return self._codec_name
 
-    def get_dtype(self, is_external: bool) -> str:
+    def get_dtype(self, is_store: bool) -> str:
         raise DataJointError(
             f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
         )
@@ -450,8 +450,8 @@ class Heading:
                     attr["codec"] = _MissingType(codec_spec)
                 else:
                     # Determine if external storage based on store presence
-                    is_external = attr.get("store") is not None
-                    attr["type"] = attr["codec"].get_dtype(is_external=is_external)
+                    is_store = attr.get("store") is not None
+                    attr["type"] = attr["codec"].get_dtype(is_store=is_store)
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):
                         raise DataJointError(f"Invalid dtype '{attr['type']}' in codec <{codec_spec}>.")
                     # Update is_blob based on resolved dtype (check both BYTES and NATIVE_BLOB patterns)

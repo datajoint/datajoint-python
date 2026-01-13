@@ -216,7 +216,7 @@ class Schema:
         cls : type
             Table class to decorate.
         context : dict, optional
-            Declaration context. Supplied by spawn_missing_classes.
+            Declaration context. Supplied by make_classes.
 
         Returns
         -------
@@ -335,39 +335,39 @@ class Schema:
             ).fetchone()[0]
         )
 
-    def spawn_missing_classes(self, context: dict[str, Any] | None = None) -> None:
+    def make_classes(self, into: dict[str, Any] | None = None) -> None:
         """
-        Create Python table classes for tables without existing classes.
+        Create Python table classes for tables in the schema.
 
         Introspects the database schema and creates appropriate Python classes
         (Lookup, Manual, Imported, Computed, Part) for tables that don't have
-        corresponding classes in the context.
+        corresponding classes in the target namespace.
 
         Parameters
         ----------
-        context : dict, optional
+        into : dict, optional
             Namespace to place created classes into. Defaults to caller's
             local namespace.
         """
         self._assert_exists()
-        if context is None:
+        if into is None:
             if self.context is not None:
-                context = self.context
+                into = self.context
             else:
-                # if context is missing, use the calling namespace
+                # if into is missing, use the calling namespace
                 frame = inspect.currentframe().f_back
-                context = frame.f_locals
+                into = frame.f_locals
                 del frame
         tables = [
             row[0]
             for row in self.connection.query("SHOW TABLES in `%s`" % self.database)
-            if lookup_class_name("`{db}`.`{tab}`".format(db=self.database, tab=row[0]), context, 0) is None
+            if lookup_class_name("`{db}`.`{tab}`".format(db=self.database, tab=row[0]), into, 0) is None
         ]
         master_classes = (Lookup, Manual, Imported, Computed)
         part_tables = []
         for table_name in tables:
             class_name = to_camel_case(table_name)
-            if class_name not in context:
+            if class_name not in into:
                 try:
                     cls = next(cls for cls in master_classes if re.fullmatch(cls.tier_regexp, table_name))
                 except StopIteration:
@@ -375,19 +375,19 @@ class Schema:
                         part_tables.append(table_name)
                 else:
                     # declare and decorate master table classes
-                    context[class_name] = self(type(class_name, (cls,), dict()), context=context)
+                    into[class_name] = self(type(class_name, (cls,), dict()), context=into)
 
         # attach parts to masters
         for table_name in part_tables:
             groups = re.fullmatch(Part.tier_regexp, table_name).groupdict()
             class_name = to_camel_case(groups["part"])
             try:
-                master_class = context[to_camel_case(groups["master"])]
+                master_class = into[to_camel_case(groups["master"])]
             except KeyError:
                 raise DataJointError("The table %s does not follow DataJoint naming conventions" % table_name)
             part_class = type(class_name, (Part,), dict(definition=...))
             part_class._master = master_class
-            self._decorate_table(part_class, context=context, assert_declared=True)
+            self._decorate_table(part_class, context=into, assert_declared=True)
             setattr(master_class, class_name, part_class)
 
     def drop(self, prompt: bool | None = None) -> None:
@@ -830,7 +830,7 @@ class VirtualModule(types.ModuleType):
         if add_objects:
             self.__dict__.update(add_objects)
         self.__dict__["schema"] = _schema
-        _schema.spawn_missing_classes(context=self.__dict__)
+        _schema.make_classes(into=self.__dict__)
 
 
 def list_schemas(connection: Connection | None = None) -> list[str]:

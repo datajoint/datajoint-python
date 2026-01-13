@@ -168,7 +168,7 @@ check_untyped_defs = true
 # Modules with complete type coverage - strict checking enabled
 [[tool.mypy.overrides]]
 module = [
-    "datajoint.content_registry",
+    "datajoint.hash_registry",
     "datajoint.errors",
     "datajoint.hash",
 ]

@@ -47,8 +47,12 @@ __all__ = [
     "MatStruct",
     # Codec API
     "Codec",
+    "SchemaCodec",
     "list_codecs",
     "get_codec",
+    "ObjectRef",
+    "NpyRef",
+    # Other
     "errors",
     "migrate",
     "DataJointError",
@@ -56,7 +60,6 @@ __all__ = [
     "key_hash",
     "logger",
     "cli",
-    "ObjectRef",
     "ValidationResult",
 ]
 
@@ -69,6 +72,10 @@ from .codecs import (
     Codec,
     get_codec,
     list_codecs,
+)
+from .builtin_codecs import (
+    SchemaCodec,
+    NpyRef,
 )
 from .blob import MatCell, MatStruct
 from .connection import Connection, conn

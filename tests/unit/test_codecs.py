@@ -368,8 +368,8 @@ class TestBlobCodec:
         """Test BlobCodec properties."""
         blob_codec = get_codec("blob")
         assert blob_codec.name == "blob"
-        assert blob_codec.get_dtype(is_external=False) == "bytes"
-        assert blob_codec.get_dtype(is_external=True) == "<hash>"
+        assert blob_codec.get_dtype(is_store=False) == "bytes"
+        assert blob_codec.get_dtype(is_store=True) == "<hash>"
 
     def test_blob_encode_decode_roundtrip(self):
         """Test that encode/decode is a proper roundtrip."""

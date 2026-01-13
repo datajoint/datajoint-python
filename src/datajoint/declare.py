@@ -651,8 +651,8 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
         if store_name is not None:
             match["store"] = store_name
         # Determine if external storage is used (store_name is present, even if empty string for default)
-        is_external = store_name is not None
-        inner_dtype = codec.get_dtype(is_external=is_external)
+        is_store = store_name is not None
+        inner_dtype = codec.get_dtype(is_store=is_store)
 
         # If inner dtype is a codec without store, propagate the store from outer type
         # e.g., <attach@mystore> returns <hash>, we need to resolve as <hash@mystore>

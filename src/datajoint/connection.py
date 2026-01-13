@@ -5,6 +5,7 @@ the ``conn`` function that provides access to a persistent connection in datajoi
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import pathlib
 import re
@@ -18,7 +19,6 @@ import pymysql as client
 from . import errors
 from .blob import pack, unpack
 from .dependencies import Dependencies
-from .hash import uuid_from_buffer
 from .settings import config
 from .version import __version__
 
@@ -418,7 +418,7 @@ class Connection:
         if use_query_cache:
             if not config[cache_key]:
                 raise errors.DataJointError(f"Provide filepath dj.config['{cache_key}'] when using query caching.")
-            hash_ = uuid_from_buffer((str(self._query_cache) + re.sub(r"`\$\w+`", "", query)).encode() + pack(args))
+            hash_ = hashlib.md5((str(self._query_cache) + re.sub(r"`\$\w+`", "", query)).encode() + pack(args)).hexdigest()
             cache_path = pathlib.Path(config[cache_key]) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()

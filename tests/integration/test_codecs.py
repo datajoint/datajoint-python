@@ -39,9 +39,9 @@ def schema_codec(
 
 @pytest.fixture
 def local_schema(schema_codec, schema_name):
-    """Fixture for testing spawned classes"""
+    """Fixture for testing generated classes"""
     local_schema = dj.Schema(schema_name, connection=schema_codec.connection)
-    local_schema.spawn_missing_classes()
+    local_schema.make_classes()
     yield local_schema
     # Don't drop - schema_codec fixture handles cleanup
 

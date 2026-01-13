@@ -81,11 +81,11 @@ class TestUnprivileged:
 
     def test_insert_failure(self, connection_djview, schema_any):
         unprivileged = dj.Schema(schema_any.database, namespace, connection=connection_djview)
-        unprivileged.spawn_missing_classes()
+        unprivileged.make_classes()
         UnprivilegedLanguage = namespace["Language"]
         assert issubclass(UnprivilegedLanguage, dj.Lookup) and len(UnprivilegedLanguage()) == len(
             schema.Language()
-        ), "failed to spawn missing classes"
+        ), "failed to make classes"
         with pytest.raises(dj.DataJointError):
             UnprivilegedLanguage().insert1(("Socrates", "Greek"))
 
