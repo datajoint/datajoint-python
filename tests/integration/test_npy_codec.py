@@ -139,6 +139,74 @@ class TestNpyRefUnit:
         with pytest.raises(TypeError, match="0-dimensional"):
             len(ref)
 
+    def test_npy_ref_mmap_local_filesystem(self, tmp_path):
+        """NpyRef mmap_mode should work directly on local filesystem."""
+        # Create a real .npy file
+        test_array = np.arange(100, dtype=np.float64)
+        npy_path = tmp_path / "test.npy"
+        np.save(npy_path, test_array)
+
+        metadata = {
+            "path": "test.npy",
+            "store": None,
+            "dtype": "float64",
+            "shape": [100],
+        }
+
+        # Mock backend that simulates local filesystem
+        class MockFileBackend:
+            protocol = "file"
+
+            def _full_path(self, path):
+                return str(tmp_path / path)
+
+            def get_buffer(self, path):
+                return (tmp_path / path).read_bytes()
+
+        ref = NpyRef(metadata, MockFileBackend())
+
+        # Load with mmap_mode
+        mmap_arr = ref.load(mmap_mode="r")
+
+        # Should be a memmap
+        assert isinstance(mmap_arr, np.memmap)
+        np.testing.assert_array_equal(mmap_arr, test_array)
+
+        # Standard load should still work and cache
+        regular_arr = ref.load()
+        assert isinstance(regular_arr, np.ndarray)
+        assert not isinstance(regular_arr, np.memmap)
+        np.testing.assert_array_equal(regular_arr, test_array)
+
+    def test_npy_ref_mmap_remote_storage(self, tmp_path):
+        """NpyRef mmap_mode should download to cache for remote storage."""
+        # Create test data
+        test_array = np.array([1, 2, 3, 4, 5], dtype=np.int32)
+        npy_buffer = np.save(tmp_path / "temp.npy", test_array)
+        npy_bytes = (tmp_path / "temp.npy").read_bytes()
+
+        metadata = {
+            "path": "remote/path/data.npy",
+            "store": "s3-store",
+            "dtype": "int32",
+            "shape": [5],
+        }
+
+        # Mock backend that simulates remote storage
+        class MockS3Backend:
+            protocol = "s3"
+
+            def get_buffer(self, path):
+                return npy_bytes
+
+        ref = NpyRef(metadata, MockS3Backend())
+
+        # Load with mmap_mode - should download to cache
+        mmap_arr = ref.load(mmap_mode="r")
+
+        assert isinstance(mmap_arr, np.memmap)
+        np.testing.assert_array_equal(mmap_arr, test_array)
+
 
 class TestNpyCodecUnit:
     """Unit tests for NpyCodec without database."""

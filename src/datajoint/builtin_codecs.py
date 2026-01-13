@@ -940,28 +940,77 @@ class NpyRef:
         """True if array data has been downloaded and cached."""
         return self._cached is not None
 
-    def load(self):
+    def load(self, mmap_mode=None):
         """
         Download and return the array.
 
+        Parameters
+        ----------
+        mmap_mode : str, optional
+            Memory-map mode for lazy, random-access loading of large arrays:
+
+            - ``'r'``: Read-only
+            - ``'r+'``: Read-write
+            - ``'c'``: Copy-on-write (changes not saved to disk)
+
+            If None (default), loads entire array into memory.
+
         Returns
         -------
-        numpy.ndarray
-            The array data.
+        numpy.ndarray or numpy.memmap
+            The array data. Returns ``numpy.memmap`` if mmap_mode is specified.
 
         Notes
         -----
-        The array is cached after first load. Subsequent calls return
-        the cached copy without additional I/O.
+        When ``mmap_mode`` is None, the array is cached after first load.
+
+        For local filesystem stores, memory mapping accesses the file directly
+        with no download. For remote stores (S3, etc.), the file is downloaded
+        to a local cache (``{tempdir}/datajoint_mmap/``) before memory mapping.
+
+        Examples
+        --------
+        Standard loading::
+
+            arr = ref.load()  # Loads entire array into memory
+
+        Memory-mapped for random access to large arrays::
+
+            arr = ref.load(mmap_mode='r')
+            slice = arr[1000:2000]  # Only reads the needed portion from disk
         """
         import io
 
         import numpy as np
 
-        if self._cached is None:
-            buffer = self._backend.get_buffer(self.path)
-            self._cached = np.load(io.BytesIO(buffer), allow_pickle=False)
-        return self._cached
+        if mmap_mode is None:
+            # Standard loading with caching
+            if self._cached is None:
+                buffer = self._backend.get_buffer(self.path)
+                self._cached = np.load(io.BytesIO(buffer), allow_pickle=False)
+            return self._cached
+        else:
+            # Memory-mapped loading
+            if self._backend.protocol == "file":
+                # Local filesystem - mmap directly, no download needed
+                local_path = self._backend._full_path(self.path)
+                return np.load(local_path, mmap_mode=mmap_mode, allow_pickle=False)
+            else:
+                # Remote storage - download to local cache first
+                import hashlib
+                import tempfile
+                from pathlib import Path
+
+                path_hash = hashlib.md5(self.path.encode()).hexdigest()[:12]
+                cache_dir = Path(tempfile.gettempdir()) / "datajoint_mmap"
+                cache_dir.mkdir(exist_ok=True)
+                cache_path = cache_dir / f"{path_hash}.npy"
+
+                if not cache_path.exists():
+                    buffer = self._backend.get_buffer(self.path)
+                    cache_path.write_bytes(buffer)
+
+                return np.load(str(cache_path), mmap_mode=mmap_mode, allow_pickle=False)
 
     def __array__(self, dtype=None):
         """
