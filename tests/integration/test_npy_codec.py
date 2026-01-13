@@ -182,7 +182,7 @@ class TestNpyRefUnit:
         """NpyRef mmap_mode should download to cache for remote storage."""
         # Create test data
         test_array = np.array([1, 2, 3, 4, 5], dtype=np.int32)
-        npy_buffer = np.save(tmp_path / "temp.npy", test_array)
+        np.save(tmp_path / "temp.npy", test_array)
         npy_bytes = (tmp_path / "temp.npy").read_bytes()
 
         metadata = {
