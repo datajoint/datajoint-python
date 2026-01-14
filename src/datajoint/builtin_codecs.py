@@ -809,18 +809,45 @@ class FilepathCodec(Codec):
         """
         from datetime import datetime, timezone
 
+        from . import config
         from .hash_registry import get_store_backend
 
         path = str(value)
 
-        # Validate path doesn't use reserved sections
-        path_normalized = path.lstrip('/')
-        if path_normalized.startswith('_hash/') or path_normalized.startswith('_schema/'):
-            raise ValueError(
-                f"<filepath@> cannot use reserved sections '_hash/' or '_schema/'. "
-                f"These sections are managed by DataJoint. "
-                f"Got path: {path}"
-            )
+        # Get store spec to check prefix configuration
+        spec = config.get_store_spec(store_name)
+
+        # Validate path doesn't use reserved sections (hash and schema)
+        path_normalized = path.lstrip("/")
+        reserved_prefixes = []
+
+        hash_prefix = spec.get("hash_prefix")
+        if hash_prefix:
+            reserved_prefixes.append(("hash_prefix", hash_prefix))
+
+        schema_prefix = spec.get("schema_prefix")
+        if schema_prefix:
+            reserved_prefixes.append(("schema_prefix", schema_prefix))
+
+        # Check if path starts with any reserved prefix
+        for prefix_name, prefix_value in reserved_prefixes:
+            prefix_normalized = prefix_value.strip("/") + "/"
+            if path_normalized.startswith(prefix_normalized):
+                raise ValueError(
+                    f"<filepath@> cannot use reserved section '{prefix_value}' ({prefix_name}). "
+                    f"This section is managed by DataJoint. "
+                    f"Got path: {path}"
+                )
+
+        # If filepath_prefix is configured, enforce it
+        filepath_prefix = spec.get("filepath_prefix")
+        if filepath_prefix:
+            filepath_prefix_normalized = filepath_prefix.strip("/") + "/"
+            if not path_normalized.startswith(filepath_prefix_normalized):
+                raise ValueError(
+                    f"<filepath@> must use prefix '{filepath_prefix}' (filepath_prefix). "
+                    f"Got path: {path}"
+                )
 
         # Verify file exists
         backend = get_store_backend(store_name)

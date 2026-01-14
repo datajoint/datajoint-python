@@ -549,3 +549,136 @@ class TestSaveTemplate:
 
         # Original password should be preserved
         assert password_file.read_text() == "existing_password"
+
+
+class TestStorePrefixes:
+    """Tests for storage section prefix configuration and validation."""
+
+    def test_default_prefixes(self):
+        """Test that default prefixes are set correctly."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+            }
+
+            spec = dj.config.get_store_spec("test_store")
+            assert spec["hash_prefix"] == "_hash"
+            assert spec["schema_prefix"] == "_schema"
+            assert spec["filepath_prefix"] is None
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_custom_prefixes(self):
+        """Test configuring custom prefixes."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "content_addressed",
+                "schema_prefix": "structured_data",
+                "filepath_prefix": "user_files",
+            }
+
+            spec = dj.config.get_store_spec("test_store")
+            assert spec["hash_prefix"] == "content_addressed"
+            assert spec["schema_prefix"] == "structured_data"
+            assert spec["filepath_prefix"] == "user_files"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_prefix_overlap_hash_and_schema(self):
+        """Test that overlapping hash and schema prefixes are rejected."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "managed",
+                "schema_prefix": "managed/schema",  # Nested under hash
+            }
+
+            with pytest.raises(DataJointError, match=r"overlap.*mutually exclusive"):
+                dj.config.get_store_spec("test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_prefix_overlap_schema_and_filepath(self):
+        """Test that overlapping schema and filepath prefixes are rejected."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "schema_prefix": "data",
+                "filepath_prefix": "data/files",  # Nested under schema
+            }
+
+            with pytest.raises(DataJointError, match=r"overlap.*mutually exclusive"):
+                dj.config.get_store_spec("test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_prefix_overlap_reverse_nesting(self):
+        """Test that parent-child relationship is detected in either direction."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "dj/managed/hash",  # Child
+                "schema_prefix": "dj/managed",  # Parent
+            }
+
+            with pytest.raises(DataJointError, match=r"overlap.*mutually exclusive"):
+                dj.config.get_store_spec("test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_non_overlapping_prefixes_accepted(self):
+        """Test that non-overlapping prefixes are accepted."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "hash_store",
+                "schema_prefix": "schema_store",
+                "filepath_prefix": "user_files",
+            }
+
+            # Should not raise
+            spec = dj.config.get_store_spec("test_store")
+            assert spec["hash_prefix"] == "hash_store"
+            assert spec["schema_prefix"] == "schema_store"
+            assert spec["filepath_prefix"] == "user_files"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_similar_prefix_names_allowed(self):
+        """Test that prefixes with similar names but no nesting are allowed."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "managed_hash",
+                "schema_prefix": "managed_schema",  # Similar name, but separate
+                "filepath_prefix": None,
+            }
+
+            # Should not raise - these are separate paths
+            spec = dj.config.get_store_spec("test_store")
+            assert spec["hash_prefix"] == "managed_hash"
+            assert spec["schema_prefix"] == "managed_schema"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)

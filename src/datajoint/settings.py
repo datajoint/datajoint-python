@@ -373,6 +373,11 @@ class Config(BaseSettings):
         spec.setdefault("partition_pattern", None)  # No partitioning by default
         spec.setdefault("token_length", 8)  # Default token length
 
+        # Set defaults for storage section prefixes
+        spec.setdefault("hash_prefix", "_hash")  # Hash-addressed storage section
+        spec.setdefault("schema_prefix", "_schema")  # Schema-addressed storage section
+        spec.setdefault("filepath_prefix", None)  # Filepath storage (unrestricted by default)
+
         # Validate protocol
         protocol = spec.get("protocol", "").lower()
         supported_protocols = ("file", "s3", "gcs", "azure")
@@ -394,7 +399,17 @@ class Config(BaseSettings):
             "azure": ("protocol", "container", "location"),
         }
         allowed_keys: dict[str, tuple[str, ...]] = {
-            "file": ("protocol", "location", "subfolding", "partition_pattern", "token_length", "stage"),
+            "file": (
+                "protocol",
+                "location",
+                "subfolding",
+                "partition_pattern",
+                "token_length",
+                "hash_prefix",
+                "schema_prefix",
+                "filepath_prefix",
+                "stage",
+            ),
             "s3": (
                 "protocol",
                 "endpoint",
@@ -406,6 +421,9 @@ class Config(BaseSettings):
                 "subfolding",
                 "partition_pattern",
                 "token_length",
+                "hash_prefix",
+                "schema_prefix",
+                "filepath_prefix",
                 "stage",
                 "proxy_server",
             ),
@@ -418,6 +436,9 @@ class Config(BaseSettings):
                 "subfolding",
                 "partition_pattern",
                 "token_length",
+                "hash_prefix",
+                "schema_prefix",
+                "filepath_prefix",
                 "stage",
             ),
             "azure": (
@@ -430,6 +451,9 @@ class Config(BaseSettings):
                 "subfolding",
                 "partition_pattern",
                 "token_length",
+                "hash_prefix",
+                "schema_prefix",
+                "filepath_prefix",
                 "stage",
             ),
         }
@@ -444,8 +468,67 @@ class Config(BaseSettings):
         if invalid:
             raise DataJointError(f'Invalid key(s) in config.stores["{store}"]: {", ".join(invalid)}')
 
+        # Validate prefix separation to prevent overlap
+        self._validate_prefix_separation(
+            store_name=store,
+            hash_prefix=spec.get("hash_prefix"),
+            schema_prefix=spec.get("schema_prefix"),
+            filepath_prefix=spec.get("filepath_prefix"),
+        )
+
         return spec
 
+    def _validate_prefix_separation(
+        self,
+        store_name: str,
+        hash_prefix: str | None,
+        schema_prefix: str | None,
+        filepath_prefix: str | None,
+    ) -> None:
+        """
+        Validate that storage section prefixes don't overlap.
+
+        Parameters
+        ----------
+        store_name : str
+            Name of the store being validated (for error messages).
+        hash_prefix : str or None
+            Prefix for hash-addressed storage.
+        schema_prefix : str or None
+            Prefix for schema-addressed storage.
+        filepath_prefix : str or None
+            Prefix for filepath storage (None means unrestricted).
+
+        Raises
+        ------
+        DataJointError
+            If any prefixes overlap (one is a parent/child of another).
+        """
+        # Collect non-null prefixes with their names
+        prefixes = []
+        if hash_prefix:
+            prefixes.append(("hash_prefix", hash_prefix))
+        if schema_prefix:
+            prefixes.append(("schema_prefix", schema_prefix))
+        if filepath_prefix:
+            prefixes.append(("filepath_prefix", filepath_prefix))
+
+        # Normalize prefixes: remove leading/trailing slashes, ensure trailing slash for comparison
+        def normalize(p: str) -> str:
+            return p.strip("/") + "/"
+
+        normalized = [(name, normalize(prefix)) for name, prefix in prefixes]
+
+        # Check each pair for overlap
+        for i, (name1, p1) in enumerate(normalized):
+            for j, (name2, p2) in enumerate(normalized[i + 1 :], start=i + 1):
+                # Check if one prefix is a parent of another
+                if p1.startswith(p2) or p2.startswith(p1):
+                    raise DataJointError(
+                        f'config.stores["{store_name}"]: {name1}="{prefixes[i][1]}" and '
+                        f'{name2}="{prefixes[j][1]}" overlap. '
+                        f"Storage section prefixes must be mutually exclusive."
+                    )
 
     def load(self, filename: str | Path) -> None:
         """

@@ -444,87 +444,212 @@ class TestFilepathCodec:
         assert filepath_codec.get_dtype(is_store=True) == "json"
 
     def test_filepath_rejects_hash_section(self):
-        """Test that filepath rejects paths starting with _hash/."""
+        """Test that filepath rejects paths starting with default hash prefix."""
         from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
 
         filepath_codec = get_codec("filepath")
 
-        # Mock the backend to avoid actual file operations
-        with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
-            mock_backend = MagicMock()
-            mock_backend.exists.return_value = True
-            mock_get_backend.return_value = mock_backend
+        # Configure test store with default prefixes
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                # hash_prefix defaults to "_hash"
+                # schema_prefix defaults to "_schema"
+            }
 
-            # Test various forms of _hash/ paths
-            invalid_paths = [
-                "_hash/abc123",
-                "_hash/schema/file.dat",
-                "/_hash/nested/path.bin",
-            ]
+            # Mock the backend to avoid actual file operations
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_get_backend.return_value = mock_backend
 
-            for path in invalid_paths:
-                with pytest.raises(
-                    ValueError,
-                    match=r"<filepath@> cannot use reserved sections '_hash/' or '_schema/'",
-                ):
-                    filepath_codec.encode(path, store_name="test_store")
+                # Test various forms of _hash/ paths
+                invalid_paths = [
+                    "_hash/abc123",
+                    "_hash/schema/file.dat",
+                    "/_hash/nested/path.bin",
+                ]
+
+                for path in invalid_paths:
+                    with pytest.raises(
+                        ValueError,
+                        match=r"<filepath@> cannot use reserved section '_hash'",
+                    ):
+                        filepath_codec.encode(path, store_name="test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
 
     def test_filepath_rejects_schema_section(self):
-        """Test that filepath rejects paths starting with _schema/."""
+        """Test that filepath rejects paths starting with default schema prefix."""
         from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
 
         filepath_codec = get_codec("filepath")
 
-        # Mock the backend to avoid actual file operations
-        with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
-            mock_backend = MagicMock()
-            mock_backend.exists.return_value = True
-            mock_get_backend.return_value = mock_backend
+        # Configure test store with default prefixes
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                # hash_prefix defaults to "_hash"
+                # schema_prefix defaults to "_schema"
+            }
 
-            # Test various forms of _schema/ paths
-            invalid_paths = [
-                "_schema/mytable",
-                "_schema/myschema/mytable/key.dat",
-                "/_schema/nested/data.zarr",
-            ]
+            # Mock the backend to avoid actual file operations
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_get_backend.return_value = mock_backend
 
-            for path in invalid_paths:
-                with pytest.raises(
-                    ValueError,
-                    match=r"<filepath@> cannot use reserved sections '_hash/' or '_schema/'",
-                ):
-                    filepath_codec.encode(path, store_name="test_store")
+                # Test various forms of _schema/ paths
+                invalid_paths = [
+                    "_schema/mytable",
+                    "_schema/myschema/mytable/key.dat",
+                    "/_schema/nested/data.zarr",
+                ]
+
+                for path in invalid_paths:
+                    with pytest.raises(
+                        ValueError,
+                        match=r"<filepath@> cannot use reserved section '_schema'",
+                    ):
+                        filepath_codec.encode(path, store_name="test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
 
     def test_filepath_allows_user_paths(self):
         """Test that filepath allows any paths outside reserved sections."""
         from unittest.mock import MagicMock, patch
 
+        import datajoint as dj
+
         filepath_codec = get_codec("filepath")
 
-        # Mock the backend to avoid actual file operations
-        with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
-            mock_backend = MagicMock()
-            mock_backend.exists.return_value = True
-            mock_backend.size.return_value = 1024
-            mock_get_backend.return_value = mock_backend
+        # Configure test store with default prefixes
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                # hash_prefix defaults to "_hash"
+                # schema_prefix defaults to "_schema"
+                # filepath_prefix defaults to None (unrestricted)
+            }
 
-            # Test valid user-managed paths
-            valid_paths = [
-                "subject01/session001/data.bin",
-                "raw/experiment_2024/recording.nwb",
-                "processed/analysis_v2/results.csv",
-                "my_hash_file.dat",  # "hash" in name is fine
-                "my_schema_backup.sql",  # "schema" in name is fine
-            ]
+            # Mock the backend to avoid actual file operations
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_backend.size.return_value = 1024
+                mock_get_backend.return_value = mock_backend
 
-            for path in valid_paths:
-                result = filepath_codec.encode(path, store_name="test_store")
-                assert isinstance(result, dict)
-                assert result["path"] == path
-                assert result["store"] == "test_store"
-                assert result["size"] == 1024
-                assert result["is_dir"] is False
-                assert "timestamp" in result
+                # Test valid user-managed paths
+                valid_paths = [
+                    "subject01/session001/data.bin",
+                    "raw/experiment_2024/recording.nwb",
+                    "processed/analysis_v2/results.csv",
+                    "my_hash_file.dat",  # "hash" in name is fine
+                    "my_schema_backup.sql",  # "schema" in name is fine
+                ]
+
+                for path in valid_paths:
+                    result = filepath_codec.encode(path, store_name="test_store")
+                    assert isinstance(result, dict)
+                    assert result["path"] == path
+                    assert result["store"] == "test_store"
+                    assert result["size"] == 1024
+                    assert result["is_dir"] is False
+                    assert "timestamp" in result
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_filepath_custom_prefixes(self):
+        """Test filepath with custom-configured prefixes."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        # Configure test store with custom prefixes
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "content_addressed",
+                "schema_prefix": "structured_data",
+                "filepath_prefix": None,  # Still unrestricted
+            }
+
+            # Mock the backend
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_backend.size.return_value = 2048
+                mock_get_backend.return_value = mock_backend
+
+                # Should reject custom hash prefix
+                with pytest.raises(ValueError, match=r"cannot use reserved section 'content_addressed'"):
+                    filepath_codec.encode("content_addressed/file.dat", store_name="test_store")
+
+                # Should reject custom schema prefix
+                with pytest.raises(ValueError, match=r"cannot use reserved section 'structured_data'"):
+                    filepath_codec.encode("structured_data/mydata.zarr", store_name="test_store")
+
+                # Should allow other paths
+                result = filepath_codec.encode("raw_files/session01.bin", store_name="test_store")
+                assert result["path"] == "raw_files/session01.bin"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_filepath_enforces_filepath_prefix(self):
+        """Test that filepath_prefix is enforced when configured."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        # Configure test store with required filepath_prefix
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "managed/hash",
+                "schema_prefix": "managed/schema",
+                "filepath_prefix": "user_files",  # Must use this prefix
+            }
+
+            # Mock the backend
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_backend.size.return_value = 3072
+                mock_get_backend.return_value = mock_backend
+
+                # Should reject path without required prefix
+                with pytest.raises(ValueError, match=r"must use prefix 'user_files'"):
+                    filepath_codec.encode("raw/session01.bin", store_name="test_store")
+
+                # Should allow path with correct prefix
+                result = filepath_codec.encode("user_files/raw/session01.bin", store_name="test_store")
+                assert result["path"] == "user_files/raw/session01.bin"
+                assert result["size"] == 3072
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
 
     def test_filepath_in_list_codecs(self):
         """Test that filepath appears in list_codecs."""
