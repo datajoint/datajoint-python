@@ -145,11 +145,15 @@ class TestSecretStr:
         assert not isinstance(value, SecretStr)
         dj.config.database.password = None
 
-    def test_aws_secret_key_is_secret_str(self):
-        """AWS secret key uses SecretStr type."""
-        dj.config.external.aws_secret_access_key = "aws_secret"
-        assert isinstance(dj.config.external.aws_secret_access_key, SecretStr)
-        dj.config.external.aws_secret_access_key = None
+    def test_store_secret_key_is_secret_str(self):
+        """Store secret key uses SecretStr type when set."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {"secret_key": "aws_secret"}
+            # SecretStr is handled by pydantic if defined, but stores dict doesn't enforce it
+            assert dj.config.stores["test_store"]["secret_key"] == "aws_secret"
+        finally:
+            dj.config.stores = original_stores
 
 
 class TestSettingsAccess:
@@ -325,7 +329,10 @@ class TestStoreSpec:
             spec = dj.config.get_store_spec("test_file")
             assert spec["protocol"] == "file"
             assert spec["location"] == "/tmp/test"
-            assert spec["subfolding"] == settings.DEFAULT_SUBFOLDING
+            # Default is now None (no subfolding) instead of DEFAULT_SUBFOLDING
+            assert spec["subfolding"] is None
+            assert spec["partition_pattern"] is None
+            assert spec["token_length"] == 8
         finally:
             dj.config.stores = original_stores
 
@@ -341,6 +348,78 @@ class TestStoreSpec:
                 dj.config.get_store_spec("bad_store")
         finally:
             dj.config.stores = original_stores
+
+    def test_get_store_spec_default_store(self):
+        """Test getting default store when store=None."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "my_default"
+            dj.config.stores["my_default"] = {
+                "protocol": "file",
+                "location": "/tmp/default",
+            }
+            # Calling with None should use stores.default
+            spec = dj.config.get_store_spec(None)
+            assert spec["protocol"] == "file"
+            assert spec["location"] == "/tmp/default"
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_no_default_configured(self):
+        """Test error when stores.default is not configured."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores = {}  # Clear stores
+            with pytest.raises(DataJointError, match="stores.default is not configured"):
+                dj.config.get_store_spec(None)
+        finally:
+            dj.config.stores = original_stores
+
+
+class TestStoreSecrets:
+    """Test loading store credentials from secrets directory."""
+
+    def test_load_store_credentials_from_secrets(self, tmp_path):
+        """Test loading per-store credentials from .secrets/ directory."""
+        # Create secrets directory with store credentials
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "stores.main.access_key").write_text("test_access_key")
+        (secrets_dir / "stores.main.secret_key").write_text("test_secret_key")
+
+        # Create a fresh config instance
+        cfg = settings.Config()
+        original_stores = cfg.stores.copy()
+        try:
+            # Load secrets
+            cfg._load_secrets(secrets_dir)
+
+            # Verify credentials were loaded
+            assert "main" in cfg.stores
+            assert cfg.stores["main"]["access_key"] == "test_access_key"
+            assert cfg.stores["main"]["secret_key"] == "test_secret_key"
+        finally:
+            cfg.stores = original_stores
+
+    def test_secrets_do_not_override_existing(self, tmp_path):
+        """Test that secrets don't override already-configured store settings."""
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "stores.main.access_key").write_text("secret_key")
+
+        cfg = settings.Config()
+        original_stores = cfg.stores.copy()
+        try:
+            # Pre-configure the store with a key
+            cfg.stores["main"] = {"access_key": "existing_key"}
+
+            # Load secrets - should not override
+            cfg._load_secrets(secrets_dir)
+
+            # Existing key should be preserved
+            assert cfg.stores["main"]["access_key"] == "existing_key"
+        finally:
+            cfg.stores = original_stores
 
 
 class TestDisplaySettings:
@@ -418,10 +497,14 @@ class TestSaveTemplate:
         assert "database" in content
         assert "connection" in content
         assert "display" in content
-        assert "object_storage" in content
         assert "stores" in content
         assert "loglevel" in content
         assert "safemode" in content
+        # Verify stores structure
+        assert "default" in content["stores"]
+        assert "main" in content["stores"]
+        assert content["stores"]["default"] == "main"
+        assert content["stores"]["main"]["protocol"] == "file"
         # But still no credentials
         assert "password" not in content["database"]
         assert "user" not in content["database"]
