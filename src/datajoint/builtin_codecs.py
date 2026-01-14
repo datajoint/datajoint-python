@@ -779,7 +779,10 @@ class FilepathCodec(Codec):
     def get_dtype(self, is_store: bool) -> str:
         """Filepath is external only."""
         if not is_store:
-            raise DataJointError("<filepath> requires @store")
+            raise DataJointError(
+                "<filepath> requires @ symbol. Use <filepath@> for default store "
+                "or <filepath@store> to specify store."
+            )
         return "json"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> dict:
