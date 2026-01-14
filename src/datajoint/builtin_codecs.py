@@ -323,12 +323,15 @@ class SchemaCodec(Codec, register=False):
         field: str,
         primary_key: dict,
         ext: str | None = None,
+        store_name: str | None = None,
     ) -> tuple[str, str]:
         """
         Build schema-addressed storage path.
 
         Constructs a path that mirrors the database schema structure:
         ``{schema}/{table}/{pk_values}/{field}{ext}``
+
+        Supports partitioning if configured in the store.
 
         Parameters
         ----------
@@ -342,6 +345,8 @@ class SchemaCodec(Codec, register=False):
             Primary key values.
         ext : str, optional
             File extension (e.g., ".npy", ".zarr").
+        store_name : str, optional
+            Store name for retrieving partition configuration.
 
         Returns
         -------
@@ -350,6 +355,12 @@ class SchemaCodec(Codec, register=False):
             is a unique identifier.
         """
         from .storage import build_object_path
+        from . import config
+
+        # Get store configuration for partition_pattern and token_length
+        spec = config.get_store_spec(store_name)
+        partition_pattern = spec.get("partition_pattern")
+        token_length = spec.get("token_length", 8)
 
         return build_object_path(
             schema=schema,
@@ -357,6 +368,8 @@ class SchemaCodec(Codec, register=False):
             field=field,
             primary_key=primary_key,
             ext=ext,
+            partition_pattern=partition_pattern,
+            token_length=token_length,
         )
 
     def _get_backend(self, store_name: str | None = None):
@@ -518,7 +531,9 @@ class ObjectCodec(SchemaCodec):
             raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
 
         # Build storage path using inherited helper
-        path, token = self._build_path(schema, table, field, primary_key, ext=ext)
+        path, token = self._build_path(
+            schema, table, field, primary_key, ext=ext, store_name=store_name
+        )
 
         # Get storage backend using inherited helper
         backend = self._get_backend(store_name)
@@ -1232,7 +1247,9 @@ class NpyCodec(SchemaCodec):
         schema, table, field, primary_key = self._extract_context(key)
 
         # Build schema-addressed storage path
-        path, _ = self._build_path(schema, table, field, primary_key, ext=".npy")
+        path, _ = self._build_path(
+            schema, table, field, primary_key, ext=".npy", store_name=store_name
+        )
 
         # Serialize to .npy format
         buffer = io.BytesIO()
