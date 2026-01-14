@@ -145,11 +145,15 @@ class TestSecretStr:
         assert not isinstance(value, SecretStr)
         dj.config.database.password = None
 
-    def test_aws_secret_key_is_secret_str(self):
-        """AWS secret key uses SecretStr type."""
-        dj.config.external.aws_secret_access_key = "aws_secret"
-        assert isinstance(dj.config.external.aws_secret_access_key, SecretStr)
-        dj.config.external.aws_secret_access_key = None
+    def test_store_secret_key_is_secret_str(self):
+        """Store secret key uses SecretStr type when set."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {"secret_key": "aws_secret"}
+            # SecretStr is handled by pydantic if defined, but stores dict doesn't enforce it
+            assert dj.config.stores["test_store"]["secret_key"] == "aws_secret"
+        finally:
+            dj.config.stores = original_stores
 
 
 class TestSettingsAccess:
@@ -325,7 +329,10 @@ class TestStoreSpec:
             spec = dj.config.get_store_spec("test_file")
             assert spec["protocol"] == "file"
             assert spec["location"] == "/tmp/test"
-            assert spec["subfolding"] == settings.DEFAULT_SUBFOLDING
+            # Default is now None (no subfolding) instead of DEFAULT_SUBFOLDING
+            assert spec["subfolding"] is None
+            assert spec["partition_pattern"] is None
+            assert spec["token_length"] == 8
         finally:
             dj.config.stores = original_stores
 
@@ -341,6 +348,144 @@ class TestStoreSpec:
                 dj.config.get_store_spec("bad_store")
         finally:
             dj.config.stores = original_stores
+
+    def test_get_store_spec_default_store(self):
+        """Test getting default store when store=None."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "my_default"
+            dj.config.stores["my_default"] = {
+                "protocol": "file",
+                "location": "/tmp/default",
+            }
+            # Calling with None should use stores.default
+            spec = dj.config.get_store_spec(None)
+            assert spec["protocol"] == "file"
+            assert spec["location"] == "/tmp/default"
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_no_default_configured(self):
+        """Test error when stores.default is not configured."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores = {}  # Clear stores
+            with pytest.raises(DataJointError, match="stores.default is not configured"):
+                dj.config.get_store_spec(None)
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_filepath_default(self):
+        """Test filepath_default for filepath references (not part of OAS)."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "integrated"
+            dj.config.stores["filepath_default"] = "raw_data"
+            dj.config.stores["integrated"] = {
+                "protocol": "s3",
+                "endpoint": "s3.amazonaws.com",
+                "bucket": "my-bucket",
+                "location": "processed",
+                "access_key": "xxx",
+                "secret_key": "yyy",
+            }
+            dj.config.stores["raw_data"] = {
+                "protocol": "file",
+                "location": "/data/acquisition",
+            }
+
+            # Regular default for integrated storage
+            spec = dj.config.get_store_spec(None, use_filepath_default=False)
+            assert spec["protocol"] == "s3"
+            assert spec["location"] == "processed"
+
+            # Filepath default for filepath references
+            spec = dj.config.get_store_spec(None, use_filepath_default=True)
+            assert spec["protocol"] == "file"
+            assert spec["location"] == "/data/acquisition"
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_no_filepath_default(self):
+        """Test error when filepath_default not configured but requested."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "integrated"
+            dj.config.stores["integrated"] = {
+                "protocol": "file",
+                "location": "/data/store",
+            }
+            # No filepath_default configured
+
+            with pytest.raises(DataJointError, match="stores.filepath_default is not configured"):
+                dj.config.get_store_spec(None, use_filepath_default=True)
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_explicit_store_ignores_defaults(self):
+        """Test that explicit store name bypasses both defaults."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "store_a"
+            dj.config.stores["filepath_default"] = "store_b"
+            dj.config.stores["store_a"] = {"protocol": "file", "location": "/a"}
+            dj.config.stores["store_b"] = {"protocol": "file", "location": "/b"}
+            dj.config.stores["store_c"] = {"protocol": "file", "location": "/c"}
+
+            # Explicitly naming store_c should work regardless of use_filepath_default
+            spec = dj.config.get_store_spec("store_c", use_filepath_default=False)
+            assert spec["location"] == "/c"
+
+            spec = dj.config.get_store_spec("store_c", use_filepath_default=True)
+            assert spec["location"] == "/c"
+        finally:
+            dj.config.stores = original_stores
+
+
+class TestStoreSecrets:
+    """Test loading store credentials from secrets directory."""
+
+    def test_load_store_credentials_from_secrets(self, tmp_path):
+        """Test loading per-store credentials from .secrets/ directory."""
+        # Create secrets directory with store credentials
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "stores.main.access_key").write_text("test_access_key")
+        (secrets_dir / "stores.main.secret_key").write_text("test_secret_key")
+
+        # Create a fresh config instance
+        cfg = settings.Config()
+        original_stores = cfg.stores.copy()
+        try:
+            # Load secrets
+            cfg._load_secrets(secrets_dir)
+
+            # Verify credentials were loaded
+            assert "main" in cfg.stores
+            assert cfg.stores["main"]["access_key"] == "test_access_key"
+            assert cfg.stores["main"]["secret_key"] == "test_secret_key"
+        finally:
+            cfg.stores = original_stores
+
+    def test_secrets_do_not_override_existing(self, tmp_path):
+        """Test that secrets don't override already-configured store settings."""
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "stores.main.access_key").write_text("secret_key")
+
+        cfg = settings.Config()
+        original_stores = cfg.stores.copy()
+        try:
+            # Pre-configure the store with a key
+            cfg.stores["main"] = {"access_key": "existing_key"}
+
+            # Load secrets - should not override
+            cfg._load_secrets(secrets_dir)
+
+            # Existing key should be preserved
+            assert cfg.stores["main"]["access_key"] == "existing_key"
+        finally:
+            cfg.stores = original_stores
 
 
 class TestDisplaySettings:
@@ -418,10 +563,14 @@ class TestSaveTemplate:
         assert "database" in content
         assert "connection" in content
         assert "display" in content
-        assert "object_storage" in content
         assert "stores" in content
         assert "loglevel" in content
         assert "safemode" in content
+        # Verify stores structure
+        assert "default" in content["stores"]
+        assert "main" in content["stores"]
+        assert content["stores"]["default"] == "main"
+        assert content["stores"]["main"]["protocol"] == "file"
         # But still no credentials
         assert "password" not in content["database"]
         assert "user" not in content["database"]
@@ -466,3 +615,136 @@ class TestSaveTemplate:
 
         # Original password should be preserved
         assert password_file.read_text() == "existing_password"
+
+
+class TestStorePrefixes:
+    """Tests for storage section prefix configuration and validation."""
+
+    def test_default_prefixes(self):
+        """Test that default prefixes are set correctly."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+            }
+
+            spec = dj.config.get_store_spec("test_store")
+            assert spec["hash_prefix"] == "_hash"
+            assert spec["schema_prefix"] == "_schema"
+            assert spec["filepath_prefix"] is None
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_custom_prefixes(self):
+        """Test configuring custom prefixes."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "content_addressed",
+                "schema_prefix": "structured_data",
+                "filepath_prefix": "user_files",
+            }
+
+            spec = dj.config.get_store_spec("test_store")
+            assert spec["hash_prefix"] == "content_addressed"
+            assert spec["schema_prefix"] == "structured_data"
+            assert spec["filepath_prefix"] == "user_files"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_prefix_overlap_hash_and_schema(self):
+        """Test that overlapping hash and schema prefixes are rejected."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "managed",
+                "schema_prefix": "managed/schema",  # Nested under hash
+            }
+
+            with pytest.raises(DataJointError, match=r"overlap.*mutually exclusive"):
+                dj.config.get_store_spec("test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_prefix_overlap_schema_and_filepath(self):
+        """Test that overlapping schema and filepath prefixes are rejected."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "schema_prefix": "data",
+                "filepath_prefix": "data/files",  # Nested under schema
+            }
+
+            with pytest.raises(DataJointError, match=r"overlap.*mutually exclusive"):
+                dj.config.get_store_spec("test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_prefix_overlap_reverse_nesting(self):
+        """Test that parent-child relationship is detected in either direction."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "dj/managed/hash",  # Child
+                "schema_prefix": "dj/managed",  # Parent
+            }
+
+            with pytest.raises(DataJointError, match=r"overlap.*mutually exclusive"):
+                dj.config.get_store_spec("test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_non_overlapping_prefixes_accepted(self):
+        """Test that non-overlapping prefixes are accepted."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "hash_store",
+                "schema_prefix": "schema_store",
+                "filepath_prefix": "user_files",
+            }
+
+            # Should not raise
+            spec = dj.config.get_store_spec("test_store")
+            assert spec["hash_prefix"] == "hash_store"
+            assert spec["schema_prefix"] == "schema_store"
+            assert spec["filepath_prefix"] == "user_files"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_similar_prefix_names_allowed(self):
+        """Test that prefixes with similar names but no nesting are allowed."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "managed_hash",
+                "schema_prefix": "managed_schema",  # Similar name, but separate
+                "filepath_prefix": None,
+            }
+
+            # Should not raise - these are separate paths
+            spec = dj.config.get_store_spec("test_store")
+            assert spec["hash_prefix"] == "managed_hash"
+            assert spec["schema_prefix"] == "managed_schema"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)

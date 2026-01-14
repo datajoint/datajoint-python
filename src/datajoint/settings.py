@@ -60,8 +60,6 @@ ENV_VAR_MAPPING = {
     "database.user": "DJ_USER",
     "database.password": "DJ_PASS",
     "database.port": "DJ_PORT",
-    "external.aws_access_key_id": "DJ_AWS_ACCESS_KEY_ID",
-    "external.aws_secret_access_key": "DJ_AWS_SECRET_ACCESS_KEY",
     "loglevel": "DJ_LOG_LEVEL",
 }
 
@@ -208,18 +206,24 @@ class DisplaySettings(BaseSettings):
     show_tuple_count: bool = True
 
 
-class ExternalSettings(BaseSettings):
-    """External storage credentials."""
+class StoresSettings(BaseSettings):
+    """
+    Unified external storage configuration.
+
+    Stores configuration supports both hash-addressed and schema-addressed storage
+    using the same named stores with _hash and _schema sections.
+    """
 
     model_config = SettingsConfigDict(
-        env_prefix="DJ_",
         case_sensitive=False,
-        extra="forbid",
+        extra="allow",  # Allow dynamic store names
         validate_assignment=True,
     )
 
-    aws_access_key_id: str | None = Field(default=None, validation_alias="DJ_AWS_ACCESS_KEY_ID")
-    aws_secret_access_key: SecretStr | None = Field(default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY")
+    default: str | None = Field(default=None, description="Name of the default store")
+
+    # Named stores are added dynamically as stores.<name>.*
+    # Structure: stores.<name>.protocol, stores.<name>.location, etc.
 
 
 class JobsSettings(BaseSettings):
@@ -250,38 +254,6 @@ class JobsSettings(BaseSettings):
         "to Computed and Imported tables during declaration. Tables created without this setting "
         "will not receive metadata updates during populate.",
     )
-
-
-class ObjectStorageSettings(BaseSettings):
-    """Object storage configuration for the object type."""
-
-    model_config = SettingsConfigDict(
-        env_prefix="DJ_OBJECT_STORAGE_",
-        case_sensitive=False,
-        extra="forbid",
-        validate_assignment=True,
-    )
-
-    # Required settings
-    project_name: str | None = Field(default=None, description="Unique project identifier")
-    protocol: str | None = Field(default=None, description="Storage protocol: file, s3, gcs, azure")
-    location: str | None = Field(default=None, description="Base path or bucket prefix")
-
-    # Cloud storage settings
-    bucket: str | None = Field(default=None, description="Bucket name (S3, GCS)")
-    container: str | None = Field(default=None, description="Container name (Azure)")
-    endpoint: str | None = Field(default=None, description="S3 endpoint URL")
-    access_key: str | None = Field(default=None, description="Access key")
-    secret_key: SecretStr | None = Field(default=None, description="Secret key")
-    secure: bool = Field(default=True, description="Use HTTPS")
-
-    # Optional settings
-    default_store: str | None = Field(default=None, description="Default store name when not specified")
-    partition_pattern: str | None = Field(default=None, description="Path pattern with {attribute} placeholders")
-    token_length: int = Field(default=8, ge=4, le=16, description="Random suffix length for filenames")
-
-    # Named stores configuration (object_storage.stores.<name>.*)
-    stores: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Named object stores")
 
 
 class Config(BaseSettings):
@@ -319,18 +291,21 @@ class Config(BaseSettings):
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     connection: ConnectionSettings = Field(default_factory=ConnectionSettings)
     display: DisplaySettings = Field(default_factory=DisplaySettings)
-    external: ExternalSettings = Field(default_factory=ExternalSettings)
     jobs: JobsSettings = Field(default_factory=JobsSettings)
-    object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
+
+    # Unified stores configuration (replaces external and object_storage)
+    stores: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Unified external storage configuration. "
+        "Use stores.default to designate default store. "
+        "Configure named stores as stores.<name>.protocol, stores.<name>.location, etc.",
+    )
 
     # Top-level settings
     loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO", validation_alias="DJ_LOG_LEVEL")
     safemode: bool = True
     enable_python_native_blobs: bool = True
     filepath_checksum_size_limit: int | None = None
-
-    # External stores configuration
-    stores: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     # Cache paths
     cache: Path | None = None
@@ -358,14 +333,18 @@ class Config(BaseSettings):
             return None
         return Path(v) if not isinstance(v, Path) else v
 
-    def get_store_spec(self, store: str) -> dict[str, Any]:
+    def get_store_spec(self, store: str | None = None, *, use_filepath_default: bool = False) -> dict[str, Any]:
         """
-        Get configuration for an external store.
+        Get configuration for a storage store.
 
         Parameters
         ----------
-        store : str
-            Name of the store to retrieve.
+        store : str, optional
+            Name of the store to retrieve. If None, uses the appropriate default.
+        use_filepath_default : bool, optional
+            If True and store is None, uses stores.filepath_default instead of
+            stores.default. Use for filepath references which are not part of OAS.
+            Default: False (use stores.default for integrated storage).
 
         Returns
         -------
@@ -377,11 +356,41 @@ class Config(BaseSettings):
         DataJointError
             If store is not configured or has invalid config.
         """
+        # Handle default store
+        if store is None:
+            if use_filepath_default:
+                # Filepath references use separate default (not part of OAS)
+                if "filepath_default" not in self.stores:
+                    raise DataJointError(
+                        "stores.filepath_default is not configured. "
+                        "Set stores.filepath_default or specify store explicitly with <filepath@store>"
+                    )
+                store = self.stores["filepath_default"]
+            else:
+                # Integrated storage (hash, schema) uses stores.default
+                if "default" not in self.stores:
+                    raise DataJointError("stores.default is not configured")
+                store = self.stores["default"]
+
+            if not isinstance(store, str):
+                default_key = "filepath_default" if use_filepath_default else "default"
+                raise DataJointError(f"stores.{default_key} must be a string")
+
+        # Check store exists
         if store not in self.stores:
-            raise DataJointError(f"Storage '{store}' is requested but not configured")
+            raise DataJointError(f"Storage '{store}' is requested but not configured in stores")
 
         spec = dict(self.stores[store])
-        spec.setdefault("subfolding", DEFAULT_SUBFOLDING)
+
+        # Set defaults for optional fields (common to all protocols)
+        spec.setdefault("subfolding", None)  # No subfolding by default
+        spec.setdefault("partition_pattern", None)  # No partitioning by default
+        spec.setdefault("token_length", 8)  # Default token length
+
+        # Set defaults for storage section prefixes
+        spec.setdefault("hash_prefix", "_hash")  # Hash-addressed storage section
+        spec.setdefault("schema_prefix", "_schema")  # Schema-addressed storage section
+        spec.setdefault("filepath_prefix", None)  # Filepath storage (unrestricted by default)
 
         # Validate protocol
         protocol = spec.get("protocol", "").lower()
@@ -392,6 +401,10 @@ class Config(BaseSettings):
                 f"Supported protocols: {', '.join(supported_protocols)}"
             )
 
+        # Set protocol-specific defaults
+        if protocol == "s3":
+            spec.setdefault("secure", True)  # HTTPS by default for S3
+
         # Define required and allowed keys by protocol
         required_keys: dict[str, tuple[str, ...]] = {
             "file": ("protocol", "location"),
@@ -400,7 +413,17 @@ class Config(BaseSettings):
             "azure": ("protocol", "container", "location"),
         }
         allowed_keys: dict[str, tuple[str, ...]] = {
-            "file": ("protocol", "location", "subfolding", "stage"),
+            "file": (
+                "protocol",
+                "location",
+                "subfolding",
+                "partition_pattern",
+                "token_length",
+                "hash_prefix",
+                "schema_prefix",
+                "filepath_prefix",
+                "stage",
+            ),
             "s3": (
                 "protocol",
                 "endpoint",
@@ -410,6 +433,11 @@ class Config(BaseSettings):
                 "location",
                 "secure",
                 "subfolding",
+                "partition_pattern",
+                "token_length",
+                "hash_prefix",
+                "schema_prefix",
+                "filepath_prefix",
                 "stage",
                 "proxy_server",
             ),
@@ -420,6 +448,11 @@ class Config(BaseSettings):
                 "token",
                 "project",
                 "subfolding",
+                "partition_pattern",
+                "token_length",
+                "hash_prefix",
+                "schema_prefix",
+                "filepath_prefix",
                 "stage",
             ),
             "azure": (
@@ -430,6 +463,11 @@ class Config(BaseSettings):
                 "account_key",
                 "connection_string",
                 "subfolding",
+                "partition_pattern",
+                "token_length",
+                "hash_prefix",
+                "schema_prefix",
+                "filepath_prefix",
                 "stage",
             ),
         }
@@ -444,165 +482,67 @@ class Config(BaseSettings):
         if invalid:
             raise DataJointError(f'Invalid key(s) in config.stores["{store}"]: {", ".join(invalid)}')
 
-        return spec
-
-    def get_object_storage_spec(self) -> dict[str, Any]:
-        """
-        Get validated object storage configuration.
-
-        Returns
-        -------
-        dict[str, Any]
-            Object storage configuration dict.
-
-        Raises
-        ------
-        DataJointError
-            If object storage is not configured or has invalid config.
-        """
-        os_settings = self.object_storage
-
-        # Check if object storage is configured
-        if not os_settings.protocol:
-            raise DataJointError(
-                "Object storage is not configured. Set object_storage.protocol in datajoint.json "
-                "or DJ_OBJECT_STORAGE_PROTOCOL environment variable."
-            )
-
-        if not os_settings.project_name:
-            raise DataJointError(
-                "Object storage project_name is required. Set object_storage.project_name in datajoint.json "
-                "or DJ_OBJECT_STORAGE_PROJECT_NAME environment variable."
-            )
-
-        protocol = os_settings.protocol.lower()
-        supported_protocols = ("file", "s3", "gcs", "azure")
-        if protocol not in supported_protocols:
-            raise DataJointError(
-                f"Invalid object_storage.protocol: {protocol}. Supported protocols: {', '.join(supported_protocols)}"
-            )
-
-        # Build spec dict
-        spec = {
-            "project_name": os_settings.project_name,
-            "protocol": protocol,
-            "location": os_settings.location or "",
-            "partition_pattern": os_settings.partition_pattern,
-            "token_length": os_settings.token_length,
-        }
-
-        # Add protocol-specific settings
-        if protocol == "s3":
-            if not os_settings.endpoint or not os_settings.bucket:
-                raise DataJointError("object_storage.endpoint and object_storage.bucket are required for S3")
-            if not os_settings.access_key or not os_settings.secret_key:
-                raise DataJointError("object_storage.access_key and object_storage.secret_key are required for S3")
-            spec.update(
-                {
-                    "endpoint": os_settings.endpoint,
-                    "bucket": os_settings.bucket,
-                    "access_key": os_settings.access_key,
-                    "secret_key": os_settings.secret_key.get_secret_value() if os_settings.secret_key else None,
-                    "secure": os_settings.secure,
-                }
-            )
-        elif protocol == "gcs":
-            if not os_settings.bucket:
-                raise DataJointError("object_storage.bucket is required for GCS")
-            spec["bucket"] = os_settings.bucket
-        elif protocol == "azure":
-            if not os_settings.container:
-                raise DataJointError("object_storage.container is required for Azure")
-            spec["container"] = os_settings.container
+        # Validate prefix separation to prevent overlap
+        self._validate_prefix_separation(
+            store_name=store,
+            hash_prefix=spec.get("hash_prefix"),
+            schema_prefix=spec.get("schema_prefix"),
+            filepath_prefix=spec.get("filepath_prefix"),
+        )
 
         return spec
 
-    def get_object_store_spec(self, store_name: str | None = None) -> dict[str, Any]:
+    def _validate_prefix_separation(
+        self,
+        store_name: str,
+        hash_prefix: str | None,
+        schema_prefix: str | None,
+        filepath_prefix: str | None,
+    ) -> None:
         """
-        Get validated configuration for a specific object store.
+        Validate that storage section prefixes don't overlap.
 
         Parameters
         ----------
-        store_name : str, optional
-            Name of the store. None for default store.
-
-        Returns
-        -------
-        dict[str, Any]
-            Object store configuration dict.
+        store_name : str
+            Name of the store being validated (for error messages).
+        hash_prefix : str or None
+            Prefix for hash-addressed storage.
+        schema_prefix : str or None
+            Prefix for schema-addressed storage.
+        filepath_prefix : str or None
+            Prefix for filepath storage (None means unrestricted).
 
         Raises
         ------
         DataJointError
-            If store is not configured or has invalid config.
+            If any prefixes overlap (one is a parent/child of another).
         """
-        if store_name is None:
-            # Return default store spec
-            return self.get_object_storage_spec()
+        # Collect non-null prefixes with their names
+        prefixes = []
+        if hash_prefix:
+            prefixes.append(("hash_prefix", hash_prefix))
+        if schema_prefix:
+            prefixes.append(("schema_prefix", schema_prefix))
+        if filepath_prefix:
+            prefixes.append(("filepath_prefix", filepath_prefix))
 
-        os_settings = self.object_storage
+        # Normalize prefixes: remove leading/trailing slashes, ensure trailing slash for comparison
+        def normalize(p: str) -> str:
+            return p.strip("/") + "/"
 
-        # Check if named store exists
-        if store_name not in os_settings.stores:
-            raise DataJointError(
-                f"Object store '{store_name}' is not configured. "
-                f"Add object_storage.stores.{store_name}.* settings to datajoint.json"
-            )
+        normalized = [(name, normalize(prefix)) for name, prefix in prefixes]
 
-        store_config = os_settings.stores[store_name]
-        protocol = store_config.get("protocol", "").lower()
-
-        supported_protocols = ("file", "s3", "gcs", "azure")
-        if protocol not in supported_protocols:
-            raise DataJointError(
-                f"Invalid protocol for store '{store_name}': {protocol}. Supported protocols: {', '.join(supported_protocols)}"
-            )
-
-        # Use project_name from default config if not specified in store
-        project_name = store_config.get("project_name") or os_settings.project_name
-        if not project_name:
-            raise DataJointError(
-                f"project_name is required for object store '{store_name}'. "
-                "Set object_storage.project_name or object_storage.stores.{store_name}.project_name"
-            )
-
-        # Build spec dict
-        spec = {
-            "project_name": project_name,
-            "protocol": protocol,
-            "location": store_config.get("location", ""),
-            "partition_pattern": store_config.get("partition_pattern") or os_settings.partition_pattern,
-            "token_length": store_config.get("token_length") or os_settings.token_length,
-            "store_name": store_name,
-        }
-
-        # Add protocol-specific settings
-        if protocol == "s3":
-            endpoint = store_config.get("endpoint")
-            bucket = store_config.get("bucket")
-            if not endpoint or not bucket:
-                raise DataJointError(f"endpoint and bucket are required for S3 store '{store_name}'")
-            spec.update(
-                {
-                    "endpoint": endpoint,
-                    "bucket": bucket,
-                    "access_key": store_config.get("access_key"),
-                    "secret_key": store_config.get("secret_key"),
-                    "secure": store_config.get("secure", True),
-                }
-            )
-        elif protocol == "gcs":
-            bucket = store_config.get("bucket")
-            if not bucket:
-                raise DataJointError(f"bucket is required for GCS store '{store_name}'")
-            spec["bucket"] = bucket
-        elif protocol == "azure":
-            container = store_config.get("container")
-            if not container:
-                raise DataJointError(f"container is required for Azure store '{store_name}'")
-            spec["container"] = container
-
-        return spec
+        # Check each pair for overlap
+        for i, (name1, p1) in enumerate(normalized):
+            for j, (name2, p2) in enumerate(normalized[i + 1 :], start=i + 1):
+                # Check if one prefix is a parent of another
+                if p1.startswith(p2) or p2.startswith(p1):
+                    raise DataJointError(
+                        f'config.stores["{store_name}"]: {name1}="{prefixes[i][1]}" and '
+                        f'{name2}="{prefixes[j][1]}" overlap. '
+                        f"Storage section prefixes must be mutually exclusive."
+                    )
 
     def load(self, filename: str | Path) -> None:
         """
@@ -633,6 +573,13 @@ class Config(BaseSettings):
         If an env var is set for a setting, the file value is skipped.
         """
         for key, value in data.items():
+            # Special handling for stores - accept nested dict directly
+            if key == "stores" and isinstance(value, dict):
+                # Merge stores dict
+                for store_key, store_value in value.items():
+                    self.stores[store_key] = store_value
+                continue
+
             # Handle nested dicts by recursively updating
             if isinstance(value, dict) and hasattr(self, key):
                 group_obj = getattr(self, key)
@@ -668,34 +615,49 @@ class Config(BaseSettings):
                             logger.debug(f"Skipping {key} from file (env var {env_var} takes precedence)")
                             continue
                         setattr(group_obj, attr, value)
-            elif len(parts) == 4:
-                # Handle object_storage.stores.<name>.<attr> pattern
-                group, subgroup, store_name, attr = parts
-                if group == "object_storage" and subgroup == "stores":
-                    if store_name not in self.object_storage.stores:
-                        self.object_storage.stores[store_name] = {}
-                    self.object_storage.stores[store_name][attr] = value
+            elif len(parts) == 3:
+                # Handle stores.<name>.<attr> pattern
+                group, store_name, attr = parts
+                if group == "stores":
+                    if store_name not in self.stores:
+                        self.stores[store_name] = {}
+                    self.stores[store_name][attr] = value
 
     def _load_secrets(self, secrets_dir: Path) -> None:
         """Load secrets from a secrets directory."""
         self._secrets_dir = secrets_dir
 
-        # Map of secret file names to config paths
-        secret_mappings = {
-            "database.password": ("database", "password"),
-            "database.user": ("database", "user"),
-            "aws.access_key_id": ("external", "aws_access_key_id"),
-            "aws.secret_access_key": ("external", "aws_secret_access_key"),
-        }
+        # Load database secrets
+        db_user = read_secret_file(secrets_dir, "database.user")
+        if db_user is not None and self.database.user is None:
+            self.database.user = db_user
+            logger.debug(f"Loaded database.user from {secrets_dir}")
 
-        for secret_name, (group, attr) in secret_mappings.items():
-            value = read_secret_file(secrets_dir, secret_name)
-            if value is not None:
-                group_obj = getattr(self, group)
-                # Only set if not already set by env var
-                if getattr(group_obj, attr) is None:
-                    setattr(group_obj, attr, value)
-                    logger.debug(f"Loaded secret '{secret_name}' from {secrets_dir}")
+        db_password = read_secret_file(secrets_dir, "database.password")
+        if db_password is not None and self.database.password is None:
+            self.database.password = db_password
+            logger.debug(f"Loaded database.password from {secrets_dir}")
+
+        # Load per-store secrets (stores.<name>.access_key, stores.<name>.secret_key)
+        # Iterate through all files in secrets directory
+        if secrets_dir.is_dir():
+            for secret_file in secrets_dir.iterdir():
+                if not secret_file.is_file() or secret_file.name.startswith("."):
+                    continue
+
+                parts = secret_file.name.split(".")
+                # Check for stores.<name>.access_key or stores.<name>.secret_key pattern
+                if len(parts) == 3 and parts[0] == "stores":
+                    store_name, attr = parts[1], parts[2]
+                    if attr in ("access_key", "secret_key"):
+                        value = secret_file.read_text().strip()
+                        # Initialize store dict if needed
+                        if store_name not in self.stores:
+                            self.stores[store_name] = {}
+                        # Only set if not already present
+                        if attr not in self.stores[store_name]:
+                            self.stores[store_name][attr] = value
+                            logger.debug(f"Loaded stores.{store_name}.{attr} from {secrets_dir}")
 
     @contextmanager
     def override(self, **kwargs: Any) -> Iterator["Config"]:
@@ -828,17 +790,21 @@ class Config(BaseSettings):
                     "width": 14,
                     "show_tuple_count": True,
                 },
-                "object_storage": {
-                    "project_name": None,
-                    "protocol": None,
-                    "location": None,
-                    "bucket": None,
-                    "endpoint": None,
-                    "secure": True,
-                    "partition_pattern": None,
-                    "token_length": 8,
+                "stores": {
+                    "default": "main",
+                    "filepath_default": "raw_data",
+                    "main": {
+                        "protocol": "file",
+                        "location": "/data/my-project/main",
+                        "partition_pattern": None,
+                        "token_length": 8,
+                        "subfolding": None,
+                    },
+                    "raw_data": {
+                        "protocol": "file",
+                        "location": "/data/my-project/raw",
+                    },
                 },
-                "stores": {},
                 "loglevel": "INFO",
                 "safemode": True,
                 "enable_python_native_blobs": True,

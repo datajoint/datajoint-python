@@ -323,12 +323,15 @@ class SchemaCodec(Codec, register=False):
         field: str,
         primary_key: dict,
         ext: str | None = None,
+        store_name: str | None = None,
     ) -> tuple[str, str]:
         """
         Build schema-addressed storage path.
 
         Constructs a path that mirrors the database schema structure:
         ``{schema}/{table}/{pk_values}/{field}{ext}``
+
+        Supports partitioning if configured in the store.
 
         Parameters
         ----------
@@ -342,6 +345,8 @@ class SchemaCodec(Codec, register=False):
             Primary key values.
         ext : str, optional
             File extension (e.g., ".npy", ".zarr").
+        store_name : str, optional
+            Store name for retrieving partition configuration.
 
         Returns
         -------
@@ -350,6 +355,12 @@ class SchemaCodec(Codec, register=False):
             is a unique identifier.
         """
         from .storage import build_object_path
+        from . import config
+
+        # Get store configuration for partition_pattern and token_length
+        spec = config.get_store_spec(store_name)
+        partition_pattern = spec.get("partition_pattern")
+        token_length = spec.get("token_length", 8)
 
         return build_object_path(
             schema=schema,
@@ -357,6 +368,8 @@ class SchemaCodec(Codec, register=False):
             field=field,
             primary_key=primary_key,
             ext=ext,
+            partition_pattern=partition_pattern,
+            token_length=token_length,
         )
 
     def _get_backend(self, store_name: str | None = None):
@@ -518,7 +531,7 @@ class ObjectCodec(SchemaCodec):
             raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
 
         # Build storage path using inherited helper
-        path, token = self._build_path(schema, table, field, primary_key, ext=ext)
+        path, token = self._build_path(schema, table, field, primary_key, ext=ext, store_name=store_name)
 
         # Get storage backend using inherited helper
         backend = self._get_backend(store_name)
@@ -733,10 +746,16 @@ class FilepathCodec(Codec):
 
     External only - requires @store.
 
+    This codec gives users maximum freedom in organizing their files while
+    reusing DataJoint's store configuration. Files can be placed anywhere
+    in the store EXCEPT the reserved ``_hash/`` and ``_schema/`` sections
+    which are managed by DataJoint.
+
     This is useful when:
     - Files are managed externally (e.g., by acquisition software)
     - Files are too large to copy
     - You want to reference shared datasets
+    - You need custom directory structures
 
     Example::
 
@@ -749,6 +768,7 @@ class FilepathCodec(Codec):
             '''
 
         # Reference an existing file (no copy)
+        # Path is relative to store location
         table.insert1({'recording_id': 1, 'raw_data': 'subject01/session001/data.bin'})
 
         # Fetch returns ObjectRef for lazy access
@@ -757,7 +777,10 @@ class FilepathCodec(Codec):
         ref.download()  # Download to local path
 
     Storage Format:
-        JSON metadata: ``{path, store}``
+        JSON metadata: ``{path, store, size, timestamp}``
+
+    Reserved Sections:
+        Paths cannot start with ``_hash/`` or ``_schema/`` - these are managed by DataJoint.
 
     Warning:
         The file must exist in the store at the specified path.
@@ -769,7 +792,9 @@ class FilepathCodec(Codec):
     def get_dtype(self, is_store: bool) -> str:
         """Filepath is external only."""
         if not is_store:
-            raise DataJointError("<filepath> requires @store")
+            raise DataJointError(
+                "<filepath> requires @ symbol. Use <filepath@> for default store " "or <filepath@store> to specify store."
+            )
         return "json"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> dict:
@@ -779,7 +804,7 @@ class FilepathCodec(Codec):
         Parameters
         ----------
         value : str
-            Relative path within the store.
+            Relative path within the store. Cannot use reserved sections (_hash/, _schema/).
         key : dict, optional
             Primary key values (unused).
         store_name : str, optional
@@ -789,14 +814,55 @@ class FilepathCodec(Codec):
         -------
         dict
             Metadata dict: ``{path, store}``.
+
+        Raises
+        ------
+        ValueError
+            If path uses reserved sections (_hash/ or _schema/).
+        FileNotFoundError
+            If file does not exist in the store.
         """
         from datetime import datetime, timezone
 
+        from . import config
         from .hash_registry import get_store_backend
 
         path = str(value)
 
-        # Optionally verify file exists
+        # Get store spec to check prefix configuration
+        # Use filepath_default if no store specified (filepath is not part of OAS)
+        spec = config.get_store_spec(store_name, use_filepath_default=True)
+
+        # Validate path doesn't use reserved sections (hash and schema)
+        path_normalized = path.lstrip("/")
+        reserved_prefixes = []
+
+        hash_prefix = spec.get("hash_prefix")
+        if hash_prefix:
+            reserved_prefixes.append(("hash_prefix", hash_prefix))
+
+        schema_prefix = spec.get("schema_prefix")
+        if schema_prefix:
+            reserved_prefixes.append(("schema_prefix", schema_prefix))
+
+        # Check if path starts with any reserved prefix
+        for prefix_name, prefix_value in reserved_prefixes:
+            prefix_normalized = prefix_value.strip("/") + "/"
+            if path_normalized.startswith(prefix_normalized):
+                raise ValueError(
+                    f"<filepath@> cannot use reserved section '{prefix_value}' ({prefix_name}). "
+                    f"This section is managed by DataJoint. "
+                    f"Got path: {path}"
+                )
+
+        # If filepath_prefix is configured, enforce it
+        filepath_prefix = spec.get("filepath_prefix")
+        if filepath_prefix:
+            filepath_prefix_normalized = filepath_prefix.strip("/") + "/"
+            if not path_normalized.startswith(filepath_prefix_normalized):
+                raise ValueError(f"<filepath@> must use prefix '{filepath_prefix}' (filepath_prefix). " f"Got path: {path}")
+
+        # Verify file exists
         backend = get_store_backend(store_name)
         if not backend.exists(path):
             raise FileNotFoundError(f"File not found in store '{store_name or 'default'}': {path}")
@@ -1179,7 +1245,7 @@ class NpyCodec(SchemaCodec):
         schema, table, field, primary_key = self._extract_context(key)
 
         # Build schema-addressed storage path
-        path, _ = self._build_path(schema, table, field, primary_key, ext=".npy")
+        path, _ = self._build_path(schema, table, field, primary_key, ext=".npy", store_name=store_name)
 
         # Serialize to .npy format
         buffer = io.BytesIO()

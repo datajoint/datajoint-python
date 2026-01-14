@@ -375,23 +375,20 @@ def stores_config(s3_creds, tmpdir_factory):
 
 @pytest.fixture
 def mock_stores(stores_config):
-    """Configure object storage stores for tests using new object_storage system."""
+    """Configure stores for tests using unified stores system."""
     # Save original configuration
-    og_project_name = dj.config.object_storage.project_name
-    og_stores = dict(dj.config.object_storage.stores)
+    og_stores = dict(dj.config.stores)
 
     # Set test configuration
-    dj.config.object_storage.project_name = "djtest"
-    dj.config.object_storage.stores.clear()
+    dj.config.stores.clear()
     for name, config in stores_config.items():
-        dj.config.object_storage.stores[name] = config
+        dj.config.stores[name] = config
 
     yield
 
     # Restore original configuration
-    dj.config.object_storage.project_name = og_project_name
-    dj.config.object_storage.stores.clear()
-    dj.config.object_storage.stores.update(og_stores)
+    dj.config.stores.clear()
+    dj.config.stores.update(og_stores)
 
 
 @pytest.fixture
@@ -827,9 +824,14 @@ def trash(schema_any):
 @pytest.fixture
 def object_storage_config(tmpdir_factory):
     """Create object storage configuration for testing."""
-    location = str(tmpdir_factory.mktemp("object_storage"))
+    base_location = str(tmpdir_factory.mktemp("object_storage"))
+    # Location now includes project context
+    location = f"{base_location}/test_project"
+    # Create the directory (StorageBackend validates it exists)
+    from pathlib import Path
+
+    Path(location).mkdir(parents=True, exist_ok=True)
     return {
-        "project_name": "test_project",
         "protocol": "file",
         "location": location,
         "token_length": 8,
@@ -838,37 +840,23 @@ def object_storage_config(tmpdir_factory):
 
 @pytest.fixture
 def mock_object_storage(object_storage_config):
-    """Mock object storage configuration in datajoint config."""
+    """Mock object storage configuration in datajoint config using unified stores."""
     # Save original values
-    original = {
-        "project_name": dj.config.object_storage.project_name,
-        "protocol": dj.config.object_storage.protocol,
-        "location": dj.config.object_storage.location,
-        "token_length": dj.config.object_storage.token_length,
-        "stores": dict(dj.config.object_storage.stores),
-    }
+    original_stores = dict(dj.config.stores)
 
-    # Set test values
-    dj.config.object_storage.project_name = object_storage_config["project_name"]
-    dj.config.object_storage.protocol = object_storage_config["protocol"]
-    dj.config.object_storage.location = object_storage_config["location"]
-    dj.config.object_storage.token_length = object_storage_config.get("token_length", 8)
-
-    # Configure 'local' store using same location
-    dj.config.object_storage.stores["local"] = {
-        "protocol": "file",
+    # Configure default store for tests
+    dj.config.stores["default"] = "local"
+    dj.config.stores["local"] = {
+        "protocol": object_storage_config["protocol"],
         "location": object_storage_config["location"],
+        "token_length": object_storage_config.get("token_length", 8),
     }
 
     yield object_storage_config
 
     # Restore original values
-    dj.config.object_storage.project_name = original["project_name"]
-    dj.config.object_storage.protocol = original["protocol"]
-    dj.config.object_storage.location = original["location"]
-    dj.config.object_storage.token_length = original["token_length"]
-    dj.config.object_storage.stores.clear()
-    dj.config.object_storage.stores.update(original["stores"])
+    dj.config.stores.clear()
+    dj.config.stores.update(original_stores)
 
 
 @pytest.fixture

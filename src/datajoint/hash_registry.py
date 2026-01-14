@@ -138,20 +138,15 @@ def get_store_backend(store_name: str | None = None) -> StorageBackend:
     Parameters
     ----------
     store_name : str, optional
-        Name of the store to use. If None, uses the default object storage
-        configuration or the configured default_store.
+        Name of the store to use. If None, uses stores.default.
 
     Returns
     -------
     StorageBackend
         StorageBackend instance.
     """
-    # If store_name is None, check for configured default_store
-    if store_name is None and config.object_storage.default_store:
-        store_name = config.object_storage.default_store
-
-    # get_object_store_spec handles None by returning default object_storage config
-    spec = config.get_object_store_spec(store_name)
+    # get_store_spec handles None by using stores.default
+    spec = config.get_store_spec(store_name)
     return StorageBackend(spec)
 
 
@@ -162,14 +157,14 @@ def get_store_subfolding(store_name: str | None = None) -> tuple[int, ...] | Non
     Parameters
     ----------
     store_name : str, optional
-        Name of the store. If None, uses default store.
+        Name of the store. If None, uses stores.default.
 
     Returns
     -------
     tuple[int, ...] | None
         Subfolding pattern (e.g., (2, 2)) or None for flat storage.
     """
-    spec = config.get_object_store_spec(store_name)
+    spec = config.get_store_spec(store_name)
     subfolding = spec.get("subfolding")
     if subfolding is not None:
         return tuple(subfolding)

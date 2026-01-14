@@ -234,16 +234,19 @@ def build_object_path(
     # Build primary key path components
     pk_parts = []
     partition_attrs = set()
+    partition_attr_list = []
 
     # Extract partition attributes if pattern specified
     if partition_pattern:
         import re
 
-        partition_attrs = set(re.findall(r"\{(\w+)\}", partition_pattern))
+        # Preserve order from pattern
+        partition_attr_list = re.findall(r"\{(\w+)\}", partition_pattern)
+        partition_attrs = set(partition_attr_list)  # For fast lookup
 
-    # Build partition prefix (attributes specified in partition pattern)
+    # Build partition prefix (attributes in order from partition pattern)
     partition_parts = []
-    for attr in partition_attrs:
+    for attr in partition_attr_list:
         if attr in primary_key:
             partition_parts.append(f"{attr}={encode_pk_value(primary_key[attr])}")
 
@@ -253,13 +256,12 @@ def build_object_path(
             pk_parts.append(f"{attr}={encode_pk_value(value)}")
 
     # Construct full path
-    # Pattern: {partition_attrs}/{schema}/{table}/objects/{remaining_pk}/{filename}
+    # Pattern: {partition_attrs}/{schema}/{table}/{remaining_pk}/{filename}
     parts = []
     if partition_parts:
         parts.extend(partition_parts)
     parts.append(schema)
     parts.append(table)
-    parts.append("objects")
     if pk_parts:
         parts.extend(pk_parts)
     parts.append(filename)

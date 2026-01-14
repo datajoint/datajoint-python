@@ -1619,3 +1619,675 @@ def migrate_filepath(
         result["details"].append(detail)
 
     return result
+
+
+# =============================================================================
+# Parallel Schema Migration (0.14.6 → 2.0)
+# =============================================================================
+
+
+def create_parallel_schema(
+    source: str,
+    dest: str,
+    copy_data: bool = False,
+    connection=None,
+) -> dict:
+    """
+    Create a parallel _v20 schema for migration testing.
+
+    This creates a copy of a production schema (source) into a test schema (dest)
+    for safely testing DataJoint 2.0 migration without affecting production.
+
+    Parameters
+    ----------
+    source : str
+        Production schema name (e.g., 'my_pipeline')
+    dest : str
+        Test schema name (e.g., 'my_pipeline_v20')
+    copy_data : bool, optional
+        If True, copy all table data. If False (default), create empty tables.
+    connection : Connection, optional
+        Database connection. If None, uses default connection.
+
+    Returns
+    -------
+    dict
+        - tables_created: int - number of tables created
+        - data_copied: bool - whether data was copied
+        - tables: list - list of table names created
+
+    Examples
+    --------
+    >>> from datajoint.migrate import create_parallel_schema
+    >>> result = create_parallel_schema('my_pipeline', 'my_pipeline_v20')
+    >>> print(f"Created {result['tables_created']} tables")
+
+    See Also
+    --------
+    copy_table_data : Copy data between schemas
+    """
+    from . import conn as get_conn
+
+    if connection is None:
+        connection = get_conn()
+
+    logger.info(f"Creating parallel schema: {source} → {dest}")
+
+    # Create destination schema if not exists
+    connection.query(f"CREATE DATABASE IF NOT EXISTS `{dest}`")
+
+    # Get all tables from source schema
+    tables_query = """
+        SELECT TABLE_NAME
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = %s
+        ORDER BY TABLE_NAME
+    """
+    tables = [row[0] for row in connection.query(tables_query, args=(source,)).fetchall()]
+
+    result = {
+        "tables_created": 0,
+        "data_copied": copy_data,
+        "tables": [],
+    }
+
+    for table in tables:
+        # Get CREATE TABLE statement from source
+        create_stmt = connection.query(f"SHOW CREATE TABLE `{source}`.`{table}`").fetchone()[1]
+
+        # Replace schema name in CREATE statement
+        create_stmt = create_stmt.replace(f"CREATE TABLE `{table}`", f"CREATE TABLE `{dest}`.`{table}`")
+
+        # Create table in destination
+        connection.query(create_stmt)
+
+        result["tables_created"] += 1
+        result["tables"].append(table)
+
+        # Copy data if requested
+        if copy_data:
+            connection.query(f"INSERT INTO `{dest}`.`{table}` SELECT * FROM `{source}`.`{table}`")
+
+        logger.info(f"Created {dest}.{table}")
+
+    logger.info(f"Created {result['tables_created']} tables in {dest}")
+
+    return result
+
+
+def copy_table_data(
+    source_schema: str,
+    dest_schema: str,
+    table: str,
+    limit: int | None = None,
+    where_clause: str | None = None,
+    connection=None,
+) -> dict:
+    """
+    Copy data from production table to test table.
+
+    Parameters
+    ----------
+    source_schema : str
+        Production schema name
+    dest_schema : str
+        Test schema name (_v20)
+    table : str
+        Table name
+    limit : int, optional
+        Maximum number of rows to copy
+    where_clause : str, optional
+        SQL WHERE clause for filtering (without 'WHERE' keyword)
+    connection : Connection, optional
+        Database connection. If None, uses default connection.
+
+    Returns
+    -------
+    dict
+        - rows_copied: int - number of rows copied
+        - time_taken: float - seconds elapsed
+
+    Examples
+    --------
+    >>> # Copy all data
+    >>> result = copy_table_data('my_pipeline', 'my_pipeline_v20', 'Mouse')
+
+    >>> # Copy sample
+    >>> result = copy_table_data(
+    ...     'my_pipeline', 'my_pipeline_v20', 'Session',
+    ...     limit=100,
+    ...     where_clause="session_date >= '2024-01-01'"
+    ... )
+    """
+    import time
+    from . import conn as get_conn
+
+    if connection is None:
+        connection = get_conn()
+
+    start_time = time.time()
+
+    # Build query
+    query = f"INSERT INTO `{dest_schema}`.`{table}` SELECT * FROM `{source_schema}`.`{table}`"
+
+    if where_clause:
+        query += f" WHERE {where_clause}"
+
+    if limit:
+        query += f" LIMIT {limit}"
+
+    # Execute copy
+    connection.query(query)
+
+    # Get row count
+    count_query = f"SELECT COUNT(*) FROM `{dest_schema}`.`{table}`"
+    rows_copied = connection.query(count_query).fetchone()[0]
+
+    time_taken = time.time() - start_time
+
+    logger.info(f"Copied {rows_copied} rows from {source_schema}.{table} to {dest_schema}.{table} in {time_taken:.2f}s")
+
+    return {
+        "rows_copied": rows_copied,
+        "time_taken": time_taken,
+    }
+
+
+def compare_query_results(
+    prod_schema: str,
+    test_schema: str,
+    table: str,
+    tolerance: float = 1e-6,
+    connection=None,
+) -> dict:
+    """
+    Compare query results between production and test schemas.
+
+    Parameters
+    ----------
+    prod_schema : str
+        Production schema name
+    test_schema : str
+        Test schema name (_v20)
+    table : str
+        Table name to compare
+    tolerance : float, optional
+        Tolerance for floating-point comparison. Default 1e-6.
+    connection : Connection, optional
+        Database connection. If None, uses default connection.
+
+    Returns
+    -------
+    dict
+        - match: bool - whether all rows match
+        - row_count: int - number of rows compared
+        - discrepancies: list - list of mismatches (if any)
+
+    Examples
+    --------
+    >>> result = compare_query_results('my_pipeline', 'my_pipeline_v20', 'neuron')
+    >>> if result['match']:
+    ...     print(f"✓ All {result['row_count']} rows match")
+    """
+    from . import conn as get_conn
+
+    if connection is None:
+        connection = get_conn()
+
+    # Get row counts
+    prod_count = connection.query(f"SELECT COUNT(*) FROM `{prod_schema}`.`{table}`").fetchone()[0]
+    test_count = connection.query(f"SELECT COUNT(*) FROM `{test_schema}`.`{table}`").fetchone()[0]
+
+    result = {
+        "match": True,
+        "row_count": prod_count,
+        "discrepancies": [],
+    }
+
+    if prod_count != test_count:
+        result["match"] = False
+        result["discrepancies"].append(f"Row count mismatch: prod={prod_count}, test={test_count}")
+        return result
+
+    # Get column info
+    columns_query = """
+        SELECT COLUMN_NAME, DATA_TYPE
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+        ORDER BY ORDINAL_POSITION
+    """
+    columns = connection.query(columns_query, args=(prod_schema, table)).fetchall()
+
+    # Compare data row by row (for small tables) or checksums (for large tables)
+    if prod_count <= 10000:
+        # Row-by-row comparison for small tables
+        prod_data = connection.query(f"SELECT * FROM `{prod_schema}`.`{table}` ORDER BY 1").fetchall()
+        test_data = connection.query(f"SELECT * FROM `{test_schema}`.`{table}` ORDER BY 1").fetchall()
+
+        for i, (prod_row, test_row) in enumerate(zip(prod_data, test_data)):
+            for j, (col_name, col_type) in enumerate(columns):
+                prod_val = prod_row[j]
+                test_val = test_row[j]
+
+                # Handle NULL
+                if prod_val is None and test_val is None:
+                    continue
+                if prod_val is None or test_val is None:
+                    result["match"] = False
+                    result["discrepancies"].append(f"Row {i}, {col_name}: NULL mismatch")
+                    continue
+
+                # Handle floating-point comparison
+                if col_type in ("float", "double", "decimal"):
+                    if abs(float(prod_val) - float(test_val)) > tolerance:
+                        result["match"] = False
+                        result["discrepancies"].append(f"Row {i}, {col_name}: {prod_val} != {test_val} (diff > {tolerance})")
+                else:
+                    if prod_val != test_val:
+                        result["match"] = False
+                        result["discrepancies"].append(f"Row {i}, {col_name}: {prod_val} != {test_val}")
+    else:
+        # Checksum comparison for large tables
+        checksum_query = f"CHECKSUM TABLE `{{schema}}`.`{table}`"
+        prod_checksum = connection.query(checksum_query.format(schema=prod_schema)).fetchone()[1]
+        test_checksum = connection.query(checksum_query.format(schema=test_schema)).fetchone()[1]
+
+        if prod_checksum != test_checksum:
+            result["match"] = False
+            result["discrepancies"].append(f"Checksum mismatch: prod={prod_checksum}, test={test_checksum}")
+
+    return result
+
+
+def backup_schema(
+    schema: str,
+    backup_name: str,
+    connection=None,
+) -> dict:
+    """
+    Create full backup of a schema.
+
+    Parameters
+    ----------
+    schema : str
+        Schema name to backup
+    backup_name : str
+        Backup schema name (e.g., 'my_pipeline_backup_20250114')
+    connection : Connection, optional
+        Database connection. If None, uses default connection.
+
+    Returns
+    -------
+    dict
+        - tables_backed_up: int
+        - rows_backed_up: int
+        - backup_location: str
+
+    Examples
+    --------
+    >>> result = backup_schema('my_pipeline', 'my_pipeline_backup_20250114')
+    >>> print(f"Backed up {result['tables_backed_up']} tables")
+    """
+    result = create_parallel_schema(
+        source=schema,
+        dest=backup_name,
+        copy_data=True,
+        connection=connection,
+    )
+
+    # Count total rows
+    from . import conn as get_conn
+
+    if connection is None:
+        connection = get_conn()
+
+    total_rows = 0
+    for table in result["tables"]:
+        count = connection.query(f"SELECT COUNT(*) FROM `{backup_name}`.`{table}`").fetchone()[0]
+        total_rows += count
+
+    return {
+        "tables_backed_up": result["tables_created"],
+        "rows_backed_up": total_rows,
+        "backup_location": backup_name,
+    }
+
+
+def restore_schema(
+    backup: str,
+    dest: str,
+    connection=None,
+) -> dict:
+    """
+    Restore schema from backup.
+
+    Parameters
+    ----------
+    backup : str
+        Backup schema name
+    dest : str
+        Destination schema name
+    connection : Connection, optional
+        Database connection. If None, uses default connection.
+
+    Returns
+    -------
+    dict
+        - tables_restored: int
+        - rows_restored: int
+
+    Examples
+    --------
+    >>> restore_schema('my_pipeline_backup_20250114', 'my_pipeline')
+    """
+    from . import conn as get_conn
+
+    if connection is None:
+        connection = get_conn()
+
+    # Drop destination if exists
+    connection.query(f"DROP DATABASE IF EXISTS `{dest}`")
+
+    # Copy backup to destination
+    result = create_parallel_schema(
+        source=backup,
+        dest=dest,
+        copy_data=True,
+        connection=connection,
+    )
+
+    # Count total rows
+    total_rows = 0
+    for table in result["tables"]:
+        count = connection.query(f"SELECT COUNT(*) FROM `{dest}`.`{table}`").fetchone()[0]
+        total_rows += count
+
+    return {
+        "tables_restored": result["tables_created"],
+        "rows_restored": total_rows,
+    }
+
+
+def verify_schema_v20(
+    schema: str,
+    connection=None,
+) -> dict:
+    """
+    Verify schema is fully migrated to DataJoint 2.0.
+
+    Parameters
+    ----------
+    schema : str
+        Schema name to verify
+    connection : Connection, optional
+        Database connection. If None, uses default connection.
+
+    Returns
+    -------
+    dict
+        - compatible: bool - True if fully compatible with 2.0
+        - blob_markers: bool - All blob columns have :<blob>: markers
+        - lineage_exists: bool - ~lineage table exists
+        - issues: list - List of compatibility issues found
+
+    Examples
+    --------
+    >>> result = verify_schema_v20('my_pipeline')
+    >>> if result['compatible']:
+    ...     print("✓ Schema fully migrated to 2.0")
+    """
+    from . import conn as get_conn
+
+    if connection is None:
+        connection = get_conn()
+
+    result = {
+        "compatible": True,
+        "blob_markers": True,
+        "lineage_exists": False,
+        "issues": [],
+    }
+
+    # Check for lineage table
+    lineage_check = connection.query(
+        """
+        SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = '~lineage'
+        """,
+        args=(schema,),
+    ).fetchone()[0]
+
+    result["lineage_exists"] = lineage_check > 0
+
+    # Check blob column markers
+    columns_query = """
+        SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, COLUMN_COMMENT
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = %s AND COLUMN_TYPE LIKE '%blob'
+    """
+    blob_columns = connection.query(columns_query, args=(schema,)).fetchall()
+
+    for table, column, col_type, comment in blob_columns:
+        if not comment.startswith(":<blob"):
+            result["blob_markers"] = False
+            result["issues"].append(f"{table}.{column}: Missing :<blob>: marker in comment")
+
+    # Overall compatibility
+    if result["issues"]:
+        result["compatible"] = False
+
+    return result
+
+
+def migrate_external_pointers_v2(
+    schema: str,
+    table: str,
+    attribute: str,
+    source_store: str,
+    dest_store: str,
+    copy_files: bool = False,
+    connection=None,
+) -> dict:
+    """
+    Migrate external storage pointers from 0.14.6 to 2.0 format.
+
+    Converts BINARY(16) UUID references to JSON metadata format.
+    Optionally copies blob files to new storage location.
+
+    This is useful when copying production data to _v2 schemas and you need
+    to access external storage attributes but don't want to move the files yet.
+
+    Parameters
+    ----------
+    schema : str
+        Schema name (e.g., 'my_pipeline_v2')
+    table : str
+        Table name
+    attribute : str
+        External attribute name (e.g., 'signal')
+    source_store : str
+        0.14.6 store name (e.g., 'external-raw')
+    dest_store : str
+        2.0 store name (e.g., 'raw')
+    copy_files : bool, optional
+        If True, copy blob files to new location.
+        If False (default), JSON points to existing files.
+    connection : Connection, optional
+        Database connection. If None, uses default connection.
+
+    Returns
+    -------
+    dict
+        - rows_migrated: int - number of pointers migrated
+        - files_copied: int - number of files copied (if copy_files=True)
+        - errors: list - any errors encountered
+
+    Examples
+    --------
+    >>> # Migrate pointers without moving files
+    >>> result = migrate_external_pointers_v2(
+    ...     schema='my_pipeline_v2',
+    ...     table='recording',
+    ...     attribute='signal',
+    ...     source_store='external-raw',
+    ...     dest_store='raw',
+    ...     copy_files=False
+    ... )
+    >>> print(f"Migrated {result['rows_migrated']} pointers")
+
+    Notes
+    -----
+    This function:
+    1. Reads BINARY(16) UUID from table column
+    2. Looks up file in ~external_{source_store} table
+    3. Creates JSON metadata with file path
+    4. Optionally copies file to new store location
+    5. Updates column with JSON metadata
+
+    The JSON format is:
+    {
+      "path": "schema/table/key_hash/file.ext",
+      "size": 12345,
+      "hash": null,
+      "ext": ".dat",
+      "is_dir": false,
+      "timestamp": "2025-01-14T10:30:00+00:00"
+    }
+    """
+    import json
+    from datetime import datetime, timezone
+    from . import conn as get_conn
+
+    if connection is None:
+        connection = get_conn()
+
+    logger.info(f"Migrating external pointers: {schema}.{table}.{attribute} " f"({source_store} → {dest_store})")
+
+    # Get source store specification (0.14.6)
+    # Note: This assumes old external table exists
+    external_table = f"~external_{source_store}"
+
+    # Check if external tracking table exists
+    check_query = """
+        SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+    """
+    exists = connection.query(check_query, args=(schema, external_table)).fetchone()[0]
+
+    if not exists:
+        raise DataJointError(
+            f"External tracking table {schema}.{external_table} not found. "
+            f"Cannot migrate external pointers from 0.14.6 format."
+        )
+
+    result = {
+        "rows_migrated": 0,
+        "files_copied": 0,
+        "errors": [],
+    }
+
+    # Query rows with external attributes
+    query = f"""
+        SELECT * FROM `{schema}`.`{table}`
+        WHERE `{attribute}` IS NOT NULL
+    """
+
+    rows = connection.query(query).fetchall()
+
+    # Get column info to identify UUID column
+    col_query = """
+        SELECT ORDINAL_POSITION, COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+        ORDER BY ORDINAL_POSITION
+    """
+    columns = connection.query(col_query, args=(schema, table)).fetchall()
+    col_names = [col[1] for col in columns]
+
+    # Find attribute column index
+    try:
+        attr_idx = col_names.index(attribute)
+    except ValueError:
+        raise DataJointError(f"Attribute {attribute} not found in {schema}.{table}")
+
+    for row in rows:
+        uuid_bytes = row[attr_idx]
+
+        if uuid_bytes is None:
+            continue
+
+        # Look up file info in external tracking table
+        lookup_query = f"""
+            SELECT hash, size, timestamp, filepath
+            FROM `{schema}`.`{external_table}`
+            WHERE hash = %s
+        """
+
+        file_info = connection.query(lookup_query, args=(uuid_bytes,)).fetchone()
+
+        if file_info is None:
+            result["errors"].append(f"External file not found for UUID: {uuid_bytes.hex()}")
+            continue
+
+        hash_hex, size, timestamp, filepath = file_info
+
+        # Build JSON metadata
+        # Extract extension from filepath
+        import os
+
+        ext = os.path.splitext(filepath)[1] if filepath else ""
+
+        metadata = {
+            "path": filepath,
+            "size": size,
+            "hash": hash_hex.hex() if hash_hex else None,
+            "ext": ext,
+            "is_dir": False,
+            "timestamp": timestamp.isoformat() if timestamp else datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Update row with JSON metadata
+        # Build WHERE clause from primary keys
+        pk_columns = []
+        pk_values = []
+
+        # Get primary key info
+        pk_query = """
+            SELECT COLUMN_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = %s
+              AND TABLE_NAME = %s
+              AND CONSTRAINT_NAME = 'PRIMARY'
+            ORDER BY ORDINAL_POSITION
+        """
+        pk_cols = connection.query(pk_query, args=(schema, table)).fetchall()
+
+        for pk_col in pk_cols:
+            pk_name = pk_col[0]
+            pk_idx = col_names.index(pk_name)
+            pk_columns.append(pk_name)
+            pk_values.append(row[pk_idx])
+
+        # Build UPDATE statement
+        where_parts = [f"`{col}` = %s" for col in pk_columns]
+        where_clause = " AND ".join(where_parts)
+
+        update_query = f"""
+            UPDATE `{schema}`.`{table}`
+            SET `{attribute}` = %s
+            WHERE {where_clause}
+        """
+
+        connection.query(update_query, args=(json.dumps(metadata), *pk_values))
+
+        result["rows_migrated"] += 1
+
+        # Copy file if requested
+        if copy_files:
+            # TODO: Implement file copying using fsspec
+            # This requires knowing source and dest store locations
+            logger.warning("File copying not yet implemented in migrate_external_pointers_v2")
+
+    logger.info(f"Migrated {result['rows_migrated']} external pointers for {schema}.{table}.{attribute}")
+
+    return result
