@@ -54,7 +54,6 @@ __all__ = [
     "errors",
     "migrate",
     "DataJointError",
-    "key_hash",
     "logger",
     "cli",
     "ValidationResult",
@@ -78,7 +77,6 @@ from .blob import MatCell, MatStruct
 from .connection import Connection, conn
 from .errors import DataJointError
 from .expression import AndList, Not, Top, U
-from .hash import key_hash
 from .logging import logger
 from .objectref import ObjectRef
 from .schemas import Schema, VirtualModule, list_schemas, virtual_schema

@@ -32,7 +32,7 @@ def test_erd(schema_simp):
 def test_erd_algebra(schema_simp):
     erd0 = dj.ERD(B)
     erd1 = erd0 + 3
-    erd2 = dj.Di(E) - 3
+    erd2 = dj.Diagram(E) - 3
     erd3 = erd1 * erd2
     erd4 = (erd0 + E).add_parts() - B - E
     assert erd0.nodes_to_show == set(cls.full_table_name for cls in [B])
@@ -56,7 +56,7 @@ def test_make_image(schema_simp):
 
 def test_part_table_parsing(schema_simp):
     # https://github.com/datajoint/datajoint-python/issues/882
-    erd = dj.Di(schema_simp, context=LOCALS_SIMPLE)
+    erd = dj.Diagram(schema_simp, context=LOCALS_SIMPLE)
     graph = erd._make_graph()
     assert "OutfitLaunch" in graph.nodes()
     assert "OutfitLaunch.OutfitPiece" in graph.nodes()
