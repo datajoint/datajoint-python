@@ -66,7 +66,8 @@ def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, subject, exp
     assert not experiment, "table already filled?"
 
     # Refresh jobs to create pending entries
-    experiment.jobs.refresh()
+    # Use delay=-1 to ensure jobs are immediately schedulable (avoids race condition with NOW(3))
+    experiment.jobs.refresh(delay=-1)
 
     keys = experiment.jobs.pending.keys(limit=2)
     for idx, key in enumerate(keys):
