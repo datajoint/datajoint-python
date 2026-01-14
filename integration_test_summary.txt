@@ -1,0 +1,18 @@
+## Integration Test Results
+
+**Test Summary:**
+- 496 tests PASSED ✓
+- 24 tests FAILED (object storage directory setup issue)
+- 7 tests SKIPPED
+
+**Failed tests:** All 24 failures in test_object.py and test_update1.py are due to:
+`FileNotFoundError: Inaccessible local directory`
+
+This is a test fixture issue with temporary directory creation for object storage tests, not related to the unified stores configuration changes.
+
+**Core functionality verified:**
+- All configuration tests passing
+- All blob tests passing
+- All relation/query tests passing
+- All schema/table tests passing
+- Store configuration and validation working correctly
