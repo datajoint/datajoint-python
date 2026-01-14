@@ -89,8 +89,7 @@ def test_diagram_aliases():
 
     import datajoint as dj
 
-    # All aliases should resolve to the same class
-    assert dj.Diagram is dj.Di
+    # ERD alias should resolve to Diagram
     assert dj.Diagram is dj.ERD
 
 

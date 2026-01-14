@@ -69,7 +69,7 @@ def test_schema_list(schema_any):
 @pytest.mark.requires_mysql
 def test_drop_unauthorized(connection_test):
     """Test that dropping information_schema raises AccessError."""
-    info_schema = dj.schema("information_schema", connection=connection_test)
+    info_schema = dj.Schema("information_schema", connection=connection_test)
     with pytest.raises(dj.errors.AccessError):
         info_schema.drop()
 

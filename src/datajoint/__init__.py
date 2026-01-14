@@ -24,7 +24,6 @@ __all__ = [
     "conn",
     "Connection",
     "Schema",
-    "schema",
     "VirtualModule",
     "virtual_schema",
     "list_schemas",
@@ -40,7 +39,6 @@ __all__ = [
     "Top",
     "U",
     "Diagram",
-    "Di",
     "ERD",
     "kill",
     "MatCell",
@@ -89,8 +87,6 @@ from .table import FreeTable, Table, ValidationResult
 from .user_tables import Computed, Imported, Lookup, Manual, Part
 from .version import __version__
 
-schema = Schema  # Alias for Schema
-
 # =============================================================================
 # Lazy imports — heavy dependencies loaded on first access
 # =============================================================================
@@ -100,7 +96,6 @@ schema = Schema  # Alias for Schema
 _lazy_modules = {
     # Diagram imports networkx and matplotlib
     "Diagram": (".diagram", "Diagram"),
-    "Di": (".diagram", "Diagram"),
     "ERD": (".diagram", "Diagram"),
     "diagram": (".diagram", None),  # Return the module itself
     # kill imports pymysql via connection

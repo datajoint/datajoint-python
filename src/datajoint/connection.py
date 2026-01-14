@@ -299,7 +299,7 @@ class Connection:
         Examples
         --------
         >>> with dj.Connection(host, user, password) as conn:
-        ...     schema = dj.schema('my_schema', connection=conn)
+        ...     schema = dj.Schema('my_schema', connection=conn)
         ...     # perform operations
         ... # connection automatically closed
         """

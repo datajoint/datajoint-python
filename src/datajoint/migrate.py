@@ -90,7 +90,7 @@ def analyze_columns(schema: Schema) -> dict:
     --------
     >>> import datajoint as dj
     >>> from datajoint.migrate import analyze_columns
-    >>> schema = dj.schema('my_database')
+    >>> schema = dj.Schema('my_database')
     >>> result = analyze_columns(schema)
     >>> for col in result['needs_migration']:
     ...     print(f"{col['table']}.{col['column']}: {col['native_type']} → {col['core_type']}")
@@ -315,7 +315,7 @@ def analyze_blob_columns(schema: Schema) -> list[dict]:
     Examples
     --------
     >>> import datajoint as dj
-    >>> schema = dj.schema('my_database')
+    >>> schema = dj.Schema('my_database')
     >>> columns = dj.migrate.analyze_blob_columns(schema)
     >>> for col in columns:
     ...     if col['needs_migration']:
