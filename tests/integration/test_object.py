@@ -83,7 +83,6 @@ class TestStoragePathGeneration:
         )
         assert "myschema" in path
         assert "MyTable" in path
-        assert "objects" in path
         assert "id=123" in path
         assert "data_file_" in path
         assert path.endswith(".dat")
@@ -134,7 +133,7 @@ class TestObjectRef:
         """Test creating ObjectRef from JSON string."""
         json_str = json.dumps(
             {
-                "path": "schema/Table/objects/id=1/data_abc123.dat",
+                "path": "schema/Table/id=1/data_abc123.dat",
                 "size": 1024,
                 "hash": None,
                 "ext": ".dat",
@@ -143,7 +142,7 @@ class TestObjectRef:
             }
         )
         obj = ObjectRef.from_json(json_str)
-        assert obj.path == "schema/Table/objects/id=1/data_abc123.dat"
+        assert obj.path == "schema/Table/id=1/data_abc123.dat"
         assert obj.size == 1024
         assert obj.hash is None
         assert obj.ext == ".dat"
@@ -152,7 +151,7 @@ class TestObjectRef:
     def test_from_json_dict(self):
         """Test creating ObjectRef from dict."""
         data = {
-            "path": "schema/Table/objects/id=1/data_abc123.zarr",
+            "path": "schema/Table/id=1/data_abc123.zarr",
             "size": 5678,
             "hash": None,
             "ext": ".zarr",
@@ -161,7 +160,7 @@ class TestObjectRef:
             "item_count": 42,
         }
         obj = ObjectRef.from_json(data)
-        assert obj.path == "schema/Table/objects/id=1/data_abc123.zarr"
+        assert obj.path == "schema/Table/id=1/data_abc123.zarr"
         assert obj.size == 5678
         assert obj.is_dir is True
         assert obj.item_count == 42
@@ -169,7 +168,7 @@ class TestObjectRef:
     def test_from_json_zarr_style(self):
         """Test creating ObjectRef from Zarr-style JSON with null size."""
         data = {
-            "path": "schema/Recording/objects/id=1/neural_data_abc123.zarr",
+            "path": "schema/Recording/id=1/neural_data_abc123.zarr",
             "size": None,
             "hash": None,
             "ext": ".zarr",
@@ -177,7 +176,7 @@ class TestObjectRef:
             "timestamp": "2025-01-15T10:30:00+00:00",
         }
         obj = ObjectRef.from_json(data)
-        assert obj.path == "schema/Recording/objects/id=1/neural_data_abc123.zarr"
+        assert obj.path == "schema/Recording/id=1/neural_data_abc123.zarr"
         assert obj.size is None
         assert obj.hash is None
         assert obj.ext == ".zarr"
@@ -189,7 +188,7 @@ class TestObjectRef:
         from datetime import datetime, timezone
 
         obj = ObjectRef(
-            path="schema/Table/objects/id=1/data.dat",
+            path="schema/Table/id=1/data.dat",
             size=1024,
             hash=None,
             ext=".dat",
@@ -197,7 +196,7 @@ class TestObjectRef:
             timestamp=datetime(2025, 1, 15, 10, 30, tzinfo=timezone.utc),
         )
         data = obj.to_json()
-        assert data["path"] == "schema/Table/objects/id=1/data.dat"
+        assert data["path"] == "schema/Table/id=1/data.dat"
         assert data["size"] == 1024
         assert data["is_dir"] is False
 

@@ -253,13 +253,12 @@ def build_object_path(
             pk_parts.append(f"{attr}={encode_pk_value(value)}")
 
     # Construct full path
-    # Pattern: {partition_attrs}/{schema}/{table}/objects/{remaining_pk}/{filename}
+    # Pattern: {partition_attrs}/{schema}/{table}/{remaining_pk}/{filename}
     parts = []
     if partition_parts:
         parts.extend(partition_parts)
     parts.append(schema)
     parts.append(table)
-    parts.append("objects")
     if pk_parts:
         parts.extend(pk_parts)
     parts.append(filename)
