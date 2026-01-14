@@ -780,8 +780,7 @@ class FilepathCodec(Codec):
         """Filepath is external only."""
         if not is_store:
             raise DataJointError(
-                "<filepath> requires @ symbol. Use <filepath@> for default store "
-                "or <filepath@store> to specify store."
+                "<filepath> requires @ symbol. Use <filepath@> for default store " "or <filepath@store> to specify store."
             )
         return "json"
 
@@ -848,10 +847,7 @@ class FilepathCodec(Codec):
         if filepath_prefix:
             filepath_prefix_normalized = filepath_prefix.strip("/") + "/"
             if not path_normalized.startswith(filepath_prefix_normalized):
-                raise ValueError(
-                    f"<filepath@> must use prefix '{filepath_prefix}' (filepath_prefix). "
-                    f"Got path: {path}"
-                )
+                raise ValueError(f"<filepath@> must use prefix '{filepath_prefix}' (filepath_prefix). " f"Got path: {path}")
 
         # Verify file exists
         backend = get_store_backend(store_name)

@@ -256,8 +256,6 @@ class JobsSettings(BaseSettings):
     )
 
 
-
-
 class Config(BaseSettings):
     """
     Main DataJoint configuration.
@@ -300,7 +298,7 @@ class Config(BaseSettings):
         default_factory=dict,
         description="Unified external storage configuration. "
         "Use stores.default to designate default store. "
-        "Configure named stores as stores.<name>.protocol, stores.<name>.location, etc."
+        "Configure named stores as stores.<name>.protocol, stores.<name>.location, etc.",
     )
 
     # Top-level settings
@@ -335,9 +333,7 @@ class Config(BaseSettings):
             return None
         return Path(v) if not isinstance(v, Path) else v
 
-    def get_store_spec(
-        self, store: str | None = None, *, use_filepath_default: bool = False
-    ) -> dict[str, Any]:
+    def get_store_spec(self, store: str | None = None, *, use_filepath_default: bool = False) -> dict[str, Any]:
         """
         Get configuration for a storage store.
 
