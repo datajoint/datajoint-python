@@ -733,10 +733,16 @@ class FilepathCodec(Codec):
 
     External only - requires @store.
 
+    This codec gives users maximum freedom in organizing their files while
+    reusing DataJoint's store configuration. Files can be placed anywhere
+    in the store EXCEPT the reserved ``_hash/`` and ``_schema/`` sections
+    which are managed by DataJoint.
+
     This is useful when:
     - Files are managed externally (e.g., by acquisition software)
     - Files are too large to copy
     - You want to reference shared datasets
+    - You need custom directory structures
 
     Example::
 
@@ -749,6 +755,7 @@ class FilepathCodec(Codec):
             '''
 
         # Reference an existing file (no copy)
+        # Path is relative to store location
         table.insert1({'recording_id': 1, 'raw_data': 'subject01/session001/data.bin'})
 
         # Fetch returns ObjectRef for lazy access
@@ -757,7 +764,10 @@ class FilepathCodec(Codec):
         ref.download()  # Download to local path
 
     Storage Format:
-        JSON metadata: ``{path, store}``
+        JSON metadata: ``{path, store, size, timestamp}``
+
+    Reserved Sections:
+        Paths cannot start with ``_hash/`` or ``_schema/`` - these are managed by DataJoint.
 
     Warning:
         The file must exist in the store at the specified path.
@@ -779,7 +789,7 @@ class FilepathCodec(Codec):
         Parameters
         ----------
         value : str
-            Relative path within the store.
+            Relative path within the store. Cannot use reserved sections (_hash/, _schema/).
         key : dict, optional
             Primary key values (unused).
         store_name : str, optional
@@ -789,6 +799,13 @@ class FilepathCodec(Codec):
         -------
         dict
             Metadata dict: ``{path, store}``.
+
+        Raises
+        ------
+        ValueError
+            If path uses reserved sections (_hash/ or _schema/).
+        FileNotFoundError
+            If file does not exist in the store.
         """
         from datetime import datetime, timezone
 
@@ -796,7 +813,16 @@ class FilepathCodec(Codec):
 
         path = str(value)
 
-        # Optionally verify file exists
+        # Validate path doesn't use reserved sections
+        path_normalized = path.lstrip('/')
+        if path_normalized.startswith('_hash/') or path_normalized.startswith('_schema/'):
+            raise ValueError(
+                f"<filepath@> cannot use reserved sections '_hash/' or '_schema/'. "
+                f"These sections are managed by DataJoint. "
+                f"Got path: {path}"
+            )
+
+        # Verify file exists
         backend = get_store_backend(store_name)
         if not backend.exists(path):
             raise FileNotFoundError(f"File not found in store '{store_name or 'default'}': {path}")
