@@ -335,14 +335,20 @@ class Config(BaseSettings):
             return None
         return Path(v) if not isinstance(v, Path) else v
 
-    def get_store_spec(self, store: str | None = None) -> dict[str, Any]:
+    def get_store_spec(
+        self, store: str | None = None, *, use_filepath_default: bool = False
+    ) -> dict[str, Any]:
         """
         Get configuration for a storage store.
 
         Parameters
         ----------
         store : str, optional
-            Name of the store to retrieve. If None, uses stores.default.
+            Name of the store to retrieve. If None, uses the appropriate default.
+        use_filepath_default : bool, optional
+            If True and store is None, uses stores.filepath_default instead of
+            stores.default. Use for filepath references which are not part of OAS.
+            Default: False (use stores.default for integrated storage).
 
         Returns
         -------
@@ -356,11 +362,23 @@ class Config(BaseSettings):
         """
         # Handle default store
         if store is None:
-            if "default" not in self.stores:
-                raise DataJointError("stores.default is not configured")
-            store = self.stores["default"]
+            if use_filepath_default:
+                # Filepath references use separate default (not part of OAS)
+                if "filepath_default" not in self.stores:
+                    raise DataJointError(
+                        "stores.filepath_default is not configured. "
+                        "Set stores.filepath_default or specify store explicitly with <filepath@store>"
+                    )
+                store = self.stores["filepath_default"]
+            else:
+                # Integrated storage (hash, schema) uses stores.default
+                if "default" not in self.stores:
+                    raise DataJointError("stores.default is not configured")
+                store = self.stores["default"]
+
             if not isinstance(store, str):
-                raise DataJointError("stores.default must be a string")
+                default_key = "filepath_default" if use_filepath_default else "default"
+                raise DataJointError(f"stores.{default_key} must be a string")
 
         # Check store exists
         if store not in self.stores:
@@ -778,12 +796,17 @@ class Config(BaseSettings):
                 },
                 "stores": {
                     "default": "main",
+                    "filepath_default": "raw_data",
                     "main": {
                         "protocol": "file",
                         "location": "/data/my-project/main",
                         "partition_pattern": None,
                         "token_length": 8,
                         "subfolding": None,
+                    },
+                    "raw_data": {
+                        "protocol": "file",
+                        "location": "/data/my-project/raw",
                     },
                 },
                 "loglevel": "INFO",

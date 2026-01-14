@@ -815,7 +815,8 @@ class FilepathCodec(Codec):
         path = str(value)
 
         # Get store spec to check prefix configuration
-        spec = config.get_store_spec(store_name)
+        # Use filepath_default if no store specified (filepath is not part of OAS)
+        spec = config.get_store_spec(store_name, use_filepath_default=True)
 
         # Validate path doesn't use reserved sections (hash and schema)
         path_normalized = path.lstrip("/")

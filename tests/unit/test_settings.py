@@ -375,6 +375,72 @@ class TestStoreSpec:
         finally:
             dj.config.stores = original_stores
 
+    def test_get_store_spec_filepath_default(self):
+        """Test filepath_default for filepath references (not part of OAS)."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "integrated"
+            dj.config.stores["filepath_default"] = "raw_data"
+            dj.config.stores["integrated"] = {
+                "protocol": "s3",
+                "endpoint": "s3.amazonaws.com",
+                "bucket": "my-bucket",
+                "location": "processed",
+                "access_key": "xxx",
+                "secret_key": "yyy",
+            }
+            dj.config.stores["raw_data"] = {
+                "protocol": "file",
+                "location": "/data/acquisition",
+            }
+
+            # Regular default for integrated storage
+            spec = dj.config.get_store_spec(None, use_filepath_default=False)
+            assert spec["protocol"] == "s3"
+            assert spec["location"] == "processed"
+
+            # Filepath default for filepath references
+            spec = dj.config.get_store_spec(None, use_filepath_default=True)
+            assert spec["protocol"] == "file"
+            assert spec["location"] == "/data/acquisition"
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_no_filepath_default(self):
+        """Test error when filepath_default not configured but requested."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "integrated"
+            dj.config.stores["integrated"] = {
+                "protocol": "file",
+                "location": "/data/store",
+            }
+            # No filepath_default configured
+
+            with pytest.raises(DataJointError, match="stores.filepath_default is not configured"):
+                dj.config.get_store_spec(None, use_filepath_default=True)
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_explicit_store_ignores_defaults(self):
+        """Test that explicit store name bypasses both defaults."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "store_a"
+            dj.config.stores["filepath_default"] = "store_b"
+            dj.config.stores["store_a"] = {"protocol": "file", "location": "/a"}
+            dj.config.stores["store_b"] = {"protocol": "file", "location": "/b"}
+            dj.config.stores["store_c"] = {"protocol": "file", "location": "/c"}
+
+            # Explicitly naming store_c should work regardless of use_filepath_default
+            spec = dj.config.get_store_spec("store_c", use_filepath_default=False)
+            assert spec["location"] == "/c"
+
+            spec = dj.config.get_store_spec("store_c", use_filepath_default=True)
+            assert spec["location"] == "/c"
+        finally:
+            dj.config.stores = original_stores
+
 
 class TestStoreSecrets:
     """Test loading store credentials from secrets directory."""
