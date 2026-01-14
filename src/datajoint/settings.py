@@ -368,11 +368,10 @@ class Config(BaseSettings):
 
         spec = dict(self.stores[store])
 
-        # Set defaults for optional fields
+        # Set defaults for optional fields (common to all protocols)
         spec.setdefault("subfolding", None)  # No subfolding by default
         spec.setdefault("partition_pattern", None)  # No partitioning by default
         spec.setdefault("token_length", 8)  # Default token length
-        spec.setdefault("secure", True)  # HTTPS by default for cloud
 
         # Validate protocol
         protocol = spec.get("protocol", "").lower()
@@ -382,6 +381,10 @@ class Config(BaseSettings):
                 f'Missing or invalid protocol in config.stores["{store}"]. '
                 f"Supported protocols: {', '.join(supported_protocols)}"
             )
+
+        # Set protocol-specific defaults
+        if protocol == "s3":
+            spec.setdefault("secure", True)  # HTTPS by default for S3
 
         # Define required and allowed keys by protocol
         required_keys: dict[str, tuple[str, ...]] = {
