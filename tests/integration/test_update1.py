@@ -24,12 +24,18 @@ class Thing(dj.Manual):
 @pytest.fixture(scope="module")
 def mock_stores_update(tmpdir_factory):
     """Configure stores for update tests using unified stores system."""
+    from pathlib import Path
+
     og_stores = dict(dj.config.stores)
 
     # Configure stores (location includes project context)
     store_location = str(tmpdir_factory.mktemp("store")) + "/djtest"
     repo_stage = str(tmpdir_factory.mktemp("repo_stage"))
     repo_location = str(tmpdir_factory.mktemp("repo_loc")) + "/djtest"
+
+    # Create the directories (StorageBackend validates they exist)
+    Path(store_location).mkdir(parents=True, exist_ok=True)
+    Path(repo_location).mkdir(parents=True, exist_ok=True)
 
     dj.config.stores["update_store"] = dict(
         protocol="file",

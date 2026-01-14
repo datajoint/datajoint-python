@@ -827,6 +827,9 @@ def object_storage_config(tmpdir_factory):
     base_location = str(tmpdir_factory.mktemp("object_storage"))
     # Location now includes project context
     location = f"{base_location}/test_project"
+    # Create the directory (StorageBackend validates it exists)
+    from pathlib import Path
+    Path(location).mkdir(parents=True, exist_ok=True)
     return {
         "protocol": "file",
         "location": location,
