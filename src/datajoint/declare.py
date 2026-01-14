@@ -673,7 +673,7 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
             match["type"] = sql_type
         # else: type passes through as-is (json, date, datetime, char, varchar, enum)
     else:
-        assert False, f"Unknown special type: {category}"
+        raise DataJointError(f"Unknown special type: {category}")
 
 
 def compile_attribute(line: str, in_key: bool, foreign_key_sql: list[str], context: dict) -> tuple[str, str, str | None]:

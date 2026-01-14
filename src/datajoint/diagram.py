@@ -23,14 +23,14 @@ try:
     from matplotlib import pyplot as plt
 
     plot_active = True
-except:
+except ImportError:
     plot_active = False
 
 try:
     from networkx.drawing.nx_pydot import pydot_layout
 
     diagram_active = True
-except:
+except ImportError:
     diagram_active = False
 
 
@@ -48,7 +48,7 @@ if not diagram_active:  # noqa: C901
 
         See Also
         --------
-        https://docs.datajoint.com/core/datajoint-python/0.14/client/install/
+        https://docs.datajoint.com/how-to/installation/
         """
 
         def __init__(self, *args, **kwargs) -> None:

@@ -30,7 +30,7 @@ def schema_codec(
     dj.config["stores"] = {"repo-s3": dict(s3_creds, protocol="s3", location="codecs/repo", stage=str(tmpdir))}
     # Codecs are auto-registered via __init_subclass__ in schema_codecs
     context = {**schema_codecs.LOCALS_CODECS}
-    schema = dj.schema(schema_name, context=context, connection=connection_test)
+    schema = dj.Schema(schema_name, context=context, connection=connection_test)
     schema(schema_codecs.Connectivity)
     schema(schema_codecs.Layout)
     yield schema

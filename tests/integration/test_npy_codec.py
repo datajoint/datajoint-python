@@ -56,7 +56,7 @@ def schema_npy(connection_test, s3_creds, tmpdir, schema_name, mock_stores):
     """Create schema with NpyCodec tables."""
     # mock_stores fixture sets up object_storage.stores with repo-s3, etc.
     context = dict(LOCALS_NPY)
-    schema = dj.schema(schema_name, context=context, connection=connection_test)
+    schema = dj.Schema(schema_name, context=context, connection=connection_test)
     schema(Recording)
     schema(MultiArray)
     yield schema

@@ -485,7 +485,9 @@ class AutoPopulate:
             if refresh is None:
                 refresh = config.jobs.auto_refresh
             if refresh:
-                self.jobs.refresh(*restrictions, priority=priority)
+                # Use delay=-1 to ensure jobs are immediately schedulable
+                # (avoids race condition with scheduled_time <= NOW(3) check)
+                self.jobs.refresh(*restrictions, priority=priority, delay=-1)
 
             # Fetch pending jobs ordered by priority (use NOW(3) to match CURRENT_TIMESTAMP(3) precision)
             pending_query = self.jobs.pending & "scheduled_time <= NOW(3)"

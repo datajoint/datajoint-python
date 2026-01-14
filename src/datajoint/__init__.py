@@ -24,7 +24,6 @@ __all__ = [
     "conn",
     "Connection",
     "Schema",
-    "schema",
     "VirtualModule",
     "virtual_schema",
     "list_schemas",
@@ -40,8 +39,6 @@ __all__ = [
     "Top",
     "U",
     "Diagram",
-    "Di",
-    "ERD",
     "kill",
     "MatCell",
     "MatStruct",
@@ -56,8 +53,6 @@ __all__ = [
     "errors",
     "migrate",
     "DataJointError",
-    "key",
-    "key_hash",
     "logger",
     "cli",
     "ValidationResult",
@@ -81,7 +76,6 @@ from .blob import MatCell, MatStruct
 from .connection import Connection, conn
 from .errors import DataJointError
 from .expression import AndList, Not, Top, U
-from .hash import key_hash
 from .logging import logger
 from .objectref import ObjectRef
 from .schemas import Schema, VirtualModule, list_schemas, virtual_schema
@@ -89,8 +83,6 @@ from .settings import config
 from .table import FreeTable, Table, ValidationResult
 from .user_tables import Computed, Imported, Lookup, Manual, Part
 from .version import __version__
-
-schema = Schema  # Alias for Schema
 
 # =============================================================================
 # Lazy imports — heavy dependencies loaded on first access
@@ -101,8 +93,6 @@ schema = Schema  # Alias for Schema
 _lazy_modules = {
     # Diagram imports networkx and matplotlib
     "Diagram": (".diagram", "Diagram"),
-    "Di": (".diagram", "Diagram"),
-    "ERD": (".diagram", "Diagram"),
     "diagram": (".diagram", None),  # Return the module itself
     # kill imports pymysql via connection
     "kill": (".admin", "kill"),
