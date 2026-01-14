@@ -39,7 +39,6 @@ __all__ = [
     "Top",
     "U",
     "Diagram",
-    "ERD",
     "kill",
     "MatCell",
     "MatStruct",
@@ -94,7 +93,6 @@ from .version import __version__
 _lazy_modules = {
     # Diagram imports networkx and matplotlib
     "Diagram": (".diagram", "Diagram"),
-    "ERD": (".diagram", "Diagram"),
     "diagram": (".diagram", None),  # Return the module itself
     # kill imports pymysql via connection
     "kill": (".admin", "kill"),

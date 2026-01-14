@@ -24,32 +24,33 @@ def test_dependencies(schema_simp):
 
 def test_erd(schema_simp):
     assert dj.diagram.diagram_active, "Failed to import networkx and pydot"
-    erd = dj.ERD(schema_simp, context=LOCALS_SIMPLE)
+    erd = dj.Diagram(schema_simp, context=LOCALS_SIMPLE)
     graph = erd._make_graph()
     assert set(cls.__name__ for cls in (A, B, D, E, L)).issubset(graph.nodes())
 
 
-def test_erd_algebra(schema_simp):
-    erd0 = dj.ERD(B)
-    erd1 = erd0 + 3
-    erd2 = dj.Diagram(E) - 3
-    erd3 = erd1 * erd2
-    erd4 = (erd0 + E).add_parts() - B - E
-    assert erd0.nodes_to_show == set(cls.full_table_name for cls in [B])
-    assert erd1.nodes_to_show == set(cls.full_table_name for cls in (B, B.C, E, E.F, E.G, E.H, E.M, G))
-    assert erd2.nodes_to_show == set(cls.full_table_name for cls in (A, B, D, E, L))
-    assert erd3.nodes_to_show == set(cls.full_table_name for cls in (B, E))
-    assert erd4.nodes_to_show == set(cls.full_table_name for cls in (B.C, E.F, E.G, E.H, E.M))
+def test_diagram_algebra(schema_simp):
+    """Test Diagram algebra operations (+, -, *)."""
+    diag0 = dj.Diagram(B)
+    diag1 = diag0 + 3
+    diag2 = dj.Diagram(E) - 3
+    diag3 = diag1 * diag2
+    diag4 = (diag0 + E).add_parts() - B - E
+    assert diag0.nodes_to_show == set(cls.full_table_name for cls in [B])
+    assert diag1.nodes_to_show == set(cls.full_table_name for cls in (B, B.C, E, E.F, E.G, E.H, E.M, G))
+    assert diag2.nodes_to_show == set(cls.full_table_name for cls in (A, B, D, E, L))
+    assert diag3.nodes_to_show == set(cls.full_table_name for cls in (B, E))
+    assert diag4.nodes_to_show == set(cls.full_table_name for cls in (B.C, E.F, E.G, E.H, E.M))
 
 
 def test_repr_svg(schema_adv):
-    erd = dj.ERD(schema_adv, context=dict())
+    erd = dj.Diagram(schema_adv, context=dict())
     svg = erd._repr_svg_()
     assert svg.startswith("<svg") and svg.endswith("svg>")
 
 
 def test_make_image(schema_simp):
-    erd = dj.ERD(schema_simp, context=dict())
+    erd = dj.Diagram(schema_simp, context=dict())
     img = erd.make_image()
     assert img.ndim == 3 and img.shape[2] in (3, 4)
 

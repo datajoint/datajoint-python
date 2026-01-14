@@ -80,19 +80,6 @@ def test_diagram_module_access():
     assert hasattr(diagram_module, "Diagram"), "diagram module should have Diagram class"
 
 
-def test_diagram_aliases():
-    """Di and ERD should be aliases for Diagram."""
-    # Remove datajoint from sys.modules to get fresh import
-    modules_to_remove = [key for key in sys.modules if key.startswith("datajoint")]
-    for mod in modules_to_remove:
-        del sys.modules[mod]
-
-    import datajoint as dj
-
-    # ERD alias should resolve to Diagram
-    assert dj.Diagram is dj.ERD
-
-
 def test_core_imports_available():
     """Core functionality should be available immediately after import."""
     # Remove datajoint from sys.modules to get fresh import
