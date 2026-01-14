@@ -69,12 +69,11 @@ class StagedInsert:
         """Ensure storage backend is initialized."""
         if self._backend is None:
             try:
-                spec = config.get_object_storage_spec()
+                spec = config.get_store_spec()  # Uses stores.default
                 self._backend = StorageBackend(spec)
             except DataJointError:
                 raise DataJointError(
-                    "Object storage is not configured. Set object_storage settings in datajoint.json "
-                    "or DJ_OBJECT_STORAGE_* environment variables."
+                    "Storage is not configured. Set stores.default and stores.<name> settings in datajoint.json."
                 )
 
     def _get_storage_path(self, field: str, ext: str = "") -> str:
@@ -110,8 +109,8 @@ class StagedInsert:
                 f"Missing: {set(self._table.primary_key) - set(primary_key)}"
             )
 
-        # Get storage spec
-        spec = config.get_object_storage_spec()
+        # Get storage spec (uses stores.default)
+        spec = config.get_store_spec()
         partition_pattern = spec.get("partition_pattern")
         token_length = spec.get("token_length", 8)
 
