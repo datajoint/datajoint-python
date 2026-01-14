@@ -31,6 +31,260 @@ FILEPATH_PATTERN = re.compile(r":filepath(?:-([a-zA-Z_][a-zA-Z0-9_]*))?:", re.I)
 BLOB_TYPES = re.compile(r"^(tiny|small|medium|long|)blob$", re.I)
 
 
+# =============================================================================
+# Column Type Migration (Phase 2)
+# =============================================================================
+
+# Mapping from MySQL native types to DataJoint core types
+NATIVE_TO_CORE_TYPE = {
+    # Unsigned integers
+    "tinyint unsigned": "uint8",
+    "smallint unsigned": "uint16",
+    "mediumint unsigned": "uint24",
+    "int unsigned": "uint32",
+    "bigint unsigned": "uint64",
+    # Signed integers
+    "tinyint": "int8",
+    "smallint": "int16",
+    "mediumint": "int24",
+    "int": "int32",
+    "bigint": "int64",
+    # Floats
+    "float": "float32",
+    "double": "float64",
+    # Blobs (all map to <blob>)
+    "tinyblob": "<blob>",
+    "blob": "<blob>",
+    "mediumblob": "<blob>",
+    "longblob": "<blob>",
+}
+
+
+def analyze_columns(schema: Schema) -> dict:
+    """
+    Analyze a schema to find columns that need type labels in comments.
+
+    This identifies columns that:
+
+    1. Use native MySQL types that should be labeled with core types
+    2. Are blob columns without codec markers
+    3. Use external storage (requiring Phase 3-4 migration)
+
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to analyze.
+
+    Returns
+    -------
+    dict
+        Dict with keys:
+
+        - needs_migration: list of columns needing type labels
+        - already_migrated: list of columns with existing type labels
+        - external_storage: list of columns requiring Phase 3-4
+
+        Each column entry has: table, column, native_type, core_type, comment
+
+    Examples
+    --------
+    >>> import datajoint as dj
+    >>> from datajoint.migrate import analyze_columns
+    >>> schema = dj.schema('my_database')
+    >>> result = analyze_columns(schema)
+    >>> for col in result['needs_migration']:
+    ...     print(f"{col['table']}.{col['column']}: {col['native_type']} → {col['core_type']}")
+    """
+    connection = schema.connection
+
+    result = {
+        "needs_migration": [],
+        "already_migrated": [],
+        "external_storage": [],
+    }
+
+    # Get all tables in the schema (excluding hidden tables)
+    tables_query = """
+        SELECT TABLE_NAME
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = %s
+        AND TABLE_TYPE = 'BASE TABLE'
+        AND TABLE_NAME NOT LIKE '~%%'
+    """
+    tables = connection.query(tables_query, args=(schema.database,)).fetchall()
+
+    for (table_name,) in tables:
+        # Get all columns for this table
+        columns_query = """
+            SELECT COLUMN_NAME, COLUMN_TYPE, DATA_TYPE, COLUMN_COMMENT
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_NAME = %s
+        """
+        columns = connection.query(columns_query, args=(schema.database, table_name)).fetchall()
+
+        for column_name, column_type, data_type, comment in columns:
+            comment = comment or ""
+
+            # Check if column already has a type label (starts with :type:)
+            has_label = comment.startswith(":")
+
+            # Check for external storage patterns (requires Phase 3-4)
+            is_external = bool(
+                EXTERNAL_PATTERNS["blob"].search(comment)
+                or EXTERNAL_PATTERNS["attach"].search(comment)
+                or FILEPATH_PATTERN.search(comment)
+            )
+
+            col_info = {
+                "table": f"{schema.database}.{table_name}",
+                "column": column_name,
+                "native_type": column_type,
+                "comment": comment,
+            }
+
+            if is_external:
+                # External storage - needs Phase 3-4
+                col_info["core_type"] = None
+                col_info["reason"] = "external_storage"
+                result["external_storage"].append(col_info)
+            elif has_label:
+                # Already has type label
+                col_info["core_type"] = comment.split(":")[1] if ":" in comment else None
+                result["already_migrated"].append(col_info)
+            else:
+                # Check if this type needs migration
+                # Normalize column_type for lookup (remove size specifiers for some types)
+                lookup_type = column_type.lower()
+
+                # Handle blob types
+                if BLOB_TYPES.match(data_type):
+                    col_info["core_type"] = "<blob>"
+                    result["needs_migration"].append(col_info)
+                # Handle numeric types
+                elif lookup_type in NATIVE_TO_CORE_TYPE:
+                    col_info["core_type"] = NATIVE_TO_CORE_TYPE[lookup_type]
+                    result["needs_migration"].append(col_info)
+                # Types that don't need migration (varchar, date, datetime, json, etc.)
+                # are silently skipped
+
+    return result
+
+
+def migrate_columns(
+    schema: Schema,
+    dry_run: bool = True,
+) -> dict:
+    """
+    Add type labels to column comments for Phase 2 migration.
+
+    This updates column comments to include type labels, enabling
+    DataJoint 2.0 to recognize column types without relying on
+    native MySQL types.
+
+    Migrates:
+
+    - Numeric types: int unsigned → :uint32:, smallint → :int16:, etc.
+    - Blob types: longblob → :<blob>:
+
+    Does NOT migrate external storage columns (external-*, attach@*,
+    filepath@*) - those require Phase 3-4.
+
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to migrate.
+    dry_run : bool, optional
+        If True, only preview changes without applying. Default True.
+
+    Returns
+    -------
+    dict
+        Dict with keys:
+
+        - columns_analyzed: total columns checked
+        - columns_migrated: number of columns updated
+        - columns_skipped: number already migrated or external
+        - sql_statements: list of SQL executed (or to be executed)
+        - details: per-column results
+
+    Examples
+    --------
+    >>> from datajoint.migrate import migrate_columns
+    >>> # Preview
+    >>> result = migrate_columns(schema, dry_run=True)
+    >>> print(f"Would migrate {len(result['sql_statements'])} columns")
+    >>> # Apply
+    >>> result = migrate_columns(schema, dry_run=False)
+    >>> print(f"Migrated {result['columns_migrated']} columns")
+    """
+    analysis = analyze_columns(schema)
+    connection = schema.connection
+
+    result = {
+        "columns_analyzed": (
+            len(analysis["needs_migration"]) + len(analysis["already_migrated"]) + len(analysis["external_storage"])
+        ),
+        "columns_migrated": 0,
+        "columns_skipped": len(analysis["already_migrated"]) + len(analysis["external_storage"]),
+        "sql_statements": [],
+        "details": [],
+    }
+
+    for col in analysis["needs_migration"]:
+        # Parse table name
+        db_name, table_name = col["table"].split(".")
+
+        # Build new comment with type label
+        old_comment = col["comment"]
+        type_label = col["core_type"]
+        new_comment = f":{type_label}:{old_comment}"
+
+        # Escape for SQL
+        new_comment_escaped = new_comment.replace("\\", "\\\\").replace("'", "\\'")
+
+        # Generate ALTER TABLE statement
+        sql = (
+            f"ALTER TABLE `{db_name}`.`{table_name}` "
+            f"MODIFY COLUMN `{col['column']}` {col['native_type']} "
+            f"COMMENT '{new_comment_escaped}'"
+        )
+        result["sql_statements"].append(sql)
+
+        detail = {
+            "table": col["table"],
+            "column": col["column"],
+            "native_type": col["native_type"],
+            "core_type": type_label,
+            "status": "pending",
+        }
+
+        if dry_run:
+            logger.info(f"Would migrate {col['table']}.{col['column']}: {col['native_type']} → {type_label}")
+            detail["status"] = "dry_run"
+        else:
+            try:
+                connection.query(sql)
+                result["columns_migrated"] += 1
+                detail["status"] = "migrated"
+                logger.info(f"Migrated {col['table']}.{col['column']}: {col['native_type']} → {type_label}")
+            except Exception as e:
+                detail["status"] = "error"
+                detail["error"] = str(e)
+                logger.error(f"Failed to migrate {col['table']}.{col['column']}: {e}")
+                raise DataJointError(f"Migration failed: {e}") from e
+
+        result["details"].append(detail)
+
+    if dry_run:
+        logger.info(f"Dry run: would migrate {len(result['sql_statements'])} columns")
+    else:
+        logger.info(f"Migrated {result['columns_migrated']} columns")
+
+    return result
+
+
+# Legacy function name for backward compatibility
 def analyze_blob_columns(schema: Schema) -> list[dict]:
     """
     Analyze a schema to find blob columns that could be migrated to <blob>.
@@ -809,6 +1063,377 @@ def migrate_external(
         result["details"].append(detail)
 
     return result
+
+
+# =============================================================================
+# Store Configuration and Integrity Checks
+# =============================================================================
+
+
+def check_store_configuration(schema: Schema) -> dict:
+    """
+    Verify external stores are properly configured.
+
+    Checks that all external storage stores referenced in the schema's
+    tables are configured in settings and accessible.
+
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to check.
+
+    Returns
+    -------
+    dict
+        Dict with keys:
+
+        - stores_configured: list of store names with valid config
+        - stores_missing: list of stores referenced but not configured
+        - stores_unreachable: list of stores that failed connection test
+        - details: per-store details
+
+    Examples
+    --------
+    >>> from datajoint.migrate import check_store_configuration
+    >>> result = check_store_configuration(schema)
+    >>> if result['stores_missing']:
+    ...     print(f"Missing stores: {result['stores_missing']}")
+    """
+    from .settings import config
+    import os
+
+    result = {
+        "stores_configured": [],
+        "stores_missing": [],
+        "stores_unreachable": [],
+        "details": [],
+    }
+
+    # Find all external columns and their store names
+    external_cols = _find_external_columns(schema)
+    filepath_cols = _find_filepath_columns(schema)
+
+    # Collect unique store names
+    store_names = set()
+    for col in external_cols + filepath_cols:
+        store_names.add(col["store_name"])
+
+    # Also check ~external_* tables for store names
+    connection = schema.connection
+    tables_query = """
+        SELECT TABLE_NAME
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = %s
+        AND TABLE_NAME LIKE '~external_%%'
+    """
+    external_tables = connection.query(tables_query, args=(schema.database,)).fetchall()
+    for (table_name,) in external_tables:
+        # Extract store name from ~external_<store>
+        store_name = table_name[10:]  # Remove "~external_" prefix
+        if store_name:
+            store_names.add(store_name)
+
+    stores_config = config.get("stores", {})
+
+    for store_name in store_names:
+        detail = {
+            "store": store_name,
+            "status": "unknown",
+            "location": None,
+            "protocol": None,
+        }
+
+        if store_name not in stores_config:
+            result["stores_missing"].append(store_name)
+            detail["status"] = "missing"
+            result["details"].append(detail)
+            continue
+
+        store_config = stores_config[store_name]
+        detail["location"] = store_config.get("location")
+        detail["protocol"] = store_config.get("protocol", "file")
+
+        # Test accessibility
+        protocol = detail["protocol"]
+        location = detail["location"]
+
+        if protocol == "file":
+            # Check if local path exists
+            if location and os.path.exists(location):
+                result["stores_configured"].append(store_name)
+                detail["status"] = "configured"
+            else:
+                result["stores_unreachable"].append(store_name)
+                detail["status"] = "unreachable"
+                detail["error"] = f"Path does not exist: {location}"
+        elif protocol in ("s3", "minio"):
+            # For S3/MinIO, we can't easily test without boto3
+            # Mark as configured if it has required keys
+            if location and store_config.get("access_key"):
+                result["stores_configured"].append(store_name)
+                detail["status"] = "configured"
+            else:
+                result["stores_missing"].append(store_name)
+                detail["status"] = "incomplete"
+                detail["error"] = "Missing location or access_key"
+        else:
+            # Unknown protocol, assume configured if location set
+            if location:
+                result["stores_configured"].append(store_name)
+                detail["status"] = "configured"
+            else:
+                result["stores_missing"].append(store_name)
+                detail["status"] = "incomplete"
+
+        result["details"].append(detail)
+
+    return result
+
+
+def verify_external_integrity(schema: Schema, store_name: str = None) -> dict:
+    """
+    Check that all external references point to existing files.
+
+    Verifies integrity of external storage by checking that each
+    reference in the ~external_* tables points to an accessible file.
+
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to check.
+    store_name : str, optional
+        Specific store to check. If None, checks all stores.
+
+    Returns
+    -------
+    dict
+        Dict with keys:
+
+        - total_references: count of external entries
+        - valid: count with accessible files
+        - missing: list of entries with inaccessible files
+        - stores_checked: list of store names checked
+
+    Examples
+    --------
+    >>> from datajoint.migrate import verify_external_integrity
+    >>> result = verify_external_integrity(schema)
+    >>> if result['missing']:
+    ...     print(f"Missing files: {len(result['missing'])}")
+    ...     for entry in result['missing'][:5]:
+    ...         print(f"  {entry['filepath']}")
+
+    Notes
+    -----
+    For S3/MinIO stores, this function does not verify file existence
+    (would require network calls). Only local file stores are fully verified.
+    """
+    from .settings import config
+    import os
+
+    result = {
+        "total_references": 0,
+        "valid": 0,
+        "missing": [],
+        "stores_checked": [],
+    }
+
+    connection = schema.connection
+    stores_config = config.get("stores", {})
+
+    # Find ~external_* tables
+    if store_name:
+        external_tables = [(f"~external_{store_name}",)]
+    else:
+        tables_query = """
+            SELECT TABLE_NAME
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_NAME LIKE '~external_%%'
+        """
+        external_tables = connection.query(tables_query, args=(schema.database,)).fetchall()
+
+    for (table_name,) in external_tables:
+        # Extract store name
+        current_store = table_name[10:]  # Remove "~external_" prefix
+        result["stores_checked"].append(current_store)
+
+        store_config = stores_config.get(current_store, {})
+        protocol = store_config.get("protocol", "file")
+        location = store_config.get("location", "")
+
+        # Only verify local files
+        if protocol != "file":
+            logger.info(f"Skipping {current_store}: non-local protocol ({protocol})")
+            continue
+
+        # Query external table for all entries
+        try:
+            entries_query = f"""
+                SELECT HEX(hash), filepath, size
+                FROM `{schema.database}`.`{table_name}`
+            """
+            entries = connection.query(entries_query).fetchall()
+        except Exception as e:
+            logger.warning(f"Could not read {table_name}: {e}")
+            continue
+
+        for hash_hex, filepath, size in entries:
+            result["total_references"] += 1
+
+            # Build full path
+            if location:
+                full_path = os.path.join(location, filepath)
+            else:
+                full_path = filepath
+
+            if os.path.exists(full_path):
+                result["valid"] += 1
+            else:
+                result["missing"].append(
+                    {
+                        "store": current_store,
+                        "hash": hash_hex,
+                        "filepath": filepath,
+                        "full_path": full_path,
+                        "expected_size": size,
+                    }
+                )
+
+    return result
+
+
+def rebuild_lineage(schema: Schema, dry_run: bool = True) -> dict:
+    """
+    Rebuild ~lineage table from current table definitions.
+
+    Use after schema changes or to repair corrupted lineage data.
+    The lineage table tracks foreign key relationships for semantic matching.
+
+    Parameters
+    ----------
+    schema : Schema
+        The DataJoint schema to rebuild lineage for.
+    dry_run : bool, optional
+        If True, only preview changes without applying. Default True.
+
+    Returns
+    -------
+    dict
+        Dict with keys:
+
+        - tables_analyzed: number of tables in schema
+        - lineage_entries: number of lineage entries created
+        - status: 'dry_run', 'rebuilt', or 'error'
+
+    Examples
+    --------
+    >>> from datajoint.migrate import rebuild_lineage
+    >>> result = rebuild_lineage(schema, dry_run=True)
+    >>> print(f"Would create {result['lineage_entries']} lineage entries")
+    >>> result = rebuild_lineage(schema, dry_run=False)
+    >>> print(f"Rebuilt lineage: {result['status']}")
+
+    Notes
+    -----
+    This function wraps schema.rebuild_lineage() with dry_run support
+    and additional reporting.
+    """
+    result = {
+        "tables_analyzed": 0,
+        "lineage_entries": 0,
+        "status": "pending",
+    }
+
+    connection = schema.connection
+
+    # Count tables in schema
+    tables_query = """
+        SELECT COUNT(*)
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = %s
+        AND TABLE_TYPE = 'BASE TABLE'
+        AND TABLE_NAME NOT LIKE '~%%'
+    """
+    result["tables_analyzed"] = connection.query(tables_query, args=(schema.database,)).fetchone()[0]
+
+    if dry_run:
+        # Estimate lineage entries (count foreign key relationships)
+        fk_query = """
+            SELECT COUNT(*)
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = %s
+            AND REFERENCED_TABLE_NAME IS NOT NULL
+        """
+        result["lineage_entries"] = connection.query(fk_query, args=(schema.database,)).fetchone()[0]
+        result["status"] = "dry_run"
+        logger.info(
+            f"Dry run: would rebuild lineage for {result['tables_analyzed']} tables "
+            f"with ~{result['lineage_entries']} foreign key relationships"
+        )
+        return result
+
+    try:
+        # Call schema's rebuild_lineage method if available
+        if hasattr(schema, "rebuild_lineage"):
+            schema.rebuild_lineage()
+        else:
+            # Manual rebuild for older schemas
+            logger.warning("schema.rebuild_lineage() not available, attempting manual rebuild")
+            _rebuild_lineage_manual(schema)
+
+        # Count actual lineage entries created
+        lineage_query = f"""
+            SELECT COUNT(*)
+            FROM `{schema.database}`.`~lineage`
+        """
+        try:
+            result["lineage_entries"] = connection.query(lineage_query).fetchone()[0]
+        except Exception:
+            result["lineage_entries"] = 0
+
+        result["status"] = "rebuilt"
+        logger.info(f"Rebuilt lineage: {result['lineage_entries']} entries")
+    except Exception as e:
+        result["status"] = "error"
+        result["error"] = str(e)
+        logger.error(f"Failed to rebuild lineage: {e}")
+        raise DataJointError(f"Lineage rebuild failed: {e}") from e
+
+    return result
+
+
+def _rebuild_lineage_manual(schema: Schema):
+    """Manual lineage rebuild for schemas without rebuild_lineage method."""
+    connection = schema.connection
+    database = schema.database
+
+    # Create lineage table if it doesn't exist
+    create_sql = f"""
+        CREATE TABLE IF NOT EXISTS `{database}`.`~lineage` (
+            `child` varchar(64) NOT NULL,
+            `parent` varchar(64) NOT NULL,
+            `attribute` varchar(64) NOT NULL,
+            PRIMARY KEY (`child`, `parent`, `attribute`)
+        )
+    """
+    connection.query(create_sql)
+
+    # Clear existing entries
+    connection.query(f"DELETE FROM `{database}`.`~lineage`")
+
+    # Populate from foreign key relationships
+    insert_sql = f"""
+        INSERT INTO `{database}`.`~lineage` (child, parent, attribute)
+        SELECT DISTINCT
+            TABLE_NAME as child,
+            REFERENCED_TABLE_NAME as parent,
+            COLUMN_NAME as attribute
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = %s
+        AND REFERENCED_TABLE_NAME IS NOT NULL
+    """
+    connection.query(insert_sql, args=(database,))
 
 
 def migrate_filepath(
