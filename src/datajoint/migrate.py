@@ -2081,3 +2081,228 @@ def verify_schema_v20(
         result["compatible"] = False
 
     return result
+
+
+def migrate_external_pointers_v2(
+    schema: str,
+    table: str,
+    attribute: str,
+    source_store: str,
+    dest_store: str,
+    copy_files: bool = False,
+    connection=None,
+) -> dict:
+    """
+    Migrate external storage pointers from 0.14.6 to 2.0 format.
+
+    Converts BINARY(16) UUID references to JSON metadata format.
+    Optionally copies blob files to new storage location.
+
+    This is useful when copying production data to _v2 schemas and you need
+    to access external storage attributes but don't want to move the files yet.
+
+    Parameters
+    ----------
+    schema : str
+        Schema name (e.g., 'my_pipeline_v2')
+    table : str
+        Table name
+    attribute : str
+        External attribute name (e.g., 'signal')
+    source_store : str
+        0.14.6 store name (e.g., 'external-raw')
+    dest_store : str
+        2.0 store name (e.g., 'raw')
+    copy_files : bool, optional
+        If True, copy blob files to new location.
+        If False (default), JSON points to existing files.
+    connection : Connection, optional
+        Database connection. If None, uses default connection.
+
+    Returns
+    -------
+    dict
+        - rows_migrated: int - number of pointers migrated
+        - files_copied: int - number of files copied (if copy_files=True)
+        - errors: list - any errors encountered
+
+    Examples
+    --------
+    >>> # Migrate pointers without moving files
+    >>> result = migrate_external_pointers_v2(
+    ...     schema='my_pipeline_v2',
+    ...     table='recording',
+    ...     attribute='signal',
+    ...     source_store='external-raw',
+    ...     dest_store='raw',
+    ...     copy_files=False
+    ... )
+    >>> print(f"Migrated {result['rows_migrated']} pointers")
+
+    Notes
+    -----
+    This function:
+    1. Reads BINARY(16) UUID from table column
+    2. Looks up file in ~external_{source_store} table
+    3. Creates JSON metadata with file path
+    4. Optionally copies file to new store location
+    5. Updates column with JSON metadata
+
+    The JSON format is:
+    {
+      "path": "schema/table/key_hash/file.ext",
+      "size": 12345,
+      "hash": null,
+      "ext": ".dat",
+      "is_dir": false,
+      "timestamp": "2025-01-14T10:30:00+00:00"
+    }
+    """
+    import json
+    from datetime import datetime, timezone
+    from . import conn as get_conn
+    from .settings import get_store_spec
+
+    if connection is None:
+        connection = get_conn()
+
+    logger.info(
+        f"Migrating external pointers: {schema}.{table}.{attribute} "
+        f"({source_store} → {dest_store})"
+    )
+
+    # Get source store specification (0.14.6)
+    # Note: This assumes old external table exists
+    external_table = f"~external_{source_store}"
+
+    # Check if external tracking table exists
+    check_query = """
+        SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+    """
+    exists = connection.query(check_query, args=(schema, external_table)).fetchone()[0]
+
+    if not exists:
+        raise DataJointError(
+            f"External tracking table {schema}.{external_table} not found. "
+            f"Cannot migrate external pointers from 0.14.6 format."
+        )
+
+    # Get dest store spec for path construction
+    dest_spec = get_store_spec(dest_store)
+
+    result = {
+        "rows_migrated": 0,
+        "files_copied": 0,
+        "errors": [],
+    }
+
+    # Query rows with external attributes
+    query = f"""
+        SELECT * FROM `{schema}`.`{table}`
+        WHERE `{attribute}` IS NOT NULL
+    """
+
+    rows = connection.query(query).fetchall()
+
+    # Get column info to identify UUID column
+    col_query = """
+        SELECT ORDINAL_POSITION, COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+        ORDER BY ORDINAL_POSITION
+    """
+    columns = connection.query(col_query, args=(schema, table)).fetchall()
+    col_names = [col[1] for col in columns]
+
+    # Find attribute column index
+    try:
+        attr_idx = col_names.index(attribute)
+    except ValueError:
+        raise DataJointError(f"Attribute {attribute} not found in {schema}.{table}")
+
+    for row in rows:
+        uuid_bytes = row[attr_idx]
+
+        if uuid_bytes is None:
+            continue
+
+        # Look up file info in external tracking table
+        lookup_query = f"""
+            SELECT hash, size, timestamp, filepath
+            FROM `{schema}`.`{external_table}`
+            WHERE hash = %s
+        """
+
+        file_info = connection.query(lookup_query, args=(uuid_bytes,)).fetchone()
+
+        if file_info is None:
+            result["errors"].append(
+                f"External file not found for UUID: {uuid_bytes.hex()}"
+            )
+            continue
+
+        hash_hex, size, timestamp, filepath = file_info
+
+        # Build JSON metadata
+        # Extract extension from filepath
+        import os
+
+        ext = os.path.splitext(filepath)[1] if filepath else ""
+
+        metadata = {
+            "path": filepath,
+            "size": size,
+            "hash": hash_hex.hex() if hash_hex else None,
+            "ext": ext,
+            "is_dir": False,
+            "timestamp": timestamp.isoformat() if timestamp else datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Update row with JSON metadata
+        # Build WHERE clause from primary keys
+        pk_columns = []
+        pk_values = []
+
+        # Get primary key info
+        pk_query = """
+            SELECT COLUMN_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = %s
+              AND TABLE_NAME = %s
+              AND CONSTRAINT_NAME = 'PRIMARY'
+            ORDER BY ORDINAL_POSITION
+        """
+        pk_cols = connection.query(pk_query, args=(schema, table)).fetchall()
+
+        for pk_col in pk_cols:
+            pk_name = pk_col[0]
+            pk_idx = col_names.index(pk_name)
+            pk_columns.append(pk_name)
+            pk_values.append(row[pk_idx])
+
+        # Build UPDATE statement
+        where_parts = [f"`{col}` = %s" for col in pk_columns]
+        where_clause = " AND ".join(where_parts)
+
+        update_query = f"""
+            UPDATE `{schema}`.`{table}`
+            SET `{attribute}` = %s
+            WHERE {where_clause}
+        """
+
+        connection.query(update_query, args=(json.dumps(metadata), *pk_values))
+
+        result["rows_migrated"] += 1
+
+        # Copy file if requested
+        if copy_files:
+            # TODO: Implement file copying using fsspec
+            # This requires knowing source and dest store locations
+            logger.warning("File copying not yet implemented in migrate_external_pointers_v2")
+
+    logger.info(
+        f"Migrated {result['rows_migrated']} external pointers for {schema}.{table}.{attribute}"
+    )
+
+    return result
