@@ -427,3 +427,106 @@ class TestBlobCodec:
         # BlobCodec.decode() should unpack back to original
         decoded = blob_codec.decode(encoded)
         assert decoded == data
+
+
+class TestFilepathCodec:
+    """Tests for the built-in FilepathCodec."""
+
+    def test_filepath_is_registered(self):
+        """Test that filepath is automatically registered."""
+        assert is_codec_registered("filepath")
+
+    def test_filepath_properties(self):
+        """Test FilepathCodec properties."""
+        filepath_codec = get_codec("filepath")
+        assert filepath_codec.name == "filepath"
+        # Filepath requires @store, so only test is_store=True
+        assert filepath_codec.get_dtype(is_store=True) == "json"
+
+    def test_filepath_rejects_hash_section(self):
+        """Test that filepath rejects paths starting with _hash/."""
+        from unittest.mock import MagicMock, patch
+
+        filepath_codec = get_codec("filepath")
+
+        # Mock the backend to avoid actual file operations
+        with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+            mock_backend = MagicMock()
+            mock_backend.exists.return_value = True
+            mock_get_backend.return_value = mock_backend
+
+            # Test various forms of _hash/ paths
+            invalid_paths = [
+                "_hash/abc123",
+                "_hash/schema/file.dat",
+                "/_hash/nested/path.bin",
+            ]
+
+            for path in invalid_paths:
+                with pytest.raises(
+                    ValueError,
+                    match=r"<filepath@> cannot use reserved sections '_hash/' or '_schema/'",
+                ):
+                    filepath_codec.encode(path, store_name="test_store")
+
+    def test_filepath_rejects_schema_section(self):
+        """Test that filepath rejects paths starting with _schema/."""
+        from unittest.mock import MagicMock, patch
+
+        filepath_codec = get_codec("filepath")
+
+        # Mock the backend to avoid actual file operations
+        with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+            mock_backend = MagicMock()
+            mock_backend.exists.return_value = True
+            mock_get_backend.return_value = mock_backend
+
+            # Test various forms of _schema/ paths
+            invalid_paths = [
+                "_schema/mytable",
+                "_schema/myschema/mytable/key.dat",
+                "/_schema/nested/data.zarr",
+            ]
+
+            for path in invalid_paths:
+                with pytest.raises(
+                    ValueError,
+                    match=r"<filepath@> cannot use reserved sections '_hash/' or '_schema/'",
+                ):
+                    filepath_codec.encode(path, store_name="test_store")
+
+    def test_filepath_allows_user_paths(self):
+        """Test that filepath allows any paths outside reserved sections."""
+        from unittest.mock import MagicMock, patch
+
+        filepath_codec = get_codec("filepath")
+
+        # Mock the backend to avoid actual file operations
+        with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+            mock_backend = MagicMock()
+            mock_backend.exists.return_value = True
+            mock_backend.size.return_value = 1024
+            mock_get_backend.return_value = mock_backend
+
+            # Test valid user-managed paths
+            valid_paths = [
+                "subject01/session001/data.bin",
+                "raw/experiment_2024/recording.nwb",
+                "processed/analysis_v2/results.csv",
+                "my_hash_file.dat",  # "hash" in name is fine
+                "my_schema_backup.sql",  # "schema" in name is fine
+            ]
+
+            for path in valid_paths:
+                result = filepath_codec.encode(path, store_name="test_store")
+                assert isinstance(result, dict)
+                assert result["path"] == path
+                assert result["store"] == "test_store"
+                assert result["size"] == 1024
+                assert result["is_dir"] is False
+                assert "timestamp" in result
+
+    def test_filepath_in_list_codecs(self):
+        """Test that filepath appears in list_codecs."""
+        codecs = list_codecs()
+        assert "filepath" in codecs
