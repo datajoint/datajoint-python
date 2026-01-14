@@ -15,6 +15,7 @@ from typing import IO, Iterator
 import fsspec
 
 from .errors import DataJointError
+from .hash_registry import compute_hash
 from .storage import StorageBackend
 
 
@@ -366,8 +367,10 @@ class ObjectRef:
 
         # Check hash if available
         if self.hash:
-            # TODO: Implement hash verification
-            pass
+            content = self._backend.get_buffer(self.path)
+            actual_hash = compute_hash(content)
+            if actual_hash != self.hash:
+                raise IntegrityError(f"Hash mismatch for {self.path}: expected {self.hash}, got {actual_hash}")
 
         return True
 

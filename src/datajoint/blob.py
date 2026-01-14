@@ -159,7 +159,8 @@ class Blob:
             self._pos += len(prefix)
             blob_size = self.read_value()
             blob = compression[prefix](self._blob[self._pos :])
-            assert len(blob) == blob_size
+            if len(blob) != blob_size:
+                raise DataJointError(f"Blob size mismatch: expected {blob_size}, got {len(blob)}")
             self._blob = blob
             self._pos = 0
         blob_format = self.read_zero_terminated_string()
@@ -363,7 +364,8 @@ class Blob:
     @staticmethod
     def pack_int(v):
         n_bytes = v.bit_length() // 8 + 1
-        assert 0 < n_bytes <= 0xFFFF, "Integers are limited to 65535 bytes"
+        if not (0 < n_bytes <= 0xFFFF):
+            raise DataJointError("Integers are limited to 65535 bytes")
         return b"\x0a" + np.uint16(n_bytes).tobytes() + v.to_bytes(n_bytes, byteorder="little", signed=True)
 
     def read_bool(self):

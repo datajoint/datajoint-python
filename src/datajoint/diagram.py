@@ -23,14 +23,14 @@ try:
     from matplotlib import pyplot as plt
 
     plot_active = True
-except:
+except ImportError:
     plot_active = False
 
 try:
     from networkx.drawing.nx_pydot import pydot_layout
 
     diagram_active = True
-except:
+except ImportError:
     diagram_active = False
 
 

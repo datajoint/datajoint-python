@@ -1085,12 +1085,12 @@ class Union(QueryExpression):
         return "({sql1})  UNION ({sql2})".format(sql1=sql1, sql2=sql2)
 
     def from_clause(self):
-        """The union does not use a FROM clause"""
-        assert False
+        """The union does not use a FROM clause."""
+        raise NotImplementedError("Union does not use a FROM clause")
 
     def where_clause(self):
-        """The union does not use a WHERE clause"""
-        assert False
+        """The union does not use a WHERE clause."""
+        raise NotImplementedError("Union does not use a WHERE clause")
 
     def __len__(self):
         return self.connection.query(
