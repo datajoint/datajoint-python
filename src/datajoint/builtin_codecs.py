@@ -531,9 +531,7 @@ class ObjectCodec(SchemaCodec):
             raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
 
         # Build storage path using inherited helper
-        path, token = self._build_path(
-            schema, table, field, primary_key, ext=ext, store_name=store_name
-        )
+        path, token = self._build_path(schema, table, field, primary_key, ext=ext, store_name=store_name)
 
         # Get storage backend using inherited helper
         backend = self._get_backend(store_name)
@@ -1247,9 +1245,7 @@ class NpyCodec(SchemaCodec):
         schema, table, field, primary_key = self._extract_context(key)
 
         # Build schema-addressed storage path
-        path, _ = self._build_path(
-            schema, table, field, primary_key, ext=".npy", store_name=store_name
-        )
+        path, _ = self._build_path(schema, table, field, primary_key, ext=".npy", store_name=store_name)
 
         # Serialize to .npy format
         buffer = io.BytesIO()
