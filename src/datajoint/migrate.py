@@ -20,12 +20,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__.split(".")[0])
 
 # Patterns for detecting 0.x external storage columns
+# In 0.14.6, table definitions used: blob@store, attach@store, filepath@store
+# These became column comments: :blob@store:, :attach@store:, :filepath@store:
 EXTERNAL_PATTERNS = {
-    "blob": re.compile(r":external(?:-([a-zA-Z_][a-zA-Z0-9_]*))?:", re.I),
-    "attach": re.compile(r":external-attach(?:-([a-zA-Z_][a-zA-Z0-9_]*))?:", re.I),
+    "blob": re.compile(r":blob@([a-z][\-\w]*):", re.I),
+    "attach": re.compile(r":attach@([a-z][\-\w]*):", re.I),
 }
 
-FILEPATH_PATTERN = re.compile(r":filepath(?:-([a-zA-Z_][a-zA-Z0-9_]*))?:", re.I)
+FILEPATH_PATTERN = re.compile(r":filepath@([a-z][\-\w]*):", re.I)
 
 # Pattern to detect blob types
 BLOB_TYPES = re.compile(r"^(tiny|small|medium|long|)blob$", re.I)
