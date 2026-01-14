@@ -1678,9 +1678,9 @@ def create_parallel_schema(
 
     # Get all tables from source schema
     tables_query = """
-        SELECT TABLE_NAME 
-        FROM information_schema.TABLES 
-        WHERE TABLE_SCHEMA = %s 
+        SELECT TABLE_NAME
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = %s
         ORDER BY TABLE_NAME
     """
     tables = [row[0] for row in connection.query(tables_query, args=(source,)).fetchall()]
@@ -1751,7 +1751,7 @@ def copy_table_data(
     --------
     >>> # Copy all data
     >>> result = copy_table_data('my_pipeline', 'my_pipeline_v20', 'Mouse')
-    
+
     >>> # Copy sample
     >>> result = copy_table_data(
     ...     'my_pipeline', 'my_pipeline_v20', 'Session',
@@ -1878,12 +1878,10 @@ def compare_query_results(
                     continue
 
                 # Handle floating-point comparison
-                if col_type in ('float', 'double', 'decimal'):
+                if col_type in ("float", "double", "decimal"):
                     if abs(float(prod_val) - float(test_val)) > tolerance:
                         result["match"] = False
-                        result["discrepancies"].append(
-                            f"Row {i}, {col_name}: {prod_val} != {test_val} (diff > {tolerance})"
-                        )
+                        result["discrepancies"].append(f"Row {i}, {col_name}: {prod_val} != {test_val} (diff > {tolerance})")
                 else:
                     if prod_val != test_val:
                         result["match"] = False
@@ -1896,9 +1894,7 @@ def compare_query_results(
 
         if prod_checksum != test_checksum:
             result["match"] = False
-            result["discrepancies"].append(
-                f"Checksum mismatch: prod={prod_checksum}, test={test_checksum}"
-            )
+            result["discrepancies"].append(f"Checksum mismatch: prod={prod_checksum}, test={test_checksum}")
 
     return result
 
@@ -2161,15 +2157,11 @@ def migrate_external_pointers_v2(
     import json
     from datetime import datetime, timezone
     from . import conn as get_conn
-    from .settings import get_store_spec
 
     if connection is None:
         connection = get_conn()
 
-    logger.info(
-        f"Migrating external pointers: {schema}.{table}.{attribute} "
-        f"({source_store} → {dest_store})"
-    )
+    logger.info(f"Migrating external pointers: {schema}.{table}.{attribute} " f"({source_store} → {dest_store})")
 
     # Get source store specification (0.14.6)
     # Note: This assumes old external table exists
@@ -2187,9 +2179,6 @@ def migrate_external_pointers_v2(
             f"External tracking table {schema}.{external_table} not found. "
             f"Cannot migrate external pointers from 0.14.6 format."
         )
-
-    # Get dest store spec for path construction
-    dest_spec = get_store_spec(dest_store)
 
     result = {
         "rows_migrated": 0,
@@ -2237,9 +2226,7 @@ def migrate_external_pointers_v2(
         file_info = connection.query(lookup_query, args=(uuid_bytes,)).fetchone()
 
         if file_info is None:
-            result["errors"].append(
-                f"External file not found for UUID: {uuid_bytes.hex()}"
-            )
+            result["errors"].append(f"External file not found for UUID: {uuid_bytes.hex()}")
             continue
 
         hash_hex, size, timestamp, filepath = file_info
@@ -2301,8 +2288,6 @@ def migrate_external_pointers_v2(
             # This requires knowing source and dest store locations
             logger.warning("File copying not yet implemented in migrate_external_pointers_v2")
 
-    logger.info(
-        f"Migrated {result['rows_migrated']} external pointers for {schema}.{table}.{attribute}"
-    )
+    logger.info(f"Migrated {result['rows_migrated']} external pointers for {schema}.{table}.{attribute}")
 
     return result
