@@ -596,7 +596,7 @@ class QueryExpression:
 
         For single-row fetch, use fetch1() which is unchanged.
 
-        See migration guide: https://docs.datajoint.com/migration/fetch-api
+        See migration guide: https://docs.datajoint.com/how-to/migrate-from-0x/
         """
         raise AttributeError(
             "fetch() has been removed in DataJoint 2.0. "

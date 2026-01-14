@@ -48,7 +48,7 @@ if not diagram_active:  # noqa: C901
 
         See Also
         --------
-        https://docs.datajoint.com/core/datajoint-python/0.14/client/install/
+        https://docs.datajoint.com/how-to/installation/
         """
 
         def __init__(self, *args, **kwargs) -> None:

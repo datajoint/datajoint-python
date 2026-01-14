@@ -466,8 +466,8 @@ class Heading:
                 except StopIteration:
                     if original_type.startswith("external"):
                         raise DataJointError(
-                            f"Legacy datatype `{original_type}`. Migrate your external stores to datajoint 0.12: "
-                            "https://docs.datajoint.io/python/admin/5-blob-config.html#migration-between-datajoint-v0-11-and-v0-12"
+                            f"Legacy datatype `{original_type}`. See migration guide: "
+                            "https://docs.datajoint.com/how-to/migrate-from-0x/"
                         )
                     # Not a special type - that's fine, could be native passthrough
                     category = None
