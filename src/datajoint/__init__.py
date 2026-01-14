@@ -56,7 +56,6 @@ __all__ = [
     "errors",
     "migrate",
     "DataJointError",
-    "key",
     "key_hash",
     "logger",
     "cli",
