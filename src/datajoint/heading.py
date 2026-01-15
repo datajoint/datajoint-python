@@ -449,7 +449,7 @@ class Heading:
                     # if no codec, then delay the error until the first invocation
                     attr["codec"] = _MissingType(codec_spec)
                 else:
-                    # Determine if external storage based on store presence
+                    # Determine if in-store storage based on store presence
                     is_store = attr.get("store") is not None
                     attr["type"] = attr["codec"].get_dtype(is_store=is_store)
                     if not any(r.match(attr["type"]) for r in TYPE_PATTERN.values()):

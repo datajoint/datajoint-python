@@ -1,11 +1,11 @@
 """
-Garbage collection for external storage.
+Garbage collection for object storage.
 
 This module provides utilities to identify and remove orphaned items
-from external storage. Storage items become orphaned when all database rows
+from object storage. Storage items become orphaned when all database rows
 referencing them are deleted.
 
-DataJoint uses two external storage patterns:
+DataJoint uses two object storage patterns:
 
 Hash-addressed storage
     Types: ``<hash@>``, ``<blob@>``, ``<attach@>``
@@ -31,7 +31,7 @@ Usage::
 
 See Also
 --------
-datajoint.builtin_codecs : Codec implementations for external storage types.
+datajoint.builtin_codecs : Codec implementations for object storage types.
 """
 
 from __future__ import annotations
@@ -638,7 +638,7 @@ def format_stats(stats: dict[str, Any]) -> str:
     str
         Formatted string.
     """
-    lines = ["External Storage Statistics:"]
+    lines = ["Object Storage Statistics:"]
 
     # Show hash-addressed storage stats if present
     if "hash_referenced" in stats:

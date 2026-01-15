@@ -154,7 +154,7 @@ class Codec(ABC):
         key : dict, optional
             Primary key values. May be needed for path construction.
         store_name : str, optional
-            Target store name for external storage.
+            Target store name for object storage.
 
         Returns
         -------
@@ -514,7 +514,7 @@ def decode_attribute(attr, data, squeeze: bool = False):
     This is the central decode function used by all fetch methods. It handles:
     - Codec chains (e.g., <blob@store> → <hash> → bytes)
     - Native type conversions (JSON, UUID)
-    - External storage downloads (via config["download_path"])
+    - Object storage downloads (via config["download_path"])
 
     Args:
         attr: Attribute from the table's heading.
@@ -533,7 +533,7 @@ def decode_attribute(attr, data, squeeze: bool = False):
         return None
 
     if attr.codec:
-        # Get store if present for external storage
+        # Get store if present for object storage
         store = getattr(attr, "store", None)
         if store is not None:
             dtype_spec = f"<{attr.codec.name}@{store}>"

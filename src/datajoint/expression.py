@@ -686,7 +686,7 @@ class QueryExpression:
         :param squeeze: if True, remove extra dimensions from arrays
         :return: list of dictionaries, one per row
 
-        For external storage types (attachments, filepaths), files are downloaded
+        For object storage types (attachments, filepaths), files are downloaded
         to config["download_path"]. Use config.override() to change::
 
             with dj.config.override(download_path="/data"):
