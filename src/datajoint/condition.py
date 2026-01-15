@@ -293,7 +293,7 @@ def make_condition(
     - ``str``: Used directly as SQL condition
     - ``dict``: AND of equality conditions for matching attributes
     - ``bool``: Returns the boolean value (possibly negated)
-    - ``QueryExpression``: Generates subquery (semijoin/antijoin)
+    - ``QueryExpression``: Generates subquery for restriction
     - ``AndList``: AND of all conditions
     - ``list/set/tuple``: OR of all conditions
     - ``numpy.void``: Like dict, from record array
@@ -398,7 +398,7 @@ def make_condition(
     if inspect.isclass(condition) and issubclass(condition, QueryExpression):
         condition = condition()
 
-    # restrict by another expression (aka semijoin and antijoin)
+    # restrict by another expression
     if isinstance(condition, QueryExpression):
         assert_join_compatibility(query_expression, condition, semantic_check=semantic_check)
         # Match on all non-hidden namesakes (hidden attributes excluded)
