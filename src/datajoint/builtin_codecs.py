@@ -6,12 +6,14 @@ These serve as both useful built-in codecs and as examples for users who
 want to create their own custom codecs.
 
 Built-in Codecs:
-    - ``<blob>``: Serialize Python objects (internal) or external with dedup
-    - ``<hash>``: Hash-addressed storage with SHA256 deduplication
-    - ``<object>``: Schema-addressed storage for files/folders (Zarr, HDF5)
-    - ``<attach>``: File attachment (internal) or external with dedup
-    - ``<filepath@store>``: Reference to existing file in store
+    - ``<blob>``: Serialize Python objects (in-table storage)
+    - ``<blob@>``: Serialize Python objects (external with hash-addressed dedup)
+    - ``<attach>``: File attachment (in-table storage)
+    - ``<attach@>``: File attachment (external with hash-addressed dedup)
+    - ``<hash@>``: Hash-addressed storage with MD5 deduplication (external only)
+    - ``<object@>``: Schema-addressed storage for files/folders (external only)
     - ``<npy@>``: Store numpy arrays as portable .npy files (external only)
+    - ``<filepath@store>``: Reference to existing file in store (external only)
 
 Example - Creating a Custom Codec:
     Here's how to define your own codec, modeled after the built-in codecs::
