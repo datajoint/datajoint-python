@@ -686,7 +686,7 @@ class QueryExpression:
         :param squeeze: if True, remove extra dimensions from arrays
         :return: list of dictionaries, one per row
 
-        For external storage types (attachments, filepaths), files are downloaded
+        For object storage types (attachments, filepaths), files are downloaded
         to config["download_path"]. Use config.override() to change::
 
             with dj.config.override(download_path="/data"):
@@ -1078,7 +1078,7 @@ class Union(QueryExpression):
                 alias=next(self.__count),
                 sorting=self.sorting_clauses(),
             )
-        # with secondary attributes, use union of left join with antijoin
+        # with secondary attributes, use union of left join with anti-restriction
         fields = self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
         sql2 = (arg2 - arg1).proj(..., **{k: "NULL" for k in arg1.heading.secondary_attributes}).make_sql(fields)

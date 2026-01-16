@@ -650,7 +650,7 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
         codec, store_name = lookup_codec(match["type"])
         if store_name is not None:
             match["store"] = store_name
-        # Determine if external storage is used (store_name is present, even if empty string for default)
+        # Determine if in-store storage is used (store_name is present, even if empty string for default)
         is_store = store_name is not None
         inner_dtype = codec.get_dtype(is_store=is_store)
 

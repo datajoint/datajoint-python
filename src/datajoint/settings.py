@@ -208,7 +208,7 @@ class DisplaySettings(BaseSettings):
 
 class StoresSettings(BaseSettings):
     """
-    Unified external storage configuration.
+    Unified object storage configuration.
 
     Stores configuration supports both hash-addressed and schema-addressed storage
     using the same named stores with _hash and _schema sections.
@@ -296,7 +296,7 @@ class Config(BaseSettings):
     # Unified stores configuration (replaces external and object_storage)
     stores: dict[str, Any] = Field(
         default_factory=dict,
-        description="Unified external storage configuration. "
+        description="Unified object storage configuration. "
         "Use stores.default to designate default store. "
         "Configure named stores as stores.<name>.protocol, stores.<name>.location, etc.",
     )

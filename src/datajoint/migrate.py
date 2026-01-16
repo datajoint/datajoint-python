@@ -4,6 +4,12 @@ Migration utilities for DataJoint schema updates.
 This module provides tools for migrating existing schemas to use the new
 Codec system, particularly for upgrading blob columns to use
 explicit `<blob>` type declarations.
+
+Note on Terminology
+-------------------
+This module uses "external storage" because that was the term in DataJoint 0.14.6.
+In DataJoint 2.0 documentation, this is called "object storage" (general term)
+or "in-store storage" (specific to the @ modifier).
 """
 
 from __future__ import annotations

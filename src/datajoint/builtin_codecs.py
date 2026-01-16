@@ -6,12 +6,14 @@ These serve as both useful built-in codecs and as examples for users who
 want to create their own custom codecs.
 
 Built-in Codecs:
-    - ``<blob>``: Serialize Python objects (internal) or external with dedup
-    - ``<hash>``: Hash-addressed storage with SHA256 deduplication
-    - ``<object>``: Schema-addressed storage for files/folders (Zarr, HDF5)
-    - ``<attach>``: File attachment (internal) or external with dedup
-    - ``<filepath@store>``: Reference to existing file in store
+    - ``<blob>``: Serialize Python objects (in-table storage)
+    - ``<blob@>``: Serialize Python objects (external with hash-addressed dedup)
+    - ``<attach>``: File attachment (in-table storage)
+    - ``<attach@>``: File attachment (external with hash-addressed dedup)
+    - ``<hash@>``: Hash-addressed storage with MD5 deduplication (external only)
+    - ``<object@>``: Schema-addressed storage for files/folders (external only)
     - ``<npy@>``: Store numpy arrays as portable .npy files (external only)
+    - ``<filepath@store>``: Reference to existing file in store (external only)
 
 Example - Creating a Custom Codec:
     Here's how to define your own codec, modeled after the built-in codecs::
@@ -75,9 +77,9 @@ class BlobCodec(Codec):
     The ``<blob>`` codec handles serialization of arbitrary Python objects
     including NumPy arrays, dictionaries, lists, datetime objects, and UUIDs.
 
-    Supports both internal and external storage:
+    Supports both in-table and in-store storage:
     - ``<blob>``: Stored in database (bytes → LONGBLOB)
-    - ``<blob@>``: Stored externally via ``<hash@>`` with deduplication
+    - ``<blob@>``: Stored in object store via ``<hash@>`` with deduplication
     - ``<blob@store>``: Stored in specific named store
 
     Format Features:
@@ -92,9 +94,9 @@ class BlobCodec(Codec):
             definition = '''
             data_id : int
             ---
-            small_result : <blob>       # internal (in database)
-            large_result : <blob@>      # external (default store)
-            archive : <blob@cold>       # external (specific store)
+            small_result : <blob>       # in-table (in database)
+            large_result : <blob@>      # in-store (default store)
+            archive : <blob@cold>       # in-store (specific store)
             '''
 
         # Insert any serializable object
@@ -104,7 +106,7 @@ class BlobCodec(Codec):
     name = "blob"
 
     def get_dtype(self, is_store: bool) -> str:
-        """Return bytes for internal, <hash> for external storage."""
+        """Return bytes for in-table, <hash> for in-store storage."""
         return "<hash>" if is_store else "bytes"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
@@ -165,9 +167,9 @@ class HashCodec(Codec):
     name = "hash"
 
     def get_dtype(self, is_store: bool) -> str:
-        """Hash storage is external only."""
+        """Hash storage is in-store only."""
         if not is_store:
-            raise DataJointError("<hash> requires @ (external storage only)")
+            raise DataJointError("<hash> requires @ (in-store storage only)")
         return "json"
 
     def encode(self, value: bytes, *, key: dict | None = None, store_name: str | None = None) -> dict:
@@ -608,9 +610,9 @@ class AttachCodec(Codec):
     """
     File attachment with filename preserved.
 
-    Supports both internal and external storage:
+    Supports both in-table and in-store storage:
     - ``<attach>``: Stored in database (bytes → LONGBLOB)
-    - ``<attach@>``: Stored externally via ``<hash@>`` with deduplication
+    - ``<attach@>``: Stored in object store via ``<hash@>`` with deduplication
     - ``<attach@store>``: Stored in specific named store
 
     The filename is preserved and the file is extracted to the configured
@@ -623,9 +625,9 @@ class AttachCodec(Codec):
             definition = '''
             doc_id : int
             ---
-            config : <attach>           # internal (small file in DB)
-            dataset : <attach@>         # external (default store)
-            archive : <attach@cold>     # external (specific store)
+            config : <attach>           # in-table (small file in DB)
+            dataset : <attach@>         # in-store (default store)
+            archive : <attach@cold>     # in-store (specific store)
             '''
 
         # Insert a file
@@ -642,7 +644,7 @@ class AttachCodec(Codec):
     name = "attach"
 
     def get_dtype(self, is_store: bool) -> str:
-        """Return bytes for internal, <hash> for external storage."""
+        """Return bytes for in-table, <hash> for in-store storage."""
         return "<hash>" if is_store else "bytes"
 
     def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
