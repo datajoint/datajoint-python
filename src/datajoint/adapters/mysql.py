@@ -527,6 +527,29 @@ class MySQLAdapter(DatabaseAdapter):
         """Generate DELETE statement for MySQL (WHERE added separately)."""
         return f"DELETE FROM {table_name}"
 
+    def upsert_on_duplicate_sql(
+        self,
+        table_name: str,
+        columns: list[str],
+        primary_key: list[str],
+        num_rows: int,
+    ) -> str:
+        """Generate INSERT ... ON DUPLICATE KEY UPDATE statement for MySQL."""
+        # Build column list
+        col_list = ", ".join(columns)
+
+        # Build placeholders for VALUES
+        placeholders = ", ".join(["(%s)" % ", ".join(["%s"] * len(columns))] * num_rows)
+
+        # Build UPDATE clause (all columns)
+        update_clauses = ", ".join(f"{col} = VALUES({col})" for col in columns)
+
+        return f"""
+        INSERT INTO {table_name} ({col_list})
+        VALUES {placeholders}
+        ON DUPLICATE KEY UPDATE {update_clauses}
+        """
+
     # =========================================================================
     # Introspection
     # =========================================================================

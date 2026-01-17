@@ -414,7 +414,8 @@ class Schema:
         elif not prompt or user_choice("Proceed to delete entire schema `%s`?" % self.database, default="no") == "yes":
             logger.debug("Dropping `{database}`.".format(database=self.database))
             try:
-                self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
+                drop_sql = self.connection.adapter.drop_schema_sql(self.database)
+                self.connection.query(drop_sql)
                 logger.debug("Schema `{database}` was dropped successfully.".format(database=self.database))
             except AccessError:
                 raise AccessError(

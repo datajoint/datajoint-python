@@ -210,22 +210,21 @@ def insert_lineages(connection, database, entries):
     adapter = connection.adapter
     lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
 
-    # Build a single INSERT statement with multiple values for atomicity
-    placeholders = ", ".join(["(%s, %s, %s)"] * len(entries))
+    # Build backend-agnostic upsert statement
+    columns = ["table_name", "attribute_name", "lineage"]
+    primary_key = ["table_name", "attribute_name"]
+
+    sql = adapter.upsert_on_duplicate_sql(
+        lineage_table,
+        columns,
+        primary_key,
+        len(entries),
+    )
+
     # Flatten the entries into a single args tuple
     args = tuple(val for entry in entries for val in entry)
 
-    # TODO: ON DUPLICATE KEY UPDATE is MySQL-specific
-    # PostgreSQL uses ON CONFLICT ... DO UPDATE instead
-    # This needs an adapter method for backend-agnostic upsert
-    connection.query(
-        f"""
-        INSERT INTO {lineage_table} (table_name, attribute_name, lineage)
-        VALUES {placeholders}
-        ON DUPLICATE KEY UPDATE lineage = VALUES(lineage)
-        """,
-        args=args,
-    )
+    connection.query(sql, args=args)
 
 
 def delete_table_lineages(connection, database, table_name):

@@ -451,6 +451,46 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    @abstractmethod
+    def upsert_on_duplicate_sql(
+        self,
+        table_name: str,
+        columns: list[str],
+        primary_key: list[str],
+        num_rows: int,
+    ) -> str:
+        """
+        Generate INSERT ... ON DUPLICATE KEY UPDATE (MySQL) or
+        INSERT ... ON CONFLICT ... DO UPDATE (PostgreSQL) statement.
+
+        Parameters
+        ----------
+        table_name : str
+            Fully qualified table name (with quotes).
+        columns : list[str]
+            Column names to insert (unquoted).
+        primary_key : list[str]
+            Primary key column names (unquoted) for conflict detection.
+        num_rows : int
+            Number of rows to insert (for generating placeholders).
+
+        Returns
+        -------
+        str
+            Upsert SQL statement with placeholders.
+
+        Examples
+        --------
+        MySQL:
+            INSERT INTO `table` (a, b, c) VALUES (%s, %s, %s), (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE a = VALUES(a), b = VALUES(b), c = VALUES(c)
+
+        PostgreSQL:
+            INSERT INTO "table" (a, b, c) VALUES (%s, %s, %s), (%s, %s, %s)
+            ON CONFLICT (a) DO UPDATE SET b = EXCLUDED.b, c = EXCLUDED.c
+        """
+        ...
+
     # =========================================================================
     # Introspection
     # =========================================================================
@@ -874,7 +914,7 @@ class DatabaseAdapter(ABC):
     # =========================================================================
 
     @abstractmethod
-    def translate_error(self, error: Exception) -> Exception:
+    def translate_error(self, error: Exception, query: str = "") -> Exception:
         """
         Translate backend-specific error to DataJoint error.
 

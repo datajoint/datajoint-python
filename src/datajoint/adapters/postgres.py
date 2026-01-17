@@ -568,6 +568,33 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """Generate DELETE statement for PostgreSQL (WHERE added separately)."""
         return f"DELETE FROM {table_name}"
 
+    def upsert_on_duplicate_sql(
+        self,
+        table_name: str,
+        columns: list[str],
+        primary_key: list[str],
+        num_rows: int,
+    ) -> str:
+        """Generate INSERT ... ON CONFLICT ... DO UPDATE statement for PostgreSQL."""
+        # Build column list
+        col_list = ", ".join(columns)
+
+        # Build placeholders for VALUES
+        placeholders = ", ".join(["(%s)" % ", ".join(["%s"] * len(columns))] * num_rows)
+
+        # Build conflict target (primary key columns)
+        conflict_cols = ", ".join(primary_key)
+
+        # Build UPDATE clause (non-PK columns only)
+        non_pk_columns = [col for col in columns if col not in primary_key]
+        update_clauses = ", ".join(f"{col} = EXCLUDED.{col}" for col in non_pk_columns)
+
+        return f"""
+        INSERT INTO {table_name} ({col_list})
+        VALUES {placeholders}
+        ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_clauses}
+        """
+
     # =========================================================================
     # Introspection
     # =========================================================================
