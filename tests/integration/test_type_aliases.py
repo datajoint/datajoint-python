@@ -65,6 +65,26 @@ class TestTypeAliasPatterns:
         category = match_type(native_type)
         assert category == expected_category
 
+    @pytest.mark.parametrize(
+        "native_type,expected_category",
+        [
+            ("int unsigned", "INTEGER"),
+            ("bigint unsigned", "INTEGER"),
+            ("smallint unsigned", "INTEGER"),
+            ("tinyint unsigned", "INTEGER"),
+        ],
+    )
+    def test_native_unsigned_types_pass_through(self, native_type, expected_category):
+        """
+        Test that native MySQL unsigned types are allowed as pass-through.
+
+        Note: These are MySQL-specific and not portable to PostgreSQL.
+        Users should prefer signed core types (int8, int16, int32, int64)
+        for cross-database compatibility.
+        """
+        category = match_type(native_type)
+        assert category == expected_category
+
 
 class TestTypeAliasTableCreation:
     """Test table creation with type aliases."""
