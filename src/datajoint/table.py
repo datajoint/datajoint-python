@@ -401,7 +401,12 @@ class Table(QueryExpression):
                 f"Class {self.__class__.__name__} is not associated with a schema. "
                 "Apply a schema decorator or use schema() to bind it."
             )
-        return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
+        return f"{self.adapter.quote_identifier(self.database)}.{self.adapter.quote_identifier(self.table_name)}"
+
+    @property
+    def adapter(self):
+        """Database adapter for backend-agnostic SQL generation."""
+        return self.connection.adapter
 
     def update1(self, row):
         """
@@ -438,9 +443,10 @@ class Table(QueryExpression):
             raise DataJointError("Update can only be applied to one existing entry.")
         # UPDATE query
         row = [self.__make_placeholder(k, v) for k, v in row.items() if k not in self.primary_key]
+        assignments = ",".join(f"{self.adapter.quote_identifier(r[0])}={r[1]}" for r in row)
         query = "UPDATE {table} SET {assignments} WHERE {where}".format(
             table=self.full_table_name,
-            assignments=",".join("`%s`=%s" % r[:2] for r in row),
+            assignments=assignments,
             where=make_condition(self, key, set()),
         )
         self.connection.query(query, args=list(r[2] for r in row if r[2] is not None))
@@ -694,17 +700,17 @@ class Table(QueryExpression):
                 except StopIteration:
                     pass
             fields = list(name for name in rows.heading if name in self.heading)
-            query = "{command} INTO {table} ({fields}) {select}{duplicate}".format(
-                command="REPLACE" if replace else "INSERT",
-                fields="`" + "`,`".join(fields) + "`",
-                table=self.full_table_name,
-                select=rows.make_sql(fields),
-                duplicate=(
-                    " ON DUPLICATE KEY UPDATE `{pk}`={table}.`{pk}`".format(table=self.full_table_name, pk=self.primary_key[0])
-                    if skip_duplicates
-                    else ""
-                ),
-            )
+            quoted_fields = ",".join(self.adapter.quote_identifier(f) for f in fields)
+
+            # Duplicate handling (MySQL-specific for Phase 5)
+            if skip_duplicates:
+                quoted_pk = self.adapter.quote_identifier(self.primary_key[0])
+                duplicate = f" ON DUPLICATE KEY UPDATE {quoted_pk}={self.full_table_name}.{quoted_pk}"
+            else:
+                duplicate = ""
+
+            command = "REPLACE" if replace else "INSERT"
+            query = f"{command} INTO {self.full_table_name} ({quoted_fields}) {rows.make_sql(fields)}{duplicate}"
             self.connection.query(query)
             return
 
@@ -736,16 +742,21 @@ class Table(QueryExpression):
         if rows:
             try:
                 # Handle empty field_list (all-defaults insert)
-                fields_clause = f"(`{'`,`'.join(field_list)}`)" if field_list else "()"
-                query = "{command} INTO {destination}{fields} VALUES {placeholders}{duplicate}".format(
-                    command="REPLACE" if replace else "INSERT",
-                    destination=self.from_clause(),
-                    fields=fields_clause,
-                    placeholders=",".join("(" + ",".join(row["placeholders"]) + ")" for row in rows),
-                    duplicate=(
-                        " ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`".format(pk=self.primary_key[0]) if skip_duplicates else ""
-                    ),
-                )
+                if field_list:
+                    fields_clause = f"({','.join(self.adapter.quote_identifier(f) for f in field_list)})"
+                else:
+                    fields_clause = "()"
+
+                # Build duplicate clause (MySQL-specific for Phase 5)
+                if skip_duplicates:
+                    quoted_pk = self.adapter.quote_identifier(self.primary_key[0])
+                    duplicate = f" ON DUPLICATE KEY UPDATE {quoted_pk}=VALUES({quoted_pk})"
+                else:
+                    duplicate = ""
+
+                command = "REPLACE" if replace else "INSERT"
+                placeholders = ",".join("(" + ",".join(row["placeholders"]) + ")" for row in rows)
+                query = f"{command} INTO {self.from_clause()}{fields_clause} VALUES {placeholders}{duplicate}"
                 self.connection.query(
                     query,
                     args=list(itertools.chain.from_iterable((v for v in r["values"] if v is not None) for r in rows)),
