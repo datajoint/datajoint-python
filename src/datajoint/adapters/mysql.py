@@ -1,0 +1,771 @@
+"""
+MySQL database adapter for DataJoint.
+
+This module provides MySQL-specific implementations for SQL generation,
+type mapping, error translation, and connection management.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pymysql as client
+
+from .. import errors
+from .base import DatabaseAdapter
+
+# Core type mapping: DataJoint core types → MySQL types
+CORE_TYPE_MAP = {
+    "int64": "bigint",
+    "int32": "int",
+    "int16": "smallint",
+    "int8": "tinyint",
+    "float32": "float",
+    "float64": "double",
+    "bool": "tinyint",
+    "uuid": "binary(16)",
+    "bytes": "longblob",
+    "json": "json",
+    "date": "date",
+    # datetime, char, varchar, decimal, enum require parameters - handled in method
+}
+
+# Reverse mapping: MySQL types → DataJoint core types (for introspection)
+SQL_TO_CORE_MAP = {
+    "bigint": "int64",
+    "int": "int32",
+    "smallint": "int16",
+    "tinyint": "int8",  # Could be bool, need context
+    "float": "float32",
+    "double": "float64",
+    "binary(16)": "uuid",
+    "longblob": "bytes",
+    "json": "json",
+    "date": "date",
+}
+
+
+class MySQLAdapter(DatabaseAdapter):
+    """MySQL database adapter implementation."""
+
+    # =========================================================================
+    # Connection Management
+    # =========================================================================
+
+    def connect(
+        self,
+        host: str,
+        port: int,
+        user: str,
+        password: str,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Establish MySQL connection.
+
+        Parameters
+        ----------
+        host : str
+            MySQL server hostname.
+        port : int
+            MySQL server port.
+        user : str
+            Username for authentication.
+        password : str
+            Password for authentication.
+        **kwargs : Any
+            Additional MySQL-specific parameters:
+            - init_command: SQL initialization command
+            - ssl: TLS/SSL configuration dict
+            - charset: Character set (default from kwargs)
+
+        Returns
+        -------
+        pymysql.Connection
+            MySQL connection object.
+        """
+        init_command = kwargs.get("init_command")
+        ssl = kwargs.get("ssl")
+        charset = kwargs.get("charset", "")
+
+        return client.connect(
+            host=host,
+            port=port,
+            user=user,
+            passwd=password,
+            init_command=init_command,
+            sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+            "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+            charset=charset,
+            ssl=ssl,
+        )
+
+    def close(self, connection: Any) -> None:
+        """Close the MySQL connection."""
+        connection.close()
+
+    def ping(self, connection: Any) -> bool:
+        """
+        Check if MySQL connection is alive.
+
+        Returns
+        -------
+        bool
+            True if connection is alive.
+        """
+        try:
+            connection.ping(reconnect=False)
+            return True
+        except Exception:
+            return False
+
+    def get_connection_id(self, connection: Any) -> int:
+        """
+        Get MySQL connection ID.
+
+        Returns
+        -------
+        int
+            MySQL connection_id().
+        """
+        cursor = connection.cursor()
+        cursor.execute("SELECT connection_id()")
+        return cursor.fetchone()[0]
+
+    @property
+    def default_port(self) -> int:
+        """MySQL default port 3306."""
+        return 3306
+
+    # =========================================================================
+    # SQL Syntax
+    # =========================================================================
+
+    def quote_identifier(self, name: str) -> str:
+        """
+        Quote identifier with backticks for MySQL.
+
+        Parameters
+        ----------
+        name : str
+            Identifier to quote.
+
+        Returns
+        -------
+        str
+            Backtick-quoted identifier: `name`
+        """
+        return f"`{name}`"
+
+    def quote_string(self, value: str) -> str:
+        """
+        Quote string literal for MySQL with escaping.
+
+        Parameters
+        ----------
+        value : str
+            String value to quote.
+
+        Returns
+        -------
+        str
+            Quoted and escaped string literal.
+        """
+        # Use pymysql's escape_string for proper escaping
+        escaped = client.converters.escape_string(value)
+        return f"'{escaped}'"
+
+    @property
+    def parameter_placeholder(self) -> str:
+        """MySQL/pymysql uses %s placeholders."""
+        return "%s"
+
+    # =========================================================================
+    # Type Mapping
+    # =========================================================================
+
+    def core_type_to_sql(self, core_type: str) -> str:
+        """
+        Convert DataJoint core type to MySQL type.
+
+        Parameters
+        ----------
+        core_type : str
+            DataJoint core type, possibly with parameters:
+            - int64, float32, bool, uuid, bytes, json, date
+            - datetime or datetime(n)
+            - char(n), varchar(n)
+            - decimal(p,s)
+            - enum('a','b','c')
+
+        Returns
+        -------
+        str
+            MySQL SQL type.
+
+        Raises
+        ------
+        ValueError
+            If core_type is not recognized.
+        """
+        # Handle simple types without parameters
+        if core_type in CORE_TYPE_MAP:
+            return CORE_TYPE_MAP[core_type]
+
+        # Handle parametrized types
+        if core_type.startswith("datetime"):
+            # datetime or datetime(precision)
+            return core_type  # MySQL supports datetime(n) directly
+
+        if core_type.startswith("char("):
+            # char(n)
+            return core_type
+
+        if core_type.startswith("varchar("):
+            # varchar(n)
+            return core_type
+
+        if core_type.startswith("decimal("):
+            # decimal(precision, scale)
+            return core_type
+
+        if core_type.startswith("enum("):
+            # enum('value1', 'value2', ...)
+            return core_type
+
+        raise ValueError(f"Unknown core type: {core_type}")
+
+    def sql_type_to_core(self, sql_type: str) -> str | None:
+        """
+        Convert MySQL type to DataJoint core type (if mappable).
+
+        Parameters
+        ----------
+        sql_type : str
+            MySQL SQL type.
+
+        Returns
+        -------
+        str or None
+            DataJoint core type if mappable, None otherwise.
+        """
+        # Normalize type string (lowercase, strip spaces)
+        sql_type_lower = sql_type.lower().strip()
+
+        # Direct mapping
+        if sql_type_lower in SQL_TO_CORE_MAP:
+            return SQL_TO_CORE_MAP[sql_type_lower]
+
+        # Handle parametrized types
+        if sql_type_lower.startswith("datetime"):
+            return sql_type  # Keep precision
+
+        if sql_type_lower.startswith("char("):
+            return sql_type  # Keep size
+
+        if sql_type_lower.startswith("varchar("):
+            return sql_type  # Keep size
+
+        if sql_type_lower.startswith("decimal("):
+            return sql_type  # Keep precision/scale
+
+        if sql_type_lower.startswith("enum("):
+            return sql_type  # Keep values
+
+        # Not a mappable core type
+        return None
+
+    # =========================================================================
+    # DDL Generation
+    # =========================================================================
+
+    def create_schema_sql(self, schema_name: str) -> str:
+        """
+        Generate CREATE DATABASE statement for MySQL.
+
+        Parameters
+        ----------
+        schema_name : str
+            Database name.
+
+        Returns
+        -------
+        str
+            CREATE DATABASE SQL.
+        """
+        return f"CREATE DATABASE {self.quote_identifier(schema_name)}"
+
+    def drop_schema_sql(self, schema_name: str, if_exists: bool = True) -> str:
+        """
+        Generate DROP DATABASE statement for MySQL.
+
+        Parameters
+        ----------
+        schema_name : str
+            Database name.
+        if_exists : bool
+            Include IF EXISTS clause.
+
+        Returns
+        -------
+        str
+            DROP DATABASE SQL.
+        """
+        if_exists_clause = "IF EXISTS " if if_exists else ""
+        return f"DROP DATABASE {if_exists_clause}{self.quote_identifier(schema_name)}"
+
+    def create_table_sql(
+        self,
+        table_name: str,
+        columns: list[dict[str, Any]],
+        primary_key: list[str],
+        foreign_keys: list[dict[str, Any]],
+        indexes: list[dict[str, Any]],
+        comment: str | None = None,
+    ) -> str:
+        """
+        Generate CREATE TABLE statement for MySQL.
+
+        Parameters
+        ----------
+        table_name : str
+            Fully qualified table name (schema.table).
+        columns : list[dict]
+            Column defs: [{name, type, nullable, default, comment}, ...]
+        primary_key : list[str]
+            Primary key column names.
+        foreign_keys : list[dict]
+            FK defs: [{columns, ref_table, ref_columns}, ...]
+        indexes : list[dict]
+            Index defs: [{columns, unique}, ...]
+        comment : str, optional
+            Table comment.
+
+        Returns
+        -------
+        str
+            CREATE TABLE SQL statement.
+        """
+        lines = []
+
+        # Column definitions
+        for col in columns:
+            col_name = self.quote_identifier(col["name"])
+            col_type = col["type"]
+            nullable = "NULL" if col.get("nullable", False) else "NOT NULL"
+            default = f" DEFAULT {col['default']}" if "default" in col else ""
+            col_comment = f" COMMENT {self.quote_string(col['comment'])}" if "comment" in col else ""
+            lines.append(f"{col_name} {col_type} {nullable}{default}{col_comment}")
+
+        # Primary key
+        if primary_key:
+            pk_cols = ", ".join(self.quote_identifier(col) for col in primary_key)
+            lines.append(f"PRIMARY KEY ({pk_cols})")
+
+        # Foreign keys
+        for fk in foreign_keys:
+            fk_cols = ", ".join(self.quote_identifier(col) for col in fk["columns"])
+            ref_cols = ", ".join(self.quote_identifier(col) for col in fk["ref_columns"])
+            lines.append(
+                f"FOREIGN KEY ({fk_cols}) REFERENCES {fk['ref_table']} ({ref_cols}) " f"ON UPDATE CASCADE ON DELETE RESTRICT"
+            )
+
+        # Indexes
+        for idx in indexes:
+            unique = "UNIQUE " if idx.get("unique", False) else ""
+            idx_cols = ", ".join(self.quote_identifier(col) for col in idx["columns"])
+            lines.append(f"{unique}INDEX ({idx_cols})")
+
+        # Assemble CREATE TABLE
+        table_def = ",\n  ".join(lines)
+        comment_clause = f" COMMENT={self.quote_string(comment)}" if comment else ""
+        return f"CREATE TABLE IF NOT EXISTS {table_name} (\n  {table_def}\n) ENGINE=InnoDB{comment_clause}"
+
+    def drop_table_sql(self, table_name: str, if_exists: bool = True) -> str:
+        """Generate DROP TABLE statement for MySQL."""
+        if_exists_clause = "IF EXISTS " if if_exists else ""
+        return f"DROP TABLE {if_exists_clause}{table_name}"
+
+    def alter_table_sql(
+        self,
+        table_name: str,
+        add_columns: list[dict[str, Any]] | None = None,
+        drop_columns: list[str] | None = None,
+        modify_columns: list[dict[str, Any]] | None = None,
+    ) -> str:
+        """
+        Generate ALTER TABLE statement for MySQL.
+
+        Parameters
+        ----------
+        table_name : str
+            Table name.
+        add_columns : list[dict], optional
+            Columns to add.
+        drop_columns : list[str], optional
+            Column names to drop.
+        modify_columns : list[dict], optional
+            Columns to modify.
+
+        Returns
+        -------
+        str
+            ALTER TABLE SQL statement.
+        """
+        clauses = []
+
+        if add_columns:
+            for col in add_columns:
+                col_name = self.quote_identifier(col["name"])
+                col_type = col["type"]
+                nullable = "NULL" if col.get("nullable", False) else "NOT NULL"
+                clauses.append(f"ADD {col_name} {col_type} {nullable}")
+
+        if drop_columns:
+            for col_name in drop_columns:
+                clauses.append(f"DROP {self.quote_identifier(col_name)}")
+
+        if modify_columns:
+            for col in modify_columns:
+                col_name = self.quote_identifier(col["name"])
+                col_type = col["type"]
+                nullable = "NULL" if col.get("nullable", False) else "NOT NULL"
+                clauses.append(f"MODIFY {col_name} {col_type} {nullable}")
+
+        return f"ALTER TABLE {table_name} {', '.join(clauses)}"
+
+    def add_comment_sql(
+        self,
+        object_type: str,
+        object_name: str,
+        comment: str,
+    ) -> str | None:
+        """
+        MySQL embeds comments in CREATE/ALTER, not separate statements.
+
+        Returns None since comments are inline.
+        """
+        return None
+
+    # =========================================================================
+    # DML Generation
+    # =========================================================================
+
+    def insert_sql(
+        self,
+        table_name: str,
+        columns: list[str],
+        on_duplicate: str | None = None,
+    ) -> str:
+        """
+        Generate INSERT statement for MySQL.
+
+        Parameters
+        ----------
+        table_name : str
+            Table name.
+        columns : list[str]
+            Column names.
+        on_duplicate : str, optional
+            'ignore', 'replace', or 'update'.
+
+        Returns
+        -------
+        str
+            INSERT SQL with placeholders.
+        """
+        cols = ", ".join(self.quote_identifier(col) for col in columns)
+        placeholders = ", ".join([self.parameter_placeholder] * len(columns))
+
+        if on_duplicate == "ignore":
+            return f"INSERT IGNORE INTO {table_name} ({cols}) VALUES ({placeholders})"
+        elif on_duplicate == "replace":
+            return f"REPLACE INTO {table_name} ({cols}) VALUES ({placeholders})"
+        elif on_duplicate == "update":
+            # ON DUPLICATE KEY UPDATE col=VALUES(col)
+            updates = ", ".join(f"{self.quote_identifier(col)}=VALUES({self.quote_identifier(col)})" for col in columns)
+            return f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders}) ON DUPLICATE KEY UPDATE {updates}"
+        else:
+            return f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders})"
+
+    def update_sql(
+        self,
+        table_name: str,
+        set_columns: list[str],
+        where_columns: list[str],
+    ) -> str:
+        """Generate UPDATE statement for MySQL."""
+        set_clause = ", ".join(f"{self.quote_identifier(col)} = {self.parameter_placeholder}" for col in set_columns)
+        where_clause = " AND ".join(f"{self.quote_identifier(col)} = {self.parameter_placeholder}" for col in where_columns)
+        return f"UPDATE {table_name} SET {set_clause} WHERE {where_clause}"
+
+    def delete_sql(self, table_name: str) -> str:
+        """Generate DELETE statement for MySQL (WHERE added separately)."""
+        return f"DELETE FROM {table_name}"
+
+    # =========================================================================
+    # Introspection
+    # =========================================================================
+
+    def list_schemas_sql(self) -> str:
+        """Query to list all databases in MySQL."""
+        return "SELECT schema_name FROM information_schema.schemata"
+
+    def list_tables_sql(self, schema_name: str) -> str:
+        """Query to list tables in a database."""
+        return f"SHOW TABLES IN {self.quote_identifier(schema_name)}"
+
+    def get_table_info_sql(self, schema_name: str, table_name: str) -> str:
+        """Query to get table metadata (comment, engine, etc.)."""
+        return (
+            f"SELECT * FROM information_schema.tables "
+            f"WHERE table_schema = {self.quote_string(schema_name)} "
+            f"AND table_name = {self.quote_string(table_name)}"
+        )
+
+    def get_columns_sql(self, schema_name: str, table_name: str) -> str:
+        """Query to get column definitions."""
+        return f"SHOW FULL COLUMNS FROM {self.quote_identifier(table_name)} IN {self.quote_identifier(schema_name)}"
+
+    def get_primary_key_sql(self, schema_name: str, table_name: str) -> str:
+        """Query to get primary key columns."""
+        return (
+            f"SELECT column_name FROM information_schema.key_column_usage "
+            f"WHERE table_schema = {self.quote_string(schema_name)} "
+            f"AND table_name = {self.quote_string(table_name)} "
+            f"AND constraint_name = 'PRIMARY' "
+            f"ORDER BY ordinal_position"
+        )
+
+    def get_foreign_keys_sql(self, schema_name: str, table_name: str) -> str:
+        """Query to get foreign key constraints."""
+        return (
+            f"SELECT constraint_name, column_name, referenced_table_name, referenced_column_name "
+            f"FROM information_schema.key_column_usage "
+            f"WHERE table_schema = {self.quote_string(schema_name)} "
+            f"AND table_name = {self.quote_string(table_name)} "
+            f"AND referenced_table_name IS NOT NULL "
+            f"ORDER BY constraint_name, ordinal_position"
+        )
+
+    def get_indexes_sql(self, schema_name: str, table_name: str) -> str:
+        """Query to get index definitions."""
+        return (
+            f"SELECT index_name, column_name, non_unique "
+            f"FROM information_schema.statistics "
+            f"WHERE table_schema = {self.quote_string(schema_name)} "
+            f"AND table_name = {self.quote_string(table_name)} "
+            f"AND index_name != 'PRIMARY' "
+            f"ORDER BY index_name, seq_in_index"
+        )
+
+    def parse_column_info(self, row: dict[str, Any]) -> dict[str, Any]:
+        """
+        Parse MySQL SHOW FULL COLUMNS output into standardized format.
+
+        Parameters
+        ----------
+        row : dict
+            Row from SHOW FULL COLUMNS query.
+
+        Returns
+        -------
+        dict
+            Standardized column info with keys:
+            name, type, nullable, default, comment, key, extra
+        """
+        return {
+            "name": row["Field"],
+            "type": row["Type"],
+            "nullable": row["Null"] == "YES",
+            "default": row["Default"],
+            "comment": row["Comment"],
+            "key": row["Key"],  # PRI, UNI, MUL
+            "extra": row["Extra"],  # auto_increment, etc.
+        }
+
+    # =========================================================================
+    # Transactions
+    # =========================================================================
+
+    def start_transaction_sql(self, isolation_level: str | None = None) -> str:
+        """Generate START TRANSACTION statement."""
+        if isolation_level:
+            return f"START TRANSACTION WITH CONSISTENT SNAPSHOT, {isolation_level}"
+        return "START TRANSACTION WITH CONSISTENT SNAPSHOT"
+
+    def commit_sql(self) -> str:
+        """Generate COMMIT statement."""
+        return "COMMIT"
+
+    def rollback_sql(self) -> str:
+        """Generate ROLLBACK statement."""
+        return "ROLLBACK"
+
+    # =========================================================================
+    # Functions and Expressions
+    # =========================================================================
+
+    def current_timestamp_expr(self, precision: int | None = None) -> str:
+        """
+        CURRENT_TIMESTAMP expression for MySQL.
+
+        Parameters
+        ----------
+        precision : int, optional
+            Fractional seconds precision (0-6).
+
+        Returns
+        -------
+        str
+            CURRENT_TIMESTAMP or CURRENT_TIMESTAMP(n).
+        """
+        if precision is not None:
+            return f"CURRENT_TIMESTAMP({precision})"
+        return "CURRENT_TIMESTAMP"
+
+    def interval_expr(self, value: int, unit: str) -> str:
+        """
+        INTERVAL expression for MySQL.
+
+        Parameters
+        ----------
+        value : int
+            Interval value.
+        unit : str
+            Time unit (singular: 'second', 'minute', 'hour', 'day').
+
+        Returns
+        -------
+        str
+            INTERVAL n UNIT (e.g., 'INTERVAL 5 SECOND').
+        """
+        # MySQL uses singular unit names
+        return f"INTERVAL {value} {unit.upper()}"
+
+    # =========================================================================
+    # Error Translation
+    # =========================================================================
+
+    def translate_error(self, error: Exception) -> Exception:
+        """
+        Translate MySQL error to DataJoint exception.
+
+        Parameters
+        ----------
+        error : Exception
+            MySQL exception (typically pymysql error).
+
+        Returns
+        -------
+        Exception
+            DataJoint exception or original error.
+        """
+        if not hasattr(error, "args") or len(error.args) == 0:
+            return error
+
+        err, *args = error.args
+
+        match err:
+            # Loss of connection errors
+            case 0 | "(0, '')":
+                return errors.LostConnectionError("Server connection lost due to an interface error.", *args)
+            case 2006:
+                return errors.LostConnectionError("Connection timed out", *args)
+            case 2013:
+                return errors.LostConnectionError("Server connection lost", *args)
+
+            # Access errors
+            case 1044 | 1142:
+                query = args[0] if args else ""
+                return errors.AccessError("Insufficient privileges.", args[0] if args else "", query)
+
+            # Integrity errors
+            case 1062:
+                return errors.DuplicateError(*args)
+            case 1217 | 1451 | 1452 | 3730:
+                return errors.IntegrityError(*args)
+
+            # Syntax errors
+            case 1064:
+                query = args[0] if args else ""
+                return errors.QuerySyntaxError(args[0] if args else "", query)
+
+            # Existence errors
+            case 1146:
+                query = args[0] if args else ""
+                return errors.MissingTableError(args[0] if args else "", query)
+            case 1364:
+                return errors.MissingAttributeError(*args)
+            case 1054:
+                return errors.UnknownAttributeError(*args)
+
+            # All other errors pass through unchanged
+            case _:
+                return error
+
+    # =========================================================================
+    # Native Type Validation
+    # =========================================================================
+
+    def validate_native_type(self, type_str: str) -> bool:
+        """
+        Check if a native MySQL type string is valid.
+
+        Parameters
+        ----------
+        type_str : str
+            Type string to validate.
+
+        Returns
+        -------
+        bool
+            True if valid MySQL type.
+        """
+        type_lower = type_str.lower().strip()
+
+        # MySQL native types (simplified validation)
+        valid_types = {
+            # Integer types
+            "tinyint",
+            "smallint",
+            "mediumint",
+            "int",
+            "integer",
+            "bigint",
+            # Floating point
+            "float",
+            "double",
+            "real",
+            "decimal",
+            "numeric",
+            # String types
+            "char",
+            "varchar",
+            "binary",
+            "varbinary",
+            "tinyblob",
+            "blob",
+            "mediumblob",
+            "longblob",
+            "tinytext",
+            "text",
+            "mediumtext",
+            "longtext",
+            # Temporal types
+            "date",
+            "time",
+            "datetime",
+            "timestamp",
+            "year",
+            # Other
+            "enum",
+            "set",
+            "json",
+            "geometry",
+        }
+
+        # Extract base type (before parentheses)
+        base_type = type_lower.split("(")[0].strip()
+
+        return base_type in valid_types
