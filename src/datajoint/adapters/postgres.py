@@ -760,6 +760,99 @@ class PostgreSQLAdapter(DatabaseAdapter):
         return f"jsonb_extract_path_text({quoted_col}, {path_args})"
 
     # =========================================================================
+    # DDL Generation
+    # =========================================================================
+
+    def format_column_definition(
+        self,
+        name: str,
+        sql_type: str,
+        nullable: bool = False,
+        default: str | None = None,
+        comment: str | None = None,
+    ) -> str:
+        """
+        Format a column definition for PostgreSQL DDL.
+
+        Examples
+        --------
+        >>> adapter.format_column_definition('user_id', 'bigint', nullable=False, comment='user ID')
+        '"user_id" bigint NOT NULL'
+        """
+        parts = [self.quote_identifier(name), sql_type]
+        if default:
+            parts.append(default)
+        elif not nullable:
+            parts.append("NOT NULL")
+        # Note: PostgreSQL comments handled separately via COMMENT ON
+        return " ".join(parts)
+
+    def table_options_clause(self, comment: str | None = None) -> str:
+        """
+        Generate PostgreSQL table options clause (empty - no ENGINE in PostgreSQL).
+
+        Examples
+        --------
+        >>> adapter.table_options_clause('test table')
+        ''
+        >>> adapter.table_options_clause()
+        ''
+        """
+        return ""  # PostgreSQL uses COMMENT ON TABLE separately
+
+    def table_comment_ddl(self, full_table_name: str, comment: str) -> str | None:
+        """
+        Generate COMMENT ON TABLE statement for PostgreSQL.
+
+        Examples
+        --------
+        >>> adapter.table_comment_ddl('"schema"."table"', 'test comment')
+        'COMMENT ON TABLE "schema"."table" IS \\'test comment\\''
+        """
+        return f"COMMENT ON TABLE {full_table_name} IS '{comment}'"
+
+    def column_comment_ddl(self, full_table_name: str, column_name: str, comment: str) -> str | None:
+        """
+        Generate COMMENT ON COLUMN statement for PostgreSQL.
+
+        Examples
+        --------
+        >>> adapter.column_comment_ddl('"schema"."table"', 'column', 'test comment')
+        'COMMENT ON COLUMN "schema"."table"."column" IS \\'test comment\\''
+        """
+        quoted_col = self.quote_identifier(column_name)
+        return f"COMMENT ON COLUMN {full_table_name}.{quoted_col} IS '{comment}'"
+
+    def enum_type_ddl(self, type_name: str, values: list[str]) -> str | None:
+        """
+        Generate CREATE TYPE statement for PostgreSQL enum.
+
+        Examples
+        --------
+        >>> adapter.enum_type_ddl('status_type', ['active', 'inactive'])
+        'CREATE TYPE "status_type" AS ENUM (\\'active\\', \\'inactive\\')'
+        """
+        quoted_values = ", ".join(f"'{v}'" for v in values)
+        return f"CREATE TYPE {self.quote_identifier(type_name)} AS ENUM ({quoted_values})"
+
+    def job_metadata_columns(self) -> list[str]:
+        """
+        Return PostgreSQL-specific job metadata column definitions.
+
+        Examples
+        --------
+        >>> adapter.job_metadata_columns()
+        ['"_job_start_time" timestamp DEFAULT NULL',
+         '"_job_duration" real DEFAULT NULL',
+         '"_job_version" varchar(64) DEFAULT \\'\\'']
+        """
+        return [
+            '"_job_start_time" timestamp DEFAULT NULL',
+            '"_job_duration" real DEFAULT NULL',
+            "\"_job_version\" varchar(64) DEFAULT ''",
+        ]
+
+    # =========================================================================
     # Error Translation
     # =========================================================================
 

@@ -696,6 +696,101 @@ class MySQLAdapter(DatabaseAdapter):
         return f"json_value({quoted_col}, _utf8mb4'$.{path}'{return_clause})"
 
     # =========================================================================
+    # DDL Generation
+    # =========================================================================
+
+    def format_column_definition(
+        self,
+        name: str,
+        sql_type: str,
+        nullable: bool = False,
+        default: str | None = None,
+        comment: str | None = None,
+    ) -> str:
+        """
+        Format a column definition for MySQL DDL.
+
+        Examples
+        --------
+        >>> adapter.format_column_definition('user_id', 'bigint', nullable=False, comment='user ID')
+        "`user_id` bigint NOT NULL COMMENT \\"user ID\\""
+        """
+        parts = [self.quote_identifier(name), sql_type]
+        if default:
+            parts.append(default)  # e.g., "DEFAULT NULL" or "NOT NULL DEFAULT 5"
+        elif not nullable:
+            parts.append("NOT NULL")
+        if comment:
+            parts.append(f'COMMENT "{comment}"')
+        return " ".join(parts)
+
+    def table_options_clause(self, comment: str | None = None) -> str:
+        """
+        Generate MySQL table options clause.
+
+        Examples
+        --------
+        >>> adapter.table_options_clause('test table')
+        'ENGINE=InnoDB, COMMENT "test table"'
+        >>> adapter.table_options_clause()
+        'ENGINE=InnoDB'
+        """
+        clause = "ENGINE=InnoDB"
+        if comment:
+            clause += f', COMMENT "{comment}"'
+        return clause
+
+    def table_comment_ddl(self, full_table_name: str, comment: str) -> str | None:
+        """
+        MySQL uses inline COMMENT in CREATE TABLE, so no separate DDL needed.
+
+        Examples
+        --------
+        >>> adapter.table_comment_ddl('`schema`.`table`', 'test comment')
+        None
+        """
+        return None  # MySQL uses inline COMMENT
+
+    def column_comment_ddl(self, full_table_name: str, column_name: str, comment: str) -> str | None:
+        """
+        MySQL uses inline COMMENT in column definitions, so no separate DDL needed.
+
+        Examples
+        --------
+        >>> adapter.column_comment_ddl('`schema`.`table`', 'column', 'test comment')
+        None
+        """
+        return None  # MySQL uses inline COMMENT
+
+    def enum_type_ddl(self, type_name: str, values: list[str]) -> str | None:
+        """
+        MySQL uses inline enum type in column definition, so no separate DDL needed.
+
+        Examples
+        --------
+        >>> adapter.enum_type_ddl('status_type', ['active', 'inactive'])
+        None
+        """
+        return None  # MySQL uses inline enum
+
+    def job_metadata_columns(self) -> list[str]:
+        """
+        Return MySQL-specific job metadata column definitions.
+
+        Examples
+        --------
+        >>> adapter.job_metadata_columns()
+        ["`_job_start_time` datetime(3) DEFAULT NULL",
+         "`_job_duration` float DEFAULT NULL",
+         "`_job_version` varchar(64) DEFAULT ''"]
+        """
+        return [
+            "`_job_start_time` datetime(3) DEFAULT NULL",
+            "`_job_duration` float DEFAULT NULL",
+            "`_job_version` varchar(64) DEFAULT ''",
+        ]
+
+    # =========================================================================
     # Error Translation
     # =========================================================================
 

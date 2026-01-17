@@ -710,6 +710,166 @@ class DatabaseAdapter(ABC):
         ...
 
     # =========================================================================
+    # DDL Generation
+    # =========================================================================
+
+    @abstractmethod
+    def format_column_definition(
+        self,
+        name: str,
+        sql_type: str,
+        nullable: bool = False,
+        default: str | None = None,
+        comment: str | None = None,
+    ) -> str:
+        """
+        Format a column definition for DDL.
+
+        Parameters
+        ----------
+        name : str
+            Column name.
+        sql_type : str
+            SQL type (already backend-specific, e.g., 'bigint', 'varchar(255)').
+        nullable : bool, optional
+            Whether column is nullable. Default False.
+        default : str | None, optional
+            Default value expression (e.g., 'NULL', '"value"', 'CURRENT_TIMESTAMP').
+        comment : str | None, optional
+            Column comment.
+
+        Returns
+        -------
+        str
+            Formatted column definition (without trailing comma).
+
+        Examples
+        --------
+        MySQL: `name` bigint NOT NULL COMMENT "user ID"
+        PostgreSQL: "name" bigint NOT NULL
+        """
+        ...
+
+    @abstractmethod
+    def table_options_clause(self, comment: str | None = None) -> str:
+        """
+        Generate table options clause (ENGINE, etc.) for CREATE TABLE.
+
+        Parameters
+        ----------
+        comment : str | None, optional
+            Table-level comment.
+
+        Returns
+        -------
+        str
+            Table options clause (e.g., 'ENGINE=InnoDB, COMMENT "..."' for MySQL).
+
+        Examples
+        --------
+        MySQL: ENGINE=InnoDB, COMMENT "experiment sessions"
+        PostgreSQL: (empty string, comments handled separately)
+        """
+        ...
+
+    @abstractmethod
+    def table_comment_ddl(self, full_table_name: str, comment: str) -> str | None:
+        """
+        Generate DDL for table-level comment (if separate from CREATE TABLE).
+
+        Parameters
+        ----------
+        full_table_name : str
+            Fully qualified table name (quoted).
+        comment : str
+            Table comment.
+
+        Returns
+        -------
+        str or None
+            DDL statement for table comment, or None if handled inline.
+
+        Examples
+        --------
+        MySQL: None (inline)
+        PostgreSQL: COMMENT ON TABLE "schema"."table" IS 'comment text'
+        """
+        ...
+
+    @abstractmethod
+    def column_comment_ddl(self, full_table_name: str, column_name: str, comment: str) -> str | None:
+        """
+        Generate DDL for column-level comment (if separate from CREATE TABLE).
+
+        Parameters
+        ----------
+        full_table_name : str
+            Fully qualified table name (quoted).
+        column_name : str
+            Column name (unquoted).
+        comment : str
+            Column comment.
+
+        Returns
+        -------
+        str or None
+            DDL statement for column comment, or None if handled inline.
+
+        Examples
+        --------
+        MySQL: None (inline)
+        PostgreSQL: COMMENT ON COLUMN "schema"."table"."column" IS 'comment text'
+        """
+        ...
+
+    @abstractmethod
+    def enum_type_ddl(self, type_name: str, values: list[str]) -> str | None:
+        """
+        Generate DDL for enum type definition (if needed before CREATE TABLE).
+
+        Parameters
+        ----------
+        type_name : str
+            Enum type name.
+        values : list[str]
+            Enum values.
+
+        Returns
+        -------
+        str or None
+            DDL statement for enum type, or None if handled inline.
+
+        Examples
+        --------
+        MySQL: None (inline enum('val1', 'val2'))
+        PostgreSQL: CREATE TYPE "type_name" AS ENUM ('val1', 'val2')
+        """
+        ...
+
+    @abstractmethod
+    def job_metadata_columns(self) -> list[str]:
+        """
+        Return job metadata column definitions for Computed/Imported tables.
+
+        Returns
+        -------
+        list[str]
+            List of column definition strings (fully formatted with quotes).
+
+        Examples
+        --------
+        MySQL:
+            ["`_job_start_time` datetime(3) DEFAULT NULL",
+             "`_job_duration` float DEFAULT NULL",
+             "`_job_version` varchar(64) DEFAULT ''"]
+        PostgreSQL:
+            ['"_job_start_time" timestamp DEFAULT NULL',
+             '"_job_duration" real DEFAULT NULL',
+             '"_job_version" varchar(64) DEFAULT \'\'']
+        """
+        ...
+
+    # =========================================================================
     # Error Translation
     # =========================================================================
 

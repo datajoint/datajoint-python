@@ -404,6 +404,13 @@ class TestAdapterInterface:
             "rollback_sql",
             "current_timestamp_expr",
             "interval_expr",
+            "json_path_expr",
+            "format_column_definition",
+            "table_options_clause",
+            "table_comment_ddl",
+            "column_comment_ddl",
+            "enum_type_ddl",
+            "job_metadata_columns",
             "translate_error",
             "validate_native_type",
         ]
@@ -418,3 +425,120 @@ class TestAdapterInterface:
         assert isinstance(adapter.default_port, int)
         assert hasattr(adapter, "parameter_placeholder")
         assert isinstance(adapter.parameter_placeholder, str)
+
+
+class TestDDLMethods:
+    """Test DDL generation adapter methods."""
+
+    @pytest.fixture
+    def adapter(self):
+        """MySQL adapter instance."""
+        return MySQLAdapter()
+
+    def test_format_column_definition_mysql(self, adapter):
+        """Test MySQL column definition formatting."""
+        result = adapter.format_column_definition("user_id", "bigint", nullable=False, comment="user ID")
+        assert result == '`user_id` bigint NOT NULL COMMENT "user ID"'
+
+        # Test without comment
+        result = adapter.format_column_definition("name", "varchar(255)", nullable=False)
+        assert result == "`name` varchar(255) NOT NULL"
+
+        # Test nullable
+        result = adapter.format_column_definition("description", "text", nullable=True)
+        assert result == "`description` text"
+
+        # Test with default
+        result = adapter.format_column_definition("status", "int", default="DEFAULT 1")
+        assert result == "`status` int DEFAULT 1"
+
+    def test_table_options_clause_mysql(self, adapter):
+        """Test MySQL table options clause."""
+        result = adapter.table_options_clause("test table")
+        assert result == 'ENGINE=InnoDB, COMMENT "test table"'
+
+        result = adapter.table_options_clause()
+        assert result == "ENGINE=InnoDB"
+
+    def test_table_comment_ddl_mysql(self, adapter):
+        """Test MySQL table comment DDL (should be None)."""
+        result = adapter.table_comment_ddl("`schema`.`table`", "test comment")
+        assert result is None
+
+    def test_column_comment_ddl_mysql(self, adapter):
+        """Test MySQL column comment DDL (should be None)."""
+        result = adapter.column_comment_ddl("`schema`.`table`", "column", "test comment")
+        assert result is None
+
+    def test_enum_type_ddl_mysql(self, adapter):
+        """Test MySQL enum type DDL (should be None)."""
+        result = adapter.enum_type_ddl("status_type", ["active", "inactive"])
+        assert result is None
+
+    def test_job_metadata_columns_mysql(self, adapter):
+        """Test MySQL job metadata columns."""
+        result = adapter.job_metadata_columns()
+        assert len(result) == 3
+        assert "_job_start_time" in result[0]
+        assert "datetime(3)" in result[0]
+        assert "_job_duration" in result[1]
+        assert "float" in result[1]
+        assert "_job_version" in result[2]
+        assert "varchar(64)" in result[2]
+
+
+class TestPostgreSQLDDLMethods:
+    """Test PostgreSQL-specific DDL generation methods."""
+
+    @pytest.fixture
+    def postgres_adapter(self):
+        """Get PostgreSQL adapter for testing."""
+        pytest.importorskip("psycopg2")
+        return get_adapter("postgresql")
+
+    def test_format_column_definition_postgres(self, postgres_adapter):
+        """Test PostgreSQL column definition formatting."""
+        result = postgres_adapter.format_column_definition("user_id", "bigint", nullable=False, comment="user ID")
+        assert result == '"user_id" bigint NOT NULL'
+
+        # Test without comment (comment handled separately in PostgreSQL)
+        result = postgres_adapter.format_column_definition("name", "varchar(255)", nullable=False)
+        assert result == '"name" varchar(255) NOT NULL'
+
+        # Test nullable
+        result = postgres_adapter.format_column_definition("description", "text", nullable=True)
+        assert result == '"description" text'
+
+    def test_table_options_clause_postgres(self, postgres_adapter):
+        """Test PostgreSQL table options clause (should be empty)."""
+        result = postgres_adapter.table_options_clause("test table")
+        assert result == ""
+
+        result = postgres_adapter.table_options_clause()
+        assert result == ""
+
+    def test_table_comment_ddl_postgres(self, postgres_adapter):
+        """Test PostgreSQL table comment DDL."""
+        result = postgres_adapter.table_comment_ddl('"schema"."table"', "test comment")
+        assert result == 'COMMENT ON TABLE "schema"."table" IS \'test comment\''
+
+    def test_column_comment_ddl_postgres(self, postgres_adapter):
+        """Test PostgreSQL column comment DDL."""
+        result = postgres_adapter.column_comment_ddl('"schema"."table"', "column", "test comment")
+        assert result == 'COMMENT ON COLUMN "schema"."table"."column" IS \'test comment\''
+
+    def test_enum_type_ddl_postgres(self, postgres_adapter):
+        """Test PostgreSQL enum type DDL."""
+        result = postgres_adapter.enum_type_ddl("status_type", ["active", "inactive"])
+        assert result == "CREATE TYPE \"status_type\" AS ENUM ('active', 'inactive')"
+
+    def test_job_metadata_columns_postgres(self, postgres_adapter):
+        """Test PostgreSQL job metadata columns."""
+        result = postgres_adapter.job_metadata_columns()
+        assert len(result) == 3
+        assert "_job_start_time" in result[0]
+        assert "timestamp" in result[0]
+        assert "_job_duration" in result[1]
+        assert "real" in result[1]
+        assert "_job_version" in result[2]
+        assert "varchar(64)" in result[2]
