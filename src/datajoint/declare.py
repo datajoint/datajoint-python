@@ -25,13 +25,9 @@ CORE_TYPES = {
     "float32": (r"float32$", "float"),
     "float64": (r"float64$", "double"),
     "int64": (r"int64$", "bigint"),
-    "uint64": (r"uint64$", "bigint unsigned"),
     "int32": (r"int32$", "int"),
-    "uint32": (r"uint32$", "int unsigned"),
     "int16": (r"int16$", "smallint"),
-    "uint16": (r"uint16$", "smallint unsigned"),
     "int8": (r"int8$", "tinyint"),
-    "uint8": (r"uint8$", "tinyint unsigned"),
     "bool": (r"bool$", "tinyint"),
     # UUID (stored as binary)
     "uuid": (r"uuid$", "binary(16)"),
