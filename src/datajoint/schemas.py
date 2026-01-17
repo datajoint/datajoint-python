@@ -190,7 +190,8 @@ class Schema:
             # create database
             logger.debug("Creating schema `{name}`.".format(name=schema_name))
             try:
-                self.connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
+                create_sql = self.connection.adapter.create_schema_sql(schema_name)
+                self.connection.query(create_sql)
             except AccessError:
                 raise DataJointError(
                     "Schema `{name}` does not exist and could not be created. Check permissions.".format(name=schema_name)

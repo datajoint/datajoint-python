@@ -98,6 +98,7 @@ class MySQLAdapter(DatabaseAdapter):
             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
             charset=charset,
             ssl=ssl,
+            autocommit=True,  # DataJoint manages transactions explicitly
         )
 
     def close(self, connection: Any) -> None:
@@ -794,7 +795,7 @@ class MySQLAdapter(DatabaseAdapter):
     # Error Translation
     # =========================================================================
 
-    def translate_error(self, error: Exception) -> Exception:
+    def translate_error(self, error: Exception, query: str = "") -> Exception:
         """
         Translate MySQL error to DataJoint exception.
 

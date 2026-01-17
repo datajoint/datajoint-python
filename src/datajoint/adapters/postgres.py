@@ -101,7 +101,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         sslmode = kwargs.get("sslmode", "prefer")
         connect_timeout = kwargs.get("connect_timeout", 10)
 
-        return client.connect(
+        conn = client.connect(
             host=host,
             port=port,
             user=user,
@@ -110,6 +110,10 @@ class PostgreSQLAdapter(DatabaseAdapter):
             sslmode=sslmode,
             connect_timeout=connect_timeout,
         )
+        # DataJoint manages transactions explicitly via start_transaction()
+        # Set autocommit=True to avoid implicit transactions
+        conn.autocommit = True
+        return conn
 
     def close(self, connection: Any) -> None:
         """Close the PostgreSQL connection."""
@@ -856,7 +860,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
     # Error Translation
     # =========================================================================
 
-    def translate_error(self, error: Exception) -> Exception:
+    def translate_error(self, error: Exception, query: str = "") -> Exception:
         """
         Translate PostgreSQL error to DataJoint exception.
 
@@ -864,6 +868,8 @@ class PostgreSQLAdapter(DatabaseAdapter):
         ----------
         error : Exception
             PostgreSQL exception (typically psycopg2 error).
+        query : str, optional
+            SQL query that caused the error (for context).
 
         Returns
         -------
