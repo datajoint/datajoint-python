@@ -18,7 +18,7 @@ def schema_job_metadata(connection_test, prefix):
 
     class Source(dj.Lookup):
         definition = """
-        source_id : uint8
+        source_id : int16
         ---
         value : float32
         """
@@ -49,7 +49,7 @@ def schema_job_metadata(connection_test, prefix):
 
     class ManualTable(dj.Manual):
         definition = """
-        manual_id : uint8
+        manual_id : int16
         ---
         data : float32
         """
@@ -64,7 +64,7 @@ def schema_job_metadata(connection_test, prefix):
         class Detail(dj.Part):
             definition = """
             -> master
-            detail_idx : uint8
+            detail_idx : int16
             ---
             detail_value : float32
             """
@@ -237,7 +237,7 @@ class TestConfigDisabled:
 
         class Source(dj.Lookup):
             definition = """
-            source_id : uint8
+            source_id : int16
             """
             contents = [(1,), (2,)]
 

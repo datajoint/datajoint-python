@@ -143,7 +143,7 @@ class E(dj.Computed):
     class M(dj.Part):
         definition = """ # test part_integrity cascade
         -> E
-        id_m : uint16
+        id_m : int32
         ---
         -> E.H
         """

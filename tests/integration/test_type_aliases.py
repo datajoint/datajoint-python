@@ -18,13 +18,9 @@ class TestTypeAliasPatterns:
             ("float32", "FLOAT32"),
             ("float64", "FLOAT64"),
             ("int64", "INT64"),
-            ("uint64", "UINT64"),
             ("int32", "INT32"),
-            ("uint32", "UINT32"),
             ("int16", "INT16"),
-            ("uint16", "UINT16"),
             ("int8", "INT8"),
-            ("uint8", "UINT8"),
             ("bool", "BOOL"),
         ],
     )
@@ -41,13 +37,9 @@ class TestTypeAliasPatterns:
             ("float32", "float"),
             ("float64", "double"),
             ("int64", "bigint"),
-            ("uint64", "bigint unsigned"),
             ("int32", "int"),
-            ("uint32", "int unsigned"),
             ("int16", "smallint"),
-            ("uint16", "smallint unsigned"),
             ("int8", "tinyint"),
-            ("uint8", "tinyint unsigned"),
             ("bool", "tinyint"),
         ],
     )
@@ -70,6 +62,26 @@ class TestTypeAliasPatterns:
     )
     def test_native_types_still_work(self, native_type, expected_category):
         """Test that native MySQL types still match correctly."""
+        category = match_type(native_type)
+        assert category == expected_category
+
+    @pytest.mark.parametrize(
+        "native_type,expected_category",
+        [
+            ("int unsigned", "INTEGER"),
+            ("bigint unsigned", "INTEGER"),
+            ("smallint unsigned", "INTEGER"),
+            ("tinyint unsigned", "INTEGER"),
+        ],
+    )
+    def test_native_unsigned_types_pass_through(self, native_type, expected_category):
+        """
+        Test that native MySQL unsigned types are allowed as pass-through.
+
+        Note: These are MySQL-specific and not portable to PostgreSQL.
+        Users should prefer signed core types (int8, int16, int32, int64)
+        for cross-database compatibility.
+        """
         category = match_type(native_type)
         assert category == expected_category
 
@@ -102,13 +114,9 @@ class TestTypeAliasHeading:
         assert "float32" in heading_str
         assert "float64" in heading_str
         assert "int64" in heading_str
-        assert "uint64" in heading_str
         assert "int32" in heading_str
-        assert "uint32" in heading_str
         assert "int16" in heading_str
-        assert "uint16" in heading_str
         assert "int8" in heading_str
-        assert "uint8" in heading_str
         assert "bool" in heading_str
 
 
@@ -125,13 +133,9 @@ class TestTypeAliasInsertFetch:
             val_float32=3.14,
             val_float64=2.718281828,
             val_int64=9223372036854775807,  # max int64
-            val_uint64=18446744073709551615,  # max uint64
             val_int32=2147483647,  # max int32
-            val_uint32=4294967295,  # max uint32
             val_int16=32767,  # max int16
-            val_uint16=65535,  # max uint16
             val_int8=127,  # max int8
-            val_uint8=255,  # max uint8
             val_bool=1,  # boolean true
         )
 
@@ -142,13 +146,9 @@ class TestTypeAliasInsertFetch:
         assert abs(fetched["val_float32"] - test_data["val_float32"]) < 0.001
         assert abs(fetched["val_float64"] - test_data["val_float64"]) < 1e-9
         assert fetched["val_int64"] == test_data["val_int64"]
-        assert fetched["val_uint64"] == test_data["val_uint64"]
         assert fetched["val_int32"] == test_data["val_int32"]
-        assert fetched["val_uint32"] == test_data["val_uint32"]
         assert fetched["val_int16"] == test_data["val_int16"]
-        assert fetched["val_uint16"] == test_data["val_uint16"]
         assert fetched["val_int8"] == test_data["val_int8"]
-        assert fetched["val_uint8"] == test_data["val_uint8"]
         assert fetched["val_bool"] == test_data["val_bool"]
 
     def test_insert_primary_key_with_aliases(self, schema_type_aliases):
@@ -156,11 +156,11 @@ class TestTypeAliasInsertFetch:
         table = TypeAliasPrimaryKey()
         table.delete()
 
-        table.insert1(dict(pk_int32=100, pk_uint16=200, value="test"))
-        fetched = (table & dict(pk_int32=100, pk_uint16=200)).fetch1()
+        table.insert1(dict(pk_int32=100, pk_int16=200, value="test"))
+        fetched = (table & dict(pk_int32=100, pk_int16=200)).fetch1()
 
         assert fetched["pk_int32"] == 100
-        assert fetched["pk_uint16"] == 200
+        assert fetched["pk_int16"] == 200
         assert fetched["value"] == "test"
 
     def test_nullable_type_aliases(self, schema_type_aliases):
