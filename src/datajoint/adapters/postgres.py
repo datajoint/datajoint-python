@@ -661,7 +661,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         -------
         dict
             Standardized column info with keys:
-            name, type, nullable, default, comment
+            name, type, nullable, default, comment, key, extra
         """
         return {
             "name": row["column_name"],
@@ -669,6 +669,8 @@ class PostgreSQLAdapter(DatabaseAdapter):
             "nullable": row["is_nullable"] == "YES",
             "default": row["column_default"],
             "comment": None,  # PostgreSQL stores comments separately
+            "key": "",  # PostgreSQL key info retrieved separately
+            "extra": "",  # PostgreSQL doesn't have auto_increment in same way
         }
 
     # =========================================================================
