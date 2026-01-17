@@ -67,7 +67,7 @@ class TTestNoExtra(dj.Manual):
 
 class Auto(dj.Lookup):
     definition = """
-    id  : uint8
+    id  : int16
     ---
     name :varchar(12)
     """
@@ -195,7 +195,7 @@ class Ephys(dj.Imported):
     class Channel(dj.Part):
         definition = """     # subtable containing individual channels
         -> master
-        channel    :uint8   # channel number within Ephys
+        channel    :int16   # channel number within Ephys
         ----
         voltage    : <blob>
         current = null : <blob>   # optional current to test null handling
