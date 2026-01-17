@@ -155,7 +155,7 @@ class Job(Table):
     {pk_lines}
     ---
     status          : enum('pending', 'reserved', 'success', 'error', 'ignore')
-    priority        : uint8
+    priority        : int8
     created_time=CURRENT_TIMESTAMP(3) : datetime(3)
     scheduled_time=CURRENT_TIMESTAMP(3) : datetime(3)
     reserved_time=null  : datetime(3)
@@ -165,8 +165,8 @@ class Job(Table):
     error_stack=null : <blob>
     user=""         : varchar(255)
     host=""         : varchar(255)
-    pid=0           : uint32
-    connection_id=0 : uint64
+    pid=0           : int32
+    connection_id=0 : int64
     version=""      : varchar(64)
     """
 
