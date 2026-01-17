@@ -38,16 +38,29 @@ def ensure_lineage_table(connection, database):
     database : str
         The schema/database name.
     """
-    connection.query(
-        """
-        CREATE TABLE IF NOT EXISTS `{database}`.`~lineage` (
-            table_name VARCHAR(64) NOT NULL COMMENT 'table name within the schema',
-            attribute_name VARCHAR(64) NOT NULL COMMENT 'attribute name',
-            lineage VARCHAR(255) NOT NULL COMMENT 'origin: schema.table.attribute',
-            PRIMARY KEY (table_name, attribute_name)
-        ) ENGINE=InnoDB
-        """.format(database=database)
+    adapter = connection.adapter
+
+    # Build fully qualified table name
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
+    # Build column definitions using adapter
+    columns = [
+        adapter.format_column_definition("table_name", "VARCHAR(64)", nullable=False, comment="table name within the schema"),
+        adapter.format_column_definition("attribute_name", "VARCHAR(64)", nullable=False, comment="attribute name"),
+        adapter.format_column_definition("lineage", "VARCHAR(255)", nullable=False, comment="origin: schema.table.attribute"),
+    ]
+
+    # Build PRIMARY KEY using adapter
+    pk_cols = adapter.quote_identifier("table_name") + ", " + adapter.quote_identifier("attribute_name")
+    pk_clause = f"PRIMARY KEY ({pk_cols})"
+
+    sql = (
+        f"CREATE TABLE IF NOT EXISTS {lineage_table} (\n"
+        + ",\n".join(columns + [pk_clause])
+        + f"\n) {adapter.table_options_clause()}"
     )
+
+    connection.query(sql)
 
 
 def lineage_table_exists(connection, database):

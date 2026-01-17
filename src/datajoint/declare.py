@@ -190,6 +190,7 @@ def compile_foreign_key(
     attr_sql: list[str],
     foreign_key_sql: list[str],
     index_sql: list[str],
+    adapter,
     fk_attribute_map: dict[str, tuple[str, str]] | None = None,
 ) -> None:
     """
@@ -212,6 +213,8 @@ def compile_foreign_key(
         SQL FOREIGN KEY constraints. Updated in place.
     index_sql : list[str]
         SQL INDEX declarations. Updated in place.
+    adapter : DatabaseAdapter
+        Database adapter for backend-specific SQL generation.
     fk_attribute_map : dict, optional
         Mapping of ``child_attr -> (parent_table, parent_attr)``. Updated in place.
 
@@ -268,22 +271,21 @@ def compile_foreign_key(
             parent_attr = ref.heading[attr].original_name
             fk_attribute_map[attr] = (parent_table, parent_attr)
 
-    # declare the foreign key
+    # declare the foreign key using adapter for identifier quoting
+    fk_cols = ", ".join(adapter.quote_identifier(col) for col in ref.primary_key)
+    pk_cols = ", ".join(adapter.quote_identifier(ref.heading[name].original_name) for name in ref.primary_key)
     foreign_key_sql.append(
-        "FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT".format(
-            fk="`,`".join(ref.primary_key),
-            pk="`,`".join(ref.heading[name].original_name for name in ref.primary_key),
-            ref=ref.support[0],
-        )
+        f"FOREIGN KEY ({fk_cols}) REFERENCES {ref.support[0]} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
     )
 
     # declare unique index
     if is_unique:
-        index_sql.append("UNIQUE INDEX ({attrs})".format(attrs=",".join("`%s`" % attr for attr in ref.primary_key)))
+        index_cols = ", ".join(adapter.quote_identifier(attr) for attr in ref.primary_key)
+        index_sql.append(f"UNIQUE INDEX ({index_cols})")
 
 
 def prepare_declare(
-    definition: str, context: dict
+    definition: str, context: dict, adapter
 ) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]]]:
     """
     Parse a table definition into its components.
@@ -294,6 +296,8 @@ def prepare_declare(
         DataJoint table definition string.
     context : dict
         Namespace for resolving foreign key references.
+    adapter : DatabaseAdapter
+        Database adapter for backend-specific SQL generation.
 
     Returns
     -------
@@ -337,12 +341,13 @@ def prepare_declare(
                 attribute_sql,
                 foreign_key_sql,
                 index_sql,
+                adapter,
                 fk_attribute_map,
             )
         elif re.match(r"^(unique\s+)?index\s*.*$", line, re.I):  # index
-            compile_index(line, index_sql)
+            compile_index(line, index_sql, adapter)
         else:
-            name, sql, store = compile_attribute(line, in_key, foreign_key_sql, context)
+            name, sql, store = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
             if store:
                 external_stores.append(store)
             if in_key and name not in primary_key:
@@ -363,36 +368,47 @@ def prepare_declare(
 
 
 def declare(
-    full_table_name: str, definition: str, context: dict
-) -> tuple[str, list[str], list[str], dict[str, tuple[str, str]]]:
+    full_table_name: str, definition: str, context: dict, adapter
+) -> tuple[str, list[str], list[str], dict[str, tuple[str, str]], list[str]]:
     r"""
     Parse a definition and generate SQL CREATE TABLE statement.
 
     Parameters
     ----------
     full_table_name : str
-        Fully qualified table name (e.g., ```\`schema\`.\`table\```).
+        Fully qualified table name (e.g., ```\`schema\`.\`table\``` or ```"schema"."table"```).
     definition : str
         DataJoint table definition string.
     context : dict
         Namespace for resolving foreign key references.
+    adapter : DatabaseAdapter
+        Database adapter for backend-specific SQL generation.
 
     Returns
     -------
     tuple
-        Four-element tuple:
+        Five-element tuple:
 
         - sql : str - SQL CREATE TABLE statement
         - external_stores : list[str] - External store names used
         - primary_key : list[str] - Primary key attribute names
         - fk_attribute_map : dict - FK attribute lineage mapping
+        - additional_ddl : list[str] - Additional DDL statements (COMMENT ON, etc.)
 
     Raises
     ------
     DataJointError
         If table name exceeds max length or has no primary key.
     """
-    table_name = full_table_name.strip("`").split(".")[1]
+    # Parse table name without assuming quote character
+    # Extract schema.table from quoted name using adapter
+    quote_char = adapter.quote_identifier("x")[0]  # Get quote char from adapter
+    parts = full_table_name.split(".")
+    if len(parts) == 2:
+        table_name = parts[1].strip(quote_char)
+    else:
+        table_name = parts[0].strip(quote_char)
+
     if len(table_name) > MAX_TABLE_NAME_LENGTH:
         raise DataJointError(
             "Table name `{name}` exceeds the max length of {max_length}".format(
@@ -408,35 +424,42 @@ def declare(
         index_sql,
         external_stores,
         fk_attribute_map,
-    ) = prepare_declare(definition, context)
+    ) = prepare_declare(definition, context, adapter)
 
     # Add hidden job metadata for Computed/Imported tables (not parts)
-    # Note: table_name may still have backticks, strip them for prefix checking
-    clean_table_name = table_name.strip("`")
     if config.jobs.add_job_metadata:
         # Check if this is a Computed (__) or Imported (_) table, but not a Part (contains __ in middle)
-        is_computed = clean_table_name.startswith("__") and "__" not in clean_table_name[2:]
-        is_imported = clean_table_name.startswith("_") and not clean_table_name.startswith("__")
+        is_computed = table_name.startswith("__") and "__" not in table_name[2:]
+        is_imported = table_name.startswith("_") and not table_name.startswith("__")
         if is_computed or is_imported:
-            job_metadata_sql = [
-                "`_job_start_time` datetime(3) DEFAULT NULL",
-                "`_job_duration` float DEFAULT NULL",
-                "`_job_version` varchar(64) DEFAULT ''",
-            ]
+            job_metadata_sql = adapter.job_metadata_columns()
             attribute_sql.extend(job_metadata_sql)
 
     if not primary_key:
         raise DataJointError("Table must have a primary key")
 
+    additional_ddl = []  # Track additional DDL statements (e.g., COMMENT ON for PostgreSQL)
+
+    # Build PRIMARY KEY clause using adapter
+    pk_cols = ", ".join(adapter.quote_identifier(pk) for pk in primary_key)
+    pk_clause = f"PRIMARY KEY ({pk_cols})"
+
+    # Assemble CREATE TABLE
     sql = (
-        "CREATE TABLE IF NOT EXISTS %s (\n" % full_table_name
-        + ",\n".join(attribute_sql + ["PRIMARY KEY (`" + "`,`".join(primary_key) + "`)"] + foreign_key_sql + index_sql)
-        + '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment
+        f"CREATE TABLE IF NOT EXISTS {full_table_name} (\n"
+        + ",\n".join(attribute_sql + [pk_clause] + foreign_key_sql + index_sql)
+        + f"\n) {adapter.table_options_clause(table_comment)}"
     )
-    return sql, external_stores, primary_key, fk_attribute_map
+
+    # Add table-level comment DDL if needed (PostgreSQL)
+    table_comment_ddl = adapter.table_comment_ddl(full_table_name, table_comment)
+    if table_comment_ddl:
+        additional_ddl.append(table_comment_ddl)
+
+    return sql, external_stores, primary_key, fk_attribute_map, additional_ddl
 
 
-def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]) -> list[str]:
+def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str], adapter) -> list[str]:
     """
     Generate SQL ALTER commands for attribute changes.
 
@@ -448,6 +471,8 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
         Old attribute SQL declarations.
     primary_key : list[str]
         Primary key attribute names (cannot be altered).
+    adapter : DatabaseAdapter
+        Database adapter for backend-specific SQL generation.
 
     Returns
     -------
@@ -459,8 +484,9 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
     DataJointError
         If an attribute is renamed twice or renamed from non-existent attribute.
     """
-    # parse attribute names
-    name_regexp = re.compile(r"^`(?P<name>\w+)`")
+    # parse attribute names - use adapter's quote character
+    quote_char = re.escape(adapter.quote_identifier("x")[0])
+    name_regexp = re.compile(rf"^{quote_char}(?P<name>\w+){quote_char}")
     original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*}')
     matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
     new_names = dict((d.group("name"), n and n.group("name")) for d, n in matched)
@@ -486,7 +512,7 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
 
     # dropping attributes
     to_drop = [n for n in old_names if n not in renamed and n not in new_names]
-    sql = ["DROP `%s`" % n for n in to_drop]
+    sql = [f"DROP {adapter.quote_identifier(n)}" for n in to_drop]
     old_names = [name for name in old_names if name not in to_drop]
 
     # add or change attributes in order
@@ -503,25 +529,24 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
                     if idx >= 1 and old_names[idx - 1] != (prev[1] or prev[0]):
                         after = prev[0]
             if new_def not in old or after:
-                sql.append(
-                    "{command} {new_def} {after}".format(
-                        command=(
-                            "ADD"
-                            if (old_name or new_name) not in old_names
-                            else "MODIFY"
-                            if not old_name
-                            else "CHANGE `%s`" % old_name
-                        ),
-                        new_def=new_def,
-                        after="" if after is None else "AFTER `%s`" % after,
-                    )
-                )
+                # Determine command type
+                if (old_name or new_name) not in old_names:
+                    command = "ADD"
+                elif not old_name:
+                    command = "MODIFY"
+                else:
+                    command = f"CHANGE {adapter.quote_identifier(old_name)}"
+
+                # Build after clause
+                after_clause = "" if after is None else f"AFTER {adapter.quote_identifier(after)}"
+
+                sql.append(f"{command} {new_def} {after_clause}")
         prev = new_name, old_name
 
     return sql
 
 
-def alter(definition: str, old_definition: str, context: dict) -> tuple[list[str], list[str]]:
+def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple[list[str], list[str]]:
     """
     Generate SQL ALTER commands for table definition changes.
 
@@ -533,6 +558,8 @@ def alter(definition: str, old_definition: str, context: dict) -> tuple[list[str
         Current table definition.
     context : dict
         Namespace for resolving foreign key references.
+    adapter : DatabaseAdapter
+        Database adapter for backend-specific SQL generation.
 
     Returns
     -------
@@ -555,7 +582,7 @@ def alter(definition: str, old_definition: str, context: dict) -> tuple[list[str
         index_sql,
         external_stores,
         _fk_attribute_map,
-    ) = prepare_declare(definition, context)
+    ) = prepare_declare(definition, context, adapter)
     (
         table_comment_,
         primary_key_,
@@ -564,7 +591,7 @@ def alter(definition: str, old_definition: str, context: dict) -> tuple[list[str
         index_sql_,
         external_stores_,
         _fk_attribute_map_,
-    ) = prepare_declare(old_definition, context)
+    ) = prepare_declare(old_definition, context, adapter)
 
     # analyze differences between declarations
     sql = list()
@@ -575,13 +602,16 @@ def alter(definition: str, old_definition: str, context: dict) -> tuple[list[str
     if index_sql != index_sql_:
         raise NotImplementedError("table.alter cannot alter indexes (yet)")
     if attribute_sql != attribute_sql_:
-        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key))
+        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key, adapter))
     if table_comment != table_comment_:
-        sql.append('COMMENT="%s"' % table_comment)
+        # For MySQL: COMMENT="new comment"
+        # For PostgreSQL: would need COMMENT ON TABLE, but that's not an ALTER TABLE clause
+        # Keep MySQL syntax for now (ALTER TABLE ... COMMENT="...")
+        sql.append(f'COMMENT="{table_comment}"')
     return sql, [e for e in external_stores if e not in external_stores_]
 
 
-def compile_index(line: str, index_sql: list[str]) -> None:
+def compile_index(line: str, index_sql: list[str], adapter) -> None:
     """
     Parse an index declaration and append SQL to index_sql.
 
@@ -592,6 +622,8 @@ def compile_index(line: str, index_sql: list[str]) -> None:
         ``"unique index(attr)"``).
     index_sql : list[str]
         List of index SQL declarations. Updated in place.
+    adapter : DatabaseAdapter
+        Database adapter for backend-specific SQL generation.
 
     Raises
     ------
@@ -604,7 +636,7 @@ def compile_index(line: str, index_sql: list[str]) -> None:
         if match is None:
             return attr
         if match["path"] is None:
-            return f"`{attr}`"
+            return adapter.quote_identifier(attr)
         return f"({attr})"
 
     match = re.match(r"(?P<unique>unique\s+)?index\s*\(\s*(?P<args>.*)\)", line, re.I)
@@ -621,7 +653,7 @@ def compile_index(line: str, index_sql: list[str]) -> None:
     )
 
 
-def substitute_special_type(match: dict, category: str, foreign_key_sql: list[str], context: dict) -> None:
+def substitute_special_type(match: dict, category: str, foreign_key_sql: list[str], context: dict, adapter) -> None:
     """
     Substitute special types with their native SQL equivalents.
 
@@ -640,6 +672,8 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
         Foreign key declarations (unused, kept for API compatibility).
     context : dict
         Namespace for codec lookup (unused, kept for API compatibility).
+    adapter : DatabaseAdapter
+        Database adapter for backend-specific type mapping.
     """
     if category == "CODEC":
         # Codec - resolve to underlying dtype
@@ -660,11 +694,11 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
         # Recursively resolve if dtype is also a special type
         category = match_type(match["type"])
         if category in SPECIAL_TYPES:
-            substitute_special_type(match, category, foreign_key_sql, context)
+            substitute_special_type(match, category, foreign_key_sql, context, adapter)
     elif category in CORE_TYPE_NAMES:
-        # Core DataJoint type - substitute with native SQL type if mapping exists
+        # Core DataJoint type - substitute with native SQL type using adapter
         core_name = category.lower()
-        sql_type = CORE_TYPE_SQL.get(core_name)
+        sql_type = adapter.core_type_to_sql(core_name)
         if sql_type is not None:
             match["type"] = sql_type
         # else: type passes through as-is (json, date, datetime, char, varchar, enum)
@@ -672,7 +706,9 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
         raise DataJointError(f"Unknown special type: {category}")
 
 
-def compile_attribute(line: str, in_key: bool, foreign_key_sql: list[str], context: dict) -> tuple[str, str, str | None]:
+def compile_attribute(
+    line: str, in_key: bool, foreign_key_sql: list[str], context: dict, adapter
+) -> tuple[str, str, str | None]:
     """
     Convert an attribute definition from DataJoint format to SQL.
 
@@ -686,6 +722,8 @@ def compile_attribute(line: str, in_key: bool, foreign_key_sql: list[str], conte
         Foreign key declarations (passed to type substitution).
     context : dict
         Namespace for codec lookup.
+    adapter : DatabaseAdapter
+        Database adapter for backend-specific SQL generation.
 
     Returns
     -------
@@ -736,7 +774,7 @@ def compile_attribute(line: str, in_key: bool, foreign_key_sql: list[str], conte
     if category in SPECIAL_TYPES:
         # Core types and Codecs are recorded in comment for reconstruction
         match["comment"] = ":{type}:{comment}".format(**match)
-        substitute_special_type(match, category, foreign_key_sql, context)
+        substitute_special_type(match, category, foreign_key_sql, context, adapter)
     elif category in NATIVE_TYPES:
         # Native type - warn user
         logger.warning(
@@ -750,5 +788,12 @@ def compile_attribute(line: str, in_key: bool, foreign_key_sql: list[str], conte
     if ("blob" in final_type) and match["default"] not in {"DEFAULT NULL", "NOT NULL"}:
         raise DataJointError("The default value for blob attributes can only be NULL in:\n{line}".format(line=line))
 
-    sql = ("`{name}` {type} {default}" + (' COMMENT "{comment}"' if match["comment"] else "")).format(**match)
+    # Use adapter to format column definition
+    sql = adapter.format_column_definition(
+        name=match["name"],
+        sql_type=match["type"],
+        nullable=match["nullable"],
+        default=match["default"] if match["default"] else None,
+        comment=match["comment"] if match["comment"] else None,
+    )
     return match["name"], sql, match.get("store")

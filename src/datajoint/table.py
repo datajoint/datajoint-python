@@ -163,7 +163,9 @@ class Table(QueryExpression):
                 "Table class name `{name}` is invalid. Please use CamelCase. ".format(name=self.class_name)
                 + "Classes defining tables should be formatted in strict CamelCase."
             )
-        sql, _external_stores, primary_key, fk_attribute_map = declare(self.full_table_name, self.definition, context)
+        sql, _external_stores, primary_key, fk_attribute_map, additional_ddl = declare(
+            self.full_table_name, self.definition, context, self.connection.adapter
+        )
 
         # Call declaration hook for validation (subclasses like AutoPopulate can override)
         self._declare_check(primary_key, fk_attribute_map)
@@ -171,6 +173,9 @@ class Table(QueryExpression):
         sql = sql.format(database=self.database)
         try:
             self.connection.query(sql)
+            # Execute additional DDL (e.g., COMMENT ON for PostgreSQL)
+            for ddl in additional_ddl:
+                self.connection.query(ddl.format(database=self.database))
         except AccessError:
             # Only suppress if table already exists (idempotent declaration)
             # Otherwise raise - user needs to know about permission issues
@@ -270,7 +275,7 @@ class Table(QueryExpression):
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
         old_definition = self.describe(context=context)
-        sql, _external_stores = alter(self.definition, old_definition, context)
+        sql, _external_stores = alter(self.definition, old_definition, context, self.connection.adapter)
         if not sql:
             if prompt:
                 logger.warning("Nothing to alter.")
