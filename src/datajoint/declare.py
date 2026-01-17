@@ -697,8 +697,8 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
             substitute_special_type(match, category, foreign_key_sql, context, adapter)
     elif category in CORE_TYPE_NAMES:
         # Core DataJoint type - substitute with native SQL type using adapter
-        core_name = category.lower()
-        sql_type = adapter.core_type_to_sql(core_name)
+        # Pass the full type string (e.g., "varchar(255)") not just category name
+        sql_type = adapter.core_type_to_sql(match["type"])
         if sql_type is not None:
             match["type"] = sql_type
         # else: type passes through as-is (json, date, datetime, char, varchar, enum)

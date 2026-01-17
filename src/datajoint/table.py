@@ -389,12 +389,10 @@ class Table(QueryExpression):
         """
         :return: True is the table is declared in the schema.
         """
-        return (
-            self.connection.query(
-                'SHOW TABLES in `{database}` LIKE "{table_name}"'.format(database=self.database, table_name=self.table_name)
-            ).rowcount
-            > 0
+        query = self.connection.adapter.get_table_info_sql(
+            self.database, self.table_name
         )
+        return self.connection.query(query).rowcount > 0
 
     @property
     def full_table_name(self):

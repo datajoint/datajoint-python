@@ -112,11 +112,14 @@ def get_lineage(connection, database, table_name, attribute_name):
     if not lineage_table_exists(connection, database):
         return None
 
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     result = connection.query(
-        """
-        SELECT lineage FROM `{database}`.`~lineage`
+        f"""
+        SELECT lineage FROM {lineage_table}
         WHERE table_name = %s AND attribute_name = %s
-        """.format(database=database),
+        """,
         args=(table_name, attribute_name),
     ).fetchone()
     return result[0] if result else None
@@ -143,11 +146,14 @@ def get_table_lineages(connection, database, table_name):
     if not lineage_table_exists(connection, database):
         return {}
 
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     results = connection.query(
-        """
-        SELECT attribute_name, lineage FROM `{database}`.`~lineage`
+        f"""
+        SELECT attribute_name, lineage FROM {lineage_table}
         WHERE table_name = %s
-        """.format(database=database),
+        """,
         args=(table_name,),
     ).fetchall()
     return {row[0]: row[1] for row in results}
@@ -172,10 +178,13 @@ def get_schema_lineages(connection, database):
     if not lineage_table_exists(connection, database):
         return {}
 
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     results = connection.query(
-        """
-        SELECT table_name, attribute_name, lineage FROM `{database}`.`~lineage`
-        """.format(database=database),
+        f"""
+        SELECT table_name, attribute_name, lineage FROM {lineage_table}
+        """,
     ).fetchall()
 
     return {f"{database}.{table}.{attr}": lineage for table, attr, lineage in results}
@@ -197,16 +206,24 @@ def insert_lineages(connection, database, entries):
     if not entries:
         return
     ensure_lineage_table(connection, database)
+
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     # Build a single INSERT statement with multiple values for atomicity
     placeholders = ", ".join(["(%s, %s, %s)"] * len(entries))
     # Flatten the entries into a single args tuple
     args = tuple(val for entry in entries for val in entry)
+
+    # TODO: ON DUPLICATE KEY UPDATE is MySQL-specific
+    # PostgreSQL uses ON CONFLICT ... DO UPDATE instead
+    # This needs an adapter method for backend-agnostic upsert
     connection.query(
-        """
-        INSERT INTO `{database}`.`~lineage` (table_name, attribute_name, lineage)
+        f"""
+        INSERT INTO {lineage_table} (table_name, attribute_name, lineage)
         VALUES {placeholders}
         ON DUPLICATE KEY UPDATE lineage = VALUES(lineage)
-        """.format(database=database, placeholders=placeholders),
+        """,
         args=args,
     )
 
@@ -226,11 +243,15 @@ def delete_table_lineages(connection, database, table_name):
     """
     if not lineage_table_exists(connection, database):
         return
+
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     connection.query(
-        """
-        DELETE FROM `{database}`.`~lineage`
+        f"""
+        DELETE FROM {lineage_table}
         WHERE table_name = %s
-        """.format(database=database),
+        """,
         args=(table_name,),
     )
 
@@ -264,8 +285,11 @@ def rebuild_schema_lineage(connection, database):
     # Ensure the lineage table exists
     ensure_lineage_table(connection, database)
 
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     # Clear all existing lineage entries for this schema
-    connection.query(f"DELETE FROM `{database}`.`~lineage`")
+    connection.query(f"DELETE FROM {lineage_table}")
 
     # Get all tables in the schema (excluding hidden tables)
     tables_result = connection.query(
