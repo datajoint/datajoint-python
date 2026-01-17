@@ -879,19 +879,22 @@ class QueryExpression:
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         result = self.make_subquery() if self._top else copy.copy(self)
         has_left_join = any(is_left for is_left, _ in result._joins)
-        return result.connection.query(
-            "SELECT {select_} FROM {from_}{where}".format(
-                select_=(
-                    "count(*)"
-                    if has_left_join
-                    else "count(DISTINCT {fields})".format(
-                        fields=result.heading.as_sql(result.primary_key, include_aliases=False)
-                    )
-                ),
-                from_=result.from_clause(),
-                where=result.where_clause(),
+
+        # Build COUNT query - PostgreSQL requires different syntax for multi-column DISTINCT
+        if has_left_join or len(result.primary_key) > 1:
+            # Use subquery with DISTINCT for multi-column primary keys (backend-agnostic)
+            fields = result.heading.as_sql(result.primary_key, include_aliases=False)
+            query = (
+                f"SELECT count(*) FROM ("
+                f"SELECT DISTINCT {fields} FROM {result.from_clause()}{result.where_clause()}"
+                f") AS distinct_count"
             )
-        ).fetchone()[0]
+        else:
+            # Single column - can use count(DISTINCT col) directly
+            fields = result.heading.as_sql(result.primary_key, include_aliases=False)
+            query = f"SELECT count(DISTINCT {fields}) FROM {result.from_clause()}{result.where_clause()}"
+
+        return result.connection.query(query).fetchone()[0]
 
     def __bool__(self):
         """
