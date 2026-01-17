@@ -192,3 +192,6 @@ _hash/
 # Local config
 .secrets/
 datajoint.json
+
+# Test outputs
+*_test_summary.txt
