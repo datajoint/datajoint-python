@@ -133,7 +133,7 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
             Comment with optional ``:uuid:`` prefix.
         """
         # UUID info is stored in the comment for reconstruction
-        return (":uuid:" if self.uuid else "") + self.comment
+        return (":uuid:" if self.uuid else "") + (self.comment or "")
 
     @property
     def sql(self) -> str:
@@ -381,6 +381,17 @@ class Heading:
         # Parse columns using adapter-specific parser
         raw_attributes = cur.fetchall()
         attributes = [adapter.parse_column_info(row) for row in raw_attributes]
+
+        # Get primary key information and mark primary key columns
+        pk_query = conn.query(
+            adapter.get_primary_key_sql(database, table_name),
+            as_dict=True,
+        )
+        pk_columns = {row["column_name"] for row in pk_query.fetchall()}
+        for attr in attributes:
+            if attr["name"] in pk_columns:
+                attr["key"] = "PRI"
+
         numeric_types = {
             # MySQL types
             ("float", False): np.float64,

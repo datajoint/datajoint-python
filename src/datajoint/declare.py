@@ -264,7 +264,18 @@ def compile_foreign_key(
             attributes.append(attr)
             if primary_key is not None:
                 primary_key.append(attr)
-            attr_sql.append(ref.heading[attr].sql.replace("NOT NULL ", "", int(is_nullable)))
+
+            # Build foreign key column definition using adapter
+            parent_attr = ref.heading[attr]
+            col_def = adapter.format_column_definition(
+                name=attr,
+                sql_type=parent_attr.sql_type,
+                nullable=is_nullable,
+                default=None,
+                comment=parent_attr.sql_comment,
+            )
+            attr_sql.append(col_def)
+
         # Track FK attribute mapping for lineage: child_attr -> (parent_table, parent_attr)
         if fk_attribute_map is not None:
             parent_table = ref.support[0]  # e.g., `schema`.`table`
@@ -274,8 +285,20 @@ def compile_foreign_key(
     # declare the foreign key using adapter for identifier quoting
     fk_cols = ", ".join(adapter.quote_identifier(col) for col in ref.primary_key)
     pk_cols = ", ".join(adapter.quote_identifier(ref.heading[name].original_name) for name in ref.primary_key)
+
+    # Build referenced table name with proper quoting
+    # ref.support[0] may have cached quoting from a different backend
+    # Extract database and table name and rebuild with current adapter
+    parent_full_name = ref.support[0]
+    # Try to parse as database.table (with or without quotes)
+    parts = parent_full_name.replace('"', '').replace('`', '').split('.')
+    if len(parts) == 2:
+        ref_table_name = f"{adapter.quote_identifier(parts[0])}.{adapter.quote_identifier(parts[1])}"
+    else:
+        ref_table_name = adapter.quote_identifier(parts[0])
+
     foreign_key_sql.append(
-        f"FOREIGN KEY ({fk_cols}) REFERENCES {ref.support[0]} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
+        f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
     )
 
     # declare unique index
