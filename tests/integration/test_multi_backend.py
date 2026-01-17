@@ -79,8 +79,8 @@ def test_foreign_keys(connection_by_backend, backend, prefix):
     Observation.insert1((1, 1, "Active"))
 
     # Verify data was inserted
-    assert len(Animal) == 1
-    assert len(Observation) == 1
+    assert len(Animal()) == 1
+    assert len(Observation()) == 1
 
     # Cleanup
     schema.drop()
