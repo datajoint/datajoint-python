@@ -667,6 +667,52 @@ class PostgreSQLAdapter(DatabaseAdapter):
             f"ORDER BY kcu.constraint_name, kcu.ordinal_position"
         )
 
+    def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
+        """Query to get FK constraint details from information_schema."""
+        return (
+            f"SELECT "
+            f"  kcu.column_name as fk_attrs, "
+            f"  '\"' || ccu.table_schema || '\".\"' || ccu.table_name || '\"' as parent, "
+            f"  ccu.column_name as pk_attrs "
+            f"FROM information_schema.key_column_usage AS kcu "
+            f"JOIN information_schema.constraint_column_usage AS ccu "
+            f"  ON kcu.constraint_name = ccu.constraint_name "
+            f"  AND kcu.constraint_schema = ccu.constraint_schema "
+            f"WHERE kcu.constraint_name = %s "
+            f"  AND kcu.table_schema = %s "
+            f"  AND kcu.table_name = %s "
+            f"ORDER BY kcu.ordinal_position"
+        )
+
+    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str]] | None:
+        """Parse PostgreSQL foreign key violation error message."""
+        import re
+
+        # PostgreSQL FK error pattern
+        # Example: 'update or delete on table "parent" violates foreign key constraint "child_parent_id_fkey" on table "child"'
+        pattern = re.compile(
+            r'.*table "(?P<parent_table>[^"]+)" violates foreign key constraint "(?P<name>[^"]+)" on table "(?P<child_table>[^"]+)"'
+        )
+
+        match = pattern.match(error_message)
+        if not match:
+            return None
+
+        result = match.groupdict()
+
+        # Build child table name (assume same schema as parent for now)
+        # The error doesn't include schema, so we return unqualified names
+        # and let the caller add schema context
+        child = f'"{result["child_table"]}"'
+
+        return {
+            "child": child,
+            "name": f'"{result["name"]}"',
+            "fk_attrs": None,  # Not in error message, will need constraint query
+            "parent": f'"{result["parent_table"]}"',
+            "pk_attrs": None,  # Not in error message, will need constraint query
+        }
+
     def get_indexes_sql(self, schema_name: str, table_name: str) -> str:
         """Query to get index definitions."""
         return (

@@ -595,6 +595,44 @@ class MySQLAdapter(DatabaseAdapter):
             f"ORDER BY constraint_name, ordinal_position"
         )
 
+    def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
+        """Query to get FK constraint details from information_schema."""
+        return (
+            f"SELECT "
+            f"  COLUMN_NAME as fk_attrs, "
+            f"  CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`', REFERENCED_TABLE_NAME, '`') as parent, "
+            f"  REFERENCED_COLUMN_NAME as pk_attrs "
+            f"FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
+            f"WHERE CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s"
+        )
+
+    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str]] | None:
+        """Parse MySQL foreign key violation error message."""
+        import re
+
+        # MySQL FK error pattern with backticks
+        pattern = re.compile(
+            r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
+            r"CONSTRAINT (?P<name>`[^`]+`) "
+            r"(FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
+            r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)[\s\w]+\))?"
+        )
+
+        match = pattern.match(error_message)
+        if not match:
+            return None
+
+        result = match.groupdict()
+
+        # Parse comma-separated FK attrs if present
+        if result.get("fk_attrs"):
+            result["fk_attrs"] = [col.strip("`") for col in result["fk_attrs"].split(",")]
+        # Parse comma-separated PK attrs if present
+        if result.get("pk_attrs"):
+            result["pk_attrs"] = [col.strip("`") for col in result["pk_attrs"].split(",")]
+
+        return result
+
     def get_indexes_sql(self, schema_name: str, table_name: str) -> str:
         """Query to get index definitions."""
         return (

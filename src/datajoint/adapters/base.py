@@ -601,6 +601,72 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
+        """
+        Generate query to get foreign key constraint details from information_schema.
+
+        Used during cascade delete to determine FK columns when error message
+        doesn't provide full details.
+
+        Parameters
+        ----------
+        constraint_name : str
+            Name of the foreign key constraint.
+        schema_name : str
+            Schema/database name of the child table.
+        table_name : str
+            Name of the child table.
+
+        Returns
+        -------
+        str
+            SQL query that returns rows with columns:
+            - fk_attrs: foreign key column name in child table
+            - parent: parent table name (quoted, with schema)
+            - pk_attrs: referenced column name in parent table
+        """
+        ...
+
+    @abstractmethod
+    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str]] | None:
+        """
+        Parse a foreign key violation error message to extract constraint details.
+
+        Used during cascade delete to identify which child table is preventing
+        deletion and what columns are involved.
+
+        Parameters
+        ----------
+        error_message : str
+            The error message from a foreign key constraint violation.
+
+        Returns
+        -------
+        dict or None
+            Dictionary with keys if successfully parsed:
+            - child: child table name (quoted with schema if available)
+            - name: constraint name (quoted)
+            - fk_attrs: list of foreign key column names (may be None if not in message)
+            - parent: parent table name (quoted, may be None if not in message)
+            - pk_attrs: list of parent key column names (may be None if not in message)
+
+            Returns None if error message doesn't match FK violation pattern.
+
+        Examples
+        --------
+        MySQL error:
+            "Cannot delete or update a parent row: a foreign key constraint fails
+            (`schema`.`child`, CONSTRAINT `fk_name` FOREIGN KEY (`child_col`)
+            REFERENCES `parent` (`parent_col`))"
+
+        PostgreSQL error:
+            "update or delete on table \"parent\" violates foreign key constraint
+            \"child_parent_id_fkey\" on table \"child\"
+            DETAIL:  Key (parent_id)=(1) is still referenced from table \"child\"."
+        """
+        ...
+
+    @abstractmethod
     def get_indexes_sql(self, schema_name: str, table_name: str) -> str:
         """
         Generate query to get index definitions.

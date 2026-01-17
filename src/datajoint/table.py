@@ -30,24 +30,8 @@ from .utils import get_master, is_camel_case, user_choice
 
 logger = logging.getLogger(__name__.split(".")[0])
 
-foreign_key_error_regexp = re.compile(
-    r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
-    r"CONSTRAINT (?P<name>`[^`]+`) "
-    r"(FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
-    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)[\s\w]+\))?"
-)
-
-constraint_info_query = " ".join(
-    """
-    SELECT
-        COLUMN_NAME as fk_attrs,
-        CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`', REFERENCED_TABLE_NAME, '`') as parent,
-        REFERENCED_COLUMN_NAME as pk_attrs
-    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-    WHERE
-        CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s;
-    """.split()
-)
+# Note: Foreign key error parsing is now handled by adapter methods
+# Legacy regexp and query kept for reference but no longer used
 
 
 class _RenameMap(tuple):
@@ -895,35 +879,53 @@ class Table(QueryExpression):
                 try:
                     delete_count = table.delete_quick(get_count=True)
                 except IntegrityError as error:
-                    match = foreign_key_error_regexp.match(error.args[0])
+                    # Use adapter to parse FK error message
+                    match = table.connection.adapter.parse_foreign_key_error(error.args[0])
                     if match is None:
                         raise DataJointError(
-                            "Cascading deletes failed because the error message is missing foreign key information."
+                            "Cascading deletes failed because the error message is missing foreign key information. "
                             "Make sure you have REFERENCES privilege to all dependent tables."
                         ) from None
-                    match = match.groupdict()
-                    # if schema name missing, use table
-                    if "`.`" not in match["child"]:
-                        match["child"] = "{}.{}".format(table.full_table_name.split(".")[0], match["child"])
-                    if match["pk_attrs"] is not None:  # fully matched, adjusting the keys
-                        match["fk_attrs"] = [k.strip("`") for k in match["fk_attrs"].split(",")]
-                        match["pk_attrs"] = [k.strip("`") for k in match["pk_attrs"].split(",")]
-                    else:  # only partially matched, querying with constraint to determine keys
-                        match["fk_attrs"], match["parent"], match["pk_attrs"] = list(
-                            map(
-                                list,
-                                zip(
-                                    *table.connection.query(
-                                        constraint_info_query,
-                                        args=(
-                                            match["name"].strip("`"),
-                                            *[_.strip("`") for _ in match["child"].split("`.`")],
-                                        ),
-                                    ).fetchall()
-                                ),
-                            )
+
+                    # Strip quotes from parsed values for backend-agnostic processing
+                    quote_chars = ('`', '"')
+
+                    def strip_quotes(s):
+                        if s and any(s.startswith(q) for q in quote_chars):
+                            return s.strip('`"')
+                        return s
+
+                    # Ensure child table has schema
+                    child_table = match["child"]
+                    if "." not in strip_quotes(child_table):
+                        # Add schema from current table
+                        schema = table.full_table_name.split(".")[0].strip('`"')
+                        child_unquoted = strip_quotes(child_table)
+                        child_table = f"{table.connection.adapter.quote_identifier(schema)}.{table.connection.adapter.quote_identifier(child_unquoted)}"
+                        match["child"] = child_table
+
+                    # If FK/PK attributes not in error message, query information_schema
+                    if match["fk_attrs"] is None or match["pk_attrs"] is None:
+                        # Extract schema and table name from child
+                        child_parts = [strip_quotes(p) for p in child_table.split(".")]
+                        if len(child_parts) == 2:
+                            child_schema, child_table_name = child_parts
+                        else:
+                            child_schema = table.full_table_name.split(".")[0].strip('`"')
+                            child_table_name = child_parts[0]
+
+                        constraint_query = table.connection.adapter.get_constraint_info_sql(
+                            strip_quotes(match["name"]),
+                            child_schema,
+                            child_table_name,
                         )
-                        match["parent"] = match["parent"][0]
+
+                        results = table.connection.query(constraint_query).fetchall()
+                        if results:
+                            match["fk_attrs"], match["parent"], match["pk_attrs"] = list(
+                                map(list, zip(*results))
+                            )
+                            match["parent"] = match["parent"][0]  # All rows have same parent
 
                     # Restrict child by table if
                     #   1. if table's restriction attributes are not in child's primary key
