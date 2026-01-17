@@ -24,6 +24,19 @@ services:
       timeout: 30s
       retries: 5
       interval: 15s
+  postgres:
+    image: postgres:${POSTGRES_VER:-15}
+    environment:
+      - POSTGRES_PASSWORD=${PG_PASS:-password}
+      - POSTGRES_USER=${PG_USER:-postgres}
+      - POSTGRES_DB=${PG_DB:-test}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      timeout: 30s
+      retries: 5
+      interval: 15s
   minio:
     image: minio/minio:${MINIO_VER:-RELEASE.2025-02-28T09-55-16Z}
     environment:
@@ -52,6 +65,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
       minio:
         condition: service_healthy
     environment:
@@ -61,6 +76,10 @@ services:
       - DJ_TEST_HOST=db
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
+      - DJ_PG_HOST=postgres
+      - DJ_PG_USER=postgres
+      - DJ_PG_PASS=password
+      - DJ_PG_PORT=5432
       - S3_ENDPOINT=minio:9000
       - S3_ACCESS_KEY=datajoint
       - S3_SECRET_KEY=datajoint

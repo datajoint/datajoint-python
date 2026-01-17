@@ -89,7 +89,7 @@ test = [
   "pytest-cov",
   "requests",
   "graphviz",
-  "testcontainers[mysql,minio]>=4.0",
+  "testcontainers[mysql,minio,postgres]>=4.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]
@@ -228,6 +228,9 @@ ignore-words-list = "rever,numer,astroid"
 markers = [
     "requires_mysql: marks tests as requiring MySQL database (deselect with '-m \"not requires_mysql\"')",
     "requires_minio: marks tests as requiring MinIO object storage (deselect with '-m \"not requires_minio\"')",
+    "mysql: marks tests that run on MySQL backend (select with '-m mysql')",
+    "postgresql: marks tests that run on PostgreSQL backend (select with '-m postgresql')",
+    "backend_agnostic: marks tests that should pass on all backends (auto-marked for parameterized tests)",
 ]
 
 
