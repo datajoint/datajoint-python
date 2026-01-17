@@ -14,9 +14,8 @@ from contextlib import contextmanager
 from getpass import getpass
 from typing import Callable
 
-import pymysql as client
-
 from . import errors
+from .adapters import get_adapter
 from .blob import pack, unpack
 from .dependencies import Dependencies
 from .settings import config
@@ -29,7 +28,7 @@ query_log_max_length = 300
 cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
 
 
-def translate_query_error(client_error: Exception, query: str) -> Exception:
+def translate_query_error(client_error: Exception, query: str, adapter) -> Exception:
     """
     Translate client error to the corresponding DataJoint exception.
 
@@ -39,6 +38,8 @@ def translate_query_error(client_error: Exception, query: str) -> Exception:
         The exception raised by the client interface.
     query : str
         SQL query with placeholders.
+    adapter : DatabaseAdapter
+        The database adapter instance.
 
     Returns
     -------
@@ -47,47 +48,7 @@ def translate_query_error(client_error: Exception, query: str) -> Exception:
         or the original error if no mapping exists.
     """
     logger.debug("type: {}, args: {}".format(type(client_error), client_error.args))
-
-    err, *args = client_error.args
-
-    match err:
-        # Loss of connection errors
-        case 0 | "(0, '')":
-            return errors.LostConnectionError("Server connection lost due to an interface error.", *args)
-        case 2006:
-            return errors.LostConnectionError("Connection timed out", *args)
-        case 2013:
-            return errors.LostConnectionError("Server connection lost", *args)
-
-        # Access errors
-        case 1044 | 1142:
-            return errors.AccessError("Insufficient privileges.", args[0], query)
-
-        # Integrity errors
-        case 1062:
-            return errors.DuplicateError(*args)
-        case 1217 | 1451 | 1452 | 3730:
-            # 1217: Cannot delete parent row (FK constraint)
-            # 1451: Cannot delete/update parent row (FK constraint)
-            # 1452: Cannot add/update child row (FK constraint)
-            # 3730: Cannot drop table referenced by FK constraint
-            return errors.IntegrityError(*args)
-
-        # Syntax errors
-        case 1064:
-            return errors.QuerySyntaxError(args[0], query)
-
-        # Existence errors
-        case 1146:
-            return errors.MissingTableError(args[0], query)
-        case 1364:
-            return errors.MissingAttributeError(*args)
-        case 1054:
-            return errors.UnknownAttributeError(*args)
-
-        # All other errors pass through unchanged
-        case _:
-            return client_error
+    return adapter.translate_error(client_error, query)
 
 
 def conn(
@@ -216,10 +177,15 @@ class Connection:
         self.init_fun = init_fun
         self._conn = None
         self._query_cache = None
+
+        # Select adapter based on configured backend
+        backend = config["database.backend"]
+        self.adapter = get_adapter(backend)
+
         self.connect()
         if self.is_connected:
             logger.info("DataJoint {version} connected to {user}@{host}:{port}".format(version=__version__, **self.conn_info))
-            self.connection_id = self.query("SELECT connection_id()").fetchone()[0]
+            self.connection_id = self.adapter.get_connection_id(self._conn)
         else:
             raise errors.LostConnectionError("Connection failed {user}@{host}:{port}".format(**self.conn_info))
         self._in_transaction = False
@@ -238,26 +204,30 @@ class Connection:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", ".*deprecated.*")
             try:
-                self._conn = client.connect(
+                # Use adapter to create connection
+                self._conn = self.adapter.connect(
+                    host=self.conn_info["host"],
+                    port=self.conn_info["port"],
+                    user=self.conn_info["user"],
+                    password=self.conn_info["passwd"],
                     init_command=self.init_fun,
-                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                    "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
                     charset=config["connection.charset"],
-                    **{k: v for k, v in self.conn_info.items() if k not in ["ssl_input"]},
+                    use_tls=self.conn_info.get("ssl"),
                 )
-            except client.err.InternalError:
-                self._conn = client.connect(
-                    init_command=self.init_fun,
-                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                    "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
-                    charset=config["connection.charset"],
-                    **{
-                        k: v
-                        for k, v in self.conn_info.items()
-                        if not (k == "ssl_input" or k == "ssl" and self.conn_info["ssl_input"] is None)
-                    },
-                )
-        self._conn.autocommit(True)
+            except Exception:
+                # If SSL fails, retry without SSL (if it was auto-detected)
+                if self.conn_info.get("ssl_input") is None:
+                    self._conn = self.adapter.connect(
+                        host=self.conn_info["host"],
+                        port=self.conn_info["port"],
+                        user=self.conn_info["user"],
+                        password=self.conn_info["passwd"],
+                        init_command=self.init_fun,
+                        charset=config["connection.charset"],
+                        use_tls=None,
+                    )
+                else:
+                    raise
 
     def set_query_cache(self, query_cache: str | None = None) -> None:
         """
@@ -347,7 +317,7 @@ class Connection:
         Exception
             If the connection is closed.
         """
-        self._conn.ping(reconnect=False)
+        self.adapter.ping(self._conn)
 
     @property
     def is_connected(self) -> bool:
@@ -365,16 +335,15 @@ class Connection:
             return False
         return True
 
-    @staticmethod
-    def _execute_query(cursor, query, args, suppress_warnings):
+    def _execute_query(self, cursor, query, args, suppress_warnings):
         try:
             with warnings.catch_warnings():
                 if suppress_warnings:
                     # suppress all warnings arising from underlying SQL library
                     warnings.simplefilter("ignore")
                 cursor.execute(query, args)
-        except client.err.Error as err:
-            raise translate_query_error(err, query)
+        except Exception as err:
+            raise translate_query_error(err, query, self.adapter)
 
     def query(
         self,
@@ -418,7 +387,8 @@ class Connection:
         if use_query_cache:
             if not config[cache_key]:
                 raise errors.DataJointError(f"Provide filepath dj.config['{cache_key}'] when using query caching.")
-            hash_ = hashlib.md5((str(self._query_cache) + re.sub(r"`\$\w+`", "", query)).encode() + pack(args)).hexdigest()
+            # Cache key is backend-specific (no identifier normalization needed)
+            hash_ = hashlib.md5((str(self._query_cache)).encode() + pack(args) + query.encode()).hexdigest()
             cache_path = pathlib.Path(config[cache_key]) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()
@@ -430,20 +400,19 @@ class Connection:
         if reconnect is None:
             reconnect = config["database.reconnect"]
         logger.debug("Executing SQL:" + query[:query_log_max_length])
-        cursor_class = client.cursors.DictCursor if as_dict else client.cursors.Cursor
-        cursor = self._conn.cursor(cursor=cursor_class)
+        cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
         try:
             self._execute_query(cursor, query, args, suppress_warnings)
         except errors.LostConnectionError:
             if not reconnect:
                 raise
-            logger.warning("Reconnecting to MySQL server.")
+            logger.warning("Reconnecting to database server.")
             self.connect()
             if self._in_transaction:
                 self.cancel_transaction()
                 raise errors.LostConnectionError("Connection was lost during a transaction.")
             logger.debug("Re-executing")
-            cursor = self._conn.cursor(cursor=cursor_class)
+            cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
             self._execute_query(cursor, query, args, suppress_warnings)
 
         if use_query_cache:
@@ -489,19 +458,19 @@ class Connection:
         """
         if self.in_transaction:
             raise errors.DataJointError("Nested connections are not supported.")
-        self.query("START TRANSACTION WITH CONSISTENT SNAPSHOT")
+        self.query(self.adapter.start_transaction_sql())
         self._in_transaction = True
         logger.debug("Transaction started")
 
     def cancel_transaction(self) -> None:
         """Cancel the current transaction and roll back all changes."""
-        self.query("ROLLBACK")
+        self.query(self.adapter.rollback_sql())
         self._in_transaction = False
         logger.debug("Transaction cancelled. Rolling back ...")
 
     def commit_transaction(self) -> None:
         """Commit all changes and close the transaction."""
-        self.query("COMMIT")
+        self.query(self.adapter.commit_sql())
         self._in_transaction = False
         logger.debug("Transaction committed and closed.")
 
