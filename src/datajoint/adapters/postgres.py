@@ -727,6 +727,38 @@ class PostgreSQLAdapter(DatabaseAdapter):
         unit_plural = unit.lower() + "s" if not unit.endswith("s") else unit.lower()
         return f"INTERVAL '{value} {unit_plural}'"
 
+    def json_path_expr(self, column: str, path: str, return_type: str | None = None) -> str:
+        """
+        Generate PostgreSQL jsonb_extract_path_text() expression.
+
+        Parameters
+        ----------
+        column : str
+            Column name containing JSON data.
+        path : str
+            JSON path (e.g., 'field' or 'nested.field').
+        return_type : str, optional
+            Return type specification (not used in PostgreSQL jsonb_extract_path_text).
+
+        Returns
+        -------
+        str
+            PostgreSQL jsonb_extract_path_text() expression.
+
+        Examples
+        --------
+        >>> adapter.json_path_expr('data', 'field')
+        'jsonb_extract_path_text("data", \\'field\\')'
+        >>> adapter.json_path_expr('data', 'nested.field')
+        'jsonb_extract_path_text("data", \\'nested\\', \\'field\\')'
+        """
+        quoted_col = self.quote_identifier(column)
+        # Split path by '.' for nested access
+        path_parts = path.split(".")
+        path_args = ", ".join(f"'{part}'" for part in path_parts)
+        # Note: PostgreSQL jsonb_extract_path_text doesn't use return type parameter
+        return f"jsonb_extract_path_text({quoted_col}, {path_args})"
+
     # =========================================================================
     # Error Translation
     # =========================================================================

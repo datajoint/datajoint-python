@@ -171,6 +171,16 @@ class TestMySQLAdapter:
         assert adapter.interval_expr(5, "second") == "INTERVAL 5 SECOND"
         assert adapter.interval_expr(10, "minute") == "INTERVAL 10 MINUTE"
 
+    def test_json_path_expr(self, adapter):
+        """Test JSON path extraction."""
+        assert adapter.json_path_expr("data", "field") == "json_value(`data`, _utf8mb4'$.field')"
+        assert adapter.json_path_expr("record", "nested") == "json_value(`record`, _utf8mb4'$.nested')"
+
+    def test_json_path_expr_with_return_type(self, adapter):
+        """Test JSON path extraction with return type."""
+        result = adapter.json_path_expr("data", "value", "decimal(10,2)")
+        assert result == "json_value(`data`, _utf8mb4'$.value' returning decimal(10,2))"
+
     def test_transaction_sql(self, adapter):
         """Test transaction statements."""
         assert "START TRANSACTION" in adapter.start_transaction_sql()
@@ -305,6 +315,16 @@ class TestPostgreSQLAdapter:
         """Test INTERVAL expression with PostgreSQL syntax."""
         assert adapter.interval_expr(5, "second") == "INTERVAL '5 seconds'"
         assert adapter.interval_expr(10, "minute") == "INTERVAL '10 minutes'"
+
+    def test_json_path_expr(self, adapter):
+        """Test JSON path extraction for PostgreSQL."""
+        assert adapter.json_path_expr("data", "field") == "jsonb_extract_path_text(\"data\", 'field')"
+        assert adapter.json_path_expr("record", "name") == "jsonb_extract_path_text(\"record\", 'name')"
+
+    def test_json_path_expr_nested(self, adapter):
+        """Test JSON path extraction with nested paths."""
+        result = adapter.json_path_expr("data", "nested.field")
+        assert result == "jsonb_extract_path_text(\"data\", 'nested', 'field')"
 
     def test_transaction_sql(self, adapter):
         """Test transaction statements."""

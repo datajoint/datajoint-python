@@ -666,6 +666,35 @@ class MySQLAdapter(DatabaseAdapter):
         # MySQL uses singular unit names
         return f"INTERVAL {value} {unit.upper()}"
 
+    def json_path_expr(self, column: str, path: str, return_type: str | None = None) -> str:
+        """
+        Generate MySQL json_value() expression.
+
+        Parameters
+        ----------
+        column : str
+            Column name containing JSON data.
+        path : str
+            JSON path (e.g., 'field' or 'nested.field').
+        return_type : str, optional
+            Return type specification (e.g., 'decimal(10,2)').
+
+        Returns
+        -------
+        str
+            MySQL json_value() expression.
+
+        Examples
+        --------
+        >>> adapter.json_path_expr('data', 'field')
+        "json_value(`data`, _utf8mb4'$.field')"
+        >>> adapter.json_path_expr('data', 'value', 'decimal(10,2)')
+        "json_value(`data`, _utf8mb4'$.value' returning decimal(10,2))"
+        """
+        quoted_col = self.quote_identifier(column)
+        return_clause = f" returning {return_type}" if return_type else ""
+        return f"json_value({quoted_col}, _utf8mb4'$.{path}'{return_clause})"
+
     # =========================================================================
     # Error Translation
     # =========================================================================

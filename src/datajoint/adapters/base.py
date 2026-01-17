@@ -683,6 +683,32 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    @abstractmethod
+    def json_path_expr(self, column: str, path: str, return_type: str | None = None) -> str:
+        """
+        Generate JSON path extraction expression.
+
+        Parameters
+        ----------
+        column : str
+            Column name containing JSON data.
+        path : str
+            JSON path (e.g., 'field' or 'nested.field').
+        return_type : str, optional
+            Return type specification (MySQL-specific).
+
+        Returns
+        -------
+        str
+            Database-specific JSON extraction SQL expression.
+
+        Examples
+        --------
+        MySQL: json_value(`column`, _utf8mb4'$.path' returning type)
+        PostgreSQL: jsonb_extract_path_text("column", 'path_part1', 'path_part2')
+        """
+        ...
+
     # =========================================================================
     # Error Translation
     # =========================================================================
