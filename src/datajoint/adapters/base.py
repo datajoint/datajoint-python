@@ -114,6 +114,27 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    @abstractmethod
+    def get_cursor(self, connection: Any, as_dict: bool = False) -> Any:
+        """
+        Get a cursor from the database connection.
+
+        Parameters
+        ----------
+        connection : Any
+            Database connection object.
+        as_dict : bool, optional
+            If True, return cursor that yields rows as dictionaries.
+            If False, return cursor that yields rows as tuples.
+            Default False.
+
+        Returns
+        -------
+        Any
+            Database cursor object (backend-specific).
+        """
+        ...
+
     # =========================================================================
     # SQL Syntax
     # =========================================================================

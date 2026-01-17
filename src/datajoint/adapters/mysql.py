@@ -137,6 +137,29 @@ class MySQLAdapter(DatabaseAdapter):
         """MySQL default port 3306."""
         return 3306
 
+    def get_cursor(self, connection: Any, as_dict: bool = False) -> Any:
+        """
+        Get a cursor from MySQL connection.
+
+        Parameters
+        ----------
+        connection : Any
+            pymysql connection object.
+        as_dict : bool, optional
+            If True, return DictCursor that yields rows as dictionaries.
+            If False, return standard Cursor that yields rows as tuples.
+            Default False.
+
+        Returns
+        -------
+        Any
+            pymysql cursor object.
+        """
+        import pymysql
+
+        cursor_class = pymysql.cursors.DictCursor if as_dict else pymysql.cursors.Cursor
+        return connection.cursor(cursor=cursor_class)
+
     # =========================================================================
     # SQL Syntax
     # =========================================================================

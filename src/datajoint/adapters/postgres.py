@@ -150,6 +150,30 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """PostgreSQL default port 5432."""
         return 5432
 
+    def get_cursor(self, connection: Any, as_dict: bool = False) -> Any:
+        """
+        Get a cursor from PostgreSQL connection.
+
+        Parameters
+        ----------
+        connection : Any
+            psycopg2 connection object.
+        as_dict : bool, optional
+            If True, return Real DictCursor that yields rows as dictionaries.
+            If False, return standard cursor that yields rows as tuples.
+            Default False.
+
+        Returns
+        -------
+        Any
+            psycopg2 cursor object.
+        """
+        import psycopg2.extras
+
+        if as_dict:
+            return connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        return connection.cursor()
+
     # =========================================================================
     # SQL Syntax
     # =========================================================================
