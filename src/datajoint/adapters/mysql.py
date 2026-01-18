@@ -637,7 +637,7 @@ class MySQLAdapter(DatabaseAdapter):
     def get_indexes_sql(self, schema_name: str, table_name: str) -> str:
         """Query to get index definitions."""
         return (
-            f"SELECT index_name, column_name, non_unique "
+            f"SELECT INDEX_NAME as index_name, COLUMN_NAME as column_name, NON_UNIQUE as non_unique "
             f"FROM information_schema.statistics "
             f"WHERE table_schema = {self.quote_string(schema_name)} "
             f"AND table_name = {self.quote_string(table_name)} "
