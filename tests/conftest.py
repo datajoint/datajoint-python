@@ -327,6 +327,11 @@ def db_creds_by_backend(backend, mysql_container, postgres_container):
 @pytest.fixture(scope="session")
 def connection_by_backend(db_creds_by_backend):
     """Create connection for the specified backend."""
+    # Save original config to restore after tests
+    original_backend = dj.config.get("database.backend", "mysql")
+    original_host = dj.config.get("database.host")
+    original_port = dj.config.get("database.port")
+
     # Configure backend
     dj.config["database.backend"] = db_creds_by_backend["backend"]
 
@@ -349,7 +354,14 @@ def connection_by_backend(db_creds_by_backend):
     )
 
     yield connection
+
+    # Restore original config
     connection.close()
+    dj.config["database.backend"] = original_backend
+    if original_host is not None:
+        dj.config["database.host"] = original_host
+    if original_port is not None:
+        dj.config["database.port"] = original_port
 
 
 # =============================================================================
