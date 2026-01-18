@@ -87,24 +87,36 @@ class MySQLAdapter(DatabaseAdapter):
         """
         init_command = kwargs.get("init_command")
         # Handle both ssl (old) and use_tls (new) parameter names
-        ssl = kwargs.get("use_tls", kwargs.get("ssl"))
+        ssl_config = kwargs.get("use_tls", kwargs.get("ssl"))
         # Convert boolean True to dict for PyMySQL (PyMySQL expects dict or SSLContext)
-        if ssl is True:
-            ssl = {}  # Enable SSL with default settings
+        if ssl_config is True:
+            ssl_config = {}  # Enable SSL with default settings
         charset = kwargs.get("charset", "")
 
-        return client.connect(
-            host=host,
-            port=port,
-            user=user,
-            passwd=password,
-            init_command=init_command,
-            sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+        # Prepare connection parameters
+        conn_params = {
+            "host": host,
+            "port": port,
+            "user": user,
+            "passwd": password,
+            "init_command": init_command,
+            "sql_mode": "NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
-            charset=charset,
-            ssl=ssl,
-            autocommit=True,  # DataJoint manages transactions explicitly
-        )
+            "charset": charset,
+            "autocommit": True,  # DataJoint manages transactions explicitly
+        }
+
+        # Handle SSL configuration
+        if ssl_config is False:
+            # Explicitly disable SSL
+            conn_params["ssl_disabled"] = True
+        elif ssl_config is not None:
+            # Enable SSL with config dict (can be empty for defaults)
+            conn_params["ssl"] = ssl_config
+            # Explicitly enable SSL by setting ssl_disabled=False
+            conn_params["ssl_disabled"] = False
+
+        return client.connect(**conn_params)
 
     def close(self, connection: Any) -> None:
         """Close the MySQL connection."""
