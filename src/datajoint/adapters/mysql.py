@@ -76,7 +76,8 @@ class MySQLAdapter(DatabaseAdapter):
         **kwargs : Any
             Additional MySQL-specific parameters:
             - init_command: SQL initialization command
-            - ssl: TLS/SSL configuration dict
+            - ssl: TLS/SSL configuration dict (deprecated, use use_tls)
+            - use_tls: bool or dict - DataJoint's SSL parameter (preferred)
             - charset: Character set (default from kwargs)
 
         Returns
@@ -85,7 +86,8 @@ class MySQLAdapter(DatabaseAdapter):
             MySQL connection object.
         """
         init_command = kwargs.get("init_command")
-        ssl = kwargs.get("ssl")
+        # Handle both ssl (old) and use_tls (new) parameter names
+        ssl = kwargs.get("use_tls", kwargs.get("ssl"))
         charset = kwargs.get("charset", "")
 
         return client.connect(
