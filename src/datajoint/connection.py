@@ -177,6 +177,7 @@ class Connection:
         self.init_fun = init_fun
         self._conn = None
         self._query_cache = None
+        self._is_closed = True  # Mark as closed until connect() succeeds
 
         # Select adapter based on configured backend
         backend = config["database.backend"]
@@ -228,6 +229,7 @@ class Connection:
                     )
                 else:
                     raise
+        self._is_closed = False  # Mark as connected after successful connection
 
     def set_query_cache(self, query_cache: str | None = None) -> None:
         """
@@ -255,7 +257,9 @@ class Connection:
 
     def close(self) -> None:
         """Close the database connection."""
-        self._conn.close()
+        if self._conn is not None:
+            self._conn.close()
+        self._is_closed = True
 
     def __enter__(self) -> "Connection":
         """
@@ -329,9 +333,12 @@ class Connection:
         bool
             True if connected.
         """
+        if self._is_closed:
+            return False
         try:
             self.ping()
         except:
+            self._is_closed = True
             return False
         return True
 
