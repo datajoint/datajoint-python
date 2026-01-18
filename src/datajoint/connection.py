@@ -172,7 +172,15 @@ class Connection:
             port = config["database.port"]
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
         if use_tls is not False:
-            self.conn_info["ssl"] = use_tls if isinstance(use_tls, dict) else {}
+            # use_tls can be: None (auto-detect), True (enable), False (disable), or dict (custom config)
+            if isinstance(use_tls, dict):
+                self.conn_info["ssl"] = use_tls
+            elif use_tls is None:
+                # Auto-detect: try SSL, fallback to non-SSL if server doesn't support it
+                self.conn_info["ssl"] = True
+            else:
+                # use_tls=True: enable SSL with default settings
+                self.conn_info["ssl"] = True
         self.conn_info["ssl_input"] = use_tls
         self.init_fun = init_fun
         self._conn = None

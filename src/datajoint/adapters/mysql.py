@@ -88,6 +88,9 @@ class MySQLAdapter(DatabaseAdapter):
         init_command = kwargs.get("init_command")
         # Handle both ssl (old) and use_tls (new) parameter names
         ssl = kwargs.get("use_tls", kwargs.get("ssl"))
+        # Convert boolean True to dict for PyMySQL (PyMySQL expects dict or SSLContext)
+        if ssl is True:
+            ssl = {}  # Enable SSL with default settings
         charset = kwargs.get("charset", "")
 
         return client.connect(
