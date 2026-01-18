@@ -834,8 +834,9 @@ class Table(QueryExpression):
         If this table has populated dependent tables, this will fail.
         """
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
-        self.connection.query(query)
-        count = self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
+        cursor = self.connection.query(query)
+        # Use cursor.rowcount (DB-API 2.0 standard, works for both MySQL and PostgreSQL)
+        count = cursor.rowcount if get_count else None
         return count
 
     def delete(
@@ -876,9 +877,17 @@ class Table(QueryExpression):
             """service function to perform cascading deletes recursively."""
             max_attempts = 50
             for _ in range(max_attempts):
+                # Set savepoint before delete attempt (for PostgreSQL transaction handling)
+                savepoint_name = f"cascade_delete_{id(table)}"
+                if transaction:
+                    table.connection.query(f"SAVEPOINT {savepoint_name}")
+
                 try:
                     delete_count = table.delete_quick(get_count=True)
                 except IntegrityError as error:
+                    # Rollback to savepoint so we can continue querying (PostgreSQL requirement)
+                    if transaction:
+                        table.connection.query(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
                     # Use adapter to parse FK error message
                     match = table.connection.adapter.parse_foreign_key_error(error.args[0])
                     if match is None:
@@ -895,43 +904,47 @@ class Table(QueryExpression):
                             return s.strip('`"')
                         return s
 
-                    # Ensure child table has schema
-                    child_table = match["child"]
-                    if "." not in strip_quotes(child_table):
+                    # Extract schema and table name from child (work with unquoted names)
+                    child_table_raw = strip_quotes(match["child"])
+                    if "." in child_table_raw:
+                        child_parts = child_table_raw.split(".")
+                        child_schema = strip_quotes(child_parts[0])
+                        child_table_name = strip_quotes(child_parts[1])
+                    else:
                         # Add schema from current table
-                        schema = table.full_table_name.split(".")[0].strip('`"')
-                        child_unquoted = strip_quotes(child_table)
-                        child_table = f"{table.connection.adapter.quote_identifier(schema)}.{table.connection.adapter.quote_identifier(child_unquoted)}"
-                        match["child"] = child_table
+                        schema_parts = table.full_table_name.split(".")
+                        child_schema = strip_quotes(schema_parts[0])
+                        child_table_name = child_table_raw
 
                     # If FK/PK attributes not in error message, query information_schema
                     if match["fk_attrs"] is None or match["pk_attrs"] is None:
-                        # Extract schema and table name from child
-                        child_parts = [strip_quotes(p) for p in child_table.split(".")]
-                        if len(child_parts) == 2:
-                            child_schema, child_table_name = child_parts
-                        else:
-                            child_schema = table.full_table_name.split(".")[0].strip('`"')
-                            child_table_name = child_parts[0]
-
                         constraint_query = table.connection.adapter.get_constraint_info_sql(
                             strip_quotes(match["name"]),
                             child_schema,
                             child_table_name,
                         )
 
-                        results = table.connection.query(constraint_query).fetchall()
+                        results = table.connection.query(
+                            constraint_query,
+                            args=(strip_quotes(match["name"]), child_schema, child_table_name),
+                        ).fetchall()
                         if results:
                             match["fk_attrs"], match["parent"], match["pk_attrs"] = list(
                                 map(list, zip(*results))
                             )
                             match["parent"] = match["parent"][0]  # All rows have same parent
 
+                    # Build properly quoted full table name for FreeTable
+                    child_full_name = (
+                        f"{table.connection.adapter.quote_identifier(child_schema)}."
+                        f"{table.connection.adapter.quote_identifier(child_table_name)}"
+                    )
+
                     # Restrict child by table if
                     #   1. if table's restriction attributes are not in child's primary key
                     #   2. if child renames any attributes
                     # Otherwise restrict child by table's restriction.
-                    child = FreeTable(table.connection, match["child"])
+                    child = FreeTable(table.connection, child_full_name)
                     if set(table.restriction_attributes) <= set(child.primary_key) and match["fk_attrs"] == match["pk_attrs"]:
                         child._restriction = table._restriction
                         child._restriction_attributes = table.restriction_attributes
@@ -961,6 +974,9 @@ class Table(QueryExpression):
                     else:
                         cascade(child)
                 else:
+                    # Successful delete - release savepoint
+                    if transaction:
+                        table.connection.query(f"RELEASE SAVEPOINT {savepoint_name}")
                     deleted.add(table.full_table_name)
                     logger.info("Deleting {count} rows from {table}".format(count=delete_count, table=table.full_table_name))
                     break
@@ -1381,7 +1397,8 @@ class FreeTable(Table):
     """
 
     def __init__(self, conn, full_table_name):
-        self.database, self._table_name = (s.strip("`") for s in full_table_name.split("."))
+        # Backend-agnostic quote stripping (MySQL uses `, PostgreSQL uses ")
+        self.database, self._table_name = (s.strip('`"') for s in full_table_name.split("."))
         self._connection = conn
         self._support = [full_table_name]
         self._heading = Heading(

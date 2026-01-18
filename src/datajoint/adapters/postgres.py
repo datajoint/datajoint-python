@@ -685,13 +685,19 @@ class PostgreSQLAdapter(DatabaseAdapter):
         )
 
     def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str]] | None:
-        """Parse PostgreSQL foreign key violation error message."""
+        """
+        Parse PostgreSQL foreign key violation error message.
+
+        PostgreSQL FK error format:
+        'update or delete on table "X" violates foreign key constraint "Y" on table "Z"'
+        Where:
+        - "X" is the referenced table (being deleted/updated)
+        - "Z" is the referencing table (has the FK, needs cascade delete)
+        """
         import re
 
-        # PostgreSQL FK error pattern
-        # Example: 'update or delete on table "parent" violates foreign key constraint "child_parent_id_fkey" on table "child"'
         pattern = re.compile(
-            r'.*table "(?P<parent_table>[^"]+)" violates foreign key constraint "(?P<name>[^"]+)" on table "(?P<child_table>[^"]+)"'
+            r'.*table "(?P<referenced_table>[^"]+)" violates foreign key constraint "(?P<name>[^"]+)" on table "(?P<referencing_table>[^"]+)"'
         )
 
         match = pattern.match(error_message)
@@ -700,16 +706,17 @@ class PostgreSQLAdapter(DatabaseAdapter):
 
         result = match.groupdict()
 
-        # Build child table name (assume same schema as parent for now)
+        # The child is the referencing table (the one with the FK that needs cascade delete)
+        # The parent is the referenced table (the one being deleted)
         # The error doesn't include schema, so we return unqualified names
-        # and let the caller add schema context
-        child = f'"{result["child_table"]}"'
+        child = f'"{result["referencing_table"]}"'
+        parent = f'"{result["referenced_table"]}"'
 
         return {
             "child": child,
             "name": f'"{result["name"]}"',
             "fk_attrs": None,  # Not in error message, will need constraint query
-            "parent": f'"{result["parent_table"]}"',
+            "parent": parent,
             "pk_attrs": None,  # Not in error message, will need constraint query
         }
 

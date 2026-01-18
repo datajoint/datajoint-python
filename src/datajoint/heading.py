@@ -164,8 +164,9 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         """
         if self.attribute_expression is None:
             return self.name
-        assert self.attribute_expression.startswith("`")
-        return self.attribute_expression.strip("`")
+        # Backend-agnostic quote stripping (MySQL uses `, PostgreSQL uses ")
+        assert self.attribute_expression.startswith(("`", '"'))
+        return self.attribute_expression.strip('`"')
 
 
 class Heading:
@@ -365,7 +366,7 @@ class Heading:
         ).fetchone()
         if info is None:
             raise DataJointError(
-                "The table `{database}`.`{table_name}` is not defined.".format(table_name=table_name, database=database)
+                f"The table {database}.{table_name} is not defined."
             )
         # Normalize table_comment to comment for backward compatibility
         self._table_status = {k.lower(): v for k, v in info.items()}
