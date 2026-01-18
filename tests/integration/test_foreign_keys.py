@@ -1,3 +1,5 @@
+import pytest
+
 from datajoint.declare import declare
 
 from tests.schema_advanced import (
