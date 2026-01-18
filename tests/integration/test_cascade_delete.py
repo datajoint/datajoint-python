@@ -78,7 +78,13 @@ def test_simple_cascade_delete(schema_by_backend):
     # Check cascade worked
     assert len(Parent()) == 1
     assert len(Child()) == 1
-    assert (Child & {"parent_id": 2, "child_id": 1}).fetch1("data") == "Child2-1"
+
+    # Verify remaining data (using to_dicts for DJ 2.0)
+    remaining = Child().to_dicts()
+    assert len(remaining) == 1
+    assert remaining[0]["parent_id"] == 2
+    assert remaining[0]["child_id"] == 1
+    assert remaining[0]["data"] == "Child2-1"
 
 
 def test_multi_level_cascade_delete(schema_by_backend):
@@ -130,6 +136,11 @@ def test_multi_level_cascade_delete(schema_by_backend):
     assert len(Parent()) == 0
     assert len(Child()) == 0
 
+    # Verify all tables are empty
+    assert len(GrandParent().to_dicts()) == 0
+    assert len(Parent().to_dicts()) == 0
+    assert len(Child().to_dicts()) == 0
+
 
 def test_cascade_delete_with_renamed_attrs(schema_by_backend):
     """Test cascade delete when foreign key renames attributes."""
@@ -167,4 +178,14 @@ def test_cascade_delete_with_renamed_attrs(schema_by_backend):
     # Check cascade worked
     assert len(Animal()) == 1
     assert len(Observation()) == 1
-    assert (Observation & {"obs_id": 3}).fetch1("measurement") == 15.3
+
+    # Verify remaining data
+    remaining_animals = Animal().to_dicts()
+    assert len(remaining_animals) == 1
+    assert remaining_animals[0]["animal_id"] == 2
+
+    remaining_obs = Observation().to_dicts()
+    assert len(remaining_obs) == 1
+    assert remaining_obs[0]["obs_id"] == 3
+    assert remaining_obs[0]["subject_id"] == 2
+    assert remaining_obs[0]["measurement"] == 15.3

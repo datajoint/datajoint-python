@@ -291,7 +291,9 @@ class Heading:
         in_key = True
         ret = ""
         if self._table_status is not None:
-            ret += "# " + self.table_status["comment"] + "\n"
+            comment = self.table_status.get("comment", "")
+            if comment:
+                ret += "# " + comment + "\n"
         for v in self.attributes.values():
             if in_key and not v.in_key:
                 ret += "---\n"
@@ -337,7 +339,9 @@ class Heading:
             Comma-separated SQL field list.
         """
         # Get adapter for proper identifier quoting
-        adapter = self.table_info["conn"].adapter if self.table_info else None
+        adapter = None
+        if self.table_info and "conn" in self.table_info and self.table_info["conn"]:
+            adapter = self.table_info["conn"].adapter
 
         def quote(name):
             return adapter.quote_identifier(name) if adapter else f"`{name}`"
