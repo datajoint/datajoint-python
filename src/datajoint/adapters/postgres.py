@@ -90,6 +90,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
             Additional PostgreSQL-specific parameters:
             - dbname: Database name
             - sslmode: SSL mode ('disable', 'allow', 'prefer', 'require')
+            - use_tls: bool or dict - DataJoint's SSL parameter (converted to sslmode)
             - connect_timeout: Connection timeout in seconds
 
         Returns
@@ -98,8 +99,23 @@ class PostgreSQLAdapter(DatabaseAdapter):
             PostgreSQL connection object.
         """
         dbname = kwargs.get("dbname", "postgres")  # Default to postgres database
-        sslmode = kwargs.get("sslmode", "prefer")
         connect_timeout = kwargs.get("connect_timeout", 10)
+
+        # Handle use_tls parameter (from DataJoint Connection)
+        # Convert to PostgreSQL's sslmode
+        use_tls = kwargs.get("use_tls")
+        if "sslmode" in kwargs:
+            # Explicit sslmode takes precedence
+            sslmode = kwargs["sslmode"]
+        elif use_tls is False:
+            # use_tls=False → disable SSL
+            sslmode = "disable"
+        elif use_tls is True or isinstance(use_tls, dict):
+            # use_tls=True or dict → require SSL
+            sslmode = "require"
+        else:
+            # use_tls=None (default) → prefer SSL but allow fallback
+            sslmode = "prefer"
 
         conn = client.connect(
             host=host,

@@ -432,7 +432,9 @@ class AutoPopulate:
             else:
                 # spawn multiple processes
                 self.connection.close()
-                del self.connection._conn.ctx  # SSLContext is not pickleable
+                # Remove SSLContext if present (MySQL-specific, not pickleable)
+                if hasattr(self.connection._conn, "ctx"):
+                    del self.connection._conn.ctx
                 with (
                     mp.Pool(processes, _initialize_populate, (self, None, populate_kwargs)) as pool,
                     tqdm(desc="Processes: ", total=nkeys) if display_progress else contextlib.nullcontext() as progress_bar,
@@ -522,7 +524,9 @@ class AutoPopulate:
                 else:
                     # spawn multiple processes
                     self.connection.close()
-                    del self.connection._conn.ctx  # SSLContext is not pickleable
+                    # Remove SSLContext if present (MySQL-specific, not pickleable)
+                    if hasattr(self.connection._conn, "ctx"):
+                        del self.connection._conn.ctx
                     with (
                         mp.Pool(processes, _initialize_populate, (self, self.jobs, populate_kwargs)) as pool,
                         tqdm(desc="Processes: ", total=nkeys)

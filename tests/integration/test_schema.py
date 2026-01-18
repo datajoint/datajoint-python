@@ -62,7 +62,7 @@ def test_schema_size_on_disk(schema_any):
 
 
 def test_schema_list(schema_any):
-    schemas = dj.list_schemas()
+    schemas = dj.list_schemas(connection=schema_any.connection)
     assert schema_any.database in schemas
 
 
