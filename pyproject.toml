@@ -106,7 +106,8 @@ test = [
   "pytest-cov",
   "requests",
   "s3fs>=2023.1.0",
-  "testcontainers[mysql,minio]>=4.0",
+  "testcontainers[mysql,minio,postgres]>=4.0",
+  "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]
