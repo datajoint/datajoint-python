@@ -598,15 +598,15 @@ class MySQLAdapter(DatabaseAdapter):
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
         """Query to get FK constraint details from information_schema."""
         return (
-            f"SELECT "
-            f"  COLUMN_NAME as fk_attrs, "
-            f"  CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`', REFERENCED_TABLE_NAME, '`') as parent, "
-            f"  REFERENCED_COLUMN_NAME as pk_attrs "
-            f"FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
-            f"WHERE CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s"
+            "SELECT "
+            "  COLUMN_NAME as fk_attrs, "
+            "  CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`', REFERENCED_TABLE_NAME, '`') as parent, "
+            "  REFERENCED_COLUMN_NAME as pk_attrs "
+            "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
+            "WHERE CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s"
         )
 
-    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str]] | None:
+    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str] | None] | None:
         """Parse MySQL foreign key violation error message."""
         import re
 

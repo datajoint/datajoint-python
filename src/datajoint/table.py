@@ -4,7 +4,6 @@ import inspect
 import itertools
 import json
 import logging
-import re
 import uuid
 import warnings
 from dataclasses import dataclass, field

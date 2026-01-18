@@ -670,21 +670,21 @@ class PostgreSQLAdapter(DatabaseAdapter):
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
         """Query to get FK constraint details from information_schema."""
         return (
-            f"SELECT "
-            f"  kcu.column_name as fk_attrs, "
-            f"  '\"' || ccu.table_schema || '\".\"' || ccu.table_name || '\"' as parent, "
-            f"  ccu.column_name as pk_attrs "
-            f"FROM information_schema.key_column_usage AS kcu "
-            f"JOIN information_schema.constraint_column_usage AS ccu "
-            f"  ON kcu.constraint_name = ccu.constraint_name "
-            f"  AND kcu.constraint_schema = ccu.constraint_schema "
-            f"WHERE kcu.constraint_name = %s "
-            f"  AND kcu.table_schema = %s "
-            f"  AND kcu.table_name = %s "
-            f"ORDER BY kcu.ordinal_position"
+            "SELECT "
+            "  kcu.column_name as fk_attrs, "
+            "  '\"' || ccu.table_schema || '\".\"' || ccu.table_name || '\"' as parent, "
+            "  ccu.column_name as pk_attrs "
+            "FROM information_schema.key_column_usage AS kcu "
+            "JOIN information_schema.constraint_column_usage AS ccu "
+            "  ON kcu.constraint_name = ccu.constraint_name "
+            "  AND kcu.constraint_schema = ccu.constraint_schema "
+            "WHERE kcu.constraint_name = %s "
+            "  AND kcu.table_schema = %s "
+            "  AND kcu.table_name = %s "
+            "ORDER BY kcu.ordinal_position"
         )
 
-    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str]] | None:
+    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str] | None] | None:
         """
         Parse PostgreSQL foreign key violation error message.
 
@@ -697,7 +697,8 @@ class PostgreSQLAdapter(DatabaseAdapter):
         import re
 
         pattern = re.compile(
-            r'.*table "(?P<referenced_table>[^"]+)" violates foreign key constraint "(?P<name>[^"]+)" on table "(?P<referencing_table>[^"]+)"'
+            r'.*table "(?P<referenced_table>[^"]+)" violates foreign key constraint '
+            r'"(?P<name>[^"]+)" on table "(?P<referencing_table>[^"]+)"'
         )
 
         match = pattern.match(error_message)

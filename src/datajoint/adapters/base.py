@@ -628,7 +628,7 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
-    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str]] | None:
+    def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str] | None] | None:
         """
         Parse a foreign key violation error message to extract constraint details.
 

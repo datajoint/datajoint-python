@@ -558,7 +558,7 @@ class Heading:
 
             keys[index_name][seq] = dict(
                 column=column,
-                unique=(non_unique == 0 or non_unique == False),
+                unique=(non_unique == 0 or not non_unique),
                 nullable=nullable,
             )
         self.indexes = {
