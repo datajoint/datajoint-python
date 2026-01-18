@@ -604,7 +604,10 @@ class Heading:
             dict(default_attribute_properties, name=new_name, attribute_expression=expr)
             for new_name, expr in compute_map.items()
         )
-        return Heading(chain(copy_attrs, compute_attrs), lineage_available=self._lineage_available)
+        # Inherit table_info so the new heading has access to the adapter
+        new_heading = Heading(chain(copy_attrs, compute_attrs), lineage_available=self._lineage_available)
+        new_heading.table_info = self.table_info
+        return new_heading
 
     def _join_dependent(self, dependent):
         """Build attribute list when self → dependent: PK = PK(self), self's attrs first."""

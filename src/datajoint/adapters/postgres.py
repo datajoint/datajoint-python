@@ -668,16 +668,25 @@ class PostgreSQLAdapter(DatabaseAdapter):
         )
 
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
-        """Query to get FK constraint details from information_schema."""
+        """
+        Query to get FK constraint details from information_schema.
+
+        Returns matched pairs of (fk_column, parent_table, pk_column) for each
+        column in the foreign key constraint, ordered by position.
+        """
         return (
             "SELECT "
             "  kcu.column_name as fk_attrs, "
             "  '\"' || ccu.table_schema || '\".\"' || ccu.table_name || '\"' as parent, "
             "  ccu.column_name as pk_attrs "
             "FROM information_schema.key_column_usage AS kcu "
-            "JOIN information_schema.constraint_column_usage AS ccu "
-            "  ON kcu.constraint_name = ccu.constraint_name "
-            "  AND kcu.constraint_schema = ccu.constraint_schema "
+            "JOIN information_schema.referential_constraints AS rc "
+            "  ON kcu.constraint_name = rc.constraint_name "
+            "  AND kcu.constraint_schema = rc.constraint_schema "
+            "JOIN information_schema.key_column_usage AS ccu "
+            "  ON rc.unique_constraint_name = ccu.constraint_name "
+            "  AND rc.unique_constraint_schema = ccu.constraint_schema "
+            "  AND kcu.ordinal_position = ccu.ordinal_position "
             "WHERE kcu.constraint_name = %s "
             "  AND kcu.table_schema = %s "
             "  AND kcu.table_name = %s "
