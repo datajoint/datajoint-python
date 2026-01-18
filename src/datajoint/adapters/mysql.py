@@ -577,7 +577,7 @@ class MySQLAdapter(DatabaseAdapter):
     def get_primary_key_sql(self, schema_name: str, table_name: str) -> str:
         """Query to get primary key columns."""
         return (
-            f"SELECT column_name FROM information_schema.key_column_usage "
+            f"SELECT COLUMN_NAME as column_name FROM information_schema.key_column_usage "
             f"WHERE table_schema = {self.quote_string(schema_name)} "
             f"AND table_name = {self.quote_string(table_name)} "
             f"AND constraint_name = 'PRIMARY' "
@@ -587,7 +587,8 @@ class MySQLAdapter(DatabaseAdapter):
     def get_foreign_keys_sql(self, schema_name: str, table_name: str) -> str:
         """Query to get foreign key constraints."""
         return (
-            f"SELECT constraint_name, column_name, referenced_table_name, referenced_column_name "
+            f"SELECT CONSTRAINT_NAME as constraint_name, COLUMN_NAME as column_name, "
+            f"REFERENCED_TABLE_NAME as referenced_table_name, REFERENCED_COLUMN_NAME as referenced_column_name "
             f"FROM information_schema.key_column_usage "
             f"WHERE table_schema = {self.quote_string(schema_name)} "
             f"AND table_name = {self.quote_string(table_name)} "
