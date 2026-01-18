@@ -369,9 +369,7 @@ class Heading:
             as_dict=True,
         ).fetchone()
         if info is None:
-            raise DataJointError(
-                f"The table {database}.{table_name} is not defined."
-            )
+            raise DataJointError(f"The table {database}.{table_name} is not defined.")
         # Normalize table_comment to comment for backward compatibility
         self._table_status = {k.lower(): v for k, v in info.items()}
         if "table_comment" in self._table_status:
@@ -592,9 +590,7 @@ class Heading:
                     dict(
                         self.attributes[old_name].todict(),
                         name=new_name,
-                        attribute_expression=(
-                            adapter.quote_identifier(old_name) if adapter else f"`{old_name}`"
-                        ),
+                        attribute_expression=(adapter.quote_identifier(old_name) if adapter else f"`{old_name}`"),
                     )
                     for new_name, old_name in rename_map.items()
                     if old_name == name

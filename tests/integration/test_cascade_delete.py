@@ -2,8 +2,6 @@
 Integration tests for cascade delete on multiple backends.
 """
 
-import os
-
 import pytest
 
 import datajoint as dj
@@ -15,6 +13,7 @@ def schema_by_backend(connection_by_backend, db_creds_by_backend, request):
     backend = db_creds_by_backend["backend"]
     # Use unique schema name for each test
     import time
+
     test_id = str(int(time.time() * 1000))[-8:]  # Last 8 digits of timestamp
     schema_name = f"djtest_cascade_{backend}_{test_id}"[:64]  # Limit length
 

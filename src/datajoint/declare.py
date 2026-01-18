@@ -291,7 +291,7 @@ def compile_foreign_key(
     # Extract database and table name and rebuild with current adapter
     parent_full_name = ref.support[0]
     # Try to parse as database.table (with or without quotes)
-    parts = parent_full_name.replace('"', '').replace('`', '').split('.')
+    parts = parent_full_name.replace('"', "").replace("`", "").split(".")
     if len(parts) == 2:
         ref_table_name = f"{adapter.quote_identifier(parts[0])}.{adapter.quote_identifier(parts[1])}"
     else:

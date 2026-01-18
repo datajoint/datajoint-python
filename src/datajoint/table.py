@@ -372,9 +372,7 @@ class Table(QueryExpression):
         """
         :return: True is the table is declared in the schema.
         """
-        query = self.connection.adapter.get_table_info_sql(
-            self.database, self.table_name
-        )
+        query = self.connection.adapter.get_table_info_sql(self.database, self.table_name)
         return self.connection.query(query).rowcount > 0
 
     @property
@@ -896,7 +894,7 @@ class Table(QueryExpression):
                         ) from None
 
                     # Strip quotes from parsed values for backend-agnostic processing
-                    quote_chars = ('`', '"')
+                    quote_chars = ("`", '"')
 
                     def strip_quotes(s):
                         if s and any(s.startswith(q) for q in quote_chars):
@@ -928,9 +926,7 @@ class Table(QueryExpression):
                             args=(strip_quotes(match["name"]), child_schema, child_table_name),
                         ).fetchall()
                         if results:
-                            match["fk_attrs"], match["parent"], match["pk_attrs"] = list(
-                                map(list, zip(*results))
-                            )
+                            match["fk_attrs"], match["parent"], match["pk_attrs"] = list(map(list, zip(*results)))
                             match["parent"] = match["parent"][0]  # All rows have same parent
 
                     # Build properly quoted full table name for FreeTable
