@@ -114,7 +114,7 @@ def mysql_container():
     from testcontainers.mysql import MySqlContainer
 
     container = MySqlContainer(
-        image="mysql:8.0",
+        image="datajoint/mysql:8.0",  # Use datajoint image which has SSL configured
         username="root",
         password="password",
         dbname="test",
