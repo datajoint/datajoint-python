@@ -195,3 +195,8 @@ datajoint.json
 
 # Test outputs
 *_test_summary.txt
+
+# Swap files
+*.swp
+*.swo
+*~

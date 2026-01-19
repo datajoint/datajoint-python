@@ -551,6 +551,9 @@ class Heading:
             index_name = item.get("index_name") or item.get("Key_name")
             seq = item.get("seq_in_index") or item.get("Seq_in_index") or len(keys[index_name]) + 1
             column = item.get("column_name") or item.get("Column_name")
+            # MySQL EXPRESSION column stores escaped single quotes - unescape them
+            if column:
+                column = column.replace("\\'", "'")
             non_unique = item.get("non_unique") or item.get("Non_unique")
             nullable = item.get("nullable") or (item.get("Null", "NO").lower() == "yes")
 
