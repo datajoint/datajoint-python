@@ -223,9 +223,14 @@ class Connection:
                     charset=config["connection.charset"],
                     use_tls=self.conn_info.get("ssl"),
                 )
-            except Exception:
+            except Exception as ssl_error:
                 # If SSL fails, retry without SSL (if it was auto-detected)
                 if self.conn_info.get("ssl_input") is None:
+                    logger.warning(
+                        "SSL connection failed (%s). Falling back to non-SSL connection. "
+                        "To require SSL, set use_tls=True explicitly.",
+                        ssl_error,
+                    )
                     self._conn = self.adapter.connect(
                         host=self.conn_info["host"],
                         port=self.conn_info["port"],
@@ -233,7 +238,7 @@ class Connection:
                         password=self.conn_info["passwd"],
                         init_command=self.init_fun,
                         charset=config["connection.charset"],
-                        use_tls=None,
+                        use_tls=False,  # Explicitly disable SSL for fallback
                     )
                 else:
                     raise
