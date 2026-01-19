@@ -1127,25 +1127,35 @@ class Table(QueryExpression):
                 if attr.name in fk_props["attr_map"]:
                     do_include = False
                     if attributes_thus_far.issuperset(fk_props["attr_map"]):
-                        # foreign key properties
+                        # foreign key properties - collect all options
+                        fk_options = []
+
+                        # Check if FK is nullable (any FK attribute has nullable=True)
+                        is_nullable = any(self.heading.attributes[attr_name].nullable for attr_name in fk_props["attr_map"])
+                        if is_nullable:
+                            fk_options.append("nullable")
+
+                        # Check for index properties (unique, etc.)
                         try:
                             index_props = indexes.pop(tuple(fk_props["attr_map"]))
                         except KeyError:
-                            index_props = ""
+                            pass
                         else:
-                            index_props = [k for k, v in index_props.items() if v]
-                            index_props = " [{}]".format(", ".join(index_props)) if index_props else ""
+                            fk_options.extend(k for k, v in index_props.items() if v)
+
+                        # Format options as " [opt1, opt2]" or empty string
+                        options_str = " [{}]".format(", ".join(fk_options)) if fk_options else ""
 
                         if not fk_props["aliased"]:
                             # simple foreign key
-                            definition += "->{props} {class_name}\n".format(
-                                props=index_props,
+                            definition += "->{options} {class_name}\n".format(
+                                options=options_str,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
                             )
                         else:
                             # projected foreign key
-                            definition += "->{props} {class_name}.proj({proj_list})\n".format(
-                                props=index_props,
+                            definition += "->{options} {class_name}.proj({proj_list})\n".format(
+                                options=options_str,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
                                 proj_list=",".join(
                                     '{}="{}"'.format(attr, ref) for attr, ref in fk_props["attr_map"].items() if ref != attr
