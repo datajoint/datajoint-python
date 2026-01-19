@@ -40,7 +40,6 @@ def test_instance_help(schema_any):
     assert TTest2().definition in TTest2().__doc__
 
 
-@pytest.mark.xfail(reason="describe() doesn't preserve NOT NULL on FK attributes - pre-existing bug")
 def test_describe(schema_any):
     """real_definition should match original definition"""
     rel = Experiment()
@@ -51,7 +50,6 @@ def test_describe(schema_any):
     assert s1[0] == s2[0]  # Compare SQL only (declare now returns tuple)
 
 
-@pytest.mark.xfail(reason="describe() doesn't preserve NOT NULL on FK attributes - pre-existing bug")
 def test_describe_indexes(schema_any):
     """real_definition should match original definition"""
     rel = IndexRich()
@@ -62,7 +60,6 @@ def test_describe_indexes(schema_any):
     assert s1[0] == s2[0]  # Compare SQL only (declare now returns tuple)
 
 
-@pytest.mark.xfail(reason="describe() doesn't preserve NOT NULL on FK attributes - pre-existing bug")
 def test_describe_dependencies(schema_any):
     """real_definition should match original definition"""
     rel = ThingC()

@@ -1,5 +1,3 @@
-import pytest
-
 from datajoint.declare import declare
 
 from tests.schema_advanced import (
@@ -29,7 +27,6 @@ def test_aliased_fk(schema_adv):
     assert delete_count == 16
 
 
-@pytest.mark.xfail(reason="describe() doesn't preserve NOT NULL on FK attributes - pre-existing bug")
 def test_describe(schema_adv):
     """real_definition should match original definition"""
     for rel in (LocalSynapse, GlobalSynapse):
