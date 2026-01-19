@@ -581,6 +581,45 @@ def alter(definition: str, old_definition: str, context: dict) -> tuple[list[str
     return sql, [e for e in external_stores if e not in external_stores_]
 
 
+def _parse_index_args(args: str) -> list[str]:
+    """
+    Parse comma-separated index arguments, handling nested parentheses.
+
+    Parameters
+    ----------
+    args : str
+        The arguments string from an index declaration (e.g., ``"a, b, (func(x, y))"``)
+
+    Returns
+    -------
+    list[str]
+        List of individual arguments with surrounding whitespace stripped.
+
+    Notes
+    -----
+    This parser correctly handles nested parentheses in expressions like
+    ``(json_value(`col`, '$.path' returning char(20)))``.
+    """
+    result = []
+    current = []
+    depth = 0
+    for char in args:
+        if char == "(":
+            depth += 1
+            current.append(char)
+        elif char == ")":
+            depth -= 1
+            current.append(char)
+        elif char == "," and depth == 0:
+            result.append("".join(current).strip())
+            current = []
+        else:
+            current.append(char)
+    if current:
+        result.append("".join(current).strip())
+    return [arg for arg in result if arg]  # Filter empty strings
+
+
 def compile_index(line: str, index_sql: list[str]) -> None:
     """
     Parse an index declaration and append SQL to index_sql.
@@ -612,7 +651,7 @@ def compile_index(line: str, index_sql: list[str]) -> None:
         raise DataJointError(f'Table definition syntax error in line "{line}"')
     match = match.groupdict()
 
-    attr_list = re.findall(r"(?:[^,(]|\([^)]*\))+", match["args"])
+    attr_list = _parse_index_args(match["args"])
     index_sql.append(
         "{unique}index ({attrs})".format(
             unique="unique " if match["unique"] else "",
