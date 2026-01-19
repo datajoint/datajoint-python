@@ -652,9 +652,15 @@ class MySQLAdapter(DatabaseAdapter):
         return result
 
     def get_indexes_sql(self, schema_name: str, table_name: str) -> str:
-        """Query to get index definitions."""
+        """Query to get index definitions.
+
+        Note: For MySQL 8.0+, EXPRESSION column contains the expression for
+        functional indexes. COLUMN_NAME is NULL for such indexes.
+        """
         return (
-            f"SELECT INDEX_NAME as index_name, COLUMN_NAME as column_name, NON_UNIQUE as non_unique "
+            f"SELECT INDEX_NAME as index_name, "
+            f"COALESCE(COLUMN_NAME, CONCAT('(', EXPRESSION, ')')) as column_name, "
+            f"NON_UNIQUE as non_unique, SEQ_IN_INDEX as seq_in_index "
             f"FROM information_schema.statistics "
             f"WHERE table_schema = {self.quote_string(schema_name)} "
             f"AND table_name = {self.quote_string(table_name)} "
