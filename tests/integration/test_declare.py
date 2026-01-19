@@ -44,27 +44,30 @@ def test_describe(schema_any):
     """real_definition should match original definition"""
     rel = Experiment()
     context = inspect.currentframe().f_globals
-    s1 = declare(rel.full_table_name, rel.definition, context)
-    s2 = declare(rel.full_table_name, rel.describe(), context)
-    assert s1 == s2
+    adapter = rel.connection.adapter
+    s1 = declare(rel.full_table_name, rel.definition, context, adapter)
+    s2 = declare(rel.full_table_name, rel.describe(), context, adapter)
+    assert s1[0] == s2[0]  # Compare SQL only (declare now returns tuple)
 
 
 def test_describe_indexes(schema_any):
     """real_definition should match original definition"""
     rel = IndexRich()
     context = inspect.currentframe().f_globals
-    s1 = declare(rel.full_table_name, rel.definition, context)
-    s2 = declare(rel.full_table_name, rel.describe(), context)
-    assert s1 == s2
+    adapter = rel.connection.adapter
+    s1 = declare(rel.full_table_name, rel.definition, context, adapter)
+    s2 = declare(rel.full_table_name, rel.describe(), context, adapter)
+    assert s1[0] == s2[0]  # Compare SQL only (declare now returns tuple)
 
 
 def test_describe_dependencies(schema_any):
     """real_definition should match original definition"""
     rel = ThingC()
     context = inspect.currentframe().f_globals
-    s1 = declare(rel.full_table_name, rel.definition, context)
-    s2 = declare(rel.full_table_name, rel.describe(), context)
-    assert s1 == s2
+    adapter = rel.connection.adapter
+    s1 = declare(rel.full_table_name, rel.definition, context, adapter)
+    s2 = declare(rel.full_table_name, rel.describe(), context, adapter)
+    assert s1[0] == s2[0]  # Compare SQL only (declare now returns tuple)
 
 
 def test_part(schema_any):

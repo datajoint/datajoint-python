@@ -38,16 +38,29 @@ def ensure_lineage_table(connection, database):
     database : str
         The schema/database name.
     """
-    connection.query(
-        """
-        CREATE TABLE IF NOT EXISTS `{database}`.`~lineage` (
-            table_name VARCHAR(64) NOT NULL COMMENT 'table name within the schema',
-            attribute_name VARCHAR(64) NOT NULL COMMENT 'attribute name',
-            lineage VARCHAR(255) NOT NULL COMMENT 'origin: schema.table.attribute',
-            PRIMARY KEY (table_name, attribute_name)
-        ) ENGINE=InnoDB
-        """.format(database=database)
+    adapter = connection.adapter
+
+    # Build fully qualified table name
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
+    # Build column definitions using adapter
+    columns = [
+        adapter.format_column_definition("table_name", "VARCHAR(64)", nullable=False, comment="table name within the schema"),
+        adapter.format_column_definition("attribute_name", "VARCHAR(64)", nullable=False, comment="attribute name"),
+        adapter.format_column_definition("lineage", "VARCHAR(255)", nullable=False, comment="origin: schema.table.attribute"),
+    ]
+
+    # Build PRIMARY KEY using adapter
+    pk_cols = adapter.quote_identifier("table_name") + ", " + adapter.quote_identifier("attribute_name")
+    pk_clause = f"PRIMARY KEY ({pk_cols})"
+
+    sql = (
+        f"CREATE TABLE IF NOT EXISTS {lineage_table} (\n"
+        + ",\n".join(columns + [pk_clause])
+        + f"\n) {adapter.table_options_clause()}"
     )
+
+    connection.query(sql)
 
 
 def lineage_table_exists(connection, database):
@@ -99,11 +112,14 @@ def get_lineage(connection, database, table_name, attribute_name):
     if not lineage_table_exists(connection, database):
         return None
 
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     result = connection.query(
-        """
-        SELECT lineage FROM `{database}`.`~lineage`
+        f"""
+        SELECT lineage FROM {lineage_table}
         WHERE table_name = %s AND attribute_name = %s
-        """.format(database=database),
+        """,
         args=(table_name, attribute_name),
     ).fetchone()
     return result[0] if result else None
@@ -130,11 +146,14 @@ def get_table_lineages(connection, database, table_name):
     if not lineage_table_exists(connection, database):
         return {}
 
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     results = connection.query(
-        """
-        SELECT attribute_name, lineage FROM `{database}`.`~lineage`
+        f"""
+        SELECT attribute_name, lineage FROM {lineage_table}
         WHERE table_name = %s
-        """.format(database=database),
+        """,
         args=(table_name,),
     ).fetchall()
     return {row[0]: row[1] for row in results}
@@ -159,10 +178,13 @@ def get_schema_lineages(connection, database):
     if not lineage_table_exists(connection, database):
         return {}
 
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     results = connection.query(
-        """
-        SELECT table_name, attribute_name, lineage FROM `{database}`.`~lineage`
-        """.format(database=database),
+        f"""
+        SELECT table_name, attribute_name, lineage FROM {lineage_table}
+        """,
     ).fetchall()
 
     return {f"{database}.{table}.{attr}": lineage for table, attr, lineage in results}
@@ -184,18 +206,25 @@ def insert_lineages(connection, database, entries):
     if not entries:
         return
     ensure_lineage_table(connection, database)
-    # Build a single INSERT statement with multiple values for atomicity
-    placeholders = ", ".join(["(%s, %s, %s)"] * len(entries))
+
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
+    # Build backend-agnostic upsert statement
+    columns = ["table_name", "attribute_name", "lineage"]
+    primary_key = ["table_name", "attribute_name"]
+
+    sql = adapter.upsert_on_duplicate_sql(
+        lineage_table,
+        columns,
+        primary_key,
+        len(entries),
+    )
+
     # Flatten the entries into a single args tuple
     args = tuple(val for entry in entries for val in entry)
-    connection.query(
-        """
-        INSERT INTO `{database}`.`~lineage` (table_name, attribute_name, lineage)
-        VALUES {placeholders}
-        ON DUPLICATE KEY UPDATE lineage = VALUES(lineage)
-        """.format(database=database, placeholders=placeholders),
-        args=args,
-    )
+
+    connection.query(sql, args=args)
 
 
 def delete_table_lineages(connection, database, table_name):
@@ -213,11 +242,15 @@ def delete_table_lineages(connection, database, table_name):
     """
     if not lineage_table_exists(connection, database):
         return
+
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     connection.query(
-        """
-        DELETE FROM `{database}`.`~lineage`
+        f"""
+        DELETE FROM {lineage_table}
         WHERE table_name = %s
-        """.format(database=database),
+        """,
         args=(table_name,),
     )
 
@@ -251,8 +284,11 @@ def rebuild_schema_lineage(connection, database):
     # Ensure the lineage table exists
     ensure_lineage_table(connection, database)
 
+    adapter = connection.adapter
+    lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+
     # Clear all existing lineage entries for this schema
-    connection.query(f"DELETE FROM `{database}`.`~lineage`")
+    connection.query(f"DELETE FROM {lineage_table}")
 
     # Get all tables in the schema (excluding hidden tables)
     tables_result = connection.query(

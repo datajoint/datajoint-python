@@ -4,7 +4,6 @@ import inspect
 import itertools
 import json
 import logging
-import re
 import uuid
 import warnings
 from dataclasses import dataclass, field
@@ -30,24 +29,8 @@ from .utils import get_master, is_camel_case, user_choice
 
 logger = logging.getLogger(__name__.split(".")[0])
 
-foreign_key_error_regexp = re.compile(
-    r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
-    r"CONSTRAINT (?P<name>`[^`]+`) "
-    r"(FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
-    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)[\s\w]+\))?"
-)
-
-constraint_info_query = " ".join(
-    """
-    SELECT
-        COLUMN_NAME as fk_attrs,
-        CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`', REFERENCED_TABLE_NAME, '`') as parent,
-        REFERENCED_COLUMN_NAME as pk_attrs
-    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-    WHERE
-        CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s;
-    """.split()
-)
+# Note: Foreign key error parsing is now handled by adapter methods
+# Legacy regexp and query kept for reference but no longer used
 
 
 class _RenameMap(tuple):
@@ -163,7 +146,9 @@ class Table(QueryExpression):
                 "Table class name `{name}` is invalid. Please use CamelCase. ".format(name=self.class_name)
                 + "Classes defining tables should be formatted in strict CamelCase."
             )
-        sql, _external_stores, primary_key, fk_attribute_map = declare(self.full_table_name, self.definition, context)
+        sql, _external_stores, primary_key, fk_attribute_map, additional_ddl = declare(
+            self.full_table_name, self.definition, context, self.connection.adapter
+        )
 
         # Call declaration hook for validation (subclasses like AutoPopulate can override)
         self._declare_check(primary_key, fk_attribute_map)
@@ -171,6 +156,9 @@ class Table(QueryExpression):
         sql = sql.format(database=self.database)
         try:
             self.connection.query(sql)
+            # Execute additional DDL (e.g., COMMENT ON for PostgreSQL)
+            for ddl in additional_ddl:
+                self.connection.query(ddl.format(database=self.database))
         except AccessError:
             # Only suppress if table already exists (idempotent declaration)
             # Otherwise raise - user needs to know about permission issues
@@ -270,7 +258,7 @@ class Table(QueryExpression):
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
         old_definition = self.describe(context=context)
-        sql, _external_stores = alter(self.definition, old_definition, context)
+        sql, _external_stores = alter(self.definition, old_definition, context, self.connection.adapter)
         if not sql:
             if prompt:
                 logger.warning("Nothing to alter.")
@@ -384,12 +372,8 @@ class Table(QueryExpression):
         """
         :return: True is the table is declared in the schema.
         """
-        return (
-            self.connection.query(
-                'SHOW TABLES in `{database}` LIKE "{table_name}"'.format(database=self.database, table_name=self.table_name)
-            ).rowcount
-            > 0
-        )
+        query = self.connection.adapter.get_table_info_sql(self.database, self.table_name)
+        return self.connection.query(query).rowcount > 0
 
     @property
     def full_table_name(self):
@@ -401,7 +385,12 @@ class Table(QueryExpression):
                 f"Class {self.__class__.__name__} is not associated with a schema. "
                 "Apply a schema decorator or use schema() to bind it."
             )
-        return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
+        return f"{self.adapter.quote_identifier(self.database)}.{self.adapter.quote_identifier(self.table_name)}"
+
+    @property
+    def adapter(self):
+        """Database adapter for backend-agnostic SQL generation."""
+        return self.connection.adapter
 
     def update1(self, row):
         """
@@ -438,9 +427,10 @@ class Table(QueryExpression):
             raise DataJointError("Update can only be applied to one existing entry.")
         # UPDATE query
         row = [self.__make_placeholder(k, v) for k, v in row.items() if k not in self.primary_key]
+        assignments = ",".join(f"{self.adapter.quote_identifier(r[0])}={r[1]}" for r in row)
         query = "UPDATE {table} SET {assignments} WHERE {where}".format(
             table=self.full_table_name,
-            assignments=",".join("`%s`=%s" % r[:2] for r in row),
+            assignments=assignments,
             where=make_condition(self, key, set()),
         )
         self.connection.query(query, args=list(r[2] for r in row if r[2] is not None))
@@ -694,17 +684,17 @@ class Table(QueryExpression):
                 except StopIteration:
                     pass
             fields = list(name for name in rows.heading if name in self.heading)
-            query = "{command} INTO {table} ({fields}) {select}{duplicate}".format(
-                command="REPLACE" if replace else "INSERT",
-                fields="`" + "`,`".join(fields) + "`",
-                table=self.full_table_name,
-                select=rows.make_sql(fields),
-                duplicate=(
-                    " ON DUPLICATE KEY UPDATE `{pk}`={table}.`{pk}`".format(table=self.full_table_name, pk=self.primary_key[0])
-                    if skip_duplicates
-                    else ""
-                ),
-            )
+            quoted_fields = ",".join(self.adapter.quote_identifier(f) for f in fields)
+
+            # Duplicate handling (MySQL-specific for Phase 5)
+            if skip_duplicates:
+                quoted_pk = self.adapter.quote_identifier(self.primary_key[0])
+                duplicate = f" ON DUPLICATE KEY UPDATE {quoted_pk}={self.full_table_name}.{quoted_pk}"
+            else:
+                duplicate = ""
+
+            command = "REPLACE" if replace else "INSERT"
+            query = f"{command} INTO {self.full_table_name} ({quoted_fields}) {rows.make_sql(fields)}{duplicate}"
             self.connection.query(query)
             return
 
@@ -736,16 +726,21 @@ class Table(QueryExpression):
         if rows:
             try:
                 # Handle empty field_list (all-defaults insert)
-                fields_clause = f"(`{'`,`'.join(field_list)}`)" if field_list else "()"
-                query = "{command} INTO {destination}{fields} VALUES {placeholders}{duplicate}".format(
-                    command="REPLACE" if replace else "INSERT",
-                    destination=self.from_clause(),
-                    fields=fields_clause,
-                    placeholders=",".join("(" + ",".join(row["placeholders"]) + ")" for row in rows),
-                    duplicate=(
-                        " ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`".format(pk=self.primary_key[0]) if skip_duplicates else ""
-                    ),
-                )
+                if field_list:
+                    fields_clause = f"({','.join(self.adapter.quote_identifier(f) for f in field_list)})"
+                else:
+                    fields_clause = "()"
+
+                # Build duplicate clause (MySQL-specific for Phase 5)
+                if skip_duplicates:
+                    quoted_pk = self.adapter.quote_identifier(self.primary_key[0])
+                    duplicate = f" ON DUPLICATE KEY UPDATE {quoted_pk}=VALUES({quoted_pk})"
+                else:
+                    duplicate = ""
+
+                command = "REPLACE" if replace else "INSERT"
+                placeholders = ",".join("(" + ",".join(row["placeholders"]) + ")" for row in rows)
+                query = f"{command} INTO {self.from_clause()}{fields_clause} VALUES {placeholders}{duplicate}"
                 self.connection.query(
                     query,
                     args=list(itertools.chain.from_iterable((v for v in r["values"] if v is not None) for r in rows)),
@@ -836,8 +831,9 @@ class Table(QueryExpression):
         If this table has populated dependent tables, this will fail.
         """
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
-        self.connection.query(query)
-        count = self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
+        cursor = self.connection.query(query)
+        # Use cursor.rowcount (DB-API 2.0 standard, works for both MySQL and PostgreSQL)
+        count = cursor.rowcount if get_count else None
         return count
 
     def delete(
@@ -878,44 +874,72 @@ class Table(QueryExpression):
             """service function to perform cascading deletes recursively."""
             max_attempts = 50
             for _ in range(max_attempts):
+                # Set savepoint before delete attempt (for PostgreSQL transaction handling)
+                savepoint_name = f"cascade_delete_{id(table)}"
+                if transaction:
+                    table.connection.query(f"SAVEPOINT {savepoint_name}")
+
                 try:
                     delete_count = table.delete_quick(get_count=True)
                 except IntegrityError as error:
-                    match = foreign_key_error_regexp.match(error.args[0])
+                    # Rollback to savepoint so we can continue querying (PostgreSQL requirement)
+                    if transaction:
+                        table.connection.query(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+                    # Use adapter to parse FK error message
+                    match = table.connection.adapter.parse_foreign_key_error(error.args[0])
                     if match is None:
                         raise DataJointError(
-                            "Cascading deletes failed because the error message is missing foreign key information."
+                            "Cascading deletes failed because the error message is missing foreign key information. "
                             "Make sure you have REFERENCES privilege to all dependent tables."
                         ) from None
-                    match = match.groupdict()
-                    # if schema name missing, use table
-                    if "`.`" not in match["child"]:
-                        match["child"] = "{}.{}".format(table.full_table_name.split(".")[0], match["child"])
-                    if match["pk_attrs"] is not None:  # fully matched, adjusting the keys
-                        match["fk_attrs"] = [k.strip("`") for k in match["fk_attrs"].split(",")]
-                        match["pk_attrs"] = [k.strip("`") for k in match["pk_attrs"].split(",")]
-                    else:  # only partially matched, querying with constraint to determine keys
-                        match["fk_attrs"], match["parent"], match["pk_attrs"] = list(
-                            map(
-                                list,
-                                zip(
-                                    *table.connection.query(
-                                        constraint_info_query,
-                                        args=(
-                                            match["name"].strip("`"),
-                                            *[_.strip("`") for _ in match["child"].split("`.`")],
-                                        ),
-                                    ).fetchall()
-                                ),
-                            )
+
+                    # Strip quotes from parsed values for backend-agnostic processing
+                    quote_chars = ("`", '"')
+
+                    def strip_quotes(s):
+                        if s and any(s.startswith(q) for q in quote_chars):
+                            return s.strip('`"')
+                        return s
+
+                    # Extract schema and table name from child (work with unquoted names)
+                    child_table_raw = strip_quotes(match["child"])
+                    if "." in child_table_raw:
+                        child_parts = child_table_raw.split(".")
+                        child_schema = strip_quotes(child_parts[0])
+                        child_table_name = strip_quotes(child_parts[1])
+                    else:
+                        # Add schema from current table
+                        schema_parts = table.full_table_name.split(".")
+                        child_schema = strip_quotes(schema_parts[0])
+                        child_table_name = child_table_raw
+
+                    # If FK/PK attributes not in error message, query information_schema
+                    if match["fk_attrs"] is None or match["pk_attrs"] is None:
+                        constraint_query = table.connection.adapter.get_constraint_info_sql(
+                            strip_quotes(match["name"]),
+                            child_schema,
+                            child_table_name,
                         )
-                        match["parent"] = match["parent"][0]
+
+                        results = table.connection.query(
+                            constraint_query,
+                            args=(strip_quotes(match["name"]), child_schema, child_table_name),
+                        ).fetchall()
+                        if results:
+                            match["fk_attrs"], match["parent"], match["pk_attrs"] = list(map(list, zip(*results)))
+                            match["parent"] = match["parent"][0]  # All rows have same parent
+
+                    # Build properly quoted full table name for FreeTable
+                    child_full_name = (
+                        f"{table.connection.adapter.quote_identifier(child_schema)}."
+                        f"{table.connection.adapter.quote_identifier(child_table_name)}"
+                    )
 
                     # Restrict child by table if
                     #   1. if table's restriction attributes are not in child's primary key
                     #   2. if child renames any attributes
                     # Otherwise restrict child by table's restriction.
-                    child = FreeTable(table.connection, match["child"])
+                    child = FreeTable(table.connection, child_full_name)
                     if set(table.restriction_attributes) <= set(child.primary_key) and match["fk_attrs"] == match["pk_attrs"]:
                         child._restriction = table._restriction
                         child._restriction_attributes = table.restriction_attributes
@@ -945,6 +969,9 @@ class Table(QueryExpression):
                     else:
                         cascade(child)
                 else:
+                    # Successful delete - release savepoint
+                    if transaction:
+                        table.connection.query(f"RELEASE SAVEPOINT {savepoint_name}")
                     deleted.add(table.full_table_name)
                     logger.info("Deleting {count} rows from {table}".format(count=delete_count, table=table.full_table_name))
                     break
@@ -1100,25 +1127,35 @@ class Table(QueryExpression):
                 if attr.name in fk_props["attr_map"]:
                     do_include = False
                     if attributes_thus_far.issuperset(fk_props["attr_map"]):
-                        # foreign key properties
+                        # foreign key properties - collect all options
+                        fk_options = []
+
+                        # Check if FK is nullable (any FK attribute has nullable=True)
+                        is_nullable = any(self.heading.attributes[attr_name].nullable for attr_name in fk_props["attr_map"])
+                        if is_nullable:
+                            fk_options.append("nullable")
+
+                        # Check for index properties (unique, etc.)
                         try:
                             index_props = indexes.pop(tuple(fk_props["attr_map"]))
                         except KeyError:
-                            index_props = ""
+                            pass
                         else:
-                            index_props = [k for k, v in index_props.items() if v]
-                            index_props = " [{}]".format(", ".join(index_props)) if index_props else ""
+                            fk_options.extend(k for k, v in index_props.items() if v)
+
+                        # Format options as " [opt1, opt2]" or empty string
+                        options_str = " [{}]".format(", ".join(fk_options)) if fk_options else ""
 
                         if not fk_props["aliased"]:
                             # simple foreign key
-                            definition += "->{props} {class_name}\n".format(
-                                props=index_props,
+                            definition += "->{options} {class_name}\n".format(
+                                options=options_str,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
                             )
                         else:
                             # projected foreign key
-                            definition += "->{props} {class_name}.proj({proj_list})\n".format(
-                                props=index_props,
+                            definition += "->{options} {class_name}.proj({proj_list})\n".format(
+                                options=options_str,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
                                 proj_list=",".join(
                                     '{}="{}"'.format(attr, ref) for attr, ref in fk_props["attr_map"].items() if ref != attr
@@ -1365,7 +1402,8 @@ class FreeTable(Table):
     """
 
     def __init__(self, conn, full_table_name):
-        self.database, self._table_name = (s.strip("`") for s in full_table_name.split("."))
+        # Backend-agnostic quote stripping (MySQL uses `, PostgreSQL uses ")
+        self.database, self._table_name = (s.strip('`"') for s in full_table_name.split("."))
         self._connection = conn
         self._support = [full_table_name]
         self._heading = Heading(

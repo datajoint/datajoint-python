@@ -301,11 +301,14 @@ def make_condition(
     """
     from .expression import Aggregation, QueryExpression, U
 
+    # Get adapter for backend-agnostic SQL generation
+    adapter = query_expression.connection.adapter
+
     def prep_value(k, v):
         """prepare SQL condition"""
         key_match, k = translate_attribute(k)
         if key_match["path"] is None:
-            k = f"`{k}`"
+            k = adapter.quote_identifier(k)
         if query_expression.heading[key_match["attr"]].json and key_match["path"] is not None and isinstance(v, dict):
             return f"{k}='{json.dumps(v)}'"
         if v is None:
@@ -410,10 +413,12 @@ def make_condition(
             # without common attributes, any non-empty set matches everything
             (not negate if condition else negate)
             if not common_attributes
-            else "({fields}) {not_}in ({subquery})".format(
-                fields="`" + "`,`".join(common_attributes) + "`",
-                not_="not " if negate else "",
-                subquery=condition.make_sql(common_attributes),
+            else (
+                "({fields}) {not_}in ({subquery})".format(
+                    fields=", ".join(adapter.quote_identifier(a) for a in common_attributes),
+                    not_="not " if negate else "",
+                    subquery=condition.make_sql(common_attributes),
+                )
             )
         )
 

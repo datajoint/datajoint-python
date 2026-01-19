@@ -15,6 +15,10 @@ Examples
 >>> import datajoint as dj
 >>> dj.config.database.host
 'localhost'
+>>> dj.config.database.backend
+'mysql'
+>>> dj.config.database.port  # Auto-detects: 3306 for MySQL, 5432 for PostgreSQL
+3306
 >>> with dj.config.override(safemode=False):
 ...     # dangerous operations here
 ...     pass
@@ -43,7 +47,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Iterator, Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .errors import DataJointError
@@ -59,6 +63,7 @@ ENV_VAR_MAPPING = {
     "database.host": "DJ_HOST",
     "database.user": "DJ_USER",
     "database.password": "DJ_PASS",
+    "database.backend": "DJ_BACKEND",
     "database.port": "DJ_PORT",
     "loglevel": "DJ_LOG_LEVEL",
 }
@@ -182,9 +187,21 @@ class DatabaseSettings(BaseSettings):
     host: str = Field(default="localhost", validation_alias="DJ_HOST")
     user: str | None = Field(default=None, validation_alias="DJ_USER")
     password: SecretStr | None = Field(default=None, validation_alias="DJ_PASS")
-    port: int = Field(default=3306, validation_alias="DJ_PORT")
+    backend: Literal["mysql", "postgresql"] = Field(
+        default="mysql",
+        validation_alias="DJ_BACKEND",
+        description="Database backend: 'mysql' or 'postgresql'",
+    )
+    port: int | None = Field(default=None, validation_alias="DJ_PORT")
     reconnect: bool = True
     use_tls: bool | None = None
+
+    @model_validator(mode="after")
+    def set_default_port_from_backend(self) -> "DatabaseSettings":
+        """Set default port based on backend if not explicitly provided."""
+        if self.port is None:
+            self.port = 5432 if self.backend == "postgresql" else 3306
+        return self
 
 
 class ConnectionSettings(BaseSettings):

@@ -104,9 +104,10 @@ class QueryExpression:
     _subquery_alias_count = count()  # count for alias names used in the FROM clause
 
     def from_clause(self):
+        adapter = self.connection.adapter
         support = (
             (
-                "(" + src.make_sql() + ") as `$%x`" % next(self._subquery_alias_count)
+                "({}) as {}".format(src.make_sql(), adapter.quote_identifier(f"${next(self._subquery_alias_count):x}"))
                 if isinstance(src, QueryExpression)
                 else src
             )
@@ -116,7 +117,8 @@ class QueryExpression:
         for s, (is_left, using_attrs) in zip(support, self._joins):
             left_kw = "LEFT " if is_left else ""
             if using_attrs:
-                using = "USING ({})".format(", ".join(f"`{a}`" for a in using_attrs))
+                quoted_attrs = ", ".join(adapter.quote_identifier(a) for a in using_attrs)
+                using = f"USING ({quoted_attrs})"
                 clause += f" {left_kw}JOIN {s} {using}"
             else:
                 # Cross join (no common non-hidden attributes)
@@ -134,7 +136,8 @@ class QueryExpression:
             return ""
         # Default to KEY ordering if order_by is None (inherit with no existing order)
         order_by = self._top.order_by if self._top.order_by is not None else ["KEY"]
-        clause = ", ".join(_wrap_attributes(_flatten_attribute_list(self.primary_key, order_by)))
+        adapter = self.connection.adapter
+        clause = ", ".join(_wrap_attributes(_flatten_attribute_list(self.primary_key, order_by), adapter))
         if clause:
             clause = f" ORDER BY {clause}"
         if self._top.limit is not None:
@@ -876,19 +879,22 @@ class QueryExpression:
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         result = self.make_subquery() if self._top else copy.copy(self)
         has_left_join = any(is_left for is_left, _ in result._joins)
-        return result.connection.query(
-            "SELECT {select_} FROM {from_}{where}".format(
-                select_=(
-                    "count(*)"
-                    if has_left_join
-                    else "count(DISTINCT {fields})".format(
-                        fields=result.heading.as_sql(result.primary_key, include_aliases=False)
-                    )
-                ),
-                from_=result.from_clause(),
-                where=result.where_clause(),
+
+        # Build COUNT query - PostgreSQL requires different syntax for multi-column DISTINCT
+        if has_left_join or len(result.primary_key) > 1:
+            # Use subquery with DISTINCT for multi-column primary keys (backend-agnostic)
+            fields = result.heading.as_sql(result.primary_key, include_aliases=False)
+            query = (
+                f"SELECT count(*) FROM ("
+                f"SELECT DISTINCT {fields} FROM {result.from_clause()}{result.where_clause()}"
+                f") AS distinct_count"
             )
-        ).fetchone()[0]
+        else:
+            # Single column - can use count(DISTINCT col) directly
+            fields = result.heading.as_sql(result.primary_key, include_aliases=False)
+            query = f"SELECT count(DISTINCT {fields}) FROM {result.from_clause()}{result.where_clause()}"
+
+        return result.connection.query(query).fetchone()[0]
 
     def __bool__(self):
         """
@@ -1024,7 +1030,9 @@ class Aggregation(QueryExpression):
                 ""
                 if not self.primary_key
                 else (
-                    " GROUP BY `%s`" % "`,`".join(self._grouping_attributes)
+                    " GROUP BY {}".format(
+                        ", ".join(self.connection.adapter.quote_identifier(col) for col in self._grouping_attributes)
+                    )
                     + ("" if not self.restriction else " HAVING (%s)" % ")AND(".join(self.restriction))
                 )
             ),
@@ -1032,11 +1040,8 @@ class Aggregation(QueryExpression):
         )
 
     def __len__(self):
-        return self.connection.query(
-            "SELECT count(1) FROM ({subquery}) `${alias:x}`".format(
-                subquery=self.make_sql(), alias=next(self._subquery_alias_count)
-            )
-        ).fetchone()[0]
+        alias = self.connection.adapter.quote_identifier(f"${next(self._subquery_alias_count):x}")
+        return self.connection.query(f"SELECT count(1) FROM ({self.make_sql()}) {alias}").fetchone()[0]
 
     def __bool__(self):
         return bool(self.connection.query("SELECT EXISTS({sql})".format(sql=self.make_sql())).fetchone()[0])
@@ -1072,12 +1077,11 @@ class Union(QueryExpression):
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:
             # no secondary attributes: use UNION DISTINCT
             fields = arg1.primary_key
-            return "SELECT * FROM (({sql1}) UNION ({sql2})) as `_u{alias}{sorting}`".format(
-                sql1=(arg1.make_sql() if isinstance(arg1, Union) else arg1.make_sql(fields)),
-                sql2=(arg2.make_sql() if isinstance(arg2, Union) else arg2.make_sql(fields)),
-                alias=next(self.__count),
-                sorting=self.sorting_clauses(),
-            )
+            alias_name = f"_u{next(self.__count)}{self.sorting_clauses()}"
+            alias_quoted = self.connection.adapter.quote_identifier(alias_name)
+            sql1 = arg1.make_sql() if isinstance(arg1, Union) else arg1.make_sql(fields)
+            sql2 = arg2.make_sql() if isinstance(arg2, Union) else arg2.make_sql(fields)
+            return f"SELECT * FROM (({sql1}) UNION ({sql2})) as {alias_quoted}"
         # with secondary attributes, use union of left join with anti-restriction
         fields = self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
@@ -1093,12 +1097,8 @@ class Union(QueryExpression):
         raise NotImplementedError("Union does not use a WHERE clause")
 
     def __len__(self):
-        return self.connection.query(
-            "SELECT count(1) FROM ({subquery}) `${alias:x}`".format(
-                subquery=self.make_sql(),
-                alias=next(QueryExpression._subquery_alias_count),
-            )
-        ).fetchone()[0]
+        alias = self.connection.adapter.quote_identifier(f"${next(QueryExpression._subquery_alias_count):x}")
+        return self.connection.query(f"SELECT count(1) FROM ({self.make_sql()}) {alias}").fetchone()[0]
 
     def __bool__(self):
         return bool(self.connection.query("SELECT EXISTS({sql})".format(sql=self.make_sql())).fetchone()[0])
@@ -1242,6 +1242,14 @@ def _flatten_attribute_list(primary_key, attrs):
             yield a
 
 
-def _wrap_attributes(attr):
-    for entry in attr:  # wrap attribute names in backquotes
-        yield re.sub(r"\b((?!asc|desc)\w+)\b", r"`\1`", entry, flags=re.IGNORECASE)
+def _wrap_attributes(attr, adapter):
+    """Wrap attribute names with database-specific quotes."""
+    for entry in attr:
+        # Replace word boundaries (not 'asc' or 'desc') with quoted version
+        def quote_match(match):
+            word = match.group(1)
+            if word.lower() not in ("asc", "desc"):
+                return adapter.quote_identifier(word)
+            return word
+
+        yield re.sub(r"\b((?!asc|desc)\w+)\b", quote_match, entry, flags=re.IGNORECASE)
