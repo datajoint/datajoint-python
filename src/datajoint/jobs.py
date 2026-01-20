@@ -249,7 +249,7 @@ class Job(Table):
         Job
             Restricted query with ``status='pending'``.
         """
-        return self & 'status="pending"'
+        return self & "status='pending'"
 
     @property
     def reserved(self) -> "Job":
@@ -261,7 +261,7 @@ class Job(Table):
         Job
             Restricted query with ``status='reserved'``.
         """
-        return self & 'status="reserved"'
+        return self & "status='reserved'"
 
     @property
     def errors(self) -> "Job":
@@ -273,7 +273,7 @@ class Job(Table):
         Job
             Restricted query with ``status='error'``.
         """
-        return self & 'status="error"'
+        return self & "status='error'"
 
     @property
     def ignored(self) -> "Job":
@@ -285,7 +285,7 @@ class Job(Table):
         Job
             Restricted query with ``status='ignore'``.
         """
-        return self & 'status="ignore"'
+        return self & "status='ignore'"
 
     @property
     def completed(self) -> "Job":
@@ -297,7 +297,7 @@ class Job(Table):
         Job
             Restricted query with ``status='success'``.
         """
-        return self & 'status="success"'
+        return self & "status='success'"
 
     # -------------------------------------------------------------------------
     # Core job management methods
@@ -376,7 +376,8 @@ class Job(Table):
 
         if new_key_list:
             # Use server time for scheduling (CURRENT_TIMESTAMP(3) matches datetime(3) precision)
-            scheduled_time = self.connection.query(f"SELECT CURRENT_TIMESTAMP(3) + INTERVAL {delay} SECOND").fetchone()[0]
+            interval_expr = self.adapter.interval_expr(delay, "second")
+            scheduled_time = self.connection.query(f"SELECT CURRENT_TIMESTAMP(3) + {interval_expr}").fetchone()[0]
 
             for key in new_key_list:
                 job_entry = {
@@ -404,7 +405,8 @@ class Job(Table):
 
         # 3. Remove stale jobs (not ignore status) - use server CURRENT_TIMESTAMP for consistent timing
         if stale_timeout > 0:
-            old_jobs = self & f"created_time < CURRENT_TIMESTAMP - INTERVAL {stale_timeout} SECOND" & 'status != "ignore"'
+            stale_interval = self.adapter.interval_expr(stale_timeout, "second")
+            old_jobs = self & f"created_time < CURRENT_TIMESTAMP - {stale_interval}" & "status != 'ignore'"
 
             for key in old_jobs.keys():
                 # Check if key still in key_source
@@ -414,7 +416,8 @@ class Job(Table):
 
         # 4. Handle orphaned reserved jobs - use server CURRENT_TIMESTAMP for consistent timing
         if orphan_timeout is not None and orphan_timeout > 0:
-            orphaned_jobs = self.reserved & f"reserved_time < CURRENT_TIMESTAMP - INTERVAL {orphan_timeout} SECOND"
+            orphan_interval = self.adapter.interval_expr(orphan_timeout, "second")
+            orphaned_jobs = self.reserved & f"reserved_time < CURRENT_TIMESTAMP - {orphan_interval}"
 
             for key in orphaned_jobs.keys():
                 (self & key).delete_quick()
@@ -441,7 +444,7 @@ class Job(Table):
             True if reservation successful, False if job not available.
         """
         # Check if job is pending and scheduled (use CURRENT_TIMESTAMP(3) for datetime(3) precision)
-        job = (self & key & 'status="pending"' & "scheduled_time <= CURRENT_TIMESTAMP(3)").to_dicts()
+        job = (self & key & "status='pending'" & "scheduled_time <= CURRENT_TIMESTAMP(3)").to_dicts()
 
         if not job:
             return False
