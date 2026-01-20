@@ -276,10 +276,16 @@ class _AliasNode:
 
 def _get_tier(table_name):
     """given the table name, return the user table class."""
-    if not table_name.startswith("`"):
-        return _AliasNode
+    # Handle both MySQL backticks and PostgreSQL double quotes
+    if table_name.startswith("`"):
+        # MySQL format: `schema`.`table_name`
+        extracted_name = table_name.split("`")[-2]
+    elif table_name.startswith('"'):
+        # PostgreSQL format: "schema"."table_name"
+        extracted_name = table_name.split('"')[-2]
     else:
-        try:
-            return next(tier for tier in user_table_classes if re.fullmatch(tier.tier_regexp, table_name.split("`")[-2]))
-        except StopIteration:
-            return None
+        return _AliasNode
+    try:
+        return next(tier for tier in user_table_classes if re.fullmatch(tier.tier_regexp, extracted_name))
+    except StopIteration:
+        return None
