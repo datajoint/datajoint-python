@@ -989,7 +989,9 @@ class PostgreSQLAdapter(DatabaseAdapter):
         >>> adapter.table_comment_ddl('"schema"."table"', 'test comment')
         'COMMENT ON TABLE "schema"."table" IS \\'test comment\\''
         """
-        return f"COMMENT ON TABLE {full_table_name} IS '{comment}'"
+        # Escape single quotes by doubling them
+        escaped_comment = comment.replace("'", "''")
+        return f"COMMENT ON TABLE {full_table_name} IS '{escaped_comment}'"
 
     def column_comment_ddl(self, full_table_name: str, column_name: str, comment: str) -> str | None:
         """
@@ -1001,7 +1003,9 @@ class PostgreSQLAdapter(DatabaseAdapter):
         'COMMENT ON COLUMN "schema"."table"."column" IS \\'test comment\\''
         """
         quoted_col = self.quote_identifier(column_name)
-        return f"COMMENT ON COLUMN {full_table_name}.{quoted_col} IS '{comment}'"
+        # Escape single quotes by doubling them (PostgreSQL string literal syntax)
+        escaped_comment = comment.replace("'", "''")
+        return f"COMMENT ON COLUMN {full_table_name}.{quoted_col} IS '{escaped_comment}'"
 
     def enum_type_ddl(self, type_name: str, values: list[str]) -> str | None:
         """
