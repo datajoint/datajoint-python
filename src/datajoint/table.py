@@ -220,8 +220,8 @@ class Table(QueryExpression):
 
         # FK attributes: copy lineage from parent (whether in PK or not)
         for attr, (parent_table, parent_attr) in fk_attribute_map.items():
-            # Parse parent table name: `schema`.`table` -> (schema, table)
-            parent_clean = parent_table.replace("`", "")
+            # Parse parent table name: `schema`.`table` or "schema"."table" -> (schema, table)
+            parent_clean = parent_table.replace("`", "").replace('"', "")
             if "." in parent_clean:
                 parent_db, parent_tbl = parent_clean.split(".", 1)
             else:
