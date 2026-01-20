@@ -169,7 +169,7 @@ class Dependencies(nx.DiGraph):
             # PostgreSQL
             tab_expr = "'\"' || table_schema || '\".\"' || table_name || '\"'"
             ref_tab_expr = "'\"' || referenced_table_schema || '\".\"' || referenced_table_name || '\"'"
-            like_pattern = "'~%'"  # PostgreSQL doesn't need escaping
+            like_pattern = "'~%%'"  # psycopg2 also uses %s placeholders, so escape %
 
         # load primary key info
         keys = self._conn.query(

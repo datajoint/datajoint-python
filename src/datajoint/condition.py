@@ -330,10 +330,12 @@ def make_condition(
                 list,
             ),
         ):
-            return f'{k}="{v}"'
+            # Use single quotes for string literals (works for both MySQL and PostgreSQL)
+            return f"{k}='{v}'"
         if isinstance(v, str):
-            v = v.replace("%", "%%").replace("\\", "\\\\")
-            return f'{k}="{v}"'
+            # Escape single quotes by doubling them, and escape % for driver
+            v = v.replace("'", "''").replace("%", "%%").replace("\\", "\\\\")
+            return f"{k}='{v}'"
         return f"{k}={v}"
 
     def combine_conditions(negate, conditions):

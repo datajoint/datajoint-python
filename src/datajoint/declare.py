@@ -850,7 +850,8 @@ def compile_attribute(
     else:
         if match["default"]:
             quote = match["default"].split("(")[0].upper() not in CONSTANT_LITERALS and match["default"][0] not in "\"'"
-            match["default"] = "NOT NULL DEFAULT " + ('"%s"' if quote else "%s") % match["default"]
+            # Use single quotes for default values (works for both MySQL and PostgreSQL)
+            match["default"] = "NOT NULL DEFAULT " + ("'%s'" if quote else "%s") % match["default"]
         else:
             match["default"] = "NOT NULL"
 
