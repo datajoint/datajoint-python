@@ -153,7 +153,7 @@ class QueryExpression:
         """
         return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
-            fields=self.heading.as_sql(fields or self.heading.names),
+            fields=self.heading.as_sql(fields or self.heading.names, adapter=self.connection.adapter),
             from_=self.from_clause(),
             where=self.where_clause(),
             sorting=self.sorting_clauses(),
@@ -881,9 +881,10 @@ class QueryExpression:
         has_left_join = any(is_left for is_left, _ in result._joins)
 
         # Build COUNT query - PostgreSQL requires different syntax for multi-column DISTINCT
+        adapter = result.connection.adapter
         if has_left_join or len(result.primary_key) > 1:
             # Use subquery with DISTINCT for multi-column primary keys (backend-agnostic)
-            fields = result.heading.as_sql(result.primary_key, include_aliases=False)
+            fields = result.heading.as_sql(result.primary_key, include_aliases=False, adapter=adapter)
             query = (
                 f"SELECT count(*) FROM ("
                 f"SELECT DISTINCT {fields} FROM {result.from_clause()}{result.where_clause()}"
@@ -891,7 +892,7 @@ class QueryExpression:
             )
         else:
             # Single column - can use count(DISTINCT col) directly
-            fields = result.heading.as_sql(result.primary_key, include_aliases=False)
+            fields = result.heading.as_sql(result.primary_key, include_aliases=False, adapter=adapter)
             query = f"SELECT count(DISTINCT {fields}) FROM {result.from_clause()}{result.where_clause()}"
 
         return result.connection.query(query).fetchone()[0]
@@ -1018,7 +1019,7 @@ class Aggregation(QueryExpression):
         return "" if not self._left_restrict else " WHERE (%s)" % ")AND(".join(str(s) for s in self._left_restrict)
 
     def make_sql(self, fields=None):
-        fields = self.heading.as_sql(fields or self.heading.names)
+        fields = self.heading.as_sql(fields or self.heading.names, adapter=self.connection.adapter)
         assert self._grouping_attributes or not self.restriction
         distinct = set(self.heading.names) == set(self.primary_key)
         return "SELECT {distinct}{fields} FROM {from_}{where}{group_by}{sorting}".format(

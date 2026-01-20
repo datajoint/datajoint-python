@@ -322,7 +322,7 @@ class Heading:
         """
         return np.dtype(dict(names=self.names, formats=[v.dtype for v in self.attributes.values()]))
 
-    def as_sql(self, fields: list[str], include_aliases: bool = True) -> str:
+    def as_sql(self, fields: list[str], include_aliases: bool = True, adapter=None) -> str:
         """
         Generate SQL SELECT clause for specified fields.
 
@@ -332,6 +332,9 @@ class Heading:
             Attribute names to include.
         include_aliases : bool, optional
             Include AS clauses for computed attributes. Default True.
+        adapter : DatabaseAdapter, optional
+            Database adapter for identifier quoting. If not provided, attempts
+            to get from table_info connection.
 
         Returns
         -------
@@ -339,12 +342,12 @@ class Heading:
             Comma-separated SQL field list.
         """
         # Get adapter for proper identifier quoting
-        adapter = None
-        if self.table_info and "conn" in self.table_info and self.table_info["conn"]:
+        if adapter is None and self.table_info and "conn" in self.table_info and self.table_info["conn"]:
             adapter = self.table_info["conn"].adapter
 
         def quote(name):
-            return adapter.quote_identifier(name) if adapter else f"`{name}`"
+            # Use adapter if available, otherwise use ANSI SQL double quotes (not backticks)
+            return adapter.quote_identifier(name) if adapter else f'"{name}"'
 
         return ",".join(
             (
