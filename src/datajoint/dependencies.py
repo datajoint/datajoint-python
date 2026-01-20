@@ -157,53 +157,93 @@ class Dependencies(nx.DiGraph):
         # Build schema list for IN clause
         schemas_list = ", ".join(adapter.quote_string(s) for s in self._conn.schemas)
 
-        # Backend-specific table name concatenation
-        # MySQL: concat('`', table_schema, '`.`', table_name, '`')
-        # PostgreSQL: '"' || table_schema || '"."' || table_name || '"'
-        # Note: MySQL uses %% to escape % in LIKE patterns (PyMySQL format strings)
-        if adapter.backend == "mysql":
-            tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
-            ref_tab_expr = "concat('`', referenced_table_schema, '`.`', referenced_table_name, '`')"
-            like_pattern = "'~%%'"  # Double %% for PyMySQL escaping
-        else:
-            # PostgreSQL
-            tab_expr = "'\"' || table_schema || '\".\"' || table_name || '\"'"
-            ref_tab_expr = "'\"' || referenced_table_schema || '\".\"' || referenced_table_name || '\"'"
-            like_pattern = "'~%%'"  # psycopg2 also uses %s placeholders, so escape %
+        # Backend-specific queries for primary keys and foreign keys
+        # Note: Both PyMySQL and psycopg2 use %s placeholders, so escape % as %%
+        like_pattern = "'~%%'"
 
-        # load primary key info
-        keys = self._conn.query(
-            f"""
-                SELECT
-                    {tab_expr} as tab, column_name
+        if adapter.backend == "mysql":
+            # MySQL: use concat() and MySQL-specific information_schema columns
+            tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
+
+            # load primary key info (MySQL uses constraint_name='PRIMARY')
+            keys = self._conn.query(
+                f"""
+                SELECT {tab_expr} as tab, column_name
                 FROM information_schema.key_column_usage
-                WHERE table_name NOT LIKE {like_pattern} AND table_schema in ({schemas_list}) AND constraint_name='PRIMARY'
+                WHERE table_name NOT LIKE {like_pattern}
+                    AND table_schema in ({schemas_list})
+                    AND constraint_name='PRIMARY'
                 """
-        )
-        pks = defaultdict(set)
-        for key in keys:
-            pks[key[0]].add(key[1])
+            )
+            pks = defaultdict(set)
+            for key in keys:
+                pks[key[0]].add(key[1])
+
+            # load foreign keys (MySQL has referenced_* columns)
+            ref_tab_expr = "concat('`', referenced_table_schema, '`.`', referenced_table_name, '`')"
+            fk_keys = self._conn.query(
+                f"""
+                SELECT constraint_name,
+                    {tab_expr} as referencing_table,
+                    {ref_tab_expr} as referenced_table,
+                    column_name, referenced_column_name
+                FROM information_schema.key_column_usage
+                WHERE referenced_table_name NOT LIKE {like_pattern}
+                    AND (referenced_table_schema in ({schemas_list})
+                         OR referenced_table_schema is not NULL AND table_schema in ({schemas_list}))
+                """,
+                as_dict=True,
+            )
+        else:
+            # PostgreSQL: use || concatenation and different query structure
+            tab_expr = "'\"' || kcu.table_schema || '\".\"' || kcu.table_name || '\"'"
+
+            # load primary key info (PostgreSQL uses constraint_type='PRIMARY KEY')
+            keys = self._conn.query(
+                f"""
+                SELECT {tab_expr} as tab, kcu.column_name
+                FROM information_schema.key_column_usage kcu
+                JOIN information_schema.table_constraints tc
+                    ON kcu.constraint_name = tc.constraint_name
+                    AND kcu.table_schema = tc.table_schema
+                WHERE kcu.table_name NOT LIKE {like_pattern}
+                    AND kcu.table_schema in ({schemas_list})
+                    AND tc.constraint_type = 'PRIMARY KEY'
+                """
+            )
+            pks = defaultdict(set)
+            for key in keys:
+                pks[key[0]].add(key[1])
+
+            # load foreign keys (PostgreSQL requires joining multiple tables)
+            ref_tab_expr = "'\"' || ccu.table_schema || '\".\"' || ccu.table_name || '\"'"
+            fk_keys = self._conn.query(
+                f"""
+                SELECT kcu.constraint_name,
+                    {tab_expr} as referencing_table,
+                    {ref_tab_expr} as referenced_table,
+                    kcu.column_name, ccu.column_name as referenced_column_name
+                FROM information_schema.key_column_usage kcu
+                JOIN information_schema.referential_constraints rc
+                    ON kcu.constraint_name = rc.constraint_name
+                    AND kcu.constraint_schema = rc.constraint_schema
+                JOIN information_schema.constraint_column_usage ccu
+                    ON rc.unique_constraint_name = ccu.constraint_name
+                    AND rc.unique_constraint_schema = ccu.constraint_schema
+                WHERE kcu.table_name NOT LIKE {like_pattern}
+                    AND (ccu.table_schema in ({schemas_list})
+                         OR kcu.table_schema in ({schemas_list}))
+                ORDER BY kcu.constraint_name, kcu.ordinal_position
+                """,
+                as_dict=True,
+            )
 
         # add nodes to the graph
         for n, pk in pks.items():
             self.add_node(n, primary_key=pk)
 
-        # load foreign keys
-        keys = (
-            {k.lower(): v for k, v in elem.items()}
-            for elem in self._conn.query(
-                f"""
-        SELECT constraint_name,
-            {tab_expr} as referencing_table,
-            {ref_tab_expr} as referenced_table,
-            column_name, referenced_column_name
-        FROM information_schema.key_column_usage
-        WHERE referenced_table_name NOT LIKE {like_pattern} AND (referenced_table_schema in ({schemas_list}) OR
-            referenced_table_schema is not NULL AND table_schema in ({schemas_list}))
-        """,
-                as_dict=True,
-            )
-        )
+        # Process foreign keys (same for both backends)
+        keys = ({k.lower(): v for k, v in elem.items()} for elem in fk_keys)
         fks = defaultdict(lambda: dict(attr_map=dict()))
         for key in keys:
             d = fks[
