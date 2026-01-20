@@ -1248,3 +1248,74 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """
         type_name = f"{schema}_{table}_{column}_enum"
         return f"DROP TYPE IF EXISTS {self.quote_identifier(type_name)} CASCADE"
+
+    def get_table_enum_types_sql(self, schema_name: str, table_name: str) -> str:
+        """
+        Query to get enum types used by a table's columns.
+
+        Parameters
+        ----------
+        schema_name : str
+            Schema name.
+        table_name : str
+            Table name.
+
+        Returns
+        -------
+        str
+            SQL query that returns enum type names (schema-qualified).
+        """
+        return f"""
+            SELECT DISTINCT
+                n.nspname || '.' || t.typname as enum_type
+            FROM pg_catalog.pg_type t
+            JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+            JOIN pg_catalog.pg_attribute a ON a.atttypid = t.oid
+            JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+            JOIN pg_catalog.pg_namespace cn ON cn.oid = c.relnamespace
+            WHERE t.typtype = 'e'
+            AND cn.nspname = {self.quote_string(schema_name)}
+            AND c.relname = {self.quote_string(table_name)}
+        """
+
+    def drop_enum_types_for_table(self, schema_name: str, table_name: str) -> list[str]:
+        """
+        Generate DROP TYPE statements for all enum types used by a table.
+
+        Parameters
+        ----------
+        schema_name : str
+            Schema name.
+        table_name : str
+            Table name.
+
+        Returns
+        -------
+        list[str]
+            List of DROP TYPE IF EXISTS statements.
+        """
+        # Returns list of DDL statements - caller should execute query first
+        # to get actual enum types, then call this with results
+        return []  # Placeholder - actual implementation requires query execution
+
+    def drop_enum_type_ddl(self, enum_type_name: str) -> str:
+        """
+        Generate DROP TYPE IF EXISTS statement for a PostgreSQL enum.
+
+        Parameters
+        ----------
+        enum_type_name : str
+            Fully qualified enum type name (schema.typename).
+
+        Returns
+        -------
+        str
+            DROP TYPE IF EXISTS statement with CASCADE.
+        """
+        # Split schema.typename and quote each part
+        parts = enum_type_name.split(".")
+        if len(parts) == 2:
+            qualified_name = f"{self.quote_identifier(parts[0])}.{self.quote_identifier(parts[1])}"
+        else:
+            qualified_name = self.quote_identifier(enum_type_name)
+        return f"DROP TYPE IF EXISTS {qualified_name} CASCADE"
