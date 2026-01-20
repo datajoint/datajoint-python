@@ -151,13 +151,12 @@ class PostgreSQLAdapter(DatabaseAdapter):
             register_adapter(np.bool_, lambda x: AsIs(str(bool(x)).upper()))
 
             # Numpy integer types
-            for np_type in (np.int8, np.int16, np.int32, np.int64,
-                            np.uint8, np.uint16, np.uint32, np.uint64):
+            for np_type in (np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64):
                 register_adapter(np_type, lambda x: AsIs(int(x)))
 
             # Numpy float types
-            for np_type in (np.float16, np.float32, np.float64):
-                register_adapter(np_type, lambda x: AsIs(repr(float(x))))
+            for np_ftype in (np.float16, np.float32, np.float64):
+                register_adapter(np_ftype, lambda x: AsIs(repr(float(x))))
 
         except ImportError:
             pass  # numpy not available
@@ -734,11 +733,15 @@ class PostgreSQLAdapter(DatabaseAdapter):
         return sql
 
     def get_table_info_sql(self, schema_name: str, table_name: str) -> str:
-        """Query to get table metadata."""
+        """Query to get table metadata including table comment."""
+        schema_str = self.quote_string(schema_name)
+        table_str = self.quote_string(table_name)
+        regclass_expr = f"({schema_str} || '.' || {table_str})::regclass"
         return (
-            f"SELECT * FROM information_schema.tables "
-            f"WHERE table_schema = {self.quote_string(schema_name)} "
-            f"AND table_name = {self.quote_string(table_name)}"
+            f"SELECT t.*, obj_description({regclass_expr}, 'pg_class') as table_comment "
+            f"FROM information_schema.tables t "
+            f"WHERE t.table_schema = {schema_str} "
+            f"AND t.table_name = {table_str}"
         )
 
     def get_columns_sql(self, schema_name: str, table_name: str) -> str:

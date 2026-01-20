@@ -1026,11 +1026,7 @@ class Aggregation(QueryExpression):
 
         # PostgreSQL doesn't allow column aliases in HAVING clause (SQL standard).
         # For PostgreSQL with restrictions, wrap aggregation in subquery and use WHERE.
-        use_subquery_for_having = (
-            adapter.backend == "postgresql"
-            and self.restriction
-            and self._grouping_attributes
-        )
+        use_subquery_for_having = adapter.backend == "postgresql" and self.restriction and self._grouping_attributes
 
         if use_subquery_for_having:
             # Generate inner query without HAVING
@@ -1039,9 +1035,7 @@ class Aggregation(QueryExpression):
                 fields=fields,
                 from_=self.from_clause(),
                 where=self.where_clause(),
-                group_by=" GROUP BY {}".format(
-                    ", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes)
-                ),
+                group_by=" GROUP BY {}".format(", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes)),
             )
             # Wrap in subquery with WHERE for the HAVING conditions
             subquery_alias = adapter.quote_identifier(f"_aggr{next(self._subquery_alias_count)}")
@@ -1058,9 +1052,7 @@ class Aggregation(QueryExpression):
                     ""
                     if not self.primary_key
                     else (
-                        " GROUP BY {}".format(
-                            ", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes)
-                        )
+                        " GROUP BY {}".format(", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes))
                         + ("" if not self.restriction else " HAVING (%s)" % ")AND(".join(self.restriction))
                     )
                 ),
