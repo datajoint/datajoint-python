@@ -880,6 +880,19 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def current_user_expr(self) -> str:
+        """
+        SQL expression to get the current user.
+
+        Returns
+        -------
+        str
+            SQL expression for current user (e.g., 'user()' for MySQL,
+            'current_user' for PostgreSQL).
+        """
+        ...
+
+    @abstractmethod
     def json_path_expr(self, column: str, path: str, return_type: str | None = None) -> str:
         """
         Generate JSON path extraction expression.

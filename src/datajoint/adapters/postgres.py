@@ -907,6 +907,10 @@ class PostgreSQLAdapter(DatabaseAdapter):
         unit_plural = unit.lower() + "s" if not unit.endswith("s") else unit.lower()
         return f"INTERVAL '{value} {unit_plural}'"
 
+    def current_user_expr(self) -> str:
+        """PostgreSQL current user expression."""
+        return "current_user"
+
     def json_path_expr(self, column: str, path: str, return_type: str | None = None) -> str:
         """
         Generate PostgreSQL jsonb_extract_path_text() expression.

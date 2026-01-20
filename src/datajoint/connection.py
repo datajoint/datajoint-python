@@ -451,7 +451,7 @@ class Connection:
         str
             User name and host as ``'user@host'``.
         """
-        return self.query("SELECT user()").fetchone()[0]
+        return self.query(f"SELECT {self.adapter.current_user_expr()}").fetchone()[0]
 
     # ---------- transaction processing
     @property

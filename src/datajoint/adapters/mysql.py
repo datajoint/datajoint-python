@@ -783,6 +783,10 @@ class MySQLAdapter(DatabaseAdapter):
         # MySQL uses singular unit names
         return f"INTERVAL {value} {unit.upper()}"
 
+    def current_user_expr(self) -> str:
+        """MySQL current user expression."""
+        return "user()"
+
     def json_path_expr(self, column: str, path: str, return_type: str | None = None) -> str:
         """
         Generate MySQL json_value() expression.
