@@ -102,10 +102,11 @@ class TableMeta(type):
 
     @property
     def full_table_name(cls):
-        """The fully qualified table name (`database`.`table`)."""
+        """The fully qualified table name (quoted per backend)."""
         if cls.database is None:
             return None
-        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+        adapter = cls._connection.adapter
+        return f"{adapter.quote_identifier(cls.database)}.{adapter.quote_identifier(cls.table_name)}"
 
 
 class UserTable(Table, metaclass=TableMeta):
