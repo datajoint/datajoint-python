@@ -160,13 +160,16 @@ class Dependencies(nx.DiGraph):
         # Backend-specific table name concatenation
         # MySQL: concat('`', table_schema, '`.`', table_name, '`')
         # PostgreSQL: '"' || table_schema || '"."' || table_name || '"'
+        # Note: MySQL uses %% to escape % in LIKE patterns (PyMySQL format strings)
         if adapter.backend == "mysql":
             tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
             ref_tab_expr = "concat('`', referenced_table_schema, '`.`', referenced_table_name, '`')"
+            like_pattern = "'~%%'"  # Double %% for PyMySQL escaping
         else:
             # PostgreSQL
             tab_expr = "'\"' || table_schema || '\".\"' || table_name || '\"'"
             ref_tab_expr = "'\"' || referenced_table_schema || '\".\"' || referenced_table_name || '\"'"
+            like_pattern = "'~%'"  # PostgreSQL doesn't need escaping
 
         # load primary key info
         keys = self._conn.query(
@@ -174,7 +177,7 @@ class Dependencies(nx.DiGraph):
                 SELECT
                     {tab_expr} as tab, column_name
                 FROM information_schema.key_column_usage
-                WHERE table_name NOT LIKE '~%' AND table_schema in ({schemas_list}) AND constraint_name='PRIMARY'
+                WHERE table_name NOT LIKE {like_pattern} AND table_schema in ({schemas_list}) AND constraint_name='PRIMARY'
                 """
         )
         pks = defaultdict(set)
@@ -195,7 +198,7 @@ class Dependencies(nx.DiGraph):
             {ref_tab_expr} as referenced_table,
             column_name, referenced_column_name
         FROM information_schema.key_column_usage
-        WHERE referenced_table_name NOT LIKE '~%' AND (referenced_table_schema in ({schemas_list}) OR
+        WHERE referenced_table_name NOT LIKE {like_pattern} AND (referenced_table_schema in ({schemas_list}) OR
             referenced_table_schema is not NULL AND table_schema in ({schemas_list}))
         """,
                 as_dict=True,
