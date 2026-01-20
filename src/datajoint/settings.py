@@ -194,7 +194,7 @@ class DatabaseSettings(BaseSettings):
     )
     port: int | None = Field(default=None, validation_alias="DJ_PORT")
     reconnect: bool = True
-    use_tls: bool | None = None
+    use_tls: bool | None = Field(default=None, validation_alias="DJ_USE_TLS")
 
     @model_validator(mode="after")
     def set_default_port_from_backend(self) -> "DatabaseSettings":
