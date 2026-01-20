@@ -1052,9 +1052,31 @@ class Table(QueryExpression):
 
             delete_table_lineages(self.connection, self.database, self.table_name)
 
+            # For PostgreSQL, get enum types used by this table before dropping
+            # (we need to query this before the table is dropped)
+            enum_types_to_drop = []
+            adapter = self.connection.adapter
+            if hasattr(adapter, "get_table_enum_types_sql"):
+                try:
+                    enum_query = adapter.get_table_enum_types_sql(self.database, self.table_name)
+                    result = self.connection.query(enum_query)
+                    enum_types_to_drop = [row[0] for row in result.fetchall()]
+                except Exception:
+                    pass  # Ignore errors - enum cleanup is best-effort
+
             query = "DROP TABLE %s" % self.full_table_name
             self.connection.query(query)
             logger.info("Dropped table %s" % self.full_table_name)
+
+            # For PostgreSQL, clean up enum types after dropping the table
+            if enum_types_to_drop and hasattr(adapter, "drop_enum_type_ddl"):
+                for enum_type in enum_types_to_drop:
+                    try:
+                        drop_ddl = adapter.drop_enum_type_ddl(enum_type)
+                        self.connection.query(drop_ddl)
+                        logger.debug("Dropped enum type %s" % enum_type)
+                    except Exception:
+                        pass  # Ignore errors - type may be used by other tables
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
