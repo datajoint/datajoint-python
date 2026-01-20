@@ -309,6 +309,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
                 # Generate a deterministic type name based on values
                 # Use a hash to keep name reasonable length
                 import hashlib
+
                 value_hash = hashlib.md5("_".join(sorted(values)).encode()).hexdigest()[:8]
                 type_name = f"enum_{value_hash}"
                 # Track this enum type for CREATE TYPE DDL
@@ -703,13 +704,16 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """Query to get column definitions including comments."""
         # Use col_description() to retrieve column comments stored via COMMENT ON COLUMN
         # The regclass cast allows using schema.table notation to get the OID
+        schema_str = self.quote_string(schema_name)
+        table_str = self.quote_string(table_name)
+        regclass_expr = f"({schema_str} || '.' || {table_str})::regclass"
         return (
             f"SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, "
             f"c.character_maximum_length, c.numeric_precision, c.numeric_scale, "
-            f"col_description(({self.quote_string(schema_name)} || '.' || {self.quote_string(table_name)})::regclass, c.ordinal_position) as column_comment "
+            f"col_description({regclass_expr}, c.ordinal_position) as column_comment "
             f"FROM information_schema.columns c "
-            f"WHERE c.table_schema = {self.quote_string(schema_name)} "
-            f"AND c.table_name = {self.quote_string(table_name)} "
+            f"WHERE c.table_schema = {schema_str} "
+            f"AND c.table_name = {table_str} "
             f"ORDER BY c.ordinal_position"
         )
 

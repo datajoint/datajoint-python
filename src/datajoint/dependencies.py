@@ -153,7 +153,6 @@ class Dependencies(nx.DiGraph):
 
         # Get adapter for backend-specific SQL generation
         adapter = self._conn.adapter
-        quote = adapter.quote_identifier
 
         # Build schema list for IN clause
         schemas_list = ", ".join(adapter.quote_string(s) for s in self._conn.schemas)
