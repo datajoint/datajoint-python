@@ -703,17 +703,26 @@ class AutoPopulate:
             todo_sql = todo.make_sql()
             target_sql = self.make_sql()
 
+            # Get adapter for backend-specific quoting
+            adapter = self.connection.adapter
+            q = adapter.quote_identifier
+
+            # Alias names for subqueries
+            ks_alias = q("$ks")
+            tgt_alias = q("$tgt")
+
             # Build join condition on common attributes
-            join_cond = " AND ".join(f"`$ks`.`{attr}` = `$tgt`.`{attr}`" for attr in common_attrs)
+            join_cond = " AND ".join(f"{ks_alias}.{q(attr)} = {tgt_alias}.{q(attr)}" for attr in common_attrs)
 
             # Build DISTINCT key expression for counting unique jobs
-            # Use CONCAT for composite keys to create a single distinct value
+            # Use CONCAT_WS for composite keys (supported by both MySQL and PostgreSQL)
             if len(pk_attrs) == 1:
-                distinct_key = f"`$ks`.`{pk_attrs[0]}`"
-                null_check = f"`$tgt`.`{common_attrs[0]}`"
+                distinct_key = f"{ks_alias}.{q(pk_attrs[0])}"
+                null_check = f"{tgt_alias}.{q(common_attrs[0])}"
             else:
-                distinct_key = "CONCAT_WS('|', {})".format(", ".join(f"`$ks`.`{attr}`" for attr in pk_attrs))
-                null_check = f"`$tgt`.`{common_attrs[0]}`"
+                key_cols = ", ".join(f"{ks_alias}.{q(attr)}" for attr in pk_attrs)
+                distinct_key = f"CONCAT_WS('|', {key_cols})"
+                null_check = f"{tgt_alias}.{q(common_attrs[0])}"
 
             # Single aggregation query:
             # - COUNT(DISTINCT key) gives total unique jobs in key_source
@@ -722,8 +731,8 @@ class AutoPopulate:
                 SELECT
                     COUNT(DISTINCT {distinct_key}) AS total,
                     COUNT(DISTINCT CASE WHEN {null_check} IS NULL THEN {distinct_key} END) AS remaining
-                FROM ({todo_sql}) AS `$ks`
-                LEFT JOIN ({target_sql}) AS `$tgt` ON {join_cond}
+                FROM ({todo_sql}) AS {ks_alias}
+                LEFT JOIN ({target_sql}) AS {tgt_alias} ON {join_cond}
             """
 
             result = self.connection.query(sql).fetchone()
