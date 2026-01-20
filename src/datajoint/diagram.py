@@ -134,7 +134,8 @@ else:
                     except AttributeError:
                         raise DataJointError("Cannot plot Diagram for %s" % repr(source))
                 for node in self:
-                    if node.startswith("`%s`" % database):
+                    # Handle both MySQL backticks and PostgreSQL double quotes
+                    if node.startswith("`%s`" % database) or node.startswith('"%s"' % database):
                         self.nodes_to_show.add(node)
 
         @classmethod

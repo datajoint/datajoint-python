@@ -572,11 +572,12 @@ class Heading:
                 nullable=nullable,
             )
         self.indexes = {
-            tuple(item[k]["column"] for k in sorted(item.keys())): dict(
+            tuple(item[k]["column"] for k in sorted(item.keys()) if item[k]["column"] is not None): dict(
                 unique=item[1]["unique"],
                 nullable=any(v["nullable"] for v in item.values()),
             )
             for item in keys.values()
+            if any(item[k]["column"] is not None for k in item.keys())
         }
 
     def select(self, select_list, rename_map=None, compute_map=None):

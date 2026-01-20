@@ -1143,7 +1143,7 @@ class Table(QueryExpression):
         definition = "# " + self.heading.table_status["comment"] + "\n" if self.heading.table_status["comment"] else ""
         attributes_thus_far = set()
         attributes_declared = set()
-        indexes = self.heading.indexes.copy()
+        indexes = self.heading.indexes.copy() if self.heading.indexes else {}
         for attr in self.heading.attributes.values():
             if in_key and not attr.in_key:
                 definition += "---\n"

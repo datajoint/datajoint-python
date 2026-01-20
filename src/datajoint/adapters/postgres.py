@@ -1046,6 +1046,36 @@ class PostgreSQLAdapter(DatabaseAdapter):
 
         expr = re.sub(r"GROUP_CONCAT\s*\((.+?)\)", replace_group_concat, expr, flags=re.IGNORECASE)
 
+        # TIMESTAMPDIFF(YEAR, d1, d2) → EXTRACT(YEAR FROM AGE(d2, d1))::int
+        # TIMESTAMPDIFF(MONTH, d1, d2) → year*12 + month from AGE
+        # TIMESTAMPDIFF(DAY, d1, d2) → (d2::date - d1::date)
+        def replace_timestampdiff(match):
+            unit = match.group(1).upper()
+            date1 = match.group(2).strip()
+            date2 = match.group(3).strip()
+            if unit == "YEAR":
+                return f"EXTRACT(YEAR FROM AGE({date2}, {date1}))::int"
+            elif unit == "MONTH":
+                return f"(EXTRACT(YEAR FROM AGE({date2}, {date1})) * 12 + EXTRACT(MONTH FROM AGE({date2}, {date1})))::int"
+            elif unit == "DAY":
+                return f"({date2}::date - {date1}::date)"
+            else:
+                # For other units, fall back to extracting from interval
+                return f"EXTRACT({unit} FROM AGE({date2}, {date1}))::int"
+
+        expr = re.sub(
+            r"TIMESTAMPDIFF\s*\(\s*(\w+)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)",
+            replace_timestampdiff,
+            expr,
+            flags=re.IGNORECASE,
+        )
+
+        # CURDATE() → CURRENT_DATE
+        expr = re.sub(r"CURDATE\s*\(\s*\)", "CURRENT_DATE", expr, flags=re.IGNORECASE)
+
+        # NOW() → CURRENT_TIMESTAMP (already works but ensure compatibility)
+        expr = re.sub(r"\bNOW\s*\(\s*\)", "CURRENT_TIMESTAMP", expr, flags=re.IGNORECASE)
+
         return expr
 
     # =========================================================================
