@@ -953,7 +953,7 @@ class Table(QueryExpression):
                     else:
                         child &= table.proj()
 
-                    master_name = get_master(child.full_table_name)
+                    master_name = get_master(child.full_table_name, table.connection.adapter)
                     if (
                         part_integrity == "cascade"
                         and master_name
@@ -1009,7 +1009,7 @@ class Table(QueryExpression):
         if part_integrity == "enforce":
             # Avoid deleting from part before master (See issue #151)
             for part in deleted:
-                master = get_master(part)
+                master = get_master(part, self.connection.adapter)
                 if master and master not in deleted:
                     if transaction:
                         self.connection.cancel_transaction()
@@ -1100,7 +1100,7 @@ class Table(QueryExpression):
 
         # avoid dropping part tables without their masters: See issue #374
         for part in tables:
-            master = get_master(part)
+            master = get_master(part, self.connection.adapter)
             if master and master not in tables:
                 raise DataJointError(
                     "Attempt to drop part table {part} before dropping its master. Drop {master} first.".format(

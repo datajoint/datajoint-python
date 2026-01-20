@@ -238,6 +238,13 @@ class PostgreSQLAdapter(DatabaseAdapter):
         escaped = value.replace("'", "''")
         return f"'{escaped}'"
 
+    def get_master_table_name(self, part_table: str) -> str | None:
+        """Extract master table name from part table (PostgreSQL double-quote format)."""
+        import re
+        # PostgreSQL format: "schema"."master__part"
+        match = re.match(r'(?P<master>"\w+"."#?\w+)__\w+"', part_table)
+        return match["master"] + '"' if match else None
+
     @property
     def parameter_placeholder(self) -> str:
         """PostgreSQL/psycopg2 uses %s placeholders."""

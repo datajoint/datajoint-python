@@ -186,6 +186,24 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    @abstractmethod
+    def get_master_table_name(self, part_table: str) -> str | None:
+        """
+        Extract master table name from a part table name.
+
+        Parameters
+        ----------
+        part_table : str
+            Full table name (e.g., `schema`.`master__part` for MySQL,
+            "schema"."master__part" for PostgreSQL).
+
+        Returns
+        -------
+        str or None
+            Master table name if part_table is a part table, None otherwise.
+        """
+        ...
+
     @property
     @abstractmethod
     def parameter_placeholder(self) -> str:
