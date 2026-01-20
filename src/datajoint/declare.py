@@ -849,9 +849,22 @@ def compile_attribute(
         match["default"] = "DEFAULT NULL"  # nullable attributes default to null
     else:
         if match["default"]:
-            quote = match["default"].split("(")[0].upper() not in CONSTANT_LITERALS and match["default"][0] not in "\"'"
-            # Use single quotes for default values (works for both MySQL and PostgreSQL)
-            match["default"] = "NOT NULL DEFAULT " + ("'%s'" if quote else "%s") % match["default"]
+            default_val = match["default"]
+            base_val = default_val.split("(")[0].upper()
+
+            if base_val in CONSTANT_LITERALS:
+                # SQL constants like NULL, CURRENT_TIMESTAMP - use as-is
+                match["default"] = f"NOT NULL DEFAULT {default_val}"
+            elif default_val.startswith('"') and default_val.endswith('"'):
+                # Double-quoted string - convert to single quotes for PostgreSQL
+                inner = default_val[1:-1].replace("'", "''")  # Escape single quotes
+                match["default"] = f"NOT NULL DEFAULT '{inner}'"
+            elif default_val.startswith("'"):
+                # Already single-quoted - use as-is
+                match["default"] = f"NOT NULL DEFAULT {default_val}"
+            else:
+                # Unquoted value - wrap in single quotes
+                match["default"] = f"NOT NULL DEFAULT '{default_val}'"
         else:
             match["default"] = "NOT NULL"
 
