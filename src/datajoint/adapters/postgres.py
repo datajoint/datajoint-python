@@ -1046,9 +1046,24 @@ class PostgreSQLAdapter(DatabaseAdapter):
 
         expr = re.sub(r"GROUP_CONCAT\s*\((.+?)\)", replace_group_concat, expr, flags=re.IGNORECASE)
 
+        # Replace simple functions FIRST before complex patterns
+        # CURDATE() → CURRENT_DATE
+        expr = re.sub(r"CURDATE\s*\(\s*\)", "CURRENT_DATE", expr, flags=re.IGNORECASE)
+
+        # NOW() → CURRENT_TIMESTAMP
+        expr = re.sub(r"\bNOW\s*\(\s*\)", "CURRENT_TIMESTAMP", expr, flags=re.IGNORECASE)
+
+        # YEAR(date) → EXTRACT(YEAR FROM date)::int
+        expr = re.sub(r"\bYEAR\s*\(\s*([^)]+)\s*\)", r"EXTRACT(YEAR FROM \1)::int", expr, flags=re.IGNORECASE)
+
+        # MONTH(date) → EXTRACT(MONTH FROM date)::int
+        expr = re.sub(r"\bMONTH\s*\(\s*([^)]+)\s*\)", r"EXTRACT(MONTH FROM \1)::int", expr, flags=re.IGNORECASE)
+
+        # DAY(date) → EXTRACT(DAY FROM date)::int
+        expr = re.sub(r"\bDAY\s*\(\s*([^)]+)\s*\)", r"EXTRACT(DAY FROM \1)::int", expr, flags=re.IGNORECASE)
+
         # TIMESTAMPDIFF(YEAR, d1, d2) → EXTRACT(YEAR FROM AGE(d2, d1))::int
-        # TIMESTAMPDIFF(MONTH, d1, d2) → year*12 + month from AGE
-        # TIMESTAMPDIFF(DAY, d1, d2) → (d2::date - d1::date)
+        # Use a more robust regex that handles the comma-separated arguments
         def replace_timestampdiff(match):
             unit = match.group(1).upper()
             date1 = match.group(2).strip()
@@ -1060,21 +1075,27 @@ class PostgreSQLAdapter(DatabaseAdapter):
             elif unit == "DAY":
                 return f"({date2}::date - {date1}::date)"
             else:
-                # For other units, fall back to extracting from interval
                 return f"EXTRACT({unit} FROM AGE({date2}, {date1}))::int"
 
+        # Match TIMESTAMPDIFF with proper argument parsing
+        # The arguments are: unit, date1, date2 - we need to handle identifiers and CURRENT_DATE
         expr = re.sub(
-            r"TIMESTAMPDIFF\s*\(\s*(\w+)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)",
+            r"TIMESTAMPDIFF\s*\(\s*(\w+)\s*,\s*([^,]+)\s*,\s*([^)]+)\s*\)",
             replace_timestampdiff,
             expr,
             flags=re.IGNORECASE,
         )
 
-        # CURDATE() → CURRENT_DATE
-        expr = re.sub(r"CURDATE\s*\(\s*\)", "CURRENT_DATE", expr, flags=re.IGNORECASE)
+        # SUM(expr='value') → SUM((expr='value')::int) for PostgreSQL boolean handling
+        # This handles patterns like SUM(sex='F') which produce boolean in PostgreSQL
+        def replace_sum_comparison(match):
+            inner = match.group(1).strip()
+            # Check if inner contains a comparison operator
+            if re.search(r"[=<>!]", inner) and not inner.startswith("("):
+                return f"SUM(({inner})::int)"
+            return match.group(0)  # Return unchanged if no comparison
 
-        # NOW() → CURRENT_TIMESTAMP (already works but ensure compatibility)
-        expr = re.sub(r"\bNOW\s*\(\s*\)", "CURRENT_TIMESTAMP", expr, flags=re.IGNORECASE)
+        expr = re.sub(r"\bSUM\s*\(\s*([^)]+)\s*\)", replace_sum_comparison, expr, flags=re.IGNORECASE)
 
         return expr
 
