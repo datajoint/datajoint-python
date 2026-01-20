@@ -309,7 +309,7 @@ def compile_foreign_key(
 
 def prepare_declare(
     definition: str, context: dict, adapter
-) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]]]:
+) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]], dict[str, str]]:
     """
     Parse a table definition into its components.
 
@@ -325,7 +325,7 @@ def prepare_declare(
     Returns
     -------
     tuple
-        Seven-element tuple containing:
+        Eight-element tuple containing:
 
         - table_comment : str
         - primary_key : list[str]
@@ -334,6 +334,7 @@ def prepare_declare(
         - index_sql : list[str]
         - external_stores : list[str]
         - fk_attribute_map : dict[str, tuple[str, str]]
+        - column_comments : dict[str, str] - Column name to comment mapping
     """
     # split definition into lines
     definition = re.split(r"\s*\n\s*", definition.strip())
@@ -349,6 +350,7 @@ def prepare_declare(
     index_sql = []
     external_stores = []
     fk_attribute_map = {}  # child_attr -> (parent_table, parent_attr)
+    column_comments = {}  # column_name -> comment (for PostgreSQL COMMENT ON)
 
     for line in definition:
         if not line or line.startswith("#"):  # ignore additional comments
@@ -370,7 +372,7 @@ def prepare_declare(
         elif re.match(r"^(unique\s+)?index\s*.*$", line, re.I):  # index
             compile_index(line, index_sql, adapter)
         else:
-            name, sql, store = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
+            name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
             if store:
                 external_stores.append(store)
             if in_key and name not in primary_key:
@@ -378,6 +380,8 @@ def prepare_declare(
             if name not in attributes:
                 attributes.append(name)
                 attribute_sql.append(sql)
+                if comment:
+                    column_comments[name] = comment
 
     return (
         table_comment,
@@ -387,6 +391,7 @@ def prepare_declare(
         index_sql,
         external_stores,
         fk_attribute_map,
+        column_comments,
     )
 
 
@@ -450,6 +455,7 @@ def declare(
         index_sql,
         external_stores,
         fk_attribute_map,
+        column_comments,
     ) = prepare_declare(definition, context, adapter)
 
     # Add hidden job metadata for Computed/Imported tables (not parts)
@@ -506,6 +512,13 @@ def declare(
     table_comment_ddl = adapter.table_comment_ddl(full_table_name, table_comment)
     if table_comment_ddl:
         post_ddl.append(table_comment_ddl)
+
+    # Add column-level comments DDL if needed (PostgreSQL)
+    # Column comments contain type specifications like :<blob>:user_comment
+    for col_name, comment in column_comments.items():
+        col_comment_ddl = adapter.column_comment_ddl(full_table_name, col_name, comment)
+        if col_comment_ddl:
+            post_ddl.append(col_comment_ddl)
 
     return sql, external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl
 
@@ -798,7 +811,7 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
 
 def compile_attribute(
     line: str, in_key: bool, foreign_key_sql: list[str], context: dict, adapter
-) -> tuple[str, str, str | None]:
+) -> tuple[str, str, str | None, str | None]:
     """
     Convert an attribute definition from DataJoint format to SQL.
 
@@ -818,11 +831,12 @@ def compile_attribute(
     Returns
     -------
     tuple
-        Three-element tuple:
+        Four-element tuple:
 
         - name : str - Attribute name
         - sql : str - SQL column declaration
         - store : str or None - External store name if applicable
+        - comment : str or None - Column comment (for PostgreSQL COMMENT ON)
 
     Raises
     ------
@@ -900,4 +914,4 @@ def compile_attribute(
         default=match["default"] if match["default"] else None,
         comment=match["comment"] if match["comment"] else None,
     )
-    return match["name"], sql, match.get("store")
+    return match["name"], sql, match.get("store"), match["comment"] if match["comment"] else None
