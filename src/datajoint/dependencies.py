@@ -221,25 +221,31 @@ class Dependencies(nx.DiGraph):
             for key in keys:
                 pks[key[0]].add(key[1])
 
-            # load foreign keys (PostgreSQL requires joining multiple tables)
-            ref_tab_expr = "'\"' || ccu.table_schema || '\".\"' || ccu.table_name || '\"'"
+            # load foreign keys using pg_constraint system catalogs
+            # The information_schema approach creates a Cartesian product for composite FKs
+            # because constraint_column_usage doesn't have ordinal_position.
+            # Using pg_constraint with unnest(conkey, confkey) WITH ORDINALITY gives correct mapping.
             fk_keys = self._conn.query(
                 f"""
-                SELECT kcu.constraint_name,
-                    {tab_expr} as referencing_table,
-                    {ref_tab_expr} as referenced_table,
-                    kcu.column_name, ccu.column_name as referenced_column_name
-                FROM information_schema.key_column_usage kcu
-                JOIN information_schema.referential_constraints rc
-                    ON kcu.constraint_name = rc.constraint_name
-                    AND kcu.constraint_schema = rc.constraint_schema
-                JOIN information_schema.constraint_column_usage ccu
-                    ON rc.unique_constraint_name = ccu.constraint_name
-                    AND rc.unique_constraint_schema = ccu.constraint_schema
-                WHERE kcu.table_name NOT LIKE {like_pattern}
-                    AND (ccu.table_schema in ({schemas_list})
-                         OR kcu.table_schema in ({schemas_list}))
-                ORDER BY kcu.constraint_name, kcu.ordinal_position
+                SELECT
+                    c.conname as constraint_name,
+                    '"' || ns1.nspname || '"."' || cl1.relname || '"' as referencing_table,
+                    '"' || ns2.nspname || '"."' || cl2.relname || '"' as referenced_table,
+                    a1.attname as column_name,
+                    a2.attname as referenced_column_name
+                FROM pg_constraint c
+                JOIN pg_class cl1 ON c.conrelid = cl1.oid
+                JOIN pg_namespace ns1 ON cl1.relnamespace = ns1.oid
+                JOIN pg_class cl2 ON c.confrelid = cl2.oid
+                JOIN pg_namespace ns2 ON cl2.relnamespace = ns2.oid
+                CROSS JOIN LATERAL unnest(c.conkey, c.confkey) WITH ORDINALITY AS cols(conkey, confkey, ord)
+                JOIN pg_attribute a1 ON a1.attrelid = cl1.oid AND a1.attnum = cols.conkey
+                JOIN pg_attribute a2 ON a2.attrelid = cl2.oid AND a2.attnum = cols.confkey
+                WHERE c.contype = 'f'
+                    AND cl1.relname NOT LIKE {like_pattern}
+                    AND (ns2.nspname in ({schemas_list})
+                         OR ns1.nspname in ({schemas_list}))
+                ORDER BY c.conname, cols.ord
                 """,
                 as_dict=True,
             )

@@ -827,6 +827,50 @@ class MySQLAdapter(DatabaseAdapter):
         return_clause = f" returning {return_type}" if return_type else ""
         return f"json_value({quoted_col}, _utf8mb4'$.{path}'{return_clause})"
 
+    def translate_expression(self, expr: str) -> str:
+        """
+        Translate SQL expression for MySQL compatibility.
+
+        Converts PostgreSQL-specific functions to MySQL equivalents:
+        - STRING_AGG(col, 'sep') → GROUP_CONCAT(col SEPARATOR 'sep')
+        - STRING_AGG(col, ',') → GROUP_CONCAT(col)
+
+        Parameters
+        ----------
+        expr : str
+            SQL expression that may contain function calls.
+
+        Returns
+        -------
+        str
+            Translated expression for MySQL.
+        """
+        import re
+
+        # STRING_AGG(col, 'sep') → GROUP_CONCAT(col SEPARATOR 'sep')
+        def replace_string_agg(match):
+            inner = match.group(1).strip()
+            # Parse arguments: col, 'separator'
+            # Handle both single and double quoted separators
+            arg_match = re.match(r"(.+?)\s*,\s*(['\"])(.+?)\2", inner)
+            if arg_match:
+                col = arg_match.group(1).strip()
+                sep = arg_match.group(3)
+                # Remove ::text cast if present (PostgreSQL-specific)
+                col = re.sub(r"::text$", "", col)
+                if sep == ",":
+                    return f"GROUP_CONCAT({col})"
+                else:
+                    return f"GROUP_CONCAT({col} SEPARATOR '{sep}')"
+            else:
+                # No separator found, just use the expression
+                col = re.sub(r"::text$", "", inner)
+                return f"GROUP_CONCAT({col})"
+
+        expr = re.sub(r"STRING_AGG\s*\((.+?)\)", replace_string_agg, expr, flags=re.IGNORECASE)
+
+        return expr
+
     # =========================================================================
     # DDL Generation
     # =========================================================================

@@ -1019,26 +1019,53 @@ class Aggregation(QueryExpression):
         return "" if not self._left_restrict else " WHERE (%s)" % ")AND(".join(str(s) for s in self._left_restrict)
 
     def make_sql(self, fields=None):
-        fields = self.heading.as_sql(fields or self.heading.names, adapter=self.connection.adapter)
+        adapter = self.connection.adapter
+        fields = self.heading.as_sql(fields or self.heading.names, adapter=adapter)
         assert self._grouping_attributes or not self.restriction
         distinct = set(self.heading.names) == set(self.primary_key)
-        return "SELECT {distinct}{fields} FROM {from_}{where}{group_by}{sorting}".format(
-            distinct="DISTINCT " if distinct else "",
-            fields=fields,
-            from_=self.from_clause(),
-            where=self.where_clause(),
-            group_by=(
-                ""
-                if not self.primary_key
-                else (
-                    " GROUP BY {}".format(
-                        ", ".join(self.connection.adapter.quote_identifier(col) for col in self._grouping_attributes)
-                    )
-                    + ("" if not self.restriction else " HAVING (%s)" % ")AND(".join(self.restriction))
-                )
-            ),
-            sorting=self.sorting_clauses(),
+
+        # PostgreSQL doesn't allow column aliases in HAVING clause (SQL standard).
+        # For PostgreSQL with restrictions, wrap aggregation in subquery and use WHERE.
+        use_subquery_for_having = (
+            adapter.backend == "postgresql"
+            and self.restriction
+            and self._grouping_attributes
         )
+
+        if use_subquery_for_having:
+            # Generate inner query without HAVING
+            inner_sql = "SELECT {distinct}{fields} FROM {from_}{where}{group_by}".format(
+                distinct="DISTINCT " if distinct else "",
+                fields=fields,
+                from_=self.from_clause(),
+                where=self.where_clause(),
+                group_by=" GROUP BY {}".format(
+                    ", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes)
+                ),
+            )
+            # Wrap in subquery with WHERE for the HAVING conditions
+            subquery_alias = adapter.quote_identifier(f"_aggr{next(self._subquery_alias_count)}")
+            outer_where = " WHERE (%s)" % ")AND(".join(self.restriction)
+            return f"SELECT * FROM ({inner_sql}) AS {subquery_alias}{outer_where}{self.sorting_clauses()}"
+        else:
+            # MySQL path: use HAVING directly
+            return "SELECT {distinct}{fields} FROM {from_}{where}{group_by}{sorting}".format(
+                distinct="DISTINCT " if distinct else "",
+                fields=fields,
+                from_=self.from_clause(),
+                where=self.where_clause(),
+                group_by=(
+                    ""
+                    if not self.primary_key
+                    else (
+                        " GROUP BY {}".format(
+                            ", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes)
+                        )
+                        + ("" if not self.restriction else " HAVING (%s)" % ")AND(".join(self.restriction))
+                    )
+                ),
+                sorting=self.sorting_clauses(),
+            )
 
     def __len__(self):
         alias = self.connection.adapter.quote_identifier(f"${next(self._subquery_alias_count):x}")

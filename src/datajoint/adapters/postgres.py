@@ -130,7 +130,37 @@ class PostgreSQLAdapter(DatabaseAdapter):
         # DataJoint manages transactions explicitly via start_transaction()
         # Set autocommit=True to avoid implicit transactions
         conn.autocommit = True
+
+        # Register numpy type adapters so numpy types can be used directly in queries
+        self._register_numpy_adapters()
+
         return conn
+
+    def _register_numpy_adapters(self) -> None:
+        """
+        Register psycopg2 adapters for numpy types.
+
+        This allows numpy scalar types (bool_, int64, float64, etc.) to be used
+        directly in queries without explicit conversion to Python native types.
+        """
+        try:
+            import numpy as np
+            from psycopg2.extensions import register_adapter, AsIs
+
+            # Numpy bool type
+            register_adapter(np.bool_, lambda x: AsIs(str(bool(x)).upper()))
+
+            # Numpy integer types
+            for np_type in (np.int8, np.int16, np.int32, np.int64,
+                            np.uint8, np.uint16, np.uint32, np.uint64):
+                register_adapter(np_type, lambda x: AsIs(int(x)))
+
+            # Numpy float types
+            for np_type in (np.float16, np.float32, np.float64):
+                register_adapter(np_type, lambda x: AsIs(repr(float(x))))
+
+        except ImportError:
+            pass  # numpy not available
 
     def close(self, connection: Any) -> None:
         """Close the PostgreSQL connection."""
@@ -853,6 +883,25 @@ class PostgreSQLAdapter(DatabaseAdapter):
         data_type = row["data_type"]
         if data_type == "USER-DEFINED":
             data_type = row["udt_name"]
+
+        # Reconstruct parametrized types that PostgreSQL splits into separate fields
+        char_max_len = row.get("character_maximum_length")
+        num_precision = row.get("numeric_precision")
+        num_scale = row.get("numeric_scale")
+
+        if data_type == "character" and char_max_len is not None:
+            # char(n) - PostgreSQL reports as "character" with length in separate field
+            data_type = f"char({char_max_len})"
+        elif data_type == "character varying" and char_max_len is not None:
+            # varchar(n)
+            data_type = f"varchar({char_max_len})"
+        elif data_type == "numeric" and num_precision is not None:
+            # numeric(p,s) - reconstruct decimal type
+            if num_scale is not None and num_scale > 0:
+                data_type = f"decimal({num_precision},{num_scale})"
+            else:
+                data_type = f"decimal({num_precision})"
+
         return {
             "name": row["column_name"],
             "type": data_type,
@@ -958,6 +1007,43 @@ class PostgreSQLAdapter(DatabaseAdapter):
         path_args = ", ".join(f"'{part}'" for part in path_parts)
         # Note: PostgreSQL jsonb_extract_path_text doesn't use return type parameter
         return f"jsonb_extract_path_text({quoted_col}, {path_args})"
+
+    def translate_expression(self, expr: str) -> str:
+        """
+        Translate SQL expression for PostgreSQL compatibility.
+
+        Converts MySQL-specific functions to PostgreSQL equivalents:
+        - GROUP_CONCAT(col) → STRING_AGG(col::text, ',')
+        - GROUP_CONCAT(col SEPARATOR 'sep') → STRING_AGG(col::text, 'sep')
+
+        Parameters
+        ----------
+        expr : str
+            SQL expression that may contain function calls.
+
+        Returns
+        -------
+        str
+            Translated expression for PostgreSQL.
+        """
+        import re
+
+        # GROUP_CONCAT(col) → STRING_AGG(col::text, ',')
+        # GROUP_CONCAT(col SEPARATOR 'sep') → STRING_AGG(col::text, 'sep')
+        def replace_group_concat(match):
+            inner = match.group(1).strip()
+            # Check for SEPARATOR clause
+            sep_match = re.match(r"(.+?)\s+SEPARATOR\s+(['\"])(.+?)\2", inner, re.IGNORECASE)
+            if sep_match:
+                col = sep_match.group(1).strip()
+                sep = sep_match.group(3)
+                return f"STRING_AGG({col}::text, '{sep}')"
+            else:
+                return f"STRING_AGG({inner}::text, ',')"
+
+        expr = re.sub(r"GROUP_CONCAT\s*\((.+?)\)", replace_group_concat, expr, flags=re.IGNORECASE)
+
+        return expr
 
     # =========================================================================
     # DDL Generation

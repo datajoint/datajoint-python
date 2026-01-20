@@ -938,6 +938,34 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    def translate_expression(self, expr: str) -> str:
+        """
+        Translate SQL expression for backend compatibility.
+
+        Converts database-specific function calls to the equivalent syntax
+        for the current backend. This enables portable DataJoint code that
+        uses common aggregate functions.
+
+        Translations performed:
+        - GROUP_CONCAT(col) ↔ STRING_AGG(col, ',')
+
+        Parameters
+        ----------
+        expr : str
+            SQL expression that may contain function calls.
+
+        Returns
+        -------
+        str
+            Translated expression for the current backend.
+
+        Notes
+        -----
+        The base implementation returns the expression unchanged.
+        Subclasses override to provide backend-specific translations.
+        """
+        return expr
+
     # =========================================================================
     # DDL Generation
     # =========================================================================

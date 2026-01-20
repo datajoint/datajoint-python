@@ -349,14 +349,20 @@ class Heading:
             # Use adapter if available, otherwise use ANSI SQL double quotes (not backticks)
             return adapter.quote_identifier(name) if adapter else f'"{name}"'
 
-        return ",".join(
-            (
-                quote(name)
-                if self.attributes[name].attribute_expression is None
-                else self.attributes[name].attribute_expression + (f" as {quote(name)}" if include_aliases else "")
-            )
-            for name in fields
-        )
+        def render_field(name):
+            attr = self.attributes[name]
+            if attr.attribute_expression is None:
+                return quote(name)
+            else:
+                # Translate expression for backend compatibility (e.g., GROUP_CONCAT ↔ STRING_AGG)
+                expr = attr.attribute_expression
+                if adapter:
+                    expr = adapter.translate_expression(expr)
+                if include_aliases:
+                    return f"{expr} as {quote(name)}"
+                return expr
+
+        return ",".join(render_field(name) for name in fields)
 
     def __iter__(self):
         return iter(self.attributes)
