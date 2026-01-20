@@ -606,9 +606,12 @@ class MySQLAdapter(DatabaseAdapter):
         """Query to list all databases in MySQL."""
         return "SELECT schema_name FROM information_schema.schemata"
 
-    def list_tables_sql(self, schema_name: str) -> str:
+    def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """Query to list tables in a database."""
-        return f"SHOW TABLES IN {self.quote_identifier(schema_name)}"
+        sql = f"SHOW TABLES IN {self.quote_identifier(schema_name)}"
+        if pattern:
+            sql += f" LIKE '{pattern}'"
+        return sql
 
     def get_table_info_sql(self, schema_name: str, table_name: str) -> str:
         """Query to get table metadata (comment, engine, etc.)."""

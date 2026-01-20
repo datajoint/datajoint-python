@@ -684,13 +684,16 @@ class PostgreSQLAdapter(DatabaseAdapter):
             "WHERE schema_name NOT IN ('pg_catalog', 'information_schema')"
         )
 
-    def list_tables_sql(self, schema_name: str) -> str:
+    def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """Query to list tables in a schema."""
-        return (
+        sql = (
             f"SELECT table_name FROM information_schema.tables "
             f"WHERE table_schema = {self.quote_string(schema_name)} "
             f"AND table_type = 'BASE TABLE'"
         )
+        if pattern:
+            sql += f" AND table_name LIKE '{pattern}'"
+        return sql
 
     def get_table_info_sql(self, schema_name: str, table_name: str) -> str:
         """Query to get table metadata."""

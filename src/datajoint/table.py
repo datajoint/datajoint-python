@@ -1443,4 +1443,4 @@ class FreeTable(Table):
         )
 
     def __repr__(self):
-        return "FreeTable(`%s`.`%s`)\n" % (self.database, self._table_name) + super().__repr__()
+        return f"FreeTable({self.full_table_name})\n" + super().__repr__()

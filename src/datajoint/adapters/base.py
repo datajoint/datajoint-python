@@ -598,7 +598,7 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
-    def list_tables_sql(self, schema_name: str) -> str:
+    def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """
         Generate query to list tables in a schema.
 
@@ -606,6 +606,8 @@ class DatabaseAdapter(ABC):
         ----------
         schema_name : str
             Name of schema to list tables from.
+        pattern : str, optional
+            LIKE pattern to filter table names. Use %% for % in SQL.
 
         Returns
         -------

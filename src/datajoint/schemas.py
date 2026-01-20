@@ -517,13 +517,16 @@ class Schema:
         jobs_list = []
 
         # Get all existing job tables (~~prefix)
-        # Note: %% escapes the % in pymysql
-        result = self.connection.query(f"SHOW TABLES IN `{self.database}` LIKE '~~%%'").fetchall()
+        # Note: %% escapes the % in pymysql/psycopg2
+        adapter = self.connection.adapter
+        sql = adapter.list_tables_sql(self.database, pattern="~~%%")
+        result = self.connection.query(sql).fetchall()
         existing_job_tables = {row[0] for row in result}
 
         # Iterate over auto-populated tables and check if their job table exists
         for table_name in self.list_tables():
-            table = FreeTable(self.connection, f"`{self.database}`.`{table_name}`")
+            adapter = self.connection.adapter
+            table = FreeTable(self.connection, f"{adapter.quote_identifier(self.database)}.{adapter.quote_identifier(table_name)}")
             tier = _get_tier(table.full_table_name)
             if tier in (Computed, Imported):
                 # Compute expected job table name: ~~base_name
@@ -696,7 +699,8 @@ class Schema:
         if table_name is None:
             raise DataJointError(f"Table `{name}` does not exist in schema `{self.database}`.")
 
-        full_name = f"`{self.database}`.`{table_name}`"
+        adapter = self.connection.adapter
+        full_name = f"{adapter.quote_identifier(self.database)}.{adapter.quote_identifier(table_name)}"
         return FreeTable(self.connection, full_name)
 
     def __getitem__(self, name: str) -> FreeTable:

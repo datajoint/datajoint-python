@@ -31,8 +31,14 @@ def extract_master(part_table: str) -> str | None:
     str or None
         Master table name if part_table is a part table, None otherwise.
     """
-    match = re.match(r"(?P<master>`\w+`.`#?\w+)__\w+`", part_table)
-    return match["master"] + "`" if match else None
+    # Match both MySQL backticks and PostgreSQL double quotes
+    # MySQL: `schema`.`master__part`
+    # PostgreSQL: "schema"."master__part"
+    match = re.match(r'(?P<master>(?P<q>[`"])[\w]+(?P=q)\.(?P=q)#?[\w]+)__[\w]+(?P=q)', part_table)
+    if match:
+        q = match["q"]
+        return match["master"] + q
+    return None
 
 
 def topo_sort(graph: nx.DiGraph) -> list[str]:
