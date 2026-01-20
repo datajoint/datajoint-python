@@ -31,8 +31,8 @@ CORE_TYPES = {
     "bool": (r"bool$", "tinyint"),
     # UUID (stored as binary)
     "uuid": (r"uuid$", "binary(16)"),
-    # JSON
-    "json": (r"json$", None),  # json passes through as-is
+    # JSON (matches both json and jsonb for PostgreSQL compatibility)
+    "json": (r"jsonb?$", None),  # json/jsonb passes through as-is
     # Binary (bytes maps to longblob in MySQL, bytea in PostgreSQL)
     "bytes": (r"bytes$", "longblob"),
     # Temporal
@@ -651,6 +651,7 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         index_sql,
         external_stores,
         _fk_attribute_map,
+        _column_comments,
     ) = prepare_declare(definition, context, adapter)
     (
         table_comment_,
@@ -660,6 +661,7 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         index_sql_,
         external_stores_,
         _fk_attribute_map_,
+        _column_comments_,
     ) = prepare_declare(old_definition, context, adapter)
 
     # analyze differences between declarations

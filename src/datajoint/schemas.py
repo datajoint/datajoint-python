@@ -526,7 +526,11 @@ class Schema:
         # Iterate over auto-populated tables and check if their job table exists
         for table_name in self.list_tables():
             adapter = self.connection.adapter
-            table = FreeTable(self.connection, f"{adapter.quote_identifier(self.database)}.{adapter.quote_identifier(table_name)}")
+            full_name = (
+                f"{adapter.quote_identifier(self.database)}."
+                f"{adapter.quote_identifier(table_name)}"
+            )
+            table = FreeTable(self.connection, full_name)
             tier = _get_tier(table.full_table_name)
             if tier in (Computed, Imported):
                 # Compute expected job table name: ~~base_name
