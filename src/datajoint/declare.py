@@ -267,9 +267,14 @@ def compile_foreign_key(
 
             # Build foreign key column definition using adapter
             parent_attr = ref.heading[attr]
+            sql_type = parent_attr.sql_type
+            # For PostgreSQL enum types, qualify with schema name
+            # Enum type names start with "enum_" (generated hash-based names)
+            if sql_type.startswith("enum_") and adapter.backend == "postgresql":
+                sql_type = f"{adapter.quote_identifier(ref.database)}.{adapter.quote_identifier(sql_type)}"
             col_def = adapter.format_column_definition(
                 name=attr,
-                sql_type=parent_attr.sql_type,
+                sql_type=sql_type,
                 nullable=is_nullable,
                 default=None,
                 comment=parent_attr.sql_comment,

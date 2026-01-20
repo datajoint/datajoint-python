@@ -718,7 +718,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         table_str = self.quote_string(table_name)
         regclass_expr = f"({schema_str} || '.' || {table_str})::regclass"
         return (
-            f"SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, "
+            f"SELECT c.column_name, c.data_type, c.udt_name, c.is_nullable, c.column_default, "
             f"c.character_maximum_length, c.numeric_precision, c.numeric_scale, "
             f"col_description({regclass_expr}, c.ordinal_position) as column_comment "
             f"FROM information_schema.columns c "
@@ -847,9 +847,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
             Standardized column info with keys:
             name, type, nullable, default, comment, key, extra
         """
+        # For user-defined types (enums), use udt_name instead of data_type
+        # PostgreSQL reports enums as "USER-DEFINED" in data_type
+        data_type = row["data_type"]
+        if data_type == "USER-DEFINED":
+            data_type = row["udt_name"]
         return {
             "name": row["column_name"],
-            "type": row["data_type"],
+            "type": data_type,
             "nullable": row["is_nullable"] == "YES",
             "default": row["column_default"],
             "comment": row.get("column_comment"),  # Retrieved via col_description()
