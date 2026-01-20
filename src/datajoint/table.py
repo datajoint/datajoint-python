@@ -146,7 +146,7 @@ class Table(QueryExpression):
                 "Table class name `{name}` is invalid. Please use CamelCase. ".format(name=self.class_name)
                 + "Classes defining tables should be formatted in strict CamelCase."
             )
-        sql, _external_stores, primary_key, fk_attribute_map, additional_ddl = declare(
+        sql, _external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl = declare(
             self.full_table_name, self.definition, context, self.connection.adapter
         )
 
@@ -155,9 +155,16 @@ class Table(QueryExpression):
 
         sql = sql.format(database=self.database)
         try:
+            # Execute pre-DDL statements (e.g., CREATE TYPE for PostgreSQL enums)
+            for ddl in pre_ddl:
+                try:
+                    self.connection.query(ddl.format(database=self.database))
+                except Exception:
+                    # Ignore errors (type may already exist)
+                    pass
             self.connection.query(sql)
-            # Execute additional DDL (e.g., COMMENT ON for PostgreSQL)
-            for ddl in additional_ddl:
+            # Execute post-DDL statements (e.g., COMMENT ON for PostgreSQL)
+            for ddl in post_ddl:
                 self.connection.query(ddl.format(database=self.database))
         except AccessError:
             # Only suppress if table already exists (idempotent declaration)
@@ -686,10 +693,9 @@ class Table(QueryExpression):
             fields = list(name for name in rows.heading if name in self.heading)
             quoted_fields = ",".join(self.adapter.quote_identifier(f) for f in fields)
 
-            # Duplicate handling (MySQL-specific for Phase 5)
+            # Duplicate handling (backend-agnostic)
             if skip_duplicates:
-                quoted_pk = self.adapter.quote_identifier(self.primary_key[0])
-                duplicate = f" ON DUPLICATE KEY UPDATE {quoted_pk}={self.full_table_name}.{quoted_pk}"
+                duplicate = self.adapter.skip_duplicates_clause(self.full_table_name, self.primary_key)
             else:
                 duplicate = ""
 
@@ -731,10 +737,9 @@ class Table(QueryExpression):
                 else:
                     fields_clause = "()"
 
-                # Build duplicate clause (MySQL-specific for Phase 5)
+                # Build duplicate clause (backend-agnostic)
                 if skip_duplicates:
-                    quoted_pk = self.adapter.quote_identifier(self.primary_key[0])
-                    duplicate = f" ON DUPLICATE KEY UPDATE {quoted_pk}=VALUES({quoted_pk})"
+                    duplicate = self.adapter.skip_duplicates_clause(self.full_table_name, self.primary_key)
                 else:
                     duplicate = ""
 

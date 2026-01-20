@@ -392,7 +392,7 @@ def prepare_declare(
 
 def declare(
     full_table_name: str, definition: str, context: dict, adapter
-) -> tuple[str, list[str], list[str], dict[str, tuple[str, str]], list[str]]:
+) -> tuple[str, list[str], list[str], dict[str, tuple[str, str]], list[str], list[str]]:
     r"""
     Parse a definition and generate SQL CREATE TABLE statement.
 
@@ -410,13 +410,14 @@ def declare(
     Returns
     -------
     tuple
-        Five-element tuple:
+        Six-element tuple:
 
         - sql : str - SQL CREATE TABLE statement
         - external_stores : list[str] - External store names used
         - primary_key : list[str] - Primary key attribute names
         - fk_attribute_map : dict - FK attribute lineage mapping
-        - additional_ddl : list[str] - Additional DDL statements (COMMENT ON, etc.)
+        - pre_ddl : list[str] - DDL statements to run BEFORE CREATE TABLE (e.g., CREATE TYPE)
+        - post_ddl : list[str] - DDL statements to run AFTER CREATE TABLE (e.g., COMMENT ON)
 
     Raises
     ------
@@ -428,8 +429,10 @@ def declare(
     quote_char = adapter.quote_identifier("x")[0]  # Get quote char from adapter
     parts = full_table_name.split(".")
     if len(parts) == 2:
+        schema_name = parts[0].strip(quote_char)
         table_name = parts[1].strip(quote_char)
     else:
+        schema_name = None
         table_name = parts[0].strip(quote_char)
 
     if len(table_name) > MAX_TABLE_NAME_LENGTH:
@@ -461,25 +464,50 @@ def declare(
     if not primary_key:
         raise DataJointError("Table must have a primary key")
 
-    additional_ddl = []  # Track additional DDL statements (e.g., COMMENT ON for PostgreSQL)
+    pre_ddl = []  # DDL to run BEFORE CREATE TABLE (e.g., CREATE TYPE for enums)
+    post_ddl = []  # DDL to run AFTER CREATE TABLE (e.g., COMMENT ON)
+
+    # Get pending enum type DDL for PostgreSQL (must run before CREATE TABLE)
+    if schema_name and hasattr(adapter, "get_pending_enum_ddl"):
+        pre_ddl.extend(adapter.get_pending_enum_ddl(schema_name))
 
     # Build PRIMARY KEY clause using adapter
     pk_cols = ", ".join(adapter.quote_identifier(pk) for pk in primary_key)
     pk_clause = f"PRIMARY KEY ({pk_cols})"
 
+    # Handle indexes - inline for MySQL, separate CREATE INDEX for PostgreSQL
+    if adapter.supports_inline_indexes:
+        # MySQL: include indexes in CREATE TABLE
+        create_table_indexes = index_sql
+    else:
+        # PostgreSQL: convert to CREATE INDEX statements for post_ddl
+        create_table_indexes = []
+        for idx_def in index_sql:
+            # Parse index definition: "unique index (cols)" or "index (cols)"
+            idx_match = re.match(r"(unique\s+)?index\s*\(([^)]+)\)", idx_def, re.I)
+            if idx_match:
+                is_unique = idx_match.group(1) is not None
+                # Extract column names (may be quoted or have expressions)
+                cols_str = idx_match.group(2)
+                # Simple split on comma - columns are already quoted
+                columns = [c.strip().strip('`"') for c in cols_str.split(",")]
+                # Generate CREATE INDEX DDL
+                create_idx_ddl = adapter.create_index_ddl(full_table_name, columns, unique=is_unique)
+                post_ddl.append(create_idx_ddl)
+
     # Assemble CREATE TABLE
     sql = (
         f"CREATE TABLE IF NOT EXISTS {full_table_name} (\n"
-        + ",\n".join(attribute_sql + [pk_clause] + foreign_key_sql + index_sql)
+        + ",\n".join(attribute_sql + [pk_clause] + foreign_key_sql + create_table_indexes)
         + f"\n) {adapter.table_options_clause(table_comment)}"
     )
 
     # Add table-level comment DDL if needed (PostgreSQL)
     table_comment_ddl = adapter.table_comment_ddl(full_table_name, table_comment)
     if table_comment_ddl:
-        additional_ddl.append(table_comment_ddl)
+        post_ddl.append(table_comment_ddl)
 
-    return sql, external_stores, primary_key, fk_attribute_map, additional_ddl
+    return sql, external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl
 
 
 def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str], adapter) -> list[str]:

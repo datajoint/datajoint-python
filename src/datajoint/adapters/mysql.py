@@ -155,6 +155,11 @@ class MySQLAdapter(DatabaseAdapter):
         """MySQL default port 3306."""
         return 3306
 
+    @property
+    def backend(self) -> str:
+        """Backend identifier: 'mysql'."""
+        return "mysql"
+
     def get_cursor(self, connection: Any, as_dict: bool = False) -> Any:
         """
         Get a cursor from MySQL connection.
@@ -566,6 +571,32 @@ class MySQLAdapter(DatabaseAdapter):
         VALUES {placeholders}
         ON DUPLICATE KEY UPDATE {update_clauses}
         """
+
+    def skip_duplicates_clause(
+        self,
+        full_table_name: str,
+        primary_key: list[str],
+    ) -> str:
+        """
+        Generate clause to skip duplicate key insertions for MySQL.
+
+        Uses ON DUPLICATE KEY UPDATE with a no-op update (pk=pk) to effectively
+        skip duplicates without raising an error.
+
+        Parameters
+        ----------
+        full_table_name : str
+            Fully qualified table name (with quotes).
+        primary_key : list[str]
+            Primary key column names (unquoted).
+
+        Returns
+        -------
+        str
+            MySQL ON DUPLICATE KEY UPDATE clause.
+        """
+        quoted_pk = self.quote_identifier(primary_key[0])
+        return f" ON DUPLICATE KEY UPDATE {quoted_pk}={full_table_name}.{quoted_pk}"
 
     # =========================================================================
     # Introspection
