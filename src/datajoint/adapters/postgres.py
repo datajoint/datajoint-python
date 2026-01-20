@@ -7,6 +7,7 @@ type mapping, error translation, and connection management.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 try:
@@ -170,6 +171,11 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """PostgreSQL default port 5432."""
         return 5432
 
+    @property
+    def backend(self) -> str:
+        """Backend identifier: 'postgresql'."""
+        return "postgresql"
+
     def get_cursor(self, connection: Any, as_dict: bool = False) -> Any:
         """
         Get a cursor from PostgreSQL connection.
@@ -292,9 +298,27 @@ class PostgreSQLAdapter(DatabaseAdapter):
             return f"numeric{params}"
 
         if core_type.startswith("enum("):
-            # Enum requires special handling - caller must use CREATE TYPE
-            # Return the type name pattern (will be replaced by caller)
-            return "{{enum_type_name}}"  # Placeholder for CREATE TYPE
+            # PostgreSQL requires CREATE TYPE for enums
+            # Extract enum values and generate a deterministic type name
+            enum_match = re.match(r"enum\s*\((.+)\)", core_type, re.I)
+            if enum_match:
+                # Parse enum values: enum('M','F') -> ['M', 'F']
+                values_str = enum_match.group(1)
+                # Split by comma, handling quoted values
+                values = [v.strip().strip("'\"") for v in values_str.split(",")]
+                # Generate a deterministic type name based on values
+                # Use a hash to keep name reasonable length
+                import hashlib
+                value_hash = hashlib.md5("_".join(sorted(values)).encode()).hexdigest()[:8]
+                type_name = f"enum_{value_hash}"
+                # Track this enum type for CREATE TYPE DDL
+                if not hasattr(self, "_pending_enum_types"):
+                    self._pending_enum_types = {}
+                self._pending_enum_types[type_name] = values
+                # Return schema-qualified type reference using placeholder
+                # {database} will be replaced with actual schema name in table.py
+                return '"{database}".' + self.quote_identifier(type_name)
+            return "text"  # Fallback if parsing fails
 
         raise ValueError(f"Unknown core type: {core_type}")
 
@@ -611,6 +635,43 @@ class PostgreSQLAdapter(DatabaseAdapter):
         ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_clauses}
         """
 
+    def skip_duplicates_clause(
+        self,
+        full_table_name: str,
+        primary_key: list[str],
+    ) -> str:
+        """
+        Generate clause to skip duplicate key insertions for PostgreSQL.
+
+        Uses ON CONFLICT (pk_cols) DO NOTHING to skip duplicates without
+        raising an error.
+
+        Parameters
+        ----------
+        full_table_name : str
+            Fully qualified table name (with quotes). Unused but kept for
+            API compatibility with MySQL adapter.
+        primary_key : list[str]
+            Primary key column names (unquoted).
+
+        Returns
+        -------
+        str
+            PostgreSQL ON CONFLICT DO NOTHING clause.
+        """
+        pk_cols = ", ".join(self.quote_identifier(pk) for pk in primary_key)
+        return f" ON CONFLICT ({pk_cols}) DO NOTHING"
+
+    @property
+    def supports_inline_indexes(self) -> bool:
+        """
+        PostgreSQL does not support inline INDEX in CREATE TABLE.
+
+        Returns False to indicate indexes must be created separately
+        with CREATE INDEX statements.
+        """
+        return False
+
     # =========================================================================
     # Introspection
     # =========================================================================
@@ -639,14 +700,17 @@ class PostgreSQLAdapter(DatabaseAdapter):
         )
 
     def get_columns_sql(self, schema_name: str, table_name: str) -> str:
-        """Query to get column definitions."""
+        """Query to get column definitions including comments."""
+        # Use col_description() to retrieve column comments stored via COMMENT ON COLUMN
+        # The regclass cast allows using schema.table notation to get the OID
         return (
-            f"SELECT column_name, data_type, is_nullable, column_default, "
-            f"character_maximum_length, numeric_precision, numeric_scale "
-            f"FROM information_schema.columns "
-            f"WHERE table_schema = {self.quote_string(schema_name)} "
-            f"AND table_name = {self.quote_string(table_name)} "
-            f"ORDER BY ordinal_position"
+            f"SELECT c.column_name, c.data_type, c.is_nullable, c.column_default, "
+            f"c.character_maximum_length, c.numeric_precision, c.numeric_scale, "
+            f"col_description(({self.quote_string(schema_name)} || '.' || {self.quote_string(table_name)})::regclass, c.ordinal_position) as column_comment "
+            f"FROM information_schema.columns c "
+            f"WHERE c.table_schema = {self.quote_string(schema_name)} "
+            f"AND c.table_name = {self.quote_string(table_name)} "
+            f"ORDER BY c.ordinal_position"
         )
 
     def get_primary_key_sql(self, schema_name: str, table_name: str) -> str:
@@ -761,7 +825,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         Parameters
         ----------
         row : dict
-            Row from information_schema.columns query.
+            Row from information_schema.columns query with col_description() join.
 
         Returns
         -------
@@ -774,7 +838,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
             "type": row["data_type"],
             "nullable": row["is_nullable"] == "YES",
             "default": row["column_default"],
-            "comment": None,  # PostgreSQL stores comments separately
+            "comment": row.get("column_comment"),  # Retrieved via col_description()
             "key": "",  # PostgreSQL key info retrieved separately
             "extra": "",  # PostgreSQL doesn't have auto_increment in same way
         }
@@ -946,6 +1010,34 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """
         quoted_values = ", ".join(f"'{v}'" for v in values)
         return f"CREATE TYPE {self.quote_identifier(type_name)} AS ENUM ({quoted_values})"
+
+    def get_pending_enum_ddl(self, schema_name: str) -> list[str]:
+        """
+        Get DDL statements for pending enum types and clear the pending list.
+
+        PostgreSQL requires CREATE TYPE statements before using enum types in
+        column definitions. This method returns DDL for enum types accumulated
+        during type conversion and clears the pending list.
+
+        Parameters
+        ----------
+        schema_name : str
+            Schema name to qualify enum type names.
+
+        Returns
+        -------
+        list[str]
+            List of CREATE TYPE statements (if any pending).
+        """
+        ddl_statements = []
+        if hasattr(self, "_pending_enum_types") and self._pending_enum_types:
+            for type_name, values in self._pending_enum_types.items():
+                # Generate CREATE TYPE with schema qualification
+                quoted_type = f"{self.quote_identifier(schema_name)}.{self.quote_identifier(type_name)}"
+                quoted_values = ", ".join(f"'{v}'" for v in values)
+                ddl_statements.append(f"CREATE TYPE {quoted_type} AS ENUM ({quoted_values})")
+            self._pending_enum_types = {}
+        return ddl_statements
 
     def job_metadata_columns(self) -> list[str]:
         """

@@ -114,6 +114,19 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    @property
+    @abstractmethod
+    def backend(self) -> str:
+        """
+        Backend identifier string.
+
+        Returns
+        -------
+        str
+            Backend name: 'mysql' or 'postgresql'.
+        """
+        ...
+
     @abstractmethod
     def get_cursor(self, connection: Any, as_dict: bool = False) -> Any:
         """
@@ -490,6 +503,83 @@ class DatabaseAdapter(ABC):
             ON CONFLICT (a) DO UPDATE SET b = EXCLUDED.b, c = EXCLUDED.c
         """
         ...
+
+    @abstractmethod
+    def skip_duplicates_clause(
+        self,
+        full_table_name: str,
+        primary_key: list[str],
+    ) -> str:
+        """
+        Generate clause to skip duplicate key insertions.
+
+        For MySQL: ON DUPLICATE KEY UPDATE pk=table.pk (no-op update)
+        For PostgreSQL: ON CONFLICT (pk_cols) DO NOTHING
+
+        Parameters
+        ----------
+        full_table_name : str
+            Fully qualified table name (with quotes).
+        primary_key : list[str]
+            Primary key column names (unquoted).
+
+        Returns
+        -------
+        str
+            SQL clause to append to INSERT statement.
+        """
+        ...
+
+    @property
+    def supports_inline_indexes(self) -> bool:
+        """
+        Whether this backend supports inline INDEX in CREATE TABLE.
+
+        MySQL supports inline index definitions in CREATE TABLE.
+        PostgreSQL requires separate CREATE INDEX statements.
+
+        Returns
+        -------
+        bool
+            True for MySQL, False for PostgreSQL.
+        """
+        return True  # Default for MySQL, override in PostgreSQL
+
+    def create_index_ddl(
+        self,
+        full_table_name: str,
+        columns: list[str],
+        unique: bool = False,
+        index_name: str | None = None,
+    ) -> str:
+        """
+        Generate CREATE INDEX statement.
+
+        Parameters
+        ----------
+        full_table_name : str
+            Fully qualified table name (with quotes).
+        columns : list[str]
+            Column names to index (unquoted).
+        unique : bool, optional
+            If True, create a unique index.
+        index_name : str, optional
+            Custom index name. If None, auto-generate from table/columns.
+
+        Returns
+        -------
+        str
+            CREATE INDEX SQL statement.
+        """
+        quoted_cols = ", ".join(self.quote_identifier(col) for col in columns)
+        # Generate index name from table and columns if not provided
+        if index_name is None:
+            # Extract table name from full_table_name for index naming
+            table_part = full_table_name.split(".")[-1].strip('`"')
+            col_part = "_".join(columns)[:30]  # Truncate for long column lists
+            index_name = f"idx_{table_part}_{col_part}"
+        unique_clause = "UNIQUE " if unique else ""
+        return f"CREATE {unique_clause}INDEX {self.quote_identifier(index_name)} ON {full_table_name} ({quoted_cols})"
 
     # =========================================================================
     # Introspection

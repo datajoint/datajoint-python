@@ -151,14 +151,32 @@ class Dependencies(nx.DiGraph):
 
         self.clear()
 
+        # Get adapter for backend-specific SQL generation
+        adapter = self._conn.adapter
+        quote = adapter.quote_identifier
+
+        # Build schema list for IN clause
+        schemas_list = ", ".join(adapter.quote_string(s) for s in self._conn.schemas)
+
+        # Backend-specific table name concatenation
+        # MySQL: concat('`', table_schema, '`.`', table_name, '`')
+        # PostgreSQL: '"' || table_schema || '"."' || table_name || '"'
+        if adapter.backend == "mysql":
+            tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
+            ref_tab_expr = "concat('`', referenced_table_schema, '`.`', referenced_table_name, '`')"
+        else:
+            # PostgreSQL
+            tab_expr = "'\"' || table_schema || '\".\"' || table_name || '\"'"
+            ref_tab_expr = "'\"' || referenced_table_schema || '\".\"' || referenced_table_name || '\"'"
+
         # load primary key info
         keys = self._conn.query(
-            """
+            f"""
                 SELECT
-                    concat('`', table_schema, '`.`', table_name, '`') as tab, column_name
+                    {tab_expr} as tab, column_name
                 FROM information_schema.key_column_usage
-                WHERE table_name not LIKE "~%%" AND table_schema in ('{schemas}') AND constraint_name="PRIMARY"
-                """.format(schemas="','".join(self._conn.schemas))
+                WHERE table_name NOT LIKE '~%' AND table_schema in ({schemas_list}) AND constraint_name='PRIMARY'
+                """
         )
         pks = defaultdict(set)
         for key in keys:
@@ -172,15 +190,15 @@ class Dependencies(nx.DiGraph):
         keys = (
             {k.lower(): v for k, v in elem.items()}
             for elem in self._conn.query(
-                """
+                f"""
         SELECT constraint_name,
-            concat('`', table_schema, '`.`', table_name, '`') as referencing_table,
-            concat('`', referenced_table_schema, '`.`',  referenced_table_name, '`') as referenced_table,
+            {tab_expr} as referencing_table,
+            {ref_tab_expr} as referenced_table,
             column_name, referenced_column_name
         FROM information_schema.key_column_usage
-        WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema in ('{schemas}') OR
-            referenced_table_schema is not NULL AND table_schema in ('{schemas}'))
-        """.format(schemas="','".join(self._conn.schemas)),
+        WHERE referenced_table_name NOT LIKE '~%' AND (referenced_table_schema in ({schemas_list}) OR
+            referenced_table_schema is not NULL AND table_schema in ({schemas_list}))
+        """,
                 as_dict=True,
             )
         )
