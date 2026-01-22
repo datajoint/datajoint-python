@@ -477,11 +477,12 @@ def declare(
         primary_key = ["_singleton"]
         singleton_comment = ":bool:singleton primary key"
         sql_type = adapter.core_type_to_sql("bool")
+        bool_literal = adapter.boolean_true_literal
         singleton_sql = adapter.format_column_definition(
             name="_singleton",
             sql_type=sql_type,
             nullable=False,
-            default="NOT NULL DEFAULT 1",
+            default=f"NOT NULL DEFAULT {bool_literal}",
             comment=singleton_comment,
         )
         attribute_sql.insert(0, singleton_sql)

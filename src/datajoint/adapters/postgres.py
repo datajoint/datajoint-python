@@ -710,6 +710,20 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """
         return False
 
+    @property
+    def boolean_true_literal(self) -> str:
+        """
+        Return the SQL literal for boolean TRUE.
+
+        PostgreSQL uses native boolean type with TRUE literal.
+
+        Returns
+        -------
+        str
+            SQL literal for boolean true value.
+        """
+        return "TRUE"
+
     # =========================================================================
     # Introspection
     # =========================================================================

@@ -563,6 +563,21 @@ class DatabaseAdapter(ABC):
         """
         return True  # Default for MySQL, override in PostgreSQL
 
+    @property
+    def boolean_true_literal(self) -> str:
+        """
+        Return the SQL literal for boolean TRUE.
+
+        MySQL uses 1 (since bool maps to tinyint).
+        PostgreSQL uses TRUE (native boolean type).
+
+        Returns
+        -------
+        str
+            SQL literal for boolean true value.
+        """
+        return "1"  # Default for MySQL, override in PostgreSQL
+
     def create_index_ddl(
         self,
         full_table_name: str,
