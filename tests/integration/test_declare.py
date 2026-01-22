@@ -440,9 +440,7 @@ class TestSingletonTables:
             debug_mode : bool
             """
 
-        PipelineConfig.insert1(
-            {"version": "1.0.0", "max_workers": 4, "debug_mode": False}
-        )
+        PipelineConfig.insert1({"version": "1.0.0", "max_workers": 4, "debug_mode": False})
 
         result = PipelineConfig.fetch1()
         assert result["version"] == "1.0.0"
