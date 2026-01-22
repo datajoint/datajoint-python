@@ -473,7 +473,19 @@ def declare(
             attribute_sql.extend(job_metadata_sql)
 
     if not primary_key:
-        raise DataJointError("Table must have a primary key")
+        # Singleton table: add hidden sentinel attribute
+        primary_key = ["_singleton"]
+        singleton_comment = ":bool:singleton primary key"
+        sql_type = adapter.core_type_to_sql("bool")
+        singleton_sql = adapter.format_column_definition(
+            name="_singleton",
+            sql_type=sql_type,
+            nullable=False,
+            default="NOT NULL DEFAULT 1",
+            comment=singleton_comment,
+        )
+        attribute_sql.insert(0, singleton_sql)
+        column_comments["_singleton"] = singleton_comment
 
     pre_ddl = []  # DDL to run BEFORE CREATE TABLE (e.g., CREATE TYPE for enums)
     post_ddl = []  # DDL to run AFTER CREATE TABLE (e.g., COMMENT ON)
