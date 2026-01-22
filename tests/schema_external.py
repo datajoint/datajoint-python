@@ -3,7 +3,6 @@ A schema for testing external attributes
 """
 
 import inspect
-import tempfile
 
 import numpy as np
 
@@ -14,7 +13,7 @@ class Simple(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : blob@local
+    item  : <blob@local>
     """
 
 
@@ -22,7 +21,7 @@ class SimpleRemote(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : blob@share
+    item  : <blob@share>
     """
 
 
@@ -37,7 +36,7 @@ class Dimension(dj.Lookup):
     definition = """
     dim  : int
     ---
-    dimensions  : blob
+    dimensions  : <blob>
     """
     contents = ([0, [100, 50]], [1, [3, 4, 8, 6]])
 
@@ -48,8 +47,8 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img : blob@share     #  objects are stored as specified by dj.config['stores']['share']
-    neg : blob@local   # objects are stored as specified by dj.config['stores']['local']
+    img : <blob@share>     #  objects are stored as specified by dj.config['stores']['share']
+    neg : <blob@local>   # objects are stored as specified by dj.config['stores']['local']
     """
 
     def make(self, key):
@@ -63,8 +62,8 @@ class Attach(dj.Manual):
     # table for storing attachments
     attach : int
     ----
-    img : attach@share    #  attachments are stored as specified by: dj.config['stores']['raw']
-    txt : attach      #  attachments are stored directly in the database
+    img : <attach@share>    #  attachments are stored as specified by: dj.config['stores']['share']
+    txt : <attach>      #  attachments are stored directly in the database
     """
 
 
@@ -73,7 +72,7 @@ class Filepath(dj.Manual):
     # table for file management
     fnum : int # test comment containing :
     ---
-    img : filepath@repo  # managed files
+    img : <filepath@repo>  # managed files
     """
 
 
@@ -82,7 +81,7 @@ class FilepathS3(dj.Manual):
     # table for file management
     fnum : int
     ---
-    img : filepath@repo-s3  # managed files
+    img : <filepath@repo-s3>  # managed files
     """
 
 

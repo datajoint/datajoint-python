@@ -11,7 +11,7 @@ RUN ${CONDA_BIN} install --no-pin -qq -y -n base -c conda-forge \
 ENV PATH="$PATH:/home/mambauser/.local/bin"
 
 COPY --chown=${HOST_UID:-1000}:mambauser ./pyproject.toml ./README.md ./LICENSE.txt /main/
-COPY --chown=${HOST_UID:-1000}:mambauser ./datajoint /main/datajoint
+COPY --chown=${HOST_UID:-1000}:mambauser ./src/datajoint /main/src/datajoint
 
 VOLUME /src
 WORKDIR /src

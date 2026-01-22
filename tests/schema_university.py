@@ -5,7 +5,7 @@ import datajoint as dj
 
 class Student(dj.Manual):
     definition = """
-    student_id : int unsigned   # university-wide ID number
+    student_id : int64   # university-wide ID number
     ---
     first_name      : varchar(40)
     last_name       : varchar(40)
@@ -41,7 +41,7 @@ class StudentMajor(dj.Manual):
 class Course(dj.Manual):
     definition = """
     -> Department
-    course  : int unsigned   # course number, e.g. 1010
+    course  : int64   # course number, e.g. 1010
     ---
     course_name :  varchar(200)  # e.g. "Neurobiology of Sensation and Movement."
     credits     :  decimal(3,1)  # number of credits earned by completing the course

@@ -1,0 +1,657 @@
+"""
+Tests for the Codec system.
+"""
+
+import pytest
+
+import datajoint as dj
+from datajoint.codecs import (
+    Codec,
+    _codec_registry,
+    get_codec,
+    is_codec_registered,
+    list_codecs,
+    resolve_dtype,
+    unregister_codec,
+)
+from datajoint.errors import DataJointError
+
+
+class TestCodecRegistry:
+    """Tests for the codec registry functionality."""
+
+    def setup_method(self):
+        """Clear any test codecs from registry before each test."""
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def teardown_method(self):
+        """Clean up test codecs after each test."""
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def test_register_codec_auto(self):
+        """Test auto-registration via __init_subclass__."""
+
+        class TestCodec(Codec):
+            name = "test_decorator"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        assert is_codec_registered("test_decorator")
+        assert get_codec("test_decorator").name == "test_decorator"
+
+    def test_register_codec_skip(self):
+        """Test skipping registration with register=False."""
+
+        class TestCodec(Codec, register=False):
+            name = "test_skip"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "varchar(255)"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return str(value)
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        assert not is_codec_registered("test_skip")
+
+    def test_register_codec_idempotent(self):
+        """Test that defining the same codec class twice is idempotent."""
+
+        class TestCodec(Codec):
+            name = "test_idempotent"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "int32"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        # Redefine the same name should not raise (same class)
+        assert is_codec_registered("test_idempotent")
+
+    def test_register_duplicate_name_different_class(self):
+        """Test that registering different classes with same name raises error."""
+
+        class TestCodec1(Codec):
+            name = "test_duplicate"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "int32"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        with pytest.raises(DataJointError, match="already registered"):
+
+            class TestCodec2(Codec):
+                name = "test_duplicate"
+
+                def get_dtype(self, is_external: bool) -> str:
+                    return "varchar(100)"
+
+                def encode(self, value, *, key=None, store_name=None):
+                    return str(value)
+
+                def decode(self, stored, *, key=None):
+                    return stored
+
+    def test_unregister_codec(self):
+        """Test unregistering a codec."""
+
+        class TestCodec(Codec):
+            name = "test_unregister"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "int32"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        assert is_codec_registered("test_unregister")
+        unregister_codec("test_unregister")
+        assert not is_codec_registered("test_unregister")
+
+    def test_get_codec_not_found(self):
+        """Test that getting an unregistered codec raises error."""
+        with pytest.raises(DataJointError, match="Unknown codec"):
+            get_codec("nonexistent_codec")
+
+    def test_list_codecs(self):
+        """Test listing registered codecs."""
+
+        class TestCodec(Codec):
+            name = "test_list"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "int32"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        codecs = list_codecs()
+        assert "test_list" in codecs
+        assert codecs == sorted(codecs)  # Should be sorted
+
+    def test_get_codec_strips_brackets(self):
+        """Test that get_codec accepts names with or without angle brackets."""
+
+        class TestCodec(Codec):
+            name = "test_brackets"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "int32"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        assert get_codec("test_brackets") is get_codec("<test_brackets>")
+
+
+class TestCodecValidation:
+    """Tests for the validate method."""
+
+    def setup_method(self):
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def teardown_method(self):
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def test_validate_called_default(self):
+        """Test that default validate accepts any value."""
+
+        class TestCodec(Codec):
+            name = "test_validate_default"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        t = get_codec("test_validate_default")
+        # Default validate should not raise for any value
+        t.validate(None)
+        t.validate(42)
+        t.validate("string")
+        t.validate([1, 2, 3])
+
+    def test_validate_custom(self):
+        """Test custom validation logic."""
+
+        class PositiveIntCodec(Codec):
+            name = "test_positive_int"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "int32"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+            def validate(self, value):
+                if not isinstance(value, int):
+                    raise TypeError(f"Expected int, got {type(value).__name__}")
+                if value < 0:
+                    raise ValueError("Value must be positive")
+
+        t = get_codec("test_positive_int")
+        t.validate(42)  # Should pass
+
+        with pytest.raises(TypeError):
+            t.validate("not an int")
+
+        with pytest.raises(ValueError):
+            t.validate(-1)
+
+
+class TestCodecChaining:
+    """Tests for codec chaining (dtype referencing another codec)."""
+
+    def setup_method(self):
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def teardown_method(self):
+        for name in list(_codec_registry.keys()):
+            if name.startswith("test_"):
+                del _codec_registry[name]
+
+    def test_resolve_native_dtype(self):
+        """Test resolving a native dtype."""
+        final_dtype, chain, store = resolve_dtype("bytes")
+        assert final_dtype == "bytes"
+        assert chain == []
+        assert store is None
+
+    def test_resolve_custom_dtype(self):
+        """Test resolving a custom dtype."""
+
+        class TestCodec(Codec):
+            name = "test_resolve"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "varchar(100)"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        final_dtype, chain, store = resolve_dtype("<test_resolve>")
+        assert final_dtype == "varchar(100)"
+        assert len(chain) == 1
+        assert chain[0].name == "test_resolve"
+        assert store is None
+
+    def test_resolve_chained_dtype(self):
+        """Test resolving a chained dtype."""
+
+        class InnerCodec(Codec):
+            name = "test_inner"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "bytes"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        class OuterCodec(Codec):
+            name = "test_outer"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_inner>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        final_dtype, chain, store = resolve_dtype("<test_outer>")
+        assert final_dtype == "bytes"
+        assert len(chain) == 2
+        assert chain[0].name == "test_outer"
+        assert chain[1].name == "test_inner"
+        assert store is None
+
+    def test_circular_reference_detection(self):
+        """Test that circular codec references are detected."""
+
+        class CodecA(Codec):
+            name = "test_circular_a"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_circular_b>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        class CodecB(Codec):
+            name = "test_circular_b"
+
+            def get_dtype(self, is_external: bool) -> str:
+                return "<test_circular_a>"
+
+            def encode(self, value, *, key=None, store_name=None):
+                return value
+
+            def decode(self, stored, *, key=None):
+                return stored
+
+        with pytest.raises(DataJointError, match="Circular codec reference"):
+            resolve_dtype("<test_circular_a>")
+
+
+class TestExportsAndAPI:
+    """Test that the public API is properly exported."""
+
+    def test_exports_from_datajoint(self):
+        """Test that Codec and helpers are exported from datajoint."""
+        assert hasattr(dj, "Codec")
+        assert hasattr(dj, "get_codec")
+        assert hasattr(dj, "list_codecs")
+
+
+class TestBlobCodec:
+    """Tests for the built-in BlobCodec."""
+
+    def test_blob_is_registered(self):
+        """Test that blob is automatically registered."""
+        assert is_codec_registered("blob")
+
+    def test_blob_properties(self):
+        """Test BlobCodec properties."""
+        blob_codec = get_codec("blob")
+        assert blob_codec.name == "blob"
+        assert blob_codec.get_dtype(is_store=False) == "bytes"
+        assert blob_codec.get_dtype(is_store=True) == "<hash>"
+
+    def test_blob_encode_decode_roundtrip(self):
+        """Test that encode/decode is a proper roundtrip."""
+        import numpy as np
+
+        blob_codec = get_codec("blob")
+
+        # Test with various data types
+        test_data = [
+            {"key": "value", "number": 42},
+            [1, 2, 3, 4, 5],
+            np.array([1.0, 2.0, 3.0]),
+            "simple string",
+            (1, 2, 3),
+            None,
+        ]
+
+        for original in test_data:
+            encoded = blob_codec.encode(original)
+            assert isinstance(encoded, bytes)
+            decoded = blob_codec.decode(encoded)
+            if isinstance(original, np.ndarray):
+                np.testing.assert_array_equal(decoded, original)
+            else:
+                assert decoded == original
+
+    def test_blob_encode_produces_valid_blob_format(self):
+        """Test that encoded data has valid blob protocol header."""
+        blob_codec = get_codec("blob")
+        encoded = blob_codec.encode({"test": "data"})
+
+        # Should start with compression prefix or protocol header
+        valid_prefixes = (b"ZL123\0", b"mYm\0", b"dj0\0")
+        assert any(encoded.startswith(p) for p in valid_prefixes)
+
+    def test_blob_in_list_codecs(self):
+        """Test that blob appears in list_codecs."""
+        codecs = list_codecs()
+        assert "blob" in codecs
+
+    def test_blob_handles_serialization(self):
+        """Test that BlobCodec handles serialization internally.
+
+        With the new design:
+        - Plain bytes columns store/return raw bytes (no serialization)
+        - <blob> handles pack/unpack in encode/decode
+        """
+        blob_codec = get_codec("blob")
+
+        # BlobCodec.encode() should produce packed bytes
+        data = {"key": "value"}
+        encoded = blob_codec.encode(data)
+        assert isinstance(encoded, bytes)
+
+        # BlobCodec.decode() should unpack back to original
+        decoded = blob_codec.decode(encoded)
+        assert decoded == data
+
+
+class TestFilepathCodec:
+    """Tests for the built-in FilepathCodec."""
+
+    def test_filepath_is_registered(self):
+        """Test that filepath is automatically registered."""
+        assert is_codec_registered("filepath")
+
+    def test_filepath_properties(self):
+        """Test FilepathCodec properties."""
+        filepath_codec = get_codec("filepath")
+        assert filepath_codec.name == "filepath"
+        # Filepath requires @store, so only test is_store=True
+        assert filepath_codec.get_dtype(is_store=True) == "json"
+
+    def test_filepath_rejects_hash_section(self):
+        """Test that filepath rejects paths starting with default hash prefix."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        # Configure test store with default prefixes
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                # hash_prefix defaults to "_hash"
+                # schema_prefix defaults to "_schema"
+            }
+
+            # Mock the backend to avoid actual file operations
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_get_backend.return_value = mock_backend
+
+                # Test various forms of _hash/ paths
+                invalid_paths = [
+                    "_hash/abc123",
+                    "_hash/schema/file.dat",
+                    "/_hash/nested/path.bin",
+                ]
+
+                for path in invalid_paths:
+                    with pytest.raises(
+                        ValueError,
+                        match=r"<filepath@> cannot use reserved section '_hash'",
+                    ):
+                        filepath_codec.encode(path, store_name="test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_filepath_rejects_schema_section(self):
+        """Test that filepath rejects paths starting with default schema prefix."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        # Configure test store with default prefixes
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                # hash_prefix defaults to "_hash"
+                # schema_prefix defaults to "_schema"
+            }
+
+            # Mock the backend to avoid actual file operations
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_get_backend.return_value = mock_backend
+
+                # Test various forms of _schema/ paths
+                invalid_paths = [
+                    "_schema/mytable",
+                    "_schema/myschema/mytable/key.dat",
+                    "/_schema/nested/data.zarr",
+                ]
+
+                for path in invalid_paths:
+                    with pytest.raises(
+                        ValueError,
+                        match=r"<filepath@> cannot use reserved section '_schema'",
+                    ):
+                        filepath_codec.encode(path, store_name="test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_filepath_allows_user_paths(self):
+        """Test that filepath allows any paths outside reserved sections."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        # Configure test store with default prefixes
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                # hash_prefix defaults to "_hash"
+                # schema_prefix defaults to "_schema"
+                # filepath_prefix defaults to None (unrestricted)
+            }
+
+            # Mock the backend to avoid actual file operations
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_backend.size.return_value = 1024
+                mock_get_backend.return_value = mock_backend
+
+                # Test valid user-managed paths
+                valid_paths = [
+                    "subject01/session001/data.bin",
+                    "raw/experiment_2024/recording.nwb",
+                    "processed/analysis_v2/results.csv",
+                    "my_hash_file.dat",  # "hash" in name is fine
+                    "my_schema_backup.sql",  # "schema" in name is fine
+                ]
+
+                for path in valid_paths:
+                    result = filepath_codec.encode(path, store_name="test_store")
+                    assert isinstance(result, dict)
+                    assert result["path"] == path
+                    assert result["store"] == "test_store"
+                    assert result["size"] == 1024
+                    assert result["is_dir"] is False
+                    assert "timestamp" in result
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_filepath_custom_prefixes(self):
+        """Test filepath with custom-configured prefixes."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        # Configure test store with custom prefixes
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "content_addressed",
+                "schema_prefix": "structured_data",
+                "filepath_prefix": None,  # Still unrestricted
+            }
+
+            # Mock the backend
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_backend.size.return_value = 2048
+                mock_get_backend.return_value = mock_backend
+
+                # Should reject custom hash prefix
+                with pytest.raises(ValueError, match=r"cannot use reserved section 'content_addressed'"):
+                    filepath_codec.encode("content_addressed/file.dat", store_name="test_store")
+
+                # Should reject custom schema prefix
+                with pytest.raises(ValueError, match=r"cannot use reserved section 'structured_data'"):
+                    filepath_codec.encode("structured_data/mydata.zarr", store_name="test_store")
+
+                # Should allow other paths
+                result = filepath_codec.encode("raw_files/session01.bin", store_name="test_store")
+                assert result["path"] == "raw_files/session01.bin"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_filepath_enforces_filepath_prefix(self):
+        """Test that filepath_prefix is enforced when configured."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        # Configure test store with required filepath_prefix
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "managed/hash",
+                "schema_prefix": "managed/schema",
+                "filepath_prefix": "user_files",  # Must use this prefix
+            }
+
+            # Mock the backend
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_backend.size.return_value = 3072
+                mock_get_backend.return_value = mock_backend
+
+                # Should reject path without required prefix
+                with pytest.raises(ValueError, match=r"must use prefix 'user_files'"):
+                    filepath_codec.encode("raw/session01.bin", store_name="test_store")
+
+                # Should allow path with correct prefix
+                result = filepath_codec.encode("user_files/raw/session01.bin", store_name="test_store")
+                assert result["path"] == "user_files/raw/session01.bin"
+                assert result["size"] == 3072
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
+    def test_filepath_in_list_codecs(self):
+        """Test that filepath appears in list_codecs."""
+        codecs = list_codecs()
+        assert "filepath" in codecs

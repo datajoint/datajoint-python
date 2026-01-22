@@ -8,6 +8,7 @@ RUN \
     pip uninstall datajoint -y
 
 USER root
-ENV DJ_HOST db
-ENV DJ_USER root
-ENV DJ_PASS password
+ENV DJ_HOST=db
+ENV DJ_USER=root
+ENV DJ_PASS=password
+ENV S3_ENDPOINT=minio:9000

@@ -14,5 +14,5 @@ jobs:
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         configuration-path: .github/pr_labeler.yaml
-        sync-labels: true
+        sync-labels: false  # Don't remove manually added labels
         dot: true

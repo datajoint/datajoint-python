@@ -1,8 +1,7 @@
-# pip install datajoint[test]
 # pre-commit install
 # pre-commit run --all-files
 # pre-commit autoupdate
-# SKIP=flake8 git commit -m "foo"
+# SKIP=ruff git commit -m "foo"
 
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
@@ -20,43 +19,40 @@ repos:
   rev: v2.4.1
   hooks:
     - id: codespell
-- repo: https://github.com/pycqa/isort
-  rev: 6.0.1  # Use the latest stable version
+      args: [--toml, pyproject.toml]
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.8.4
   hooks:
-    - id: isort
-      args:
-        - --profile=black  # Optional, makes isort compatible with Black
-- repo: https://github.com/psf/black
-  rev: 25.1.0 # matching versions in pyproject.toml and github actions
-  hooks:
-  - id: black
-    args: ["--check", "-v", "datajoint", "tests", "--diff"] # --required-version is conflicting with pre-commit
-- repo: https://github.com/PyCQA/flake8
-  rev: 7.3.0
-  hooks:
-  # syntax tests
-  - id: flake8
-    args:
-      - --select=E9,F63,F7,F82
-      - --count
-      - --show-source
-      - --statistics
-    files: datajoint # a lot of files in tests are not compliant
-  # style tests
-  - id: flake8
-    args:
-      - --ignore=E203,E722,W503
-      - --count
-      - --max-complexity=62
-      - --max-line-length=127
-      - --statistics
-      - --per-file-ignores=datajoint/diagram.py:C901
-    files: datajoint # a lot of files in tests are not compliant
+    # Run the linter
+    - id: ruff
+      args: [--fix]
+      files: ^(src/|tests/)
+    # Run the formatter
+    - id: ruff-format
+      files: ^(src/|tests/)
 - repo: https://github.com/rhysd/actionlint
   rev: v1.7.7
   hooks:
   # lint github actions workflow yaml
   - id: actionlint
-
-## Suggest to add pytest hook that runs unit test | Prerequisite: split unit/integration test
-## https://github.com/datajoint/datajoint-python/issues/1211
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.14.1
+  hooks:
+    - id: mypy
+      files: ^src/datajoint/
+      additional_dependencies:
+        - pydantic
+        - pydantic-settings
+        - types-PyMySQL
+        - types-tqdm
+        - pandas-stubs
+        - numpy
+- repo: local
+  hooks:
+    - id: unit-tests
+      name: unit tests
+      entry: pytest tests/unit/ -v --tb=short
+      language: system
+      pass_filenames: false
+      always_run: true
+      stages: [pre-commit]

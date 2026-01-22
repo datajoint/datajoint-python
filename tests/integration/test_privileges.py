@@ -1,0 +1,112 @@
+import pytest
+
+import datajoint as dj
+
+from tests import schema, schema_privileges
+
+namespace = locals()
+
+
+@pytest.fixture
+def schema_priv(connection_test):
+    schema = dj.Schema(
+        context=schema_privileges.LOCALS_PRIV,
+        connection=connection_test,
+    )
+    schema(schema_privileges.Parent)
+    schema(schema_privileges.Child)
+    schema(schema_privileges.NoAccess)
+    schema(schema_privileges.NoAccessAgain)
+    yield schema
+    if schema.is_activated():
+        schema.drop()
+
+
+@pytest.fixture
+def connection_djsubset(connection_root, db_creds_root, schema_priv, prefix):
+    user = "djsubset"
+    conn = dj.conn(**db_creds_root, reset=True)
+    schema_priv.activate(f"{prefix}_schema_privileges")
+    conn.query(
+        f"""
+        CREATE USER IF NOT EXISTS '{user}'@'%%'
+        IDENTIFIED BY '{user}'
+        """
+    )
+    conn.query(
+        f"""
+        GRANT SELECT, INSERT, UPDATE, DELETE
+        ON `{prefix}_schema_privileges`.`#parent`
+        TO '{user}'@'%%'
+        """
+    )
+    conn.query(
+        f"""
+        GRANT SELECT, INSERT, UPDATE, DELETE
+        ON `{prefix}_schema_privileges`.`__child`
+        TO '{user}'@'%%'
+        """
+    )
+    conn_djsubset = dj.conn(
+        host=db_creds_root["host"],
+        user=user,
+        password=user,
+        reset=True,
+    )
+    yield conn_djsubset
+    conn.query(f"DROP USER {user}")
+    conn.query(f"DROP DATABASE {prefix}_schema_privileges")
+
+
+@pytest.fixture
+def connection_djview(connection_root, db_creds_root):
+    """
+    A connection with only SELECT privilege to djtest schemas.
+    Requires connection_root fixture so that `djview` user exists.
+    """
+    connection = dj.conn(
+        host=db_creds_root["host"],
+        user="djview",
+        password="djview",
+        reset=True,
+    )
+    yield connection
+
+
+class TestUnprivileged:
+    def test_fail_create_schema(self, connection_djview):
+        """creating a schema with no CREATE privilege"""
+        with pytest.raises(dj.DataJointError):
+            return dj.Schema("forbidden_schema", namespace, connection=connection_djview)
+
+    def test_insert_failure(self, connection_djview, schema_any):
+        unprivileged = dj.Schema(schema_any.database, namespace, connection=connection_djview)
+        unprivileged.make_classes()
+        UnprivilegedLanguage = namespace["Language"]
+        assert issubclass(UnprivilegedLanguage, dj.Lookup) and len(UnprivilegedLanguage()) == len(
+            schema.Language()
+        ), "failed to make classes"
+        with pytest.raises(dj.DataJointError):
+            UnprivilegedLanguage().insert1(("Socrates", "Greek"))
+
+    def test_failure_to_create_table(self, connection_djview, schema_any):
+        """Table declaration should raise AccessError when user lacks CREATE privilege."""
+        unprivileged = dj.Schema(schema_any.database, namespace, connection=connection_djview)
+
+        # Should raise AccessError at declaration time, not silently fail
+        with pytest.raises(dj.errors.AccessError):
+
+            @unprivileged
+            class Try(dj.Manual):
+                definition = """  # should not matter really
+                id : int
+                ---
+                value : float
+                """
+
+
+class TestSubset:
+    def test_populate_activate(self, connection_djsubset, schema_priv, prefix):
+        schema_priv.activate(f"{prefix}_schema_privileges", create_schema=True, create_tables=False)
+        schema_privileges.Child.populate()
+        assert schema_privileges.Child.progress(display=False)[0] == 0

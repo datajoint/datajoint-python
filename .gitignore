@@ -185,3 +185,13 @@ cython_debug/
 dj_local_conf.json
 *.env
 !.vscode/launch.json
+# pixi environments
+.pixi
+_hash/
+
+# Local config
+.secrets/
+datajoint.json
+
+# Test outputs
+*_test_summary.txt

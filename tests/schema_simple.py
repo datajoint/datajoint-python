@@ -83,10 +83,7 @@ class B(dj.Computed):
             sigma = random.lognormvariate(0, 4)
             n = random.randint(0, 10)
             self.insert1(dict(key, mu=mu, sigma=sigma, n=n))
-            sub.insert(
-                dict(key, id_c=j, value=random.normalvariate(mu, sigma))
-                for j in range(n)
-            )
+            sub.insert(dict(key, id_c=j, value=random.normalvariate(mu, sigma)) for j in range(n))
 
 
 class L(dj.Lookup):
@@ -109,7 +106,7 @@ class D(dj.Computed):
     def _make_tuples(self, key):
         # make reference to a random tuple from L
         random.seed(str(key))
-        lookup = list(L().fetch("KEY"))
+        lookup = list(L().keys())
         self.insert(dict(key, id_d=i, **random.choice(lookup)) for i in range(4))
 
 
@@ -144,26 +141,22 @@ class E(dj.Computed):
         """
 
     class M(dj.Part):
-        definition = """ # test force_masters revisit
+        definition = """ # test part_integrity cascade
         -> E
-        id_m :int
+        id_m : int32
         ---
         -> E.H
         """
 
     def make(self, key):
         random.seed(str(key))
-        l_contents = list(L().fetch("KEY"))
+        l_contents = list(L().keys())
         part_f, part_g, part_h, part_m = E.F(), E.G(), E.H(), E.M()
-        bc_references = list((B.C() & key).fetch("KEY"))
+        bc_references = list((B.C() & key).keys())
         random.shuffle(bc_references)
 
         self.insert1(dict(key, **random.choice(l_contents)))
-        part_f.insert(
-            dict(key, id_f=i, **ref)
-            for i, ref in enumerate(bc_references)
-            if random.getrandbits(1)
-        )
+        part_f.insert(dict(key, id_f=i, **ref) for i, ref in enumerate(bc_references) if random.getrandbits(1))
         g_inserts = [dict(key, id_g=i, **ref) for i, ref in enumerate(l_contents)]
         part_g.insert(g_inserts)
         h_inserts = [dict(key, id_h=i) for i in range(4)]
@@ -248,9 +241,7 @@ class Profile(dj.Manual):
             with self.connection.transaction:
                 self.insert1(profile, ignore_extra_fields=True)
                 for url in profile["website"]:
-                    self.Website().insert1(
-                        dict(ssn=profile["ssn"], url_hash=Website().insert1_url(url))
-                    )
+                    self.Website().insert1(dict(ssn=profile["ssn"], url_hash=Website().insert1_url(url)))
 
 
 class TTestUpdate(dj.Lookup):
@@ -259,7 +250,7 @@ class TTestUpdate(dj.Lookup):
     ---
     string_attr     : varchar(255)
     num_attr=null   : float
-    blob_attr       : longblob
+    blob_attr       : <blob>
     """
 
     contents = [

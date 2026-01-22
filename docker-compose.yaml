@@ -1,14 +1,24 @@
-# HOST_UID=$(id -u) PY_VER=3.11 DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test up --build --exit-code-from djtest djtest
+# Development environment with MySQL and MinIO services
+#
+# NOTE: docker-compose is OPTIONAL for running tests.
+# Tests use testcontainers to automatically manage containers.
+# Just run: pytest tests/
+#
+# Use docker-compose for development/debugging when you want
+# persistent containers that survive test runs:
+#   docker compose up -d db minio   # Start services manually
+#   pytest tests/                    # Tests will use these containers
+#
+# Full Docker testing (CI):
+#   docker compose --profile test up djtest --build
 services:
   db:
     image: datajoint/mysql:${MYSQL_VER:-8.0}
     environment:
       - MYSQL_ROOT_PASSWORD=${DJ_PASS:-password}
     command: mysqld --default-authentication-plugin=mysql_native_password
-    # ports:
-    #   - "3306:3306"
-    # volumes:
-    #   - ./mysql/data:/var/lib/mysql
+    ports:
+      - "3306:3306"
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       timeout: 30s
@@ -19,18 +29,15 @@ services:
     environment:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
-    # ports:
-    #   - "9000:9000"
-    # volumes:
-    #   - ./minio/config:/root/.minio
-    #   - ./minio/data:/data
+    ports:
+      - "9000:9000"
     command: server --address ":9000" /data
     healthcheck:
       test:
         - "CMD"
         - "curl"
         - "--fail"
-        - "http://minio:9000/minio/health/live"
+        - "http://localhost:9000/minio/health/live"
       timeout: 30s
       retries: 5
       interval: 15s
@@ -40,7 +47,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        PY_VER: ${PY_VER:-3.9}
+        PY_VER: ${PY_VER:-3.10}
         HOST_UID: ${HOST_UID:-1000}
     depends_on:
       db:

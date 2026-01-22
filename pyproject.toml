@@ -16,13 +16,15 @@ dependencies = [
   "tqdm",
   "networkx",
   "pydot",
-  "minio>=7.0.0",
+  "fsspec>=2023.1.0",
   "matplotlib",
   "faker",
   "urllib3",
   "setuptools",
+  "pydantic-settings>=2.0.0",
 ]
-requires-python = ">=3.9,<4.0"
+
+requires-python = ">=3.10,<3.14"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
@@ -37,22 +39,25 @@ maintainers = [
 # manually sync here: https://docs.datajoint.com/core/datajoint-python/latest/#welcome-to-datajoint-for-python
 description = "DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data."
 readme = "README.md"
-license = {file = "LICENSE.txt"}
+license = {file = "LICENSE"}
 keywords = [
-    "database",
-    "automated",
-    "automation",
-    "compute",
-    "data",
-    "pipeline",
-    "workflow",
-    "scientific",
-    "science",
-    "research",
-    "neuroscience",
-    "bioinformatics",
-    "bio-informatics",
     "datajoint",
+    "data-pipelines",
+    "workflow-management",
+    "data-engineering",
+    "scientific-computing",
+    "neuroscience",
+    "research-software",
+    "data-integrity",
+    "reproducibility",
+    "declarative",
+    "etl",
+    "object-storage",
+    "schema-management",
+    "data-lineage",
+    "relational-model",
+    "mysql",
+    "postgresql",
 ]
 # https://pypi.org/classifiers/
 classifiers = [
@@ -60,7 +65,7 @@ classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Healthcare Industry",
-  "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+  "License :: OSI Approved :: Apache Software License",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
@@ -78,27 +83,183 @@ Repository = "https://github.com/datajoint/datajoint-python"
 dj = "datajoint.cli:cli"
 datajoint = "datajoint.cli:cli"
 
-[project.optional-dependencies]
+[dependency-groups]
 test = [
   "pytest",
   "pytest-cov",
+  "requests",
+  "graphviz",
+  "testcontainers[mysql,minio]>=4.0",
+  "polars>=0.20.0",
+  "pyarrow>=14.0.0",
+]
+
+[project.optional-dependencies]
+s3 = ["s3fs>=2023.1.0"]
+gcs = ["gcsfs>=2023.1.0"]
+azure = ["adlfs>=2023.1.0"]
+polars = ["polars>=0.20.0"]
+arrow = ["pyarrow>=14.0.0"]
+test = [
+  "pytest",
+  "pytest-cov",
+  "requests",
+  "s3fs>=2023.1.0",
+  "testcontainers[mysql,minio]>=4.0",
+  "polars>=0.20.0",
+  "pyarrow>=14.0.0",
 ]
 dev = [
   "pre-commit",
-  "black==24.2.0",
-  "flake8",
-  "isort",
+  "ruff",
   "codespell",
   # including test
   "pytest",
   "pytest-cov",
+  "polars>=0.20.0",
+  "pyarrow>=14.0.0",
 ]
 
-[tool.isort]
-profile = "black"
+[tool.ruff]
+# Equivalent to flake8 configuration
+line-length = 127
+target-version = "py310"
+
+[tool.ruff.lint]
+# Enable specific rule sets equivalent to flake8 configuration
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "C90", # mccabe complexity
+]
+
+# Ignore specific rules (equivalent to flake8 --ignore)
+ignore = [
+    "E203",  # whitespace before ':'
+    "E722",  # bare except
+]
+
+# Per-file ignores (equivalent to flake8 --per-file-ignores)
+[tool.ruff.lint.per-file-ignores]
+"datajoint/diagram.py" = ["C901"]  # function too complex
+"tests/integration/test_blob_matlab.py" = ["E501"]  # SQL hex strings cannot be broken across lines
+
+[tool.ruff.lint.mccabe]
+# Maximum complexity (equivalent to flake8 --max-complexity)
+max-complexity = 62
+
+[tool.ruff.format]
+# Use black-compatible formatting
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+# Start with lenient settings, gradually enable stricter checks
+warn_return_any = false
+warn_unused_ignores = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+
+# Modules with complete type coverage - strict checking enabled
+[[tool.mypy.overrides]]
+module = [
+    "datajoint.hash_registry",
+    "datajoint.errors",
+    "datajoint.hash",
+]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_return_any = true
+
+# Modules excluded from type checking until fully typed
+[[tool.mypy.overrides]]
+module = [
+    "datajoint.admin",
+    "datajoint.autopopulate",
+    "datajoint.blob",
+    "datajoint.builtin_codecs",
+    "datajoint.cli",
+    "datajoint.codecs",
+    "datajoint.condition",
+    "datajoint.connection",
+    "datajoint.declare",
+    "datajoint.dependencies",
+    "datajoint.diagram",
+    "datajoint.expression",
+    "datajoint.gc",
+    "datajoint.heading",
+    "datajoint.jobs",
+    "datajoint.lineage",
+    "datajoint.logging",
+    "datajoint.migrate",
+    "datajoint.objectref",
+    "datajoint.preview",
+    "datajoint.schemas",
+    "datajoint.settings",
+    "datajoint.staged_insert",
+    "datajoint.storage",
+    "datajoint.table",
+    "datajoint.user_tables",
+    "datajoint.utils",
+]
+ignore_errors = true
 
 [tool.setuptools]
 packages = ["datajoint"]
+package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 version = { attr = "datajoint.version.__version__"}
+
+[tool.codespell]
+skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
+# Rever -- nobody knows
+# numer -- numerator variable
+# astroid -- Python library name (not "asteroid")
+ignore-words-list = "rever,numer,astroid"
+
+[tool.pytest.ini_options]
+markers = [
+    "requires_mysql: marks tests as requiring MySQL database (deselect with '-m \"not requires_mysql\"')",
+    "requires_minio: marks tests as requiring MinIO object storage (deselect with '-m \"not requires_minio\"')",
+]
+
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "linux-aarch64"]
+
+[tool.pixi.pypi-dependencies]
+datajoint = { path = ".", editable = true }
+
+[tool.pixi.feature.test.pypi-dependencies]
+datajoint = { path = ".", editable = true, extras = ["test"] }
+
+[tool.pixi.feature.dev.pypi-dependencies]
+datajoint = { path = ".", editable = true, extras = ["dev", "test"] }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+test = { features = ["test"], solve-group = "default" }
+
+[tool.pixi.tasks]
+# Tests use testcontainers - no manual setup required
+test = "pytest tests/"
+test-cov = "pytest --cov-report term-missing --cov=datajoint tests/"
+# Optional: use external containers (docker-compose) instead of testcontainers
+services-up = "docker compose up -d db minio"
+services-down = "docker compose down"
+test-external = { cmd = "DJ_USE_EXTERNAL_CONTAINERS=1 pytest tests/", depends-on = ["services-up"] }
+
+[tool.pixi.dependencies]
+python = ">=3.10,<3.14"
+graphviz = ">=13.1.2,<14"
+
+[tool.pixi.activation]
+scripts=["activate.sh"]

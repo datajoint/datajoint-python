@@ -24,9 +24,7 @@ class Topic(dj.Manual):
 
     def add(self, topic):
         """add a new topic with a its UUID"""
-        self.insert1(
-            dict(topic_id=uuid.uuid5(top_level_namespace_id, topic), topic=topic)
-        )
+        self.insert1(dict(topic_id=uuid.uuid5(top_level_namespace_id, topic), topic=topic))
 
 
 class Item(dj.Computed):
@@ -41,9 +39,7 @@ class Item(dj.Computed):
 
     def make(self, key):
         for word in ("Habenula", "Hippocampus", "Hypothalamus", "Hypophysis"):
-            self.insert1(
-                dict(key, word=word, item_id=uuid.uuid5(key["topic_id"], word))
-            )
+            self.insert1(dict(key, word=word, item_id=uuid.uuid5(key["topic_id"], word)))
 
 
 LOCALS_UUID = {k: v for k, v in locals().items() if inspect.isclass(v)}
