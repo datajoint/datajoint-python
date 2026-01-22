@@ -360,7 +360,7 @@ def prepare_declare(
     for line in definition:
         if not line or line.startswith("#"):  # ignore additional comments
             pass
-        elif line.startswith("---") or line.startswith("___"):
+        elif line.startswith("---"):
             in_key = False  # start parsing dependent attributes
         elif is_foreign_key(line):
             compile_foreign_key(
