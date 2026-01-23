@@ -232,17 +232,26 @@ else:
                 result.nodes_to_show.update(arg.nodes_to_show)
                 # Merge contexts for class name lookups
                 result.context = {**result.context, **arg.context}
-                # Handle collapse: nodes from non-collapsed diagrams are explicit (expanded)
-                if not self._is_collapsed:
+                # Handle collapse: track which nodes should be explicit (expanded)
+                # - Always preserve existing _explicit_nodes from both sides
+                # - For a fresh (non-combined) non-collapsed diagram, add all its nodes to explicit
+                # - A fresh diagram has empty _explicit_nodes and _is_collapsed=False
+                # This ensures "expanded wins" and chained collapsed diagrams stay collapsed
+                result._explicit_nodes = set()
+                # Add self's explicit nodes
+                result._explicit_nodes.update(self._explicit_nodes)
+                # If self is a fresh non-collapsed diagram (not combined, not marked collapsed),
+                # treat all its nodes as explicit
+                if not self._is_collapsed and not self._explicit_nodes:
                     result._explicit_nodes.update(self.nodes_to_show)
-                else:
-                    result._explicit_nodes.update(self._explicit_nodes)
-                if not arg._is_collapsed:
+                # Add arg's explicit nodes
+                result._explicit_nodes.update(arg._explicit_nodes)
+                # If arg is a fresh non-collapsed diagram, treat all its nodes as explicit
+                if not arg._is_collapsed and not arg._explicit_nodes:
                     result._explicit_nodes.update(arg.nodes_to_show)
-                else:
-                    result._explicit_nodes.update(arg._explicit_nodes)
-                # Result is not collapsed (it's a combination)
-                result._is_collapsed = False
+                # Result is "collapsed" if BOTH operands were collapsed (no explicit nodes added)
+                # This allows chained collapsed diagrams to stay collapsed: A.collapse() + B.collapse() + C.collapse()
+                result._is_collapsed = self._is_collapsed and arg._is_collapsed
             except AttributeError:
                 try:
                     result.nodes_to_show.add(arg.full_table_name)
@@ -377,8 +386,8 @@ else:
             valid_nodes = self.nodes_to_show.intersection(set(self.nodes()))
             valid_explicit = self._explicit_nodes.intersection(set(self.nodes()))
 
-            if not valid_explicit or valid_explicit == valid_nodes:
-                # No collapse needed
+            if valid_explicit == valid_nodes:
+                # All nodes are explicit (expanded) - no collapse needed
                 return graph, {}
 
             # Map full_table_names to class_names
