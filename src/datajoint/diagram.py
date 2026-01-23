@@ -591,6 +591,17 @@ else:
                 else:
                     cluster_labels[schema_name] = schema_name
 
+            # Disambiguate labels if multiple schemas share the same module name
+            # (e.g., all defined in __main__ in a notebook)
+            label_counts = {}
+            for label in cluster_labels.values():
+                label_counts[label] = label_counts.get(label, 0) + 1
+
+            for schema_name, label in cluster_labels.items():
+                if label_counts[label] > 1:
+                    # Multiple schemas share this module name - add schema name
+                    cluster_labels[schema_name] = f"{label} ({schema_name})"
+
             # Assign alias nodes (orange dots) to the same schema as their child table
             for node, data in graph.nodes(data=True):
                 if data.get("node_type") is _AliasNode:
@@ -638,8 +649,8 @@ else:
                     color="#FF000020",
                     fontcolor="#7F0000A0",
                     fontsize=round(scale * 10),
-                    size=0.3 * scale,
-                    fixed=True,
+                    size=0.4 * scale,
+                    fixed=False,
                 ),
                 Imported: dict(
                     shape="ellipse",
