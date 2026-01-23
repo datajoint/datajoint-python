@@ -361,15 +361,9 @@ else:
                 copy=False,
             )
 
-        def make_dot(self, group_by_schema: bool = False):
+        def make_dot(self):
             """
             Generate a pydot graph object.
-
-            Parameters
-            ----------
-            group_by_schema : bool, optional
-                If True, group nodes into clusters by their database schema.
-                Default False.
 
             Returns
             -------
@@ -379,21 +373,39 @@ else:
             Notes
             -----
             Layout direction is controlled via ``dj.config.display.diagram_direction``.
+            Tables are grouped by schema, with the Python module name shown as the
+            group label when available.
             """
             direction = config.display.diagram_direction
             graph = self._make_graph()
 
-            # Build schema mapping if grouping is requested
-            schema_map = {}
-            if group_by_schema:
-                for full_name in self.nodes_to_show:
-                    # Extract schema from full table name like `schema`.`table` or "schema"."table"
-                    parts = full_name.replace('"', '`').split('`')
-                    if len(parts) >= 2:
-                        schema_name = parts[1]  # schema is between first pair of backticks
-                        # Find the class name for this full_name
-                        class_name = lookup_class_name(full_name, self.context) or full_name
-                        schema_map[class_name] = schema_name
+            # Build schema mapping: class_name -> (schema_name, module_name)
+            # Group by database schema, but label with Python module name when available
+            schema_map = {}  # class_name -> schema_name
+            module_map = {}  # schema_name -> module_name (for cluster labels)
+
+            for full_name in self.nodes_to_show:
+                # Extract schema from full table name like `schema`.`table` or "schema"."table"
+                parts = full_name.replace('"', '`').split('`')
+                if len(parts) >= 2:
+                    schema_name = parts[1]  # schema is between first pair of backticks
+                    class_name = lookup_class_name(full_name, self.context) or full_name
+                    schema_map[class_name] = schema_name
+
+                    # Try to get Python module name for the cluster label
+                    if schema_name not in module_map:
+                        cls = self._resolve_class(class_name)
+                        if cls is not None and hasattr(cls, "__module__"):
+                            # Use the last part of the module path (e.g., "my_pipeline" from "package.my_pipeline")
+                            module_map[schema_name] = cls.__module__.split(".")[-1]
+
+            # Assign alias nodes (orange dots) to the same schema as their child table
+            for node, data in graph.nodes(data=True):
+                if data.get("node_type") is _AliasNode:
+                    # Find the child (successor) - the table that declares the renamed FK
+                    successors = list(graph.successors(node))
+                    if successors and successors[0] in schema_map:
+                        schema_map[node] = schema_map[successors[0]]
 
             scale = 1.2  # scaling factor for fonts and boxes
             label_props = {  # http://matplotlib.org/examples/color/named_colors.html
@@ -498,8 +510,8 @@ else:
                 edge.set_arrowhead("none")
                 edge.set_penwidth(0.75 if props["multi"] else 2)
 
-            # Group nodes into schema clusters if requested
-            if group_by_schema and schema_map:
+            # Group nodes into schema clusters (always on)
+            if schema_map:
                 import pydot
 
                 # Group nodes by schema
@@ -513,10 +525,12 @@ else:
                         schemas[schema_name].append(node)
 
                 # Create clusters for each schema
+                # Use Python module name as label when available, otherwise database schema name
                 for schema_name, nodes in schemas.items():
+                    label = module_map.get(schema_name, schema_name)
                     cluster = pydot.Cluster(
                         f"cluster_{schema_name}",
-                        label=schema_name,
+                        label=label,
                         style="dashed",
                         color="gray",
                         fontcolor="gray",
@@ -527,17 +541,17 @@ else:
 
             return dot
 
-        def make_svg(self, group_by_schema: bool = False):
+        def make_svg(self):
             from IPython.display import SVG
 
-            return SVG(self.make_dot(group_by_schema=group_by_schema).create_svg())
+            return SVG(self.make_dot().create_svg())
 
-        def make_png(self, group_by_schema: bool = False):
-            return io.BytesIO(self.make_dot(group_by_schema=group_by_schema).create_png())
+        def make_png(self):
+            return io.BytesIO(self.make_dot().create_png())
 
-        def make_image(self, group_by_schema: bool = False):
+        def make_image(self):
             if plot_active:
-                return plt.imread(self.make_png(group_by_schema=group_by_schema))
+                return plt.imread(self.make_png())
             else:
                 raise DataJointError("pyplot was not imported")
 
@@ -556,19 +570,46 @@ else:
             Notes
             -----
             Layout direction is controlled via ``dj.config.display.diagram_direction``.
+            Tables are grouped by schema using Mermaid subgraphs, with the Python
+            module name shown as the group label when available.
 
             Examples
             --------
             >>> print(dj.Diagram(schema).make_mermaid())
             flowchart TB
-                Mouse[Mouse]:::manual
-                Session[Session]:::manual
-                Neuron([Neuron]):::computed
+                subgraph my_pipeline
+                    Mouse[Mouse]:::manual
+                    Session[Session]:::manual
+                    Neuron([Neuron]):::computed
+                end
                 Mouse --> Session
                 Session --> Neuron
             """
             graph = self._make_graph()
             direction = config.display.diagram_direction
+
+            # Build schema mapping for grouping
+            schema_map = {}  # class_name -> schema_name
+            module_map = {}  # schema_name -> module_name (for subgraph labels)
+
+            for full_name in self.nodes_to_show:
+                parts = full_name.replace('"', '`').split('`')
+                if len(parts) >= 2:
+                    schema_name = parts[1]
+                    class_name = lookup_class_name(full_name, self.context) or full_name
+                    schema_map[class_name] = schema_name
+
+                    if schema_name not in module_map:
+                        cls = self._resolve_class(class_name)
+                        if cls is not None and hasattr(cls, "__module__"):
+                            module_map[schema_name] = cls.__module__.split(".")[-1]
+
+            # Assign alias nodes to the same schema as their child table
+            for node, data in graph.nodes(data=True):
+                if data.get("node_type") is _AliasNode:
+                    successors = list(graph.successors(node))
+                    if successors and successors[0] in schema_map:
+                        schema_map[node] = schema_map[successors[0]]
 
             lines = [f"flowchart {direction}"]
 
@@ -601,15 +642,27 @@ else:
                 None: "",
             }
 
-            # Add nodes
+            # Group nodes by schema into subgraphs
+            schemas = {}
             for node, data in graph.nodes(data=True):
-                tier = data.get("node_type")
-                left, right = shape_map.get(tier, ("[", "]"))
-                cls = tier_class.get(tier, "")
-                # Mermaid node IDs can't have dots, replace with underscores
-                safe_id = node.replace(".", "_").replace(" ", "_")
-                class_suffix = f":::{cls}" if cls else ""
-                lines.append(f"    {safe_id}{left}{node}{right}{class_suffix}")
+                schema_name = schema_map.get(node)
+                if schema_name:
+                    if schema_name not in schemas:
+                        schemas[schema_name] = []
+                    schemas[schema_name].append((node, data))
+
+            # Add nodes grouped by schema subgraphs
+            for schema_name, nodes in schemas.items():
+                label = module_map.get(schema_name, schema_name)
+                lines.append(f"    subgraph {label}")
+                for node, data in nodes:
+                    tier = data.get("node_type")
+                    left, right = shape_map.get(tier, ("[", "]"))
+                    cls = tier_class.get(tier, "")
+                    safe_id = node.replace(".", "_").replace(" ", "_")
+                    class_suffix = f":::{cls}" if cls else ""
+                    lines.append(f"        {safe_id}{left}{node}{right}{class_suffix}")
+                lines.append("    end")
 
             lines.append("")
 
@@ -626,20 +679,15 @@ else:
         def _repr_svg_(self):
             return self.make_svg()._repr_svg_()
 
-        def draw(self, group_by_schema: bool = False):
+        def draw(self):
             if plot_active:
-                plt.imshow(self.make_image(group_by_schema=group_by_schema))
+                plt.imshow(self.make_image())
                 plt.gca().axis("off")
                 plt.show()
             else:
                 raise DataJointError("pyplot was not imported")
 
-        def save(
-            self,
-            filename: str,
-            format: str | None = None,
-            group_by_schema: bool = False,
-        ) -> None:
+        def save(self, filename: str, format: str | None = None) -> None:
             """
             Save diagram to file.
 
@@ -650,9 +698,6 @@ else:
             format : str, optional
                 File format (``'png'``, ``'svg'``, or ``'mermaid'``).
                 Inferred from extension if None.
-            group_by_schema : bool, optional
-                If True, group nodes into clusters by their database schema.
-                Default False. Only applies to png and svg formats.
 
             Raises
             ------
@@ -662,6 +707,8 @@ else:
             Notes
             -----
             Layout direction is controlled via ``dj.config.display.diagram_direction``.
+            Tables are grouped by schema, with the Python module name shown as the
+            group label when available.
             """
             if format is None:
                 if filename.lower().endswith(".png"):
@@ -674,10 +721,10 @@ else:
                 raise DataJointError("Could not infer format from filename. Specify format explicitly.")
             if format.lower() == "png":
                 with open(filename, "wb") as f:
-                    f.write(self.make_png(group_by_schema=group_by_schema).getbuffer().tobytes())
+                    f.write(self.make_png().getbuffer().tobytes())
             elif format.lower() == "svg":
                 with open(filename, "w") as f:
-                    f.write(self.make_svg(group_by_schema=group_by_schema).data)
+                    f.write(self.make_svg().data)
             elif format.lower() == "mermaid":
                 with open(filename, "w") as f:
                     f.write(self.make_mermaid())
