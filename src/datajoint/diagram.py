@@ -514,14 +514,19 @@ else:
                                 continue
                     node_mapping[node] = node
 
+            # Build reverse mapping: label -> schema_name
+            label_to_schema = {label: schema for schema, label in collapsed_labels.items()}
+
             # Add nodes
             added_collapsed = set()
             for old_node, new_node in node_mapping.items():
                 if new_node in collapsed_counts:
                     # This is a collapsed schema node
                     if new_node not in added_collapsed:
+                        schema_name = label_to_schema.get(new_node, new_node)
                         new_graph.add_node(new_node, node_type=None, collapsed=True,
-                                          table_count=collapsed_counts[new_node])
+                                          table_count=collapsed_counts[new_node],
+                                          schema_name=schema_name)
                         added_collapsed.add(new_node)
                 else:
                     new_graph.add_node(new_node, **graph.nodes[old_node])
@@ -659,6 +664,11 @@ else:
                     successors = list(graph.successors(node))
                     if successors and successors[0] in schema_map:
                         schema_map[node] = schema_map[successors[0]]
+
+            # Assign collapsed nodes to their schema so they appear in the cluster
+            for node, data in graph.nodes(data=True):
+                if data.get("collapsed") and data.get("schema_name"):
+                    schema_map[node] = data["schema_name"]
 
             scale = 1.2  # scaling factor for fonts and boxes
             label_props = {  # http://matplotlib.org/examples/color/named_colors.html
