@@ -386,6 +386,15 @@ else:
             valid_nodes = self.nodes_to_show.intersection(set(self.nodes()))
             valid_explicit = self._explicit_nodes.intersection(set(self.nodes()))
 
+            # Determine if collapse should be applied:
+            # - If _explicit_nodes is empty AND _is_collapsed is False, this is a fresh
+            #   diagram that was never combined with collapsed diagrams → no collapse
+            # - If _explicit_nodes is empty AND _is_collapsed is True, this is the result
+            #   of combining only collapsed diagrams → collapse all nodes
+            # - If _explicit_nodes equals valid_nodes, all nodes are explicit → no collapse
+            if not valid_explicit and not self._is_collapsed:
+                # Fresh diagram, never combined with collapsed diagrams
+                return graph, {}
             if valid_explicit == valid_nodes:
                 # All nodes are explicit (expanded) - no collapse needed
                 return graph, {}
