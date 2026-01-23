@@ -103,6 +103,8 @@ else:
             if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
+                self._explicit_nodes = set(source._explicit_nodes)
+                self._is_collapsed = source._is_collapsed
                 self.context = source.context
                 super().__init__(source)
                 return
@@ -130,6 +132,8 @@ else:
 
             # Enumerate nodes from all the items in the list
             self.nodes_to_show = set()
+            self._explicit_nodes = set()  # nodes that should never be collapsed
+            self._is_collapsed = False  # whether this diagram's nodes should be collapsed when combined
             try:
                 self.nodes_to_show.add(source.full_table_name)
             except AttributeError:
@@ -181,6 +185,31 @@ else:
             self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
             return self
 
+        def collapse(self) -> "Diagram":
+            """
+            Mark this diagram for collapsing when combined with other diagrams.
+
+            When a collapsed diagram is added to a non-collapsed diagram, its nodes
+            are shown as a single collapsed node per schema, unless they also appear
+            in the non-collapsed diagram (expanded wins).
+
+            Returns
+            -------
+            Diagram
+                A copy of this diagram marked for collapsing.
+
+            Examples
+            --------
+            >>> # Show schema1 expanded, schema2 collapsed into single nodes
+            >>> dj.Diagram(schema1) + dj.Diagram(schema2).collapse()
+
+            >>> # Explicitly expand one table from schema2
+            >>> dj.Diagram(schema1) + dj.Diagram(TableFromSchema2) + dj.Diagram(schema2).collapse()
+            """
+            result = Diagram(self)
+            result._is_collapsed = True
+            return result
+
         def __add__(self, arg) -> "Diagram":
             """
             Union or downstream expansion.
@@ -195,21 +224,36 @@ else:
             Diagram
                 Combined or expanded diagram.
             """
-            self = Diagram(self)  # copy
+            result = Diagram(self)  # copy
             try:
-                self.nodes_to_show.update(arg.nodes_to_show)
+                result.nodes_to_show.update(arg.nodes_to_show)
+                # Handle collapse: nodes from non-collapsed diagrams are explicit (expanded)
+                if not self._is_collapsed:
+                    result._explicit_nodes.update(self.nodes_to_show)
+                else:
+                    result._explicit_nodes.update(self._explicit_nodes)
+                if not arg._is_collapsed:
+                    result._explicit_nodes.update(arg.nodes_to_show)
+                else:
+                    result._explicit_nodes.update(arg._explicit_nodes)
+                # Result is not collapsed (it's a combination)
+                result._is_collapsed = False
             except AttributeError:
                 try:
-                    self.nodes_to_show.add(arg.full_table_name)
+                    result.nodes_to_show.add(arg.full_table_name)
+                    result._explicit_nodes.add(arg.full_table_name)
                 except AttributeError:
                     for i in range(arg):
-                        new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
+                        new = nx.algorithms.boundary.node_boundary(result, result.nodes_to_show)
                         if not new:
                             break
                         # add nodes referenced by aliased nodes
-                        new.update(nx.algorithms.boundary.node_boundary(self, (a for a in new if a.isdigit())))
-                        self.nodes_to_show.update(new)
-            return self
+                        new.update(nx.algorithms.boundary.node_boundary(result, (a for a in new if a.isdigit())))
+                        result.nodes_to_show.update(new)
+                    # Expanded nodes from + N expansion are explicit
+                    if not self._is_collapsed:
+                        result._explicit_nodes = result.nodes_to_show.copy()
+            return result
 
         def __sub__(self, arg) -> "Diagram":
             """
@@ -305,6 +349,131 @@ else:
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 
+        def _apply_collapse(self, graph: nx.DiGraph) -> tuple[nx.DiGraph, dict[str, str]]:
+            """
+            Apply collapse logic to the graph.
+
+            Nodes in nodes_to_show but not in _explicit_nodes are collapsed into
+            single schema nodes.
+
+            Parameters
+            ----------
+            graph : nx.DiGraph
+                The graph from _make_graph().
+
+            Returns
+            -------
+            tuple[nx.DiGraph, dict[str, str]]
+                Modified graph and mapping of collapsed schema labels to their table count.
+            """
+            if not self._explicit_nodes or self._explicit_nodes == self.nodes_to_show:
+                # No collapse needed
+                return graph, {}
+
+            # Map full_table_names to class_names
+            full_to_class = {
+                node: lookup_class_name(node, self.context) or node
+                for node in self.nodes_to_show
+            }
+            class_to_full = {v: k for k, v in full_to_class.items()}
+
+            # Identify explicit class names (should be expanded)
+            explicit_class_names = {
+                full_to_class.get(node, node) for node in self._explicit_nodes
+            }
+
+            # Identify nodes to collapse (class names)
+            nodes_to_collapse = set(graph.nodes()) - explicit_class_names
+
+            if not nodes_to_collapse:
+                return graph, {}
+
+            # Group collapsed nodes by schema
+            collapsed_by_schema = {}  # schema_name -> list of class_names
+            for class_name in nodes_to_collapse:
+                full_name = class_to_full.get(class_name)
+                if full_name:
+                    parts = full_name.replace('"', '`').split('`')
+                    if len(parts) >= 2:
+                        schema_name = parts[1]
+                        if schema_name not in collapsed_by_schema:
+                            collapsed_by_schema[schema_name] = []
+                        collapsed_by_schema[schema_name].append(class_name)
+
+            if not collapsed_by_schema:
+                return graph, {}
+
+            # Determine labels for collapsed schemas
+            schema_modules = {}
+            for schema_name, class_names in collapsed_by_schema.items():
+                schema_modules[schema_name] = set()
+                for class_name in class_names:
+                    cls = self._resolve_class(class_name)
+                    if cls is not None and hasattr(cls, "__module__"):
+                        module_name = cls.__module__.split(".")[-1]
+                        schema_modules[schema_name].add(module_name)
+
+            collapsed_labels = {}  # schema_name -> label
+            collapsed_counts = {}  # label -> count of tables
+            for schema_name, modules in schema_modules.items():
+                if len(modules) == 1:
+                    label = next(iter(modules))
+                else:
+                    label = schema_name
+                collapsed_labels[schema_name] = label
+                collapsed_counts[label] = len(collapsed_by_schema[schema_name])
+
+            # Create new graph with collapsed nodes
+            new_graph = nx.DiGraph()
+
+            # Map old node names to new names (collapsed nodes -> schema label)
+            node_mapping = {}
+            for node in graph.nodes():
+                full_name = class_to_full.get(node)
+                if full_name:
+                    parts = full_name.replace('"', '`').split('`')
+                    if len(parts) >= 2 and node in nodes_to_collapse:
+                        schema_name = parts[1]
+                        node_mapping[node] = collapsed_labels[schema_name]
+                    else:
+                        node_mapping[node] = node
+                else:
+                    # Alias nodes - check if they should be collapsed
+                    # An alias node should be collapsed if ALL its neighbors are collapsed
+                    neighbors = set(graph.predecessors(node)) | set(graph.successors(node))
+                    if neighbors and neighbors <= nodes_to_collapse:
+                        # Get schema from first neighbor
+                        neighbor = next(iter(neighbors))
+                        full_name = class_to_full.get(neighbor)
+                        if full_name:
+                            parts = full_name.replace('"', '`').split('`')
+                            if len(parts) >= 2:
+                                schema_name = parts[1]
+                                node_mapping[node] = collapsed_labels[schema_name]
+                                continue
+                    node_mapping[node] = node
+
+            # Add nodes
+            added_collapsed = set()
+            for old_node, new_node in node_mapping.items():
+                if new_node in collapsed_counts:
+                    # This is a collapsed schema node
+                    if new_node not in added_collapsed:
+                        new_graph.add_node(new_node, node_type=None, collapsed=True,
+                                          table_count=collapsed_counts[new_node])
+                        added_collapsed.add(new_node)
+                else:
+                    new_graph.add_node(new_node, **graph.nodes[old_node])
+
+            # Add edges (avoiding self-loops and duplicates)
+            for src, dest, data in graph.edges(data=True):
+                new_src = node_mapping[src]
+                new_dest = node_mapping[dest]
+                if new_src != new_dest and not new_graph.has_edge(new_src, new_dest):
+                    new_graph.add_edge(new_src, new_dest, **data)
+
+            return new_graph, collapsed_counts
+
         def _resolve_class(self, name: str):
             """
             Safely resolve a table class from a dotted name without eval().
@@ -378,6 +547,9 @@ else:
             """
             direction = config.display.diagram_direction
             graph = self._make_graph()
+
+            # Apply collapse logic if needed
+            graph, collapsed_counts = self._apply_collapse(graph)
 
             # Build schema mapping: class_name -> schema_name
             # Group by database schema, label with Python module name if 1:1 mapping
@@ -474,8 +646,22 @@ else:
                     size=0.1 * scale,
                     fixed=False,
                 ),
+                "collapsed": dict(
+                    shape="box3d",
+                    color="#80808060",
+                    fontcolor="#404040",
+                    fontsize=round(scale * 10),
+                    size=0.5 * scale,
+                    fixed=False,
+                ),
             }
-            node_props = {node: label_props[d["node_type"]] for node, d in dict(graph.nodes(data=True)).items()}
+            # Build node_props, handling collapsed nodes specially
+            node_props = {}
+            for node, d in graph.nodes(data=True):
+                if d.get("collapsed"):
+                    node_props[node] = label_props["collapsed"]
+                else:
+                    node_props[node] = label_props[d["node_type"]]
 
             self._encapsulate_node_names(graph)
             self._encapsulate_edge_attributes(graph)
@@ -492,23 +678,32 @@ else:
                 node.set_fixedsize("shape" if props["fixed"] else False)
                 node.set_width(props["size"])
                 node.set_height(props["size"])
-                cls = self._resolve_class(name)
-                if cls is not None:
-                    description = cls().describe(context=self.context).split("\n")
-                    description = (
-                        ("-" * 30 if q.startswith("---") else (q.replace("->", "&#8594;") if "->" in q else q.split(":")[0]))
-                        for q in description
-                        if not q.startswith("#")
-                    )
-                    node.set_tooltip("&#13;".join(description))
-                # Strip module prefix from label if it matches the cluster label
-                display_name = name
-                schema_name = schema_map.get(name)
-                if schema_name and "." in name:
-                    prefix = name.rsplit(".", 1)[0]
-                    if prefix == cluster_labels.get(schema_name):
-                        display_name = name.rsplit(".", 1)[1]
-                node.set_label("<<u>" + display_name + "</u>>" if node.get("distinguished") == "True" else display_name)
+
+                # Handle collapsed nodes specially
+                node_data = graph.nodes.get(f'"{name}"', {})
+                if node_data.get("collapsed"):
+                    table_count = node_data.get("table_count", 0)
+                    label = f"{name}\\n({table_count} tables)" if table_count != 1 else f"{name}\\n(1 table)"
+                    node.set_label(label)
+                    node.set_tooltip(f"Collapsed schema: {table_count} tables")
+                else:
+                    cls = self._resolve_class(name)
+                    if cls is not None:
+                        description = cls().describe(context=self.context).split("\n")
+                        description = (
+                            ("-" * 30 if q.startswith("---") else (q.replace("->", "&#8594;") if "->" in q else q.split(":")[0]))
+                            for q in description
+                            if not q.startswith("#")
+                        )
+                        node.set_tooltip("&#13;".join(description))
+                    # Strip module prefix from label if it matches the cluster label
+                    display_name = name
+                    schema_name = schema_map.get(name)
+                    if schema_name and "." in name:
+                        prefix = name.rsplit(".", 1)[0]
+                        if prefix == cluster_labels.get(schema_name):
+                            display_name = name.rsplit(".", 1)[1]
+                    node.set_label("<<u>" + display_name + "</u>>" if node.get("distinguished") == "True" else display_name)
                 node.set_color(props["color"])
                 node.set_style("filled")
 
@@ -520,11 +715,12 @@ else:
                 if props is None:
                     raise DataJointError("Could not find edge with source '{}' and destination '{}'".format(src, dest))
                 edge.set_color("#00000040")
-                edge.set_style("solid" if props["primary"] else "dashed")
-                master_part = graph.nodes[dest]["node_type"] is Part and dest.startswith(src + ".")
+                edge.set_style("solid" if props.get("primary") else "dashed")
+                dest_node_type = graph.nodes[dest].get("node_type")
+                master_part = dest_node_type is Part and dest.startswith(src + ".")
                 edge.set_weight(3 if master_part else 1)
                 edge.set_arrowhead("none")
-                edge.set_penwidth(0.75 if props["multi"] else 2)
+                edge.set_penwidth(0.75 if props.get("multi") else 2)
 
             # Group nodes into schema clusters (always on)
             if schema_map:
@@ -604,6 +800,9 @@ else:
             graph = self._make_graph()
             direction = config.display.diagram_direction
 
+            # Apply collapse logic if needed
+            graph, collapsed_counts = self._apply_collapse(graph)
+
             # Build schema mapping for grouping
             schema_map = {}  # class_name -> schema_name
             schema_modules = {}  # schema_name -> set of module names
@@ -646,6 +845,7 @@ else:
             lines.append("    classDef computed fill:#FFB6C1,stroke:#8B0000")
             lines.append("    classDef imported fill:#ADD8E6,stroke:#00008B")
             lines.append("    classDef part fill:#FFFFFF,stroke:#000000")
+            lines.append("    classDef collapsed fill:#808080,stroke:#404040")
             lines.append("")
 
             # Shape mapping: Manual=box, Computed/Imported=stadium, Lookup/Part=box
@@ -669,14 +869,25 @@ else:
                 None: "",
             }
 
-            # Group nodes by schema into subgraphs
+            # Group nodes by schema into subgraphs (only non-collapsed nodes)
             schemas = {}
+            collapsed_nodes = []
             for node, data in graph.nodes(data=True):
-                schema_name = schema_map.get(node)
-                if schema_name:
-                    if schema_name not in schemas:
-                        schemas[schema_name] = []
-                    schemas[schema_name].append((node, data))
+                if data.get("collapsed"):
+                    collapsed_nodes.append((node, data))
+                else:
+                    schema_name = schema_map.get(node)
+                    if schema_name:
+                        if schema_name not in schemas:
+                            schemas[schema_name] = []
+                        schemas[schema_name].append((node, data))
+
+            # Add collapsed nodes (not in subgraphs)
+            for node, data in collapsed_nodes:
+                safe_id = node.replace(".", "_").replace(" ", "_")
+                table_count = data.get("table_count", 0)
+                count_text = f"{table_count} tables" if table_count != 1 else "1 table"
+                lines.append(f"    {safe_id}[[\"{node}<br/>({count_text})\"]]:::collapsed")
 
             # Add nodes grouped by schema subgraphs
             for schema_name, nodes in schemas.items():
