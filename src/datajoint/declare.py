@@ -755,7 +755,7 @@ def compile_index(line: str, index_sql: list[str], adapter) -> None:
     """
 
     def format_attribute(attr):
-        match, attr = translate_attribute(attr)
+        match, attr = translate_attribute(attr, adapter)
         if match is None:
             return attr
         if match["path"] is None:

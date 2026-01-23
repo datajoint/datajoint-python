@@ -457,7 +457,8 @@ class QueryExpression:
         from other attributes available before the projection.
         Each attribute name can only be used once.
         """
-        named_attributes = {k: translate_attribute(v)[1] for k, v in named_attributes.items()}
+        adapter = self.connection.adapter if hasattr(self, 'connection') and self.connection else None
+        named_attributes = {k: translate_attribute(v, adapter)[1] for k, v in named_attributes.items()}
         # new attributes in parentheses are included again with the new name without removing original
         duplication_pattern = re.compile(rf"^\s*\(\s*(?!{'|'.join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*\)\s*$")
         # attributes without parentheses renamed

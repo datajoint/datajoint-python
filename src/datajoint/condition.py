@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__.split(".")[0])
 JSON_PATTERN = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$")
 
 
-def translate_attribute(key: str) -> tuple[dict | None, str]:
+def translate_attribute(key: str, adapter=None) -> tuple[dict | None, str]:
     """
     Translate an attribute key, handling JSON path notation.
 
@@ -39,6 +39,9 @@ def translate_attribute(key: str) -> tuple[dict | None, str]:
     ----------
     key : str
         Attribute name, optionally with JSON path (e.g., ``"attr.path.field"``).
+    adapter : DatabaseAdapter, optional
+        Database adapter for backend-specific SQL generation.
+        If not provided, uses MySQL syntax for backward compatibility.
 
     Returns
     -------
@@ -53,9 +56,14 @@ def translate_attribute(key: str) -> tuple[dict | None, str]:
     if match["path"] is None:
         return match, match["attr"]
     else:
-        return match, "json_value(`{}`, _utf8mb4'$.{}'{})".format(
-            *[((f" returning {v}" if k == "type" else v) if v else "") for k, v in match.items()]
-        )
+        # Use adapter's json_path_expr if available, otherwise fall back to MySQL syntax
+        if adapter is not None:
+            return match, adapter.json_path_expr(match["attr"], match["path"], match["type"])
+        else:
+            # Legacy MySQL syntax for backward compatibility
+            return match, "json_value(`{}`, _utf8mb4'$.{}'{})".format(
+                *[((f" returning {v}" if k == "type" else v) if v else "") for k, v in match.items()]
+            )
 
 
 class PromiscuousOperand:
@@ -306,14 +314,17 @@ def make_condition(
 
     def prep_value(k, v):
         """prepare SQL condition"""
-        key_match, k = translate_attribute(k)
-        if key_match["path"] is None:
+        key_match, k = translate_attribute(k, adapter)
+        is_json_path = key_match is not None and key_match.get("path") is not None
+        has_explicit_type = key_match is not None and key_match.get("type") is not None
+
+        if not is_json_path:
             k = adapter.quote_identifier(k)
-        if query_expression.heading[key_match["attr"]].json and key_match["path"] is not None and isinstance(v, dict):
+        if is_json_path and isinstance(v, dict):
             return f"{k}='{json.dumps(v)}'"
         if v is None:
             return f"{k} IS NULL"
-        if query_expression.heading[key_match["attr"]].uuid:
+        if key_match is not None and query_expression.heading[key_match["attr"]].uuid:
             if not isinstance(v, uuid.UUID):
                 try:
                     v = uuid.UUID(v)

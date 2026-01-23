@@ -1004,12 +1004,12 @@ class PostgreSQLAdapter(DatabaseAdapter):
         path : str
             JSON path (e.g., 'field' or 'nested.field').
         return_type : str, optional
-            Return type specification (not used in PostgreSQL jsonb_extract_path_text).
+            Return type specification for casting (e.g., 'float', 'decimal(10,2)').
 
         Returns
         -------
         str
-            PostgreSQL jsonb_extract_path_text() expression.
+            PostgreSQL jsonb_extract_path_text() expression, with optional cast.
 
         Examples
         --------
@@ -1017,13 +1017,34 @@ class PostgreSQLAdapter(DatabaseAdapter):
         'jsonb_extract_path_text("data", \\'field\\')'
         >>> adapter.json_path_expr('data', 'nested.field')
         'jsonb_extract_path_text("data", \\'nested\\', \\'field\\')'
+        >>> adapter.json_path_expr('data', 'value', 'float')
+        'jsonb_extract_path_text("data", \\'value\\')::float'
         """
         quoted_col = self.quote_identifier(column)
-        # Split path by '.' for nested access
-        path_parts = path.split(".")
+        # Split path by '.' for nested access, handling array notation
+        path_parts = []
+        for part in path.split("."):
+            # Handle array access like field[0]
+            if "[" in part:
+                base, rest = part.split("[", 1)
+                path_parts.append(base)
+                # Extract array indices
+                indices = rest.rstrip("]").split("][")
+                path_parts.extend(indices)
+            else:
+                path_parts.append(part)
         path_args = ", ".join(f"'{part}'" for part in path_parts)
-        # Note: PostgreSQL jsonb_extract_path_text doesn't use return type parameter
-        return f"jsonb_extract_path_text({quoted_col}, {path_args})"
+        expr = f"jsonb_extract_path_text({quoted_col}, {path_args})"
+        # Add cast if return type specified
+        if return_type:
+            # Map DataJoint types to PostgreSQL types
+            pg_type = return_type.lower()
+            if pg_type in ("unsigned", "signed"):
+                pg_type = "integer"
+            elif pg_type == "double":
+                pg_type = "double precision"
+            expr = f"({expr})::{pg_type}"
+        return expr
 
     def translate_expression(self, expr: str) -> str:
         """
