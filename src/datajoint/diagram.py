@@ -765,7 +765,7 @@ else:
                 node_data = graph.nodes.get(f'"{name}"', {})
                 if node_data.get("collapsed"):
                     table_count = node_data.get("table_count", 0)
-                    label = f"{name}\\n({table_count} tables)" if table_count != 1 else f"{name}\\n(1 table)"
+                    label = f"({table_count} tables)" if table_count != 1 else "(1 table)"
                     node.set_label(label)
                     node.set_tooltip(f"Collapsed schema: {table_count} tables")
                 else:
@@ -951,43 +951,43 @@ else:
                 None: "",
             }
 
-            # Group nodes by schema into subgraphs (only non-collapsed nodes)
+            # Group nodes by schema into subgraphs (including collapsed nodes)
             schemas = {}
-            collapsed_nodes = []
             for node, data in graph.nodes(data=True):
                 if data.get("collapsed"):
-                    collapsed_nodes.append((node, data))
+                    # Collapsed nodes use their schema_name attribute
+                    schema_name = data.get("schema_name")
                 else:
                     schema_name = schema_map.get(node)
-                    if schema_name:
-                        if schema_name not in schemas:
-                            schemas[schema_name] = []
-                        schemas[schema_name].append((node, data))
-
-            # Add collapsed nodes (not in subgraphs)
-            for node, data in collapsed_nodes:
-                safe_id = node.replace(".", "_").replace(" ", "_")
-                table_count = data.get("table_count", 0)
-                count_text = f"{table_count} tables" if table_count != 1 else "1 table"
-                lines.append(f"    {safe_id}[[\"{node}<br/>({count_text})\"]]:::collapsed")
+                if schema_name:
+                    if schema_name not in schemas:
+                        schemas[schema_name] = []
+                    schemas[schema_name].append((node, data))
 
             # Add nodes grouped by schema subgraphs
             for schema_name, nodes in schemas.items():
                 label = cluster_labels.get(schema_name, schema_name)
                 lines.append(f"    subgraph {label}")
                 for node, data in nodes:
-                    tier = data.get("node_type")
-                    left, right = shape_map.get(tier, ("[", "]"))
-                    cls = tier_class.get(tier, "")
                     safe_id = node.replace(".", "_").replace(" ", "_")
-                    # Strip module prefix from display name if it matches the cluster label
-                    display_name = node
-                    if "." in node:
-                        prefix = node.rsplit(".", 1)[0]
-                        if prefix == label:
-                            display_name = node.rsplit(".", 1)[1]
-                    class_suffix = f":::{cls}" if cls else ""
-                    lines.append(f"        {safe_id}{left}{display_name}{right}{class_suffix}")
+                    if data.get("collapsed"):
+                        # Collapsed node - show only table count
+                        table_count = data.get("table_count", 0)
+                        count_text = f"{table_count} tables" if table_count != 1 else "1 table"
+                        lines.append(f"        {safe_id}[[\"({count_text})\"]]:::collapsed")
+                    else:
+                        # Regular node
+                        tier = data.get("node_type")
+                        left, right = shape_map.get(tier, ("[", "]"))
+                        cls = tier_class.get(tier, "")
+                        # Strip module prefix from display name if it matches the cluster label
+                        display_name = node
+                        if "." in node:
+                            prefix = node.rsplit(".", 1)[0]
+                            if prefix == label:
+                                display_name = node.rsplit(".", 1)[1]
+                        class_suffix = f":::{cls}" if cls else ""
+                        lines.append(f"        {safe_id}{left}{display_name}{right}{class_suffix}")
                 lines.append("    end")
 
             lines.append("")
