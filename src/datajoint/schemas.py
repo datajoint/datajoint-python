@@ -899,7 +899,7 @@ def virtual_schema(
     --------
     >>> lab = dj.virtual_schema('my_lab')
     >>> lab.Subject.fetch()
-    >>> lab.Session & 'subject_id="M001"'
+    >>> lab.Session & "subject_id='M001'"
 
     See Also
     --------
