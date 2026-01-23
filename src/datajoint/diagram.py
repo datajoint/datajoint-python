@@ -226,7 +226,12 @@ else:
             """
             result = Diagram(self)  # copy
             try:
+                # Merge nodes and edges from the other diagram
+                result.add_nodes_from(arg.nodes(data=True))
+                result.add_edges_from(arg.edges(data=True))
                 result.nodes_to_show.update(arg.nodes_to_show)
+                # Merge contexts for class name lookups
+                result.context = {**result.context, **arg.context}
                 # Handle collapse: nodes from non-collapsed diagrams are explicit (expanded)
                 if not self._is_collapsed:
                     result._explicit_nodes.update(self.nodes_to_show)
@@ -326,7 +331,9 @@ else:
             """
             # mark "distinguished" tables, i.e. those that introduce new primary key
             # attributes
-            for name in self.nodes_to_show:
+            # Filter nodes_to_show to only include nodes that exist in the graph
+            valid_nodes = self.nodes_to_show.intersection(set(self.nodes()))
+            for name in valid_nodes:
                 foreign_attributes = set(
                     attr for p in self.in_edges(name, data=True) for attr in p[2]["attr_map"] if p[2]["primary"]
                 )
@@ -334,10 +341,10 @@ else:
                     "primary_key" in self.nodes[name] and foreign_attributes < self.nodes[name]["primary_key"]
                 )
             # include aliased nodes that are sandwiched between two displayed nodes
-            gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
-                nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
+            gaps = set(nx.algorithms.boundary.node_boundary(self, valid_nodes)).intersection(
+                nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), valid_nodes)
             )
-            nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit())
+            nodes = valid_nodes.union(a for a in gaps if a.isdigit())
             # construct subgraph and rename nodes to class names
             graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
             nx.set_node_attributes(graph, name="node_type", values={n: _get_tier(n) for n in graph})
@@ -366,20 +373,24 @@ else:
             tuple[nx.DiGraph, dict[str, str]]
                 Modified graph and mapping of collapsed schema labels to their table count.
             """
-            if not self._explicit_nodes or self._explicit_nodes == self.nodes_to_show:
+            # Filter to valid nodes (those that exist in the underlying graph)
+            valid_nodes = self.nodes_to_show.intersection(set(self.nodes()))
+            valid_explicit = self._explicit_nodes.intersection(set(self.nodes()))
+
+            if not valid_explicit or valid_explicit == valid_nodes:
                 # No collapse needed
                 return graph, {}
 
             # Map full_table_names to class_names
             full_to_class = {
                 node: lookup_class_name(node, self.context) or node
-                for node in self.nodes_to_show
+                for node in valid_nodes
             }
             class_to_full = {v: k for k, v in full_to_class.items()}
 
             # Identify explicit class names (should be expanded)
             explicit_class_names = {
-                full_to_class.get(node, node) for node in self._explicit_nodes
+                full_to_class.get(node, node) for node in valid_explicit
             }
 
             # Identify nodes to collapse (class names)
