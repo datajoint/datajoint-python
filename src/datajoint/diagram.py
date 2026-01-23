@@ -103,8 +103,7 @@ else:
             if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
-                self._explicit_nodes = set(source._explicit_nodes)
-                self._is_collapsed = source._is_collapsed
+                self._expanded_nodes = set(source._expanded_nodes)
                 self.context = source.context
                 super().__init__(source)
                 return
@@ -132,8 +131,6 @@ else:
 
             # Enumerate nodes from all the items in the list
             self.nodes_to_show = set()
-            self._explicit_nodes = set()  # nodes that should never be collapsed
-            self._is_collapsed = False  # whether this diagram's nodes should be collapsed when combined
             try:
                 self.nodes_to_show.add(source.full_table_name)
             except AttributeError:
@@ -148,6 +145,8 @@ else:
                     # Handle both MySQL backticks and PostgreSQL double quotes
                     if node.startswith("`%s`" % database) or node.startswith('"%s"' % database):
                         self.nodes_to_show.add(node)
+            # All nodes start as expanded
+            self._expanded_nodes = set(self.nodes_to_show)
 
         @classmethod
         def from_sequence(cls, sequence) -> "Diagram":
@@ -187,27 +186,30 @@ else:
 
         def collapse(self) -> "Diagram":
             """
-            Mark this diagram for collapsing when combined with other diagrams.
+            Mark all nodes in this diagram as collapsed.
 
-            When a collapsed diagram is added to a non-collapsed diagram, its nodes
-            are shown as a single collapsed node per schema, unless they also appear
-            in the non-collapsed diagram (expanded wins).
+            Collapsed nodes are shown as a single node per schema. When combined
+            with other diagrams using ``+``, expanded nodes win: if a node is
+            expanded in either operand, it remains expanded in the result.
 
             Returns
             -------
             Diagram
-                A copy of this diagram marked for collapsing.
+                A copy of this diagram with all nodes collapsed.
 
             Examples
             --------
             >>> # Show schema1 expanded, schema2 collapsed into single nodes
             >>> dj.Diagram(schema1) + dj.Diagram(schema2).collapse()
 
-            >>> # Explicitly expand one table from schema2
-            >>> dj.Diagram(schema1) + dj.Diagram(TableFromSchema2) + dj.Diagram(schema2).collapse()
+            >>> # Collapse all three schemas together
+            >>> (dj.Diagram(schema1) + dj.Diagram(schema2) + dj.Diagram(schema3)).collapse()
+
+            >>> # Expand one table from collapsed schema
+            >>> dj.Diagram(schema).collapse() + dj.Diagram(SingleTable)
             """
             result = Diagram(self)
-            result._is_collapsed = True
+            result._expanded_nodes = set()  # All nodes collapsed
             return result
 
         def __add__(self, arg) -> "Diagram":
@@ -232,30 +234,12 @@ else:
                 result.nodes_to_show.update(arg.nodes_to_show)
                 # Merge contexts for class name lookups
                 result.context = {**result.context, **arg.context}
-                # Handle collapse: track which nodes should be explicit (expanded)
-                # - Always preserve existing _explicit_nodes from both sides
-                # - For a fresh (non-combined) non-collapsed diagram, add all its nodes to explicit
-                # - A fresh diagram has empty _explicit_nodes and _is_collapsed=False
-                # This ensures "expanded wins" and chained collapsed diagrams stay collapsed
-                result._explicit_nodes = set()
-                # Add self's explicit nodes
-                result._explicit_nodes.update(self._explicit_nodes)
-                # If self is a fresh non-collapsed diagram (not combined, not marked collapsed),
-                # treat all its nodes as explicit
-                if not self._is_collapsed and not self._explicit_nodes:
-                    result._explicit_nodes.update(self.nodes_to_show)
-                # Add arg's explicit nodes
-                result._explicit_nodes.update(arg._explicit_nodes)
-                # If arg is a fresh non-collapsed diagram, treat all its nodes as explicit
-                if not arg._is_collapsed and not arg._explicit_nodes:
-                    result._explicit_nodes.update(arg.nodes_to_show)
-                # Result is "collapsed" if BOTH operands were collapsed (no explicit nodes added)
-                # This allows chained collapsed diagrams to stay collapsed: A.collapse() + B.collapse() + C.collapse()
-                result._is_collapsed = self._is_collapsed and arg._is_collapsed
+                # Expanded wins: union of expanded nodes from both operands
+                result._expanded_nodes = self._expanded_nodes | arg._expanded_nodes
             except AttributeError:
                 try:
                     result.nodes_to_show.add(arg.full_table_name)
-                    result._explicit_nodes.add(arg.full_table_name)
+                    result._expanded_nodes.add(arg.full_table_name)
                 except AttributeError:
                     for i in range(arg):
                         new = nx.algorithms.boundary.node_boundary(result, result.nodes_to_show)
@@ -264,9 +248,8 @@ else:
                         # add nodes referenced by aliased nodes
                         new.update(nx.algorithms.boundary.node_boundary(result, (a for a in new if a.isdigit())))
                         result.nodes_to_show.update(new)
-                    # Expanded nodes from + N expansion are explicit
-                    if not self._is_collapsed:
-                        result._explicit_nodes = result.nodes_to_show.copy()
+                    # New nodes from expansion are expanded
+                    result._expanded_nodes = result._expanded_nodes | result.nodes_to_show
             return result
 
         def __sub__(self, arg) -> "Diagram":
@@ -369,7 +352,7 @@ else:
             """
             Apply collapse logic to the graph.
 
-            Nodes in nodes_to_show but not in _explicit_nodes are collapsed into
+            Nodes in nodes_to_show but not in _expanded_nodes are collapsed into
             single schema nodes.
 
             Parameters
@@ -384,19 +367,10 @@ else:
             """
             # Filter to valid nodes (those that exist in the underlying graph)
             valid_nodes = self.nodes_to_show.intersection(set(self.nodes()))
-            valid_explicit = self._explicit_nodes.intersection(set(self.nodes()))
+            valid_expanded = self._expanded_nodes.intersection(set(self.nodes()))
 
-            # Determine if collapse should be applied:
-            # - If _explicit_nodes is empty AND _is_collapsed is False, this is a fresh
-            #   diagram that was never combined with collapsed diagrams → no collapse
-            # - If _explicit_nodes is empty AND _is_collapsed is True, this is the result
-            #   of combining only collapsed diagrams → collapse all nodes
-            # - If _explicit_nodes equals valid_nodes, all nodes are explicit → no collapse
-            if not valid_explicit and not self._is_collapsed:
-                # Fresh diagram, never combined with collapsed diagrams
-                return graph, {}
-            if valid_explicit == valid_nodes:
-                # All nodes are explicit (expanded) - no collapse needed
+            # If all nodes are expanded, no collapse needed
+            if valid_expanded >= valid_nodes:
                 return graph, {}
 
             # Map full_table_names to class_names
@@ -406,13 +380,13 @@ else:
             }
             class_to_full = {v: k for k, v in full_to_class.items()}
 
-            # Identify explicit class names (should be expanded)
-            explicit_class_names = {
-                full_to_class.get(node, node) for node in valid_explicit
+            # Identify expanded class names
+            expanded_class_names = {
+                full_to_class.get(node, node) for node in valid_expanded
             }
 
             # Identify nodes to collapse (class names)
-            nodes_to_collapse = set(graph.nodes()) - explicit_class_names
+            nodes_to_collapse = set(graph.nodes()) - expanded_class_names
 
             if not nodes_to_collapse:
                 return graph, {}
