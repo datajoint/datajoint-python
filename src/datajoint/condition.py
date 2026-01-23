@@ -316,7 +316,6 @@ def make_condition(
         """prepare SQL condition"""
         key_match, k = translate_attribute(k, adapter)
         is_json_path = key_match is not None and key_match.get("path") is not None
-        has_explicit_type = key_match is not None and key_match.get("type") is not None
 
         if not is_json_path:
             k = adapter.quote_identifier(k)
