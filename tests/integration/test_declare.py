@@ -368,3 +368,96 @@ def test_table_name_with_underscores(schema_any):
     schema_any(TableNoUnderscores)
     with pytest.raises(dj.DataJointError, match="must be alphanumeric in CamelCase"):
         schema_any(Table_With_Underscores)
+
+
+class TestSingletonTables:
+    """Tests for singleton tables (empty primary keys)."""
+
+    def test_singleton_declaration(self, schema_any):
+        """Singleton table creates correctly with hidden _singleton attribute."""
+
+        @schema_any
+        class Config(dj.Lookup):
+            definition = """
+            # Global configuration
+            ---
+            setting : varchar(100)
+            """
+
+        # Access attributes first to trigger lazy loading from database
+        visible_attrs = Config.heading.attributes
+        all_attrs = Config.heading._attributes
+
+        # Table should exist and have _singleton as hidden PK
+        assert "_singleton" in all_attrs
+        assert "_singleton" not in visible_attrs
+        assert Config.heading.primary_key == []  # Visible PK is empty for singleton
+
+    def test_singleton_insert_and_fetch(self, schema_any):
+        """Insert and fetch work without specifying _singleton."""
+
+        @schema_any
+        class Settings(dj.Lookup):
+            definition = """
+            ---
+            value : int32
+            """
+
+        # Insert without specifying _singleton
+        Settings.insert1({"value": 42})
+
+        # Fetch should work
+        result = Settings.fetch1()
+        assert result["value"] == 42
+        assert "_singleton" not in result  # Hidden attribute excluded
+
+    def test_singleton_uniqueness(self, schema_any):
+        """Second insert raises DuplicateError."""
+
+        @schema_any
+        class SingleValue(dj.Lookup):
+            definition = """
+            ---
+            data : varchar(50)
+            """
+
+        SingleValue.insert1({"data": "first"})
+
+        # Second insert should fail
+        with pytest.raises(dj.errors.DuplicateError):
+            SingleValue.insert1({"data": "second"})
+
+    def test_singleton_with_multiple_attributes(self, schema_any):
+        """Singleton table with multiple secondary attributes."""
+
+        @schema_any
+        class PipelineConfig(dj.Lookup):
+            definition = """
+            # Pipeline configuration singleton
+            ---
+            version : varchar(20)
+            max_workers : int32
+            debug_mode : bool
+            """
+
+        PipelineConfig.insert1({"version": "1.0.0", "max_workers": 4, "debug_mode": False})
+
+        result = PipelineConfig.fetch1()
+        assert result["version"] == "1.0.0"
+        assert result["max_workers"] == 4
+        assert result["debug_mode"] == 0  # bool stored as tinyint
+
+    def test_singleton_describe(self, schema_any):
+        """Describe should show the singleton nature."""
+
+        @schema_any
+        class Metadata(dj.Lookup):
+            definition = """
+            ---
+            info : varchar(255)
+            """
+
+        description = Metadata.describe()
+        # Description should show just the secondary attribute
+        assert "info" in description
+        # _singleton is hidden, implementation detail
