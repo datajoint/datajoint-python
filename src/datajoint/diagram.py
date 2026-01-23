@@ -442,15 +442,47 @@ else:
                         module_name = cls.__module__.split(".")[-1]
                         schema_modules[schema_name].add(module_name)
 
+            # Collect module names for ALL schemas in the diagram (not just collapsed)
+            all_schema_modules = {}  # schema_name -> module_name
+            for node in graph.nodes():
+                full_name = class_to_full.get(node)
+                if full_name:
+                    parts = full_name.replace('"', '`').split('`')
+                    if len(parts) >= 2:
+                        db_schema = parts[1]
+                        cls = self._resolve_class(node)
+                        if cls is not None and hasattr(cls, "__module__"):
+                            module_name = cls.__module__.split(".")[-1]
+                            all_schema_modules[db_schema] = module_name
+
+            # Check which module names are shared by multiple schemas
+            module_to_schemas = {}
+            for db_schema, module_name in all_schema_modules.items():
+                if module_name not in module_to_schemas:
+                    module_to_schemas[module_name] = []
+                module_to_schemas[module_name].append(db_schema)
+
+            ambiguous_modules = {m for m, schemas in module_to_schemas.items() if len(schemas) > 1}
+
+            # Determine labels for collapsed schemas
             collapsed_labels = {}  # schema_name -> label
-            collapsed_counts = {}  # label -> count of tables
             for schema_name, modules in schema_modules.items():
                 if len(modules) == 1:
-                    label = next(iter(modules))
+                    module_name = next(iter(modules))
+                    # Use database schema name if module is ambiguous
+                    if module_name in ambiguous_modules:
+                        label = schema_name
+                    else:
+                        label = module_name
                 else:
                     label = schema_name
                 collapsed_labels[schema_name] = label
-                collapsed_counts[label] = len(collapsed_by_schema[schema_name])
+
+            # Build counts using final labels
+            collapsed_counts = {}  # label -> count of tables
+            for schema_name, class_names in collapsed_by_schema.items():
+                label = collapsed_labels[schema_name]
+                collapsed_counts[label] = len(class_names)
 
             # Create new graph with collapsed nodes
             new_graph = nx.DiGraph()
