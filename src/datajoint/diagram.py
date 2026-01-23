@@ -379,10 +379,10 @@ else:
             direction = config.display.diagram_direction
             graph = self._make_graph()
 
-            # Build schema mapping: class_name -> (schema_name, module_name)
-            # Group by database schema, but label with Python module name when available
+            # Build schema mapping: class_name -> schema_name
+            # Group by database schema, label with Python module name if 1:1 mapping
             schema_map = {}  # class_name -> schema_name
-            module_map = {}  # schema_name -> module_name (for cluster labels)
+            schema_modules = {}  # schema_name -> set of module names
 
             for full_name in self.nodes_to_show:
                 # Extract schema from full table name like `schema`.`table` or "schema"."table"
@@ -392,12 +392,21 @@ else:
                     class_name = lookup_class_name(full_name, self.context) or full_name
                     schema_map[class_name] = schema_name
 
-                    # Try to get Python module name for the cluster label
-                    if schema_name not in module_map:
-                        cls = self._resolve_class(class_name)
-                        if cls is not None and hasattr(cls, "__module__"):
-                            # Use the last part of the module path (e.g., "my_pipeline" from "package.my_pipeline")
-                            module_map[schema_name] = cls.__module__.split(".")[-1]
+                    # Collect all module names for this schema
+                    if schema_name not in schema_modules:
+                        schema_modules[schema_name] = set()
+                    cls = self._resolve_class(class_name)
+                    if cls is not None and hasattr(cls, "__module__"):
+                        module_name = cls.__module__.split(".")[-1]
+                        schema_modules[schema_name].add(module_name)
+
+            # Determine cluster labels: use module name if 1:1, else database schema name
+            cluster_labels = {}  # schema_name -> label
+            for schema_name, modules in schema_modules.items():
+                if len(modules) == 1:
+                    cluster_labels[schema_name] = next(iter(modules))
+                else:
+                    cluster_labels[schema_name] = schema_name
 
             # Assign alias nodes (orange dots) to the same schema as their child table
             for node, data in graph.nodes(data=True):
@@ -492,7 +501,14 @@ else:
                         if not q.startswith("#")
                     )
                     node.set_tooltip("&#13;".join(description))
-                node.set_label("<<u>" + name + "</u>>" if node.get("distinguished") == "True" else name)
+                # Strip module prefix from label if it matches the cluster label
+                display_name = name
+                schema_name = schema_map.get(name)
+                if schema_name and "." in name:
+                    prefix = name.rsplit(".", 1)[0]
+                    if prefix == cluster_labels.get(schema_name):
+                        display_name = name.rsplit(".", 1)[1]
+                node.set_label("<<u>" + display_name + "</u>>" if node.get("distinguished") == "True" else display_name)
                 node.set_color(props["color"])
                 node.set_style("filled")
 
@@ -525,9 +541,9 @@ else:
                         schemas[schema_name].append(node)
 
                 # Create clusters for each schema
-                # Use Python module name as label when available, otherwise database schema name
+                # Use Python module name if 1:1 mapping, otherwise database schema name
                 for schema_name, nodes in schemas.items():
-                    label = module_map.get(schema_name, schema_name)
+                    label = cluster_labels.get(schema_name, schema_name)
                     cluster = pydot.Cluster(
                         f"cluster_{schema_name}",
                         label=label,
@@ -590,7 +606,7 @@ else:
 
             # Build schema mapping for grouping
             schema_map = {}  # class_name -> schema_name
-            module_map = {}  # schema_name -> module_name (for subgraph labels)
+            schema_modules = {}  # schema_name -> set of module names
 
             for full_name in self.nodes_to_show:
                 parts = full_name.replace('"', '`').split('`')
@@ -599,10 +615,21 @@ else:
                     class_name = lookup_class_name(full_name, self.context) or full_name
                     schema_map[class_name] = schema_name
 
-                    if schema_name not in module_map:
-                        cls = self._resolve_class(class_name)
-                        if cls is not None and hasattr(cls, "__module__"):
-                            module_map[schema_name] = cls.__module__.split(".")[-1]
+                    # Collect all module names for this schema
+                    if schema_name not in schema_modules:
+                        schema_modules[schema_name] = set()
+                    cls = self._resolve_class(class_name)
+                    if cls is not None and hasattr(cls, "__module__"):
+                        module_name = cls.__module__.split(".")[-1]
+                        schema_modules[schema_name].add(module_name)
+
+            # Determine cluster labels: use module name if 1:1, else database schema name
+            cluster_labels = {}
+            for schema_name, modules in schema_modules.items():
+                if len(modules) == 1:
+                    cluster_labels[schema_name] = next(iter(modules))
+                else:
+                    cluster_labels[schema_name] = schema_name
 
             # Assign alias nodes to the same schema as their child table
             for node, data in graph.nodes(data=True):
@@ -653,15 +680,21 @@ else:
 
             # Add nodes grouped by schema subgraphs
             for schema_name, nodes in schemas.items():
-                label = module_map.get(schema_name, schema_name)
+                label = cluster_labels.get(schema_name, schema_name)
                 lines.append(f"    subgraph {label}")
                 for node, data in nodes:
                     tier = data.get("node_type")
                     left, right = shape_map.get(tier, ("[", "]"))
                     cls = tier_class.get(tier, "")
                     safe_id = node.replace(".", "_").replace(" ", "_")
+                    # Strip module prefix from display name if it matches the cluster label
+                    display_name = node
+                    if "." in node:
+                        prefix = node.rsplit(".", 1)[0]
+                        if prefix == label:
+                            display_name = node.rsplit(".", 1)[1]
                     class_suffix = f":::{cls}" if cls else ""
-                    lines.append(f"        {safe_id}{left}{node}{right}{class_suffix}")
+                    lines.append(f"        {safe_id}{left}{display_name}{right}{class_suffix}")
                 lines.append("    end")
 
             lines.append("")
