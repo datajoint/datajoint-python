@@ -16,6 +16,7 @@ import networkx as nx
 
 from .dependencies import topo_sort
 from .errors import DataJointError
+from .settings import config
 from .table import Table, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _AliasNode, _get_tier
 
@@ -90,6 +91,12 @@ else:
         -----
         ``diagram + 1 - 1`` may differ from ``diagram - 1 + 1``.
         Only tables loaded in the connection are displayed.
+
+        Layout direction is controlled via ``dj.config.display.diagram_direction``
+        (default ``"TB"``). Use ``dj.config.override()`` to change temporarily::
+
+            with dj.config.override(display_diagram_direction="LR"):
+                dj.Diagram(schema).draw()
         """
 
         def __init__(self, source, context=None) -> None:
@@ -286,17 +293,41 @@ else:
             gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
                 nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
             )
-            nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)
+            nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit())
             # construct subgraph and rename nodes to class names
             graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
             nx.set_node_attributes(graph, name="node_type", values={n: _get_tier(n) for n in graph})
             # relabel nodes to class names
             mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
-            new_names = [mapping.values()]
+            new_names = list(mapping.values())
             if len(new_names) > len(set(new_names)):
                 raise DataJointError("Some classes have identical names. The Diagram cannot be plotted.")
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
+
+        def _resolve_class(self, name: str):
+            """
+            Safely resolve a table class from a dotted name without eval().
+
+            Parameters
+            ----------
+            name : str
+                Dotted class name like "MyTable" or "Module.MyTable".
+
+            Returns
+            -------
+            type or None
+                The table class if found, otherwise None.
+            """
+            parts = name.split(".")
+            obj = self.context.get(parts[0])
+            for part in parts[1:]:
+                if obj is None:
+                    return None
+                obj = getattr(obj, part, None)
+            if obj is not None and isinstance(obj, type) and issubclass(obj, Table):
+                return obj
+            return None
 
         @staticmethod
         def _encapsulate_edge_attributes(graph: nx.DiGraph) -> None:
@@ -330,9 +361,39 @@ else:
                 copy=False,
             )
 
-        def make_dot(self):
+        def make_dot(self, group_by_schema: bool = False):
+            """
+            Generate a pydot graph object.
+
+            Parameters
+            ----------
+            group_by_schema : bool, optional
+                If True, group nodes into clusters by their database schema.
+                Default False.
+
+            Returns
+            -------
+            pydot.Dot
+                The graph object ready for rendering.
+
+            Notes
+            -----
+            Layout direction is controlled via ``dj.config.display.diagram_direction``.
+            """
+            direction = config.display.diagram_direction
             graph = self._make_graph()
-            graph.nodes()
+
+            # Build schema mapping if grouping is requested
+            schema_map = {}
+            if group_by_schema:
+                for full_name in self.nodes_to_show:
+                    # Extract schema from full table name like `schema`.`table` or "schema"."table"
+                    parts = full_name.replace('"', '`').split('`')
+                    if len(parts) >= 2:
+                        schema_name = parts[1]  # schema is between first pair of backticks
+                        # Find the class name for this full_name
+                        class_name = lookup_class_name(full_name, self.context) or full_name
+                        schema_map[class_name] = schema_name
 
             scale = 1.2  # scaling factor for fonts and boxes
             label_props = {  # http://matplotlib.org/examples/color/named_colors.html
@@ -386,7 +447,7 @@ else:
                 ),
                 Part: dict(
                     shape="plaintext",
-                    color="#0000000",
+                    color="#00000000",
                     fontcolor="black",
                     fontsize=round(scale * 8),
                     size=0.1 * scale,
@@ -398,6 +459,7 @@ else:
             self._encapsulate_node_names(graph)
             self._encapsulate_edge_attributes(graph)
             dot = nx.drawing.nx_pydot.to_pydot(graph)
+            dot.set_rankdir(direction)
             for node in dot.get_nodes():
                 node.set_shape("circle")
                 name = node.get_name().strip('"')
@@ -409,9 +471,8 @@ else:
                 node.set_fixedsize("shape" if props["fixed"] else False)
                 node.set_width(props["size"])
                 node.set_height(props["size"])
-                if name.split(".")[0] in self.context:
-                    cls = eval(name, self.context)
-                    assert issubclass(cls, Table)
+                cls = self._resolve_class(name)
+                if cls is not None:
                     description = cls().describe(context=self.context).split("\n")
                     description = (
                         ("-" * 30 if q.startswith("---") else (q.replace("->", "&#8594;") if "->" in q else q.split(":")[0]))
@@ -437,34 +498,148 @@ else:
                 edge.set_arrowhead("none")
                 edge.set_penwidth(0.75 if props["multi"] else 2)
 
+            # Group nodes into schema clusters if requested
+            if group_by_schema and schema_map:
+                import pydot
+
+                # Group nodes by schema
+                schemas = {}
+                for node in list(dot.get_nodes()):
+                    name = node.get_name().strip('"')
+                    schema_name = schema_map.get(name)
+                    if schema_name:
+                        if schema_name not in schemas:
+                            schemas[schema_name] = []
+                        schemas[schema_name].append(node)
+
+                # Create clusters for each schema
+                for schema_name, nodes in schemas.items():
+                    cluster = pydot.Cluster(
+                        f"cluster_{schema_name}",
+                        label=schema_name,
+                        style="dashed",
+                        color="gray",
+                        fontcolor="gray",
+                    )
+                    for node in nodes:
+                        cluster.add_node(node)
+                    dot.add_subgraph(cluster)
+
             return dot
 
-        def make_svg(self):
+        def make_svg(self, group_by_schema: bool = False):
             from IPython.display import SVG
 
-            return SVG(self.make_dot().create_svg())
+            return SVG(self.make_dot(group_by_schema=group_by_schema).create_svg())
 
-        def make_png(self):
-            return io.BytesIO(self.make_dot().create_png())
+        def make_png(self, group_by_schema: bool = False):
+            return io.BytesIO(self.make_dot(group_by_schema=group_by_schema).create_png())
 
-        def make_image(self):
+        def make_image(self, group_by_schema: bool = False):
             if plot_active:
-                return plt.imread(self.make_png())
+                return plt.imread(self.make_png(group_by_schema=group_by_schema))
             else:
                 raise DataJointError("pyplot was not imported")
+
+        def make_mermaid(self) -> str:
+            """
+            Generate Mermaid diagram syntax.
+
+            Produces a flowchart in Mermaid syntax that can be rendered in
+            Markdown documentation, GitHub, or https://mermaid.live.
+
+            Returns
+            -------
+            str
+                Mermaid flowchart syntax.
+
+            Notes
+            -----
+            Layout direction is controlled via ``dj.config.display.diagram_direction``.
+
+            Examples
+            --------
+            >>> print(dj.Diagram(schema).make_mermaid())
+            flowchart TB
+                Mouse[Mouse]:::manual
+                Session[Session]:::manual
+                Neuron([Neuron]):::computed
+                Mouse --> Session
+                Session --> Neuron
+            """
+            graph = self._make_graph()
+            direction = config.display.diagram_direction
+
+            lines = [f"flowchart {direction}"]
+
+            # Define class styles matching Graphviz colors
+            lines.append("    classDef manual fill:#90EE90,stroke:#006400")
+            lines.append("    classDef lookup fill:#D3D3D3,stroke:#696969")
+            lines.append("    classDef computed fill:#FFB6C1,stroke:#8B0000")
+            lines.append("    classDef imported fill:#ADD8E6,stroke:#00008B")
+            lines.append("    classDef part fill:#FFFFFF,stroke:#000000")
+            lines.append("")
+
+            # Shape mapping: Manual=box, Computed/Imported=stadium, Lookup/Part=box
+            shape_map = {
+                Manual: ("[", "]"),       # box
+                Lookup: ("[", "]"),       # box
+                Computed: ("([", "])"),   # stadium/pill
+                Imported: ("([", "])"),   # stadium/pill
+                Part: ("[", "]"),         # box
+                _AliasNode: ("((", "))"), # circle
+                None: ("((", "))"),       # circle
+            }
+
+            tier_class = {
+                Manual: "manual",
+                Lookup: "lookup",
+                Computed: "computed",
+                Imported: "imported",
+                Part: "part",
+                _AliasNode: "",
+                None: "",
+            }
+
+            # Add nodes
+            for node, data in graph.nodes(data=True):
+                tier = data.get("node_type")
+                left, right = shape_map.get(tier, ("[", "]"))
+                cls = tier_class.get(tier, "")
+                # Mermaid node IDs can't have dots, replace with underscores
+                safe_id = node.replace(".", "_").replace(" ", "_")
+                class_suffix = f":::{cls}" if cls else ""
+                lines.append(f"    {safe_id}{left}{node}{right}{class_suffix}")
+
+            lines.append("")
+
+            # Add edges
+            for src, dest, data in graph.edges(data=True):
+                safe_src = src.replace(".", "_").replace(" ", "_")
+                safe_dest = dest.replace(".", "_").replace(" ", "_")
+                # Solid arrow for primary FK, dotted for non-primary
+                style = "-->" if data.get("primary") else "-.->"
+                lines.append(f"    {safe_src} {style} {safe_dest}")
+
+            return "\n".join(lines)
 
         def _repr_svg_(self):
             return self.make_svg()._repr_svg_()
 
-        def draw(self):
+        def draw(self, group_by_schema: bool = False):
             if plot_active:
-                plt.imshow(self.make_image())
+                plt.imshow(self.make_image(group_by_schema=group_by_schema))
                 plt.gca().axis("off")
                 plt.show()
             else:
                 raise DataJointError("pyplot was not imported")
 
-        def save(self, filename: str, format: str | None = None) -> None:
+        def save(
+            self,
+            filename: str,
+            format: str | None = None,
+            group_by_schema: bool = False,
+        ) -> None:
             """
             Save diagram to file.
 
@@ -473,24 +648,39 @@ else:
             filename : str
                 Output filename.
             format : str, optional
-                File format (``'png'`` or ``'svg'``). Inferred from extension if None.
+                File format (``'png'``, ``'svg'``, or ``'mermaid'``).
+                Inferred from extension if None.
+            group_by_schema : bool, optional
+                If True, group nodes into clusters by their database schema.
+                Default False. Only applies to png and svg formats.
 
             Raises
             ------
             DataJointError
                 If format is unsupported.
+
+            Notes
+            -----
+            Layout direction is controlled via ``dj.config.display.diagram_direction``.
             """
             if format is None:
                 if filename.lower().endswith(".png"):
                     format = "png"
                 elif filename.lower().endswith(".svg"):
                     format = "svg"
+                elif filename.lower().endswith((".mmd", ".mermaid")):
+                    format = "mermaid"
+            if format is None:
+                raise DataJointError("Could not infer format from filename. Specify format explicitly.")
             if format.lower() == "png":
                 with open(filename, "wb") as f:
-                    f.write(self.make_png().getbuffer().tobytes())
+                    f.write(self.make_png(group_by_schema=group_by_schema).getbuffer().tobytes())
             elif format.lower() == "svg":
                 with open(filename, "w") as f:
-                    f.write(self.make_svg().data)
+                    f.write(self.make_svg(group_by_schema=group_by_schema).data)
+            elif format.lower() == "mermaid":
+                with open(filename, "w") as f:
+                    f.write(self.make_mermaid())
             else:
                 raise DataJointError("Unsupported file format")
 
