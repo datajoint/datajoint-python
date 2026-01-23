@@ -223,7 +223,7 @@ class DisplaySettings(BaseSettings):
     width: int = 14
     show_tuple_count: bool = True
     diagram_direction: Literal["TB", "LR"] = Field(
-        default="TB",
+        default="LR",
         validation_alias="DJ_DIAGRAM_DIRECTION",
         description="Default diagram layout direction: 'TB' (top-to-bottom) or 'LR' (left-to-right)",
     )
