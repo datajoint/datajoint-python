@@ -10,7 +10,7 @@ DataJoint is a framework for scientific data pipelines based on the **Relational
 **Documentation:** https://docs.datajoint.com
 
 > **📘 Upgrading from legacy DataJoint (pre-2.0)?**
-> See the **[Migration Guide](https://docs.datajoint.com/how-to/migrate-from-0x/)** for a step-by-step upgrade path.
+> See the **[Migration Guide](https://docs.datajoint.com/how-to/migrate-to-v20/)** for a step-by-step upgrade path.
 
 <table>
 <tr>
@@ -78,8 +78,8 @@ conda install -c conda-forge datajoint
 - **[Documentation](https://docs.datajoint.com)** — Complete guides and reference
   - [Tutorials](https://docs.datajoint.com/tutorials/) — Learn by example
   - [How-To Guides](https://docs.datajoint.com/how-to/) — Task-oriented guides
-  - [API Reference](https://docs.datajoint.com/reference/api/) — Complete API documentation
-  - [Migration Guide](https://docs.datajoint.com/how-to/migrate-from-0x/) — Upgrade from legacy versions
+  - [API Reference](https://docs.datajoint.com/api/) — Complete API documentation
+  - [Migration Guide](https://docs.datajoint.com/how-to/migrate-to-v20/) — Upgrade from legacy versions
 - **[DataJoint Elements](https://datajoint.com/docs/elements/)** — Example pipelines for neuroscience
 - **[GitHub Discussions](https://github.com/datajoint/datajoint-python/discussions)** — Community support
 
