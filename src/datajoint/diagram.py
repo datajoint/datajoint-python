@@ -747,7 +747,10 @@ else:
                     if cls is not None:
                         description = cls().describe(context=self.context).split("\n")
                         description = (
-                            ("-" * 30 if q.startswith("---") else (q.replace("->", "&#8594;") if "->" in q else q.split(":")[0]))
+                            (
+                                "-" * 30 if q.startswith("---")
+                                else (q.replace("->", "&#8594;") if "->" in q else q.split(":")[0])
+                            )
                             for q in description
                             if not q.startswith("#")
                         )
