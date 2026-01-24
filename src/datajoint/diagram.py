@@ -374,16 +374,11 @@ else:
                 return graph, {}
 
             # Map full_table_names to class_names
-            full_to_class = {
-                node: lookup_class_name(node, self.context) or node
-                for node in valid_nodes
-            }
+            full_to_class = {node: lookup_class_name(node, self.context) or node for node in valid_nodes}
             class_to_full = {v: k for k, v in full_to_class.items()}
 
             # Identify expanded class names
-            expanded_class_names = {
-                full_to_class.get(node, node) for node in valid_expanded
-            }
+            expanded_class_names = {full_to_class.get(node, node) for node in valid_expanded}
 
             # Identify nodes to collapse (class names)
             nodes_to_collapse = set(graph.nodes()) - expanded_class_names
@@ -396,7 +391,7 @@ else:
             for class_name in nodes_to_collapse:
                 full_name = class_to_full.get(class_name)
                 if full_name:
-                    parts = full_name.replace('"', '`').split('`')
+                    parts = full_name.replace('"', "`").split("`")
                     if len(parts) >= 2:
                         schema_name = parts[1]
                         if schema_name not in collapsed_by_schema:
@@ -421,7 +416,7 @@ else:
             for node in graph.nodes():
                 full_name = class_to_full.get(node)
                 if full_name:
-                    parts = full_name.replace('"', '`').split('`')
+                    parts = full_name.replace('"', "`").split("`")
                     if len(parts) >= 2:
                         db_schema = parts[1]
                         cls = self._resolve_class(node)
@@ -466,7 +461,7 @@ else:
             for node in graph.nodes():
                 full_name = class_to_full.get(node)
                 if full_name:
-                    parts = full_name.replace('"', '`').split('`')
+                    parts = full_name.replace('"', "`").split("`")
                     if len(parts) >= 2 and node in nodes_to_collapse:
                         schema_name = parts[1]
                         node_mapping[node] = collapsed_labels[schema_name]
@@ -481,7 +476,7 @@ else:
                         neighbor = next(iter(neighbors))
                         full_name = class_to_full.get(neighbor)
                         if full_name:
-                            parts = full_name.replace('"', '`').split('`')
+                            parts = full_name.replace('"', "`").split("`")
                             if len(parts) >= 2:
                                 schema_name = parts[1]
                                 node_mapping[node] = collapsed_labels[schema_name]
@@ -498,9 +493,13 @@ else:
                     # This is a collapsed schema node
                     if new_node not in added_collapsed:
                         schema_name = label_to_schema.get(new_node, new_node)
-                        new_graph.add_node(new_node, node_type=None, collapsed=True,
-                                          table_count=collapsed_counts[new_node],
-                                          schema_name=schema_name)
+                        new_graph.add_node(
+                            new_node,
+                            node_type=None,
+                            collapsed=True,
+                            table_count=collapsed_counts[new_node],
+                            schema_name=schema_name,
+                        )
                         added_collapsed.add(new_node)
                 else:
                     new_graph.add_node(new_node, **graph.nodes[old_node])
@@ -598,7 +597,7 @@ else:
 
             for full_name in self.nodes_to_show:
                 # Extract schema from full table name like `schema`.`table` or "schema"."table"
-                parts = full_name.replace('"', '`').split('`')
+                parts = full_name.replace('"', "`").split("`")
                 if len(parts) >= 2:
                     schema_name = parts[1]  # schema is between first pair of backticks
                     class_name = lookup_class_name(full_name, self.context) or full_name
@@ -748,7 +747,8 @@ else:
                         description = cls().describe(context=self.context).split("\n")
                         description = (
                             (
-                                "-" * 30 if q.startswith("---")
+                                "-" * 30
+                                if q.startswith("---")
                                 else (q.replace("->", "&#8594;") if "->" in q else q.split(":")[0])
                             )
                             for q in description
@@ -867,7 +867,7 @@ else:
             schema_modules = {}  # schema_name -> set of module names
 
             for full_name in self.nodes_to_show:
-                parts = full_name.replace('"', '`').split('`')
+                parts = full_name.replace('"', "`").split("`")
                 if len(parts) >= 2:
                     schema_name = parts[1]
                     class_name = lookup_class_name(full_name, self.context) or full_name
@@ -909,13 +909,13 @@ else:
 
             # Shape mapping: Manual=box, Computed/Imported=stadium, Lookup/Part=box
             shape_map = {
-                Manual: ("[", "]"),       # box
-                Lookup: ("[", "]"),       # box
-                Computed: ("([", "])"),   # stadium/pill
-                Imported: ("([", "])"),   # stadium/pill
-                Part: ("[", "]"),         # box
-                _AliasNode: ("((", "))"), # circle
-                None: ("((", "))"),       # circle
+                Manual: ("[", "]"),  # box
+                Lookup: ("[", "]"),  # box
+                Computed: ("([", "])"),  # stadium/pill
+                Imported: ("([", "])"),  # stadium/pill
+                Part: ("[", "]"),  # box
+                _AliasNode: ("((", "))"),  # circle
+                None: ("((", "))"),  # circle
             }
 
             tier_class = {
@@ -951,7 +951,7 @@ else:
                         # Collapsed node - show only table count
                         table_count = data.get("table_count", 0)
                         count_text = f"{table_count} tables" if table_count != 1 else "1 table"
-                        lines.append(f"        {safe_id}[[\"({count_text})\"]]:::collapsed")
+                        lines.append(f'        {safe_id}[["({count_text})"]]:::collapsed')
                     else:
                         # Regular node
                         tier = data.get("node_type")
