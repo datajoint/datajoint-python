@@ -50,12 +50,6 @@ constraint_info_query = " ".join(
 )
 
 
-class _RenameMap(tuple):
-    """for internal use"""
-
-    pass
-
-
 @dataclass
 class ValidationResult:
     """
