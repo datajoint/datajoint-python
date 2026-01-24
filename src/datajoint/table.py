@@ -33,12 +33,6 @@ logger = logging.getLogger(__name__.split(".")[0])
 # Legacy regexp and query kept for reference but no longer used
 
 
-class _RenameMap(tuple):
-    """for internal use"""
-
-    pass
-
-
 @dataclass
 class ValidationResult:
     """

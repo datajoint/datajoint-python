@@ -11,9 +11,6 @@ import signal
 import traceback
 from typing import TYPE_CHECKING, Any, Generator
 
-import deepdiff
-from tqdm import tqdm
-
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
 
@@ -401,6 +398,8 @@ class AutoPopulate:
         Computes keys directly from key_source, suitable for single-worker
         execution, development, and debugging.
         """
+        from tqdm import tqdm
+
         keys = (self._jobs_to_do(restrictions) - self).keys()
 
         logger.debug("Found %d keys to populate" % len(keys))
@@ -473,6 +472,8 @@ class AutoPopulate:
         Uses job table for multi-worker coordination, priority scheduling,
         and status tracking.
         """
+        from tqdm import tqdm
+
         from .settings import config
 
         # Define a signal handler for SIGTERM
@@ -580,6 +581,8 @@ class AutoPopulate:
             (key, error) tuple if suppress_errors=True and error occurred.
         """
         import time
+
+        import deepdiff
 
         # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
