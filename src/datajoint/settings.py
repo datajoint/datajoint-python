@@ -66,6 +66,7 @@ ENV_VAR_MAPPING = {
     "database.backend": "DJ_BACKEND",
     "database.port": "DJ_PORT",
     "loglevel": "DJ_LOG_LEVEL",
+    "display.diagram_direction": "DJ_DIAGRAM_DIRECTION",
 }
 
 Role = Enum("Role", "manual lookup imported computed job")
@@ -221,6 +222,11 @@ class DisplaySettings(BaseSettings):
     limit: int = 12
     width: int = 14
     show_tuple_count: bool = True
+    diagram_direction: Literal["TB", "LR"] = Field(
+        default="LR",
+        validation_alias="DJ_DIAGRAM_DIRECTION",
+        description="Default diagram layout direction: 'TB' (top-to-bottom) or 'LR' (left-to-right)",
+    )
 
 
 class StoresSettings(BaseSettings):

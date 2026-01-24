@@ -137,6 +137,7 @@ class Dependencies(nx.DiGraph):
     def clear(self) -> None:
         """Clear the graph and reset loaded state."""
         self._loaded = False
+        self._node_alias_count = itertools.count()  # reset alias IDs for consistency
         super().clear()
 
     def load(self, force: bool = True) -> None:
