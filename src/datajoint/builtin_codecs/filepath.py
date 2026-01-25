@@ -18,7 +18,7 @@ class FilepathCodec(Codec):
     exists in the storage backend. Unlike ``<attach>`` or ``<object@>``, no
     file copying occurs - only the path is recorded.
 
-    External only - requires @store.
+    Store only - requires @store.
 
     This codec gives users maximum freedom in organizing their files while
     reusing DataJoint's store configuration. Files can be placed anywhere
@@ -64,7 +64,7 @@ class FilepathCodec(Codec):
     name = "filepath"
 
     def get_dtype(self, is_store: bool) -> str:
-        """Filepath is external only."""
+        """Filepath requires a store (use @store syntax)."""
         if not is_store:
             raise DataJointError(
                 "<filepath> requires @ symbol. Use <filepath@> for default store or <filepath@store> to specify store."

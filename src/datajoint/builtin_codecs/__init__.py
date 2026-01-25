@@ -7,13 +7,13 @@ want to create their own custom codecs.
 
 Built-in Codecs:
     - ``<blob>``: Serialize Python objects (in-table storage)
-    - ``<blob@>``: Serialize Python objects (external with hash-addressed dedup)
+    - ``<blob@>``: Serialize Python objects (in-store with hash-addressed dedup)
     - ``<attach>``: File attachment (in-table storage)
-    - ``<attach@>``: File attachment (external with hash-addressed dedup)
-    - ``<hash@>``: Hash-addressed storage with MD5 deduplication (external only)
-    - ``<object@>``: Schema-addressed storage for files/folders (external only)
-    - ``<npy@>``: Store numpy arrays as portable .npy files (external only)
-    - ``<filepath@store>``: Reference to existing file in store (external only)
+    - ``<attach@>``: File attachment (in-store with hash-addressed dedup)
+    - ``<hash@>``: Hash-addressed storage with MD5 deduplication (store only)
+    - ``<object@>``: Schema-addressed storage for files/folders (store only)
+    - ``<npy@>``: Store numpy arrays as portable .npy files (store only)
+    - ``<filepath@store>``: Reference to existing file in store (store only)
 
 Example - Creating a Custom Codec:
     Here's how to define your own codec, modeled after the built-in codecs::
