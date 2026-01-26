@@ -39,7 +39,6 @@ __all__ = [
     "Top",
     "U",
     "Diagram",
-    "kill",
     "MatCell",
     "MatStruct",
     # Codec API
@@ -94,8 +93,6 @@ _lazy_modules = {
     # Diagram imports networkx and matplotlib
     "Diagram": (".diagram", "Diagram"),
     "diagram": (".diagram", None),  # Return the module itself
-    # kill imports pymysql via connection
-    "kill": (".admin", "kill"),
     # cli imports click
     "cli": (".cli", "cli"),
 }
