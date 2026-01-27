@@ -27,25 +27,6 @@ def test_lazy_diagram_import():
     assert Diagram.__name__ == "Diagram"
 
 
-def test_lazy_admin_import():
-    """Admin module should not be loaded until dj.kill is accessed."""
-    # Remove datajoint from sys.modules to get fresh import
-    modules_to_remove = [key for key in sys.modules if key.startswith("datajoint")]
-    for mod in modules_to_remove:
-        del sys.modules[mod]
-
-    # Import datajoint
-    import datajoint as dj
-
-    # Admin module should not be loaded yet
-    assert "datajoint.admin" not in sys.modules, "admin module loaded eagerly"
-
-    # Access kill - should trigger lazy load
-    kill = dj.kill
-    assert "datajoint.admin" in sys.modules, "admin module not loaded after access"
-    assert callable(kill)
-
-
 def test_lazy_cli_import():
     """CLI module should not be loaded until dj.cli is accessed."""
     # Remove datajoint from sys.modules to get fresh import
@@ -103,5 +84,4 @@ def test_core_imports_available():
 
     # Heavy modules should still not be loaded
     assert "datajoint.diagram" not in sys.modules
-    assert "datajoint.admin" not in sys.modules
     assert "datajoint.cli" not in sys.modules

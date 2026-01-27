@@ -11,7 +11,6 @@ import pathlib
 import re
 import warnings
 from contextlib import contextmanager
-from getpass import getpass
 from typing import Callable
 
 from . import errors
@@ -71,9 +70,9 @@ def conn(
     host : str, optional
         Database hostname.
     user : str, optional
-        MySQL username.
+        Database username. Required if not set in config.
     password : str, optional
-        MySQL password. Prompts if not provided.
+        Database password. Required if not set in config.
     init_fun : callable, optional
         Initialization function called after connection.
     reset : bool, optional
@@ -86,15 +85,24 @@ def conn(
     -------
     Connection
         Persistent database connection.
+
+    Raises
+    ------
+    DataJointError
+        If user or password is not provided and not set in config.
     """
     if not hasattr(conn, "connection") or reset:
         host = host if host is not None else config["database.host"]
         user = user if user is not None else config["database.user"]
         password = password if password is not None else config["database.password"]
         if user is None:
-            user = input("Please enter DataJoint username: ")
+            raise errors.DataJointError(
+                "Database user not configured. Set datajoint.config['database.user'] or pass user= argument."
+            )
         if password is None:
-            password = getpass(prompt="Please enter DataJoint password: ")
+            raise errors.DataJointError(
+                "Database password not configured. Set datajoint.config['database.password'] or pass password= argument."
+            )
         init_fun = init_fun if init_fun is not None else config["connection.init_function"]
         use_tls = use_tls if use_tls is not None else config["database.use_tls"]
         conn.connection = Connection(host, user, password, None, init_fun, use_tls)

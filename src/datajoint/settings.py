@@ -65,6 +65,8 @@ ENV_VAR_MAPPING = {
     "database.password": "DJ_PASS",
     "database.backend": "DJ_BACKEND",
     "database.port": "DJ_PORT",
+    "database.schema_prefix": "DJ_SCHEMA_PREFIX",
+    "database.create_tables": "DJ_CREATE_TABLES",
     "loglevel": "DJ_LOG_LEVEL",
     "display.diagram_direction": "DJ_DIAGRAM_DIRECTION",
 }
@@ -196,6 +198,18 @@ class DatabaseSettings(BaseSettings):
     port: int | None = Field(default=None, validation_alias="DJ_PORT")
     reconnect: bool = True
     use_tls: bool | None = Field(default=None, validation_alias="DJ_USE_TLS")
+    schema_prefix: str = Field(
+        default="",
+        validation_alias="DJ_SCHEMA_PREFIX",
+        description="Project-specific prefix for schema names. "
+        "Not automatically applied; use dj.config.database.schema_prefix when creating schemas.",
+    )
+    create_tables: bool = Field(
+        default=True,
+        validation_alias="DJ_CREATE_TABLES",
+        description="Default for Schema create_tables parameter. "
+        "Set to False for production mode to prevent automatic table creation.",
+    )
 
     @model_validator(mode="after")
     def set_default_port_from_backend(self) -> "DatabaseSettings":
