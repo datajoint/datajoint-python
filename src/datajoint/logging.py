@@ -19,6 +19,7 @@ logging.Logger.jobs = jobs
 logger = logging.getLogger(__name__.split(".")[0])
 
 log_level = os.getenv("DJ_LOG_LEVEL", "info").upper()
+log_stream = os.getenv("DJ_LOG_STREAM", "stdout").lower()
 
 
 class LevelAwareFormatter(logging.Formatter):
@@ -34,9 +35,10 @@ class LevelAwareFormatter(logging.Formatter):
             return f"[{timestamp}] {record.getMessage()}"
 
 
-# Use stdout for all logging (avoids red highlighting in terminals/IDEs)
-# Users needing stderr can configure their own handlers
-stream_handler = logging.StreamHandler(sys.stdout)
+# Select output stream: stdout (default, no red highlighting) or stderr
+# Configurable via DJ_LOG_STREAM=stdout|stderr
+output_stream = sys.stderr if log_stream == "stderr" else sys.stdout
+stream_handler = logging.StreamHandler(output_stream)
 stream_handler.setFormatter(LevelAwareFormatter())
 
 logger.setLevel(level=log_level)
