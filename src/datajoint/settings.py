@@ -60,7 +60,7 @@ ENV_VAR_MAPPING = {
     "database.user": "DJ_USER",
     "database.password": "DJ_PASS",
     "database.port": "DJ_PORT",
-    "database.schema_prefix": "DJ_SCHEMA_PREFIX",
+    "database.database_prefix": "DJ_DATABASE_PREFIX",
     "database.create_tables": "DJ_CREATE_TABLES",
     "loglevel": "DJ_LOG_LEVEL",
 }
@@ -187,11 +187,11 @@ class DatabaseSettings(BaseSettings):
     port: int = Field(default=3306, validation_alias="DJ_PORT")
     reconnect: bool = True
     use_tls: bool | None = None
-    schema_prefix: str = Field(
+    database_prefix: str = Field(
         default="",
-        validation_alias="DJ_SCHEMA_PREFIX",
-        description="Project-specific prefix for schema names. "
-        "Not automatically applied; use dj.config.database.schema_prefix when creating schemas.",
+        validation_alias="DJ_DATABASE_PREFIX",
+        description="Prefix for database/schema names. "
+        "Not automatically applied; use dj.config.database.database_prefix when creating schemas.",
     )
     create_tables: bool = Field(
         default=True,
