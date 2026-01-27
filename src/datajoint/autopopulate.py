@@ -605,7 +605,7 @@ class AutoPopulate:
                 jobs.complete(key)
             return False
 
-        logger.debug(f"Making {key} -> {self.full_table_name}")
+        logger.jobs(f"Making {key} -> {self.full_table_name}")
         self.__class__._allow_insert = True
 
         try:
@@ -636,7 +636,7 @@ class AutoPopulate:
                 exception=error.__class__.__name__,
                 msg=": " + str(error) if str(error) else "",
             )
-            logger.debug(f"Error making {key} -> {self.full_table_name} - {error_message}")
+            logger.jobs(f"Error making {key} -> {self.full_table_name} - {error_message}")
             if jobs is not None:
                 jobs.error(key, error_message=error_message, error_stack=traceback.format_exc())
             if not suppress_errors or isinstance(error, SystemExit):
@@ -647,7 +647,7 @@ class AutoPopulate:
         else:
             self.connection.commit_transaction()
             duration = time.time() - start_time
-            logger.debug(f"Success making {key} -> {self.full_table_name}")
+            logger.jobs(f"Success making {key} -> {self.full_table_name}")
 
             # Update hidden job metadata if table has the columns
             if self._has_job_metadata_attrs():
