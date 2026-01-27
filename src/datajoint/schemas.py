@@ -72,7 +72,8 @@ class Schema:
     create_schema : bool, optional
         If False, raise error if schema doesn't exist. Default True.
     create_tables : bool, optional
-        If False, raise error when accessing missing tables. Default True.
+        If False, raise error when accessing missing tables.
+        Default from ``dj.config.database.create_tables`` (True unless configured).
     add_objects : dict, optional
         Additional objects for the declaration context.
 
@@ -93,7 +94,7 @@ class Schema:
         *,
         connection: Connection | None = None,
         create_schema: bool = True,
-        create_tables: bool = True,
+        create_tables: bool | None = None,
         add_objects: dict[str, Any] | None = None,
     ) -> None:
         """
@@ -110,7 +111,8 @@ class Schema:
         create_schema : bool, optional
             If False, raise error if schema doesn't exist. Default True.
         create_tables : bool, optional
-            If False, raise error when accessing missing tables. Default True.
+            If False, raise error when accessing missing tables.
+            Default from ``dj.config.database.create_tables`` (True unless configured).
         add_objects : dict, optional
             Additional objects for the declaration context.
         """
@@ -118,7 +120,7 @@ class Schema:
         self.database = None
         self.context = context
         self.create_schema = create_schema
-        self.create_tables = create_tables
+        self.create_tables = create_tables if create_tables is not None else config.database.create_tables
         self.add_objects = add_objects
         self.declare_list = []
         if schema_name:
