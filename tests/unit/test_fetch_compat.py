@@ -1,7 +1,7 @@
 """Tests for backward-compatible fetch() method."""
 
 import warnings
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -43,9 +43,7 @@ class TestFetchBackwardCompat:
             warnings.simplefilter("ignore", DeprecationWarning)
             mock_expression.fetch()
 
-        mock_expression.to_arrays.assert_called_once_with(
-            order_by=None, limit=None, offset=None, squeeze=False
-        )
+        mock_expression.to_arrays.assert_called_once_with(order_by=None, limit=None, offset=None, squeeze=False)
 
     def test_fetch_as_dict_true(self, mock_expression):
         """fetch(as_dict=True) should call to_dicts()."""
@@ -53,9 +51,7 @@ class TestFetchBackwardCompat:
             warnings.simplefilter("ignore", DeprecationWarning)
             mock_expression.fetch(as_dict=True)
 
-        mock_expression.to_dicts.assert_called_once_with(
-            order_by=None, limit=None, offset=None, squeeze=False
-        )
+        mock_expression.to_dicts.assert_called_once_with(order_by=None, limit=None, offset=None, squeeze=False)
 
     def test_fetch_with_attrs_returns_dicts(self, mock_expression):
         """fetch('col1', 'col2') should call proj().to_dicts()."""
@@ -82,9 +78,7 @@ class TestFetchBackwardCompat:
             warnings.simplefilter("ignore", DeprecationWarning)
             mock_expression.fetch(format="frame")
 
-        mock_expression.to_pandas.assert_called_once_with(
-            order_by=None, limit=None, offset=None, squeeze=False
-        )
+        mock_expression.to_pandas.assert_called_once_with(order_by=None, limit=None, offset=None, squeeze=False)
 
     def test_fetch_format_frame_with_attrs_raises(self, mock_expression):
         """fetch(format='frame') with attrs should raise error."""
@@ -101,9 +95,7 @@ class TestFetchBackwardCompat:
             warnings.simplefilter("ignore", DeprecationWarning)
             mock_expression.fetch(order_by="id", limit=10, offset=5)
 
-        mock_expression.to_arrays.assert_called_once_with(
-            order_by="id", limit=10, offset=5, squeeze=False
-        )
+        mock_expression.to_arrays.assert_called_once_with(order_by="id", limit=10, offset=5, squeeze=False)
 
     def test_fetch_passes_squeeze(self, mock_expression):
         """fetch(squeeze=True) should pass squeeze to output methods."""
@@ -111,6 +103,4 @@ class TestFetchBackwardCompat:
             warnings.simplefilter("ignore", DeprecationWarning)
             mock_expression.fetch(squeeze=True)
 
-        mock_expression.to_arrays.assert_called_once_with(
-            order_by=None, limit=None, offset=None, squeeze=True
-        )
+        mock_expression.to_arrays.assert_called_once_with(order_by=None, limit=None, offset=None, squeeze=True)
