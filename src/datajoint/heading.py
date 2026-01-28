@@ -500,7 +500,7 @@ class Heading:
                     if original_type.startswith("external"):
                         raise DataJointError(
                             f"Legacy datatype `{original_type}`. See migration guide: "
-                            "https://docs.datajoint.com/how-to/migrate-from-0x/"
+                            "https://docs.datajoint.com/how-to/migrate-to-v20/"
                         )
                     # Not a special type - that's fine, could be native passthrough
                     category = None
