@@ -580,29 +580,78 @@ class QueryExpression:
     aggregate = aggr  # alias for aggr
 
     # ---------- Fetch operators --------------------
-    @property
-    def fetch(self):
+    def fetch(
+        self,
+        *attrs,
+        offset=None,
+        limit=None,
+        order_by=None,
+        format=None,
+        as_dict=None,
+        squeeze=False,
+    ):
         """
-        The fetch() method has been removed in DataJoint 2.0.
+        Fetch data from the table (backward-compatible with DataJoint 0.14).
 
-        Use the new explicit output methods instead:
-        - table.to_dicts()           # list of dictionaries
-        - table.to_pandas()          # pandas DataFrame
-        - table.to_arrays()          # numpy structured array
-        - table.to_arrays('a', 'b')  # tuple of numpy arrays
-        - table.keys()               # primary keys as list[dict]
-        - table.to_polars()          # polars DataFrame (requires pip install datajoint[polars])
-        - table.to_arrow()           # PyArrow Table (requires pip install datajoint[arrow])
+        .. deprecated:: 2.0
+            Use the new explicit output methods instead:
+            - ``to_dicts()`` for list of dictionaries
+            - ``to_pandas()`` for pandas DataFrame
+            - ``to_arrays()`` for numpy structured array
+            - ``to_arrays('a', 'b')`` for tuple of arrays
+            - ``keys()`` for primary keys
 
-        For single-row fetch, use fetch1() which is unchanged.
+        Parameters
+        ----------
+        *attrs : str
+            Attributes to fetch. If empty, fetches all.
+        offset : int, optional
+            Number of tuples to skip.
+        limit : int, optional
+            Maximum number of tuples to return.
+        order_by : str or list, optional
+            Attribute(s) for ordering results.
+        format : str, optional
+            Output format: 'array' or 'frame' (pandas DataFrame).
+        as_dict : bool, optional
+            Return as list of dicts instead of structured array.
+        squeeze : bool, optional
+            Remove extra dimensions from arrays. Default False.
 
-        See migration guide: https://docs.datajoint.com/how-to/migrate-from-0x/
+        Returns
+        -------
+        np.recarray, list[dict], or pd.DataFrame
+            Query results in requested format.
         """
-        raise AttributeError(
-            "fetch() has been removed in DataJoint 2.0. "
-            "Use to_dicts(), to_pandas(), to_arrays(), or keys() instead. "
-            "See table.fetch.__doc__ for details."
+        import warnings
+
+        warnings.warn(
+            "fetch() is deprecated in DataJoint 2.0. " "Use to_dicts(), to_pandas(), to_arrays(), or keys() instead.",
+            DeprecationWarning,
+            stacklevel=2,
         )
+
+        # Handle format='frame' -> to_pandas()
+        if format == "frame":
+            if attrs or as_dict is not None:
+                raise DataJointError("format='frame' cannot be combined with attrs or as_dict")
+            return self.to_pandas(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+
+        # Handle specific attributes requested
+        if attrs:
+            if as_dict or as_dict is None:
+                # fetch('col1', 'col2', as_dict=True) or fetch('col1', 'col2')
+                return self.proj(*attrs).to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+            else:
+                # fetch('col1', 'col2', as_dict=False) -> tuple of arrays
+                return self.to_arrays(*attrs, order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+
+        # Handle as_dict=True -> to_dicts()
+        if as_dict:
+            return self.to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+
+        # Default: return structured array (legacy behavior)
+        return self.to_arrays(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
 
     def fetch1(self, *attrs, squeeze=False):
         """
