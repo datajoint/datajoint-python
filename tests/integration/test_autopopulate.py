@@ -147,3 +147,84 @@ def test_load_dependencies(prefix, connection_test):
             self.insert1(dict(key, crop_image=dict()))
 
     Crop.populate()
+
+
+def test_make_kwargs_regular(prefix, connection_test):
+    """Test that make_kwargs are passed to regular make method."""
+    schema = dj.Schema(f"{prefix}_make_kwargs_regular", connection=connection_test)
+
+    @schema
+    class Source(dj.Lookup):
+        definition = """
+        source_id: int
+        """
+        contents = [(1,), (2,)]
+
+    @schema
+    class Computed(dj.Computed):
+        definition = """
+        -> Source
+        ---
+        multiplier: int
+        result: int
+        """
+
+        def make(self, key, multiplier=1):
+            self.insert1(dict(key, multiplier=multiplier, result=key["source_id"] * multiplier))
+
+    # Test without make_kwargs
+    Computed.populate(Source & "source_id = 1")
+    assert (Computed & "source_id = 1").fetch1("result") == 1
+
+    # Test with make_kwargs
+    Computed.populate(Source & "source_id = 2", make_kwargs={"multiplier": 10})
+    assert (Computed & "source_id = 2").fetch1("multiplier") == 10
+    assert (Computed & "source_id = 2").fetch1("result") == 20
+
+
+def test_make_kwargs_tripartite(prefix, connection_test):
+    """Test that make_kwargs are passed to make_fetch in tripartite pattern (issue #1350)."""
+    schema = dj.Schema(f"{prefix}_make_kwargs_tripartite", connection=connection_test)
+
+    @schema
+    class Source(dj.Lookup):
+        definition = """
+        source_id: int
+        ---
+        value: int
+        """
+        contents = [(1, 100), (2, 200)]
+
+    @schema
+    class TripartiteComputed(dj.Computed):
+        definition = """
+        -> Source
+        ---
+        scale: int
+        result: int
+        """
+
+        def make_fetch(self, key, scale=1):
+            """Fetch data with optional scale parameter."""
+            value = (Source & key).fetch1("value")
+            return (value, scale)
+
+        def make_compute(self, key, value, scale):
+            """Compute result using fetched value and scale."""
+            return (value * scale, scale)
+
+        def make_insert(self, key, result, scale):
+            """Insert computed result."""
+            self.insert1(dict(key, scale=scale, result=result))
+
+    # Test without make_kwargs (scale defaults to 1)
+    TripartiteComputed.populate(Source & "source_id = 1")
+    row = (TripartiteComputed & "source_id = 1").fetch1()
+    assert row["scale"] == 1
+    assert row["result"] == 100  # 100 * 1
+
+    # Test with make_kwargs (scale = 5)
+    TripartiteComputed.populate(Source & "source_id = 2", make_kwargs={"scale": 5})
+    row = (TripartiteComputed & "source_id = 2").fetch1()
+    assert row["scale"] == 5
+    assert row["result"] == 1000  # 200 * 5

@@ -204,7 +204,7 @@ class AutoPopulate:
                 self._key_source *= _rename_attributes(*q)
         return self._key_source
 
-    def make(self, key: dict[str, Any]) -> None | Generator[Any, Any, None]:
+    def make(self, key: dict[str, Any], **kwargs) -> None | Generator[Any, Any, None]:
         """
         Compute and insert data for one key.
 
@@ -219,6 +219,9 @@ class AutoPopulate:
         ----------
         key : dict
             Primary key value identifying the entity to compute.
+        **kwargs
+            Keyword arguments passed from ``populate(make_kwargs=...)``.
+            These are forwarded to ``make_fetch`` for the tripartite pattern.
 
         Raises
         ------
@@ -232,7 +235,7 @@ class AutoPopulate:
 
         **Tripartite make**: For long-running computations, implement:
 
-        - ``make_fetch(key)``: Fetch data from parent tables
+        - ``make_fetch(key, **kwargs)``: Fetch data from parent tables
         - ``make_compute(key, *fetched_data)``: Compute results
         - ``make_insert(key, *computed_result)``: Insert results
 
@@ -250,7 +253,7 @@ class AutoPopulate:
         # User has implemented `_fetch`, `_compute`, and `_insert` methods instead
 
         # Step 1: Fetch data from parent tables
-        fetched_data = self.make_fetch(key)  # fetched_data is a tuple
+        fetched_data = self.make_fetch(key, **kwargs)  # fetched_data is a tuple
         computed_result = yield fetched_data  # passed as input into make_compute
 
         # Step 2: If computed result is not passed in, compute the result
