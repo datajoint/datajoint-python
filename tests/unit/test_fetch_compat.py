@@ -53,11 +53,22 @@ class TestFetchBackwardCompat:
 
         mock_expression.to_dicts.assert_called_once_with(order_by=None, limit=None, offset=None, squeeze=False)
 
-    def test_fetch_with_attrs_returns_dicts(self, mock_expression):
-        """fetch('col1', 'col2') should call proj().to_dicts()."""
+    def test_fetch_with_attrs_returns_arrays(self, mock_expression):
+        """fetch('col1', 'col2') should call to_arrays() - matches DJ 1.x behavior."""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
             mock_expression.fetch("col1", "col2")
+
+        # DJ 1.x: fetch('col') returns array(['alpha', 'beta']), not list of dicts
+        mock_expression.to_arrays.assert_called_once_with(
+            "col1", "col2", order_by=None, limit=None, offset=None, squeeze=False
+        )
+
+    def test_fetch_with_attrs_as_dict_true(self, mock_expression):
+        """fetch('col1', 'col2', as_dict=True) should call proj().to_dicts()."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            mock_expression.fetch("col1", "col2", as_dict=True)
 
         mock_expression.proj.assert_called_once_with("col1", "col2")
         mock_expression.to_dicts.assert_called_once()
