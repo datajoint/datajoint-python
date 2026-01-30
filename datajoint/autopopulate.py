@@ -93,7 +93,7 @@ class AutoPopulate:
                 self._key_source *= _rename_attributes(*q)
         return self._key_source
 
-    def make(self, key):
+    def make(self, key, **kwargs):
         """
         This method must be implemented by derived classes to perform automated computation.
         The method must implement the following three steps:
@@ -136,6 +136,8 @@ class AutoPopulate:
         DataJoint may programmatically enforce this separation in the future.
 
         :param key: The primary key value used to restrict the data fetching.
+        :param kwargs: Keyword arguments passed from populate(make_kwargs=...).
+            These are passed to make_fetch for the tripartite pattern.
         :raises NotImplementedError: If the derived class does not implement the required methods.
         """
 
@@ -153,7 +155,7 @@ class AutoPopulate:
         # User has implemented `_fetch`, `_compute`, and `_insert` methods instead
 
         # Step 1: Fetch data from parent tables
-        fetched_data = self.make_fetch(key)  # fetched_data is a tuple
+        fetched_data = self.make_fetch(key, **kwargs)  # fetched_data is a tuple
         computed_result = yield fetched_data  # passed as input into make_compute
 
         # Step 2: If computed result is not passed in, compute the result
