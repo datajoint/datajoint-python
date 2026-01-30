@@ -168,6 +168,7 @@ class Job(Table):
     pid=0           : int32
     connection_id=0 : int64
     version=""      : varchar(64)
+    INDEX (status, priority, scheduled_time)
     """
 
     def _get_fk_derived_pk_attrs(self) -> list[tuple[str, str]]:
