@@ -1,10 +1,9 @@
 [build-system]
-requires = ["setuptools>=60"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "datajoint"
-# dynamically set in tools.setuptools.dynamic
 dynamic = ["version"]
 dependencies = [
   "numpy",
@@ -20,7 +19,6 @@ dependencies = [
   "matplotlib",
   "faker",
   "urllib3",
-  "setuptools",
   "pydantic-settings>=2.0.0",
 ]
 
@@ -79,7 +77,7 @@ Repository = "https://github.com/datajoint/datajoint-python"
 "Bug Tracker" = "https://github.com/datajoint/datajoint-python/issues"
 "Release Notes" = "https://github.com/datajoint/datajoint-python/releases"
 
-[project.entry-points."console_scripts"]
+[project.scripts]
 dj = "datajoint.cli:cli"
 datajoint = "datajoint.cli:cli"
 
@@ -211,12 +209,11 @@ module = [
 ]
 ignore_errors = true
 
-[tool.setuptools]
-packages = ["datajoint"]
-package-dir = {"" = "src"}
+[tool.hatch.version]
+path = "src/datajoint/version.py"
 
-[tool.setuptools.dynamic]
-version = { attr = "datajoint.version.__version__"}
+[tool.hatch.build.targets.wheel]
+packages = ["src/datajoint"]
 
 [tool.codespell]
 skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
