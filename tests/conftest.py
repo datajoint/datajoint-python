@@ -66,6 +66,12 @@ def pytest_collection_modifyitems(config, items):
         "stores_config",
         "mock_stores",
     }
+    # Tests that use these fixtures are backend-parameterized
+    backend_fixtures = {
+        "backend",
+        "db_creds_by_backend",
+        "connection_by_backend",
+    }
 
     for item in items:
         # Get all fixtures this test uses (directly or indirectly)
@@ -79,6 +85,13 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.requires_mysql)
         if fixturenames & minio_fixtures:
             item.add_marker(pytest.mark.requires_minio)
+
+        # Auto-mark backend-parameterized tests
+        if fixturenames & backend_fixtures:
+            # Test will run for both backends - add all backend markers
+            item.add_marker(pytest.mark.mysql)
+            item.add_marker(pytest.mark.postgresql)
+            item.add_marker(pytest.mark.backend_agnostic)
 
 
 # =============================================================================
@@ -101,7 +114,7 @@ def mysql_container():
     from testcontainers.mysql import MySqlContainer
 
     container = MySqlContainer(
-        image="mysql:8.0",
+        image="datajoint/mysql:8.0",  # Use datajoint image which has SSL configured
         username="root",
         password="password",
         dbname="test",
@@ -116,6 +129,35 @@ def mysql_container():
 
     container.stop()
     logger.info("MySQL container stopped")
+
+
+@pytest.fixture(scope="session")
+def postgres_container():
+    """Start PostgreSQL container for the test session (or use external)."""
+    if USE_EXTERNAL_CONTAINERS:
+        # Use external container - return None, credentials come from env
+        logger.info("Using external PostgreSQL container")
+        yield None
+        return
+
+    from testcontainers.postgres import PostgresContainer
+
+    container = PostgresContainer(
+        image="postgres:15",
+        username="postgres",
+        password="password",
+        dbname="test",
+    )
+    container.start()
+
+    host = container.get_container_host_ip()
+    port = container.get_exposed_port(5432)
+    logger.info(f"PostgreSQL container started at {host}:{port}")
+
+    yield container
+
+    container.stop()
+    logger.info("PostgreSQL container stopped")
 
 
 @pytest.fixture(scope="session")
@@ -223,6 +265,107 @@ def s3_creds(minio_container) -> Dict:
             secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
             bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
         )
+
+
+# =============================================================================
+# Backend-Parameterized Fixtures
+# =============================================================================
+
+
+@pytest.fixture(scope="session", params=["mysql", "postgresql"])
+def backend(request):
+    """Parameterize tests to run against both backends."""
+    return request.param
+
+
+@pytest.fixture(scope="session")
+def db_creds_by_backend(backend, mysql_container, postgres_container):
+    """Get root database credentials for the specified backend."""
+    if backend == "mysql":
+        if mysql_container is not None:
+            host = mysql_container.get_container_host_ip()
+            port = mysql_container.get_exposed_port(3306)
+            return {
+                "backend": "mysql",
+                "host": f"{host}:{port}",
+                "user": "root",
+                "password": "password",
+            }
+        else:
+            # External MySQL container
+            host = os.environ.get("DJ_HOST", "localhost")
+            port = os.environ.get("DJ_PORT", "3306")
+            return {
+                "backend": "mysql",
+                "host": f"{host}:{port}" if port else host,
+                "user": os.environ.get("DJ_USER", "root"),
+                "password": os.environ.get("DJ_PASS", "password"),
+            }
+
+    elif backend == "postgresql":
+        if postgres_container is not None:
+            host = postgres_container.get_container_host_ip()
+            port = postgres_container.get_exposed_port(5432)
+            return {
+                "backend": "postgresql",
+                "host": f"{host}:{port}",
+                "user": "postgres",
+                "password": "password",
+            }
+        else:
+            # External PostgreSQL container
+            host = os.environ.get("DJ_PG_HOST", "localhost")
+            port = os.environ.get("DJ_PG_PORT", "5432")
+            return {
+                "backend": "postgresql",
+                "host": f"{host}:{port}" if port else host,
+                "user": os.environ.get("DJ_PG_USER", "postgres"),
+                "password": os.environ.get("DJ_PG_PASS", "password"),
+            }
+
+
+@pytest.fixture(scope="function")
+def connection_by_backend(db_creds_by_backend):
+    """Create connection for the specified backend.
+
+    This fixture is function-scoped to ensure database.backend config
+    is restored after each test, preventing config pollution between tests.
+    """
+    # Save original config to restore after tests
+    original_backend = dj.config.get("database.backend", "mysql")
+    original_host = dj.config.get("database.host")
+    original_port = dj.config.get("database.port")
+
+    # Configure backend
+    dj.config["database.backend"] = db_creds_by_backend["backend"]
+
+    # Parse host:port
+    host_port = db_creds_by_backend["host"]
+    if ":" in host_port:
+        host, port = host_port.rsplit(":", 1)
+    else:
+        host = host_port
+        port = "3306" if db_creds_by_backend["backend"] == "mysql" else "5432"
+
+    dj.config["database.host"] = host
+    dj.config["database.port"] = int(port)
+    dj.config["safemode"] = False
+
+    connection = dj.Connection(
+        host=host_port,
+        user=db_creds_by_backend["user"],
+        password=db_creds_by_backend["password"],
+    )
+
+    yield connection
+
+    # Restore original config
+    connection.close()
+    dj.config["database.backend"] = original_backend
+    if original_host is not None:
+        dj.config["database.host"] = original_host
+    if original_port is not None:
+        dj.config["database.port"] = original_port
 
 
 # =============================================================================

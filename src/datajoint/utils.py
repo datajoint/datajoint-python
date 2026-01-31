@@ -25,23 +25,32 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
     return response
 
 
-def get_master(full_table_name: str) -> str:
+def get_master(full_table_name: str, adapter=None) -> str:
     """
     If the table name is that of a part table, then return what the master table name would be.
     This follows DataJoint's table naming convention where a master and a part must be in the
     same schema and the part table is prefixed with the master table name + ``__``.
 
     Example:
-       `ephys`.`session`    -- master
-       `ephys`.`session__recording`  -- part
+       `ephys`.`session`    -- master (MySQL)
+       `ephys`.`session__recording`  -- part (MySQL)
+       "ephys"."session__recording"  -- part (PostgreSQL)
 
     :param full_table_name: Full table name including part.
     :type full_table_name: str
+    :param adapter: Optional database adapter for backend-specific parsing.
     :return: Supposed master full table name or empty string if not a part table name.
     :rtype: str
     """
-    match = re.match(r"(?P<master>`\w+`.`\w+)__(?P<part>\w+)`", full_table_name)
-    return match["master"] + "`" if match else ""
+    if adapter is not None:
+        result = adapter.get_master_table_name(full_table_name)
+        return result if result else ""
+
+    # Fallback: handle both MySQL backticks and PostgreSQL double quotes
+    match = re.match(r'(?P<master>(?P<q>[`"])[\w]+(?P=q)\.(?P=q)[\w]+)__[\w]+(?P=q)', full_table_name)
+    if match:
+        return match["master"] + match["q"]
+    return ""
 
 
 def is_camel_case(s):

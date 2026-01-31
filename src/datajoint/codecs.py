@@ -544,7 +544,9 @@ def decode_attribute(attr, data, squeeze: bool = False):
 
         # Process the final storage type (what's in the database)
         if final_dtype.lower() == "json":
-            data = json.loads(data)
+            # psycopg2 auto-deserializes JSON to dict/list; only parse strings
+            if isinstance(data, str):
+                data = json.loads(data)
         elif final_dtype.lower() in ("longblob", "blob", "mediumblob", "tinyblob"):
             pass  # Blob data is already bytes
         elif final_dtype.lower() == "binary(16)":
@@ -562,7 +564,10 @@ def decode_attribute(attr, data, squeeze: bool = False):
 
     # No codec - handle native types
     if attr.json:
-        return json.loads(data)
+        # psycopg2 auto-deserializes JSON to dict/list; only parse strings
+        if isinstance(data, str):
+            return json.loads(data)
+        return data
 
     if attr.uuid:
         import uuid as uuid_module

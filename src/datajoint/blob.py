@@ -149,6 +149,9 @@ class Blob:
         return array.item() if array.ndim == 0 and convert_to_scalar else array
 
     def unpack(self, blob):
+        # PostgreSQL returns bytea as memoryview; convert to bytes for string operations
+        if isinstance(blob, memoryview):
+            blob = bytes(blob)
         self._blob = blob
         try:
             # decompress

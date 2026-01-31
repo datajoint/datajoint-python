@@ -133,7 +133,7 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
             Comment with optional ``:uuid:`` prefix.
         """
         # UUID info is stored in the comment for reconstruction
-        return (":uuid:" if self.uuid else "") + self.comment
+        return (":uuid:" if self.uuid else "") + (self.comment or "")
 
     @property
     def sql(self) -> str:
@@ -164,8 +164,9 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         """
         if self.attribute_expression is None:
             return self.name
-        assert self.attribute_expression.startswith("`")
-        return self.attribute_expression.strip("`")
+        # Backend-agnostic quote stripping (MySQL uses `, PostgreSQL uses ")
+        assert self.attribute_expression.startswith(("`", '"'))
+        return self.attribute_expression.strip('`"')
 
 
 class Heading:
@@ -290,7 +291,9 @@ class Heading:
         in_key = True
         ret = ""
         if self._table_status is not None:
-            ret += "# " + self.table_status["comment"] + "\n"
+            comment = self.table_status.get("comment", "")
+            if comment:
+                ret += "# " + comment + "\n"
         for v in self.attributes.values():
             if in_key and not v.in_key:
                 ret += "---\n"
@@ -319,7 +322,7 @@ class Heading:
         """
         return np.dtype(dict(names=self.names, formats=[v.dtype for v in self.attributes.values()]))
 
-    def as_sql(self, fields: list[str], include_aliases: bool = True) -> str:
+    def as_sql(self, fields: list[str], include_aliases: bool = True, adapter=None) -> str:
         """
         Generate SQL SELECT clause for specified fields.
 
@@ -329,20 +332,37 @@ class Heading:
             Attribute names to include.
         include_aliases : bool, optional
             Include AS clauses for computed attributes. Default True.
+        adapter : DatabaseAdapter, optional
+            Database adapter for identifier quoting. If not provided, attempts
+            to get from table_info connection.
 
         Returns
         -------
         str
             Comma-separated SQL field list.
         """
-        return ",".join(
-            (
-                "`%s`" % name
-                if self.attributes[name].attribute_expression is None
-                else self.attributes[name].attribute_expression + (" as `%s`" % name if include_aliases else "")
-            )
-            for name in fields
-        )
+        # Get adapter for proper identifier quoting
+        if adapter is None and self.table_info and "conn" in self.table_info and self.table_info["conn"]:
+            adapter = self.table_info["conn"].adapter
+
+        def quote(name):
+            # Use adapter if available, otherwise use ANSI SQL double quotes (not backticks)
+            return adapter.quote_identifier(name) if adapter else f'"{name}"'
+
+        def render_field(name):
+            attr = self.attributes[name]
+            if attr.attribute_expression is None:
+                return quote(name)
+            else:
+                # Translate expression for backend compatibility (e.g., GROUP_CONCAT ↔ STRING_AGG)
+                expr = attr.attribute_expression
+                if adapter:
+                    expr = adapter.translate_expression(expr)
+                if include_aliases:
+                    return f"{expr} as {quote(name)}"
+                return expr
+
+        return ",".join(render_field(name) for name in fields)
 
     def __iter__(self):
         return iter(self.attributes)
@@ -350,38 +370,42 @@ class Heading:
     def _init_from_database(self) -> None:
         """Initialize heading from an existing database table."""
         conn, database, table_name, context = (self.table_info[k] for k in ("conn", "database", "table_name", "context"))
+        adapter = conn.adapter
+
+        # Get table metadata
         info = conn.query(
-            'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(table_name=table_name, database=database),
+            adapter.get_table_info_sql(database, table_name),
             as_dict=True,
         ).fetchone()
         if info is None:
-            raise DataJointError(
-                "The table `{database}`.`{table_name}` is not defined.".format(table_name=table_name, database=database)
-            )
+            raise DataJointError(f"The table {database}.{table_name} is not defined.")
+        # Normalize table_comment to comment for backward compatibility
         self._table_status = {k.lower(): v for k, v in info.items()}
+        if "table_comment" in self._table_status:
+            self._table_status["comment"] = self._table_status["table_comment"]
+
+        # Get column information
         cur = conn.query(
-            "SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`".format(table_name=table_name, database=database),
+            adapter.get_columns_sql(database, table_name),
             as_dict=True,
         )
 
-        attributes = cur.fetchall()
+        # Parse columns using adapter-specific parser
+        raw_attributes = cur.fetchall()
+        attributes = [adapter.parse_column_info(row) for row in raw_attributes]
 
-        rename_map = {
-            "Field": "name",
-            "Type": "type",
-            "Null": "nullable",
-            "Default": "default",
-            "Key": "in_key",
-            "Comment": "comment",
-        }
+        # Get primary key information and mark primary key columns
+        pk_query = conn.query(
+            adapter.get_primary_key_sql(database, table_name),
+            as_dict=True,
+        )
+        pk_columns = {row["column_name"] for row in pk_query.fetchall()}
+        for attr in attributes:
+            if attr["name"] in pk_columns:
+                attr["key"] = "PRI"
 
-        fields_to_drop = ("Privileges", "Collation")
-
-        # rename and drop attributes
-        attributes = [
-            {rename_map[k] if k in rename_map else k: v for k, v in x.items() if k not in fields_to_drop} for x in attributes
-        ]
         numeric_types = {
+            # MySQL types
             ("float", False): np.float64,
             ("float", True): np.float64,
             ("double", False): np.float64,
@@ -396,6 +420,13 @@ class Heading:
             ("int", True): np.int64,
             ("bigint", False): np.int64,
             ("bigint", True): np.uint64,
+            # PostgreSQL types
+            ("integer", False): np.int64,
+            ("integer", True): np.int64,
+            ("real", False): np.float64,
+            ("real", True): np.float64,
+            ("double precision", False): np.float64,
+            ("double precision", True): np.float64,
         }
 
         sql_literals = ["CURRENT_TIMESTAMP"]
@@ -403,9 +434,9 @@ class Heading:
         # additional attribute properties
         for attr in attributes:
             attr.update(
-                in_key=(attr["in_key"] == "PRI"),
-                nullable=attr["nullable"] == "YES",
-                autoincrement=bool(re.search(r"auto_increment", attr["Extra"], flags=re.I)),
+                in_key=(attr["key"] == "PRI"),
+                nullable=attr["nullable"],  # Already boolean from parse_column_info
+                autoincrement=bool(re.search(r"auto_increment", attr["extra"], flags=re.I)),
                 numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "INTEGER", "FLOAT")),
                 string=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("ENUM", "TEMPORAL", "STRING")),
                 is_blob=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BYTES", "NATIVE_BLOB")),
@@ -421,10 +452,12 @@ class Heading:
             if any(TYPE_PATTERN[t].match(attr["type"]) for t in ("INTEGER", "FLOAT")):
                 attr["type"] = re.sub(r"\(\d+\)", "", attr["type"], count=1)  # strip size off integers and floats
             attr["unsupported"] = not any((attr["is_blob"], attr["numeric"], attr["numeric"]))
-            attr.pop("Extra")
+            attr.pop("extra")
+            attr.pop("key")
 
             # process custom DataJoint types stored in comment
-            special = re.match(r":(?P<type>[^:]+):(?P<comment>.*)", attr["comment"])
+            comment = attr["comment"] or ""  # Handle None for PostgreSQL
+            special = re.match(r":(?P<type>[^:]+):(?P<comment>.*)", comment)
             if special:
                 special = special.groupdict()
                 attr["comment"] = special["comment"]  # Always update the comment
@@ -519,21 +552,32 @@ class Heading:
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
         for item in conn.query(
-            "SHOW KEYS FROM `{db}`.`{tab}`".format(db=database, tab=table_name),
+            adapter.get_indexes_sql(database, table_name),
             as_dict=True,
         ):
-            if item["Key_name"] != "PRIMARY":
-                keys[item["Key_name"]][item["Seq_in_index"]] = dict(
-                    column=item["Column_name"] or f"({item['Expression']})".replace(r"\'", "'"),
-                    unique=(item["Non_unique"] == 0),
-                    nullable=item["Null"].lower() == "yes",
-                )
+            # Note: adapter.get_indexes_sql() already filters out PRIMARY key
+            # MySQL/PostgreSQL adapters return: index_name, column_name, non_unique
+            index_name = item.get("index_name") or item.get("Key_name")
+            seq = item.get("seq_in_index") or item.get("Seq_in_index") or len(keys[index_name]) + 1
+            column = item.get("column_name") or item.get("Column_name")
+            # MySQL EXPRESSION column stores escaped single quotes - unescape them
+            if column:
+                column = column.replace("\\'", "'")
+            non_unique = item.get("non_unique") or item.get("Non_unique")
+            nullable = item.get("nullable") or (item.get("Null", "NO").lower() == "yes")
+
+            keys[index_name][seq] = dict(
+                column=column,
+                unique=(non_unique == 0 or not non_unique),
+                nullable=nullable,
+            )
         self.indexes = {
-            tuple(item[k]["column"] for k in sorted(item.keys())): dict(
+            tuple(item[k]["column"] for k in sorted(item.keys()) if item[k]["column"] is not None): dict(
                 unique=item[1]["unique"],
                 nullable=any(v["nullable"] for v in item.values()),
             )
             for item in keys.values()
+            if any(item[k]["column"] is not None for k in item.keys())
         }
 
     def select(self, select_list, rename_map=None, compute_map=None):
@@ -548,6 +592,8 @@ class Heading:
         """
         rename_map = rename_map or {}
         compute_map = compute_map or {}
+        # Get adapter for proper identifier quoting
+        adapter = self.table_info["conn"].adapter if self.table_info else None
         copy_attrs = list()
         for name in self.attributes:
             if name in select_list:
@@ -557,7 +603,7 @@ class Heading:
                     dict(
                         self.attributes[old_name].todict(),
                         name=new_name,
-                        attribute_expression="`%s`" % old_name,
+                        attribute_expression=(adapter.quote_identifier(old_name) if adapter else f"`{old_name}`"),
                     )
                     for new_name, old_name in rename_map.items()
                     if old_name == name
@@ -567,7 +613,10 @@ class Heading:
             dict(default_attribute_properties, name=new_name, attribute_expression=expr)
             for new_name, expr in compute_map.items()
         )
-        return Heading(chain(copy_attrs, compute_attrs), lineage_available=self._lineage_available)
+        # Inherit table_info so the new heading has access to the adapter
+        new_heading = Heading(chain(copy_attrs, compute_attrs), lineage_available=self._lineage_available)
+        new_heading.table_info = self.table_info
+        return new_heading
 
     def _join_dependent(self, dependent):
         """Build attribute list when self → dependent: PK = PK(self), self's attrs first."""

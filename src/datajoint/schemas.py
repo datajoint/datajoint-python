@@ -192,7 +192,8 @@ class Schema:
             # create database
             logger.debug("Creating schema `{name}`.".format(name=schema_name))
             try:
-                self.connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
+                create_sql = self.connection.adapter.create_schema_sql(schema_name)
+                self.connection.query(create_sql)
             except AccessError:
                 raise DataJointError(
                     "Schema `{name}` does not exist and could not be created. Check permissions.".format(name=schema_name)
@@ -415,7 +416,8 @@ class Schema:
         elif not prompt or user_choice("Proceed to delete entire schema `%s`?" % self.database, default="no") == "yes":
             logger.debug("Dropping `{database}`.".format(database=self.database))
             try:
-                self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
+                drop_sql = self.connection.adapter.drop_schema_sql(self.database)
+                self.connection.query(drop_sql)
                 logger.debug("Schema `{database}` was dropped successfully.".format(database=self.database))
             except AccessError:
                 raise AccessError(
@@ -517,13 +519,17 @@ class Schema:
         jobs_list = []
 
         # Get all existing job tables (~~prefix)
-        # Note: %% escapes the % in pymysql
-        result = self.connection.query(f"SHOW TABLES IN `{self.database}` LIKE '~~%%'").fetchall()
+        # Note: %% escapes the % in pymysql/psycopg2
+        adapter = self.connection.adapter
+        sql = adapter.list_tables_sql(self.database, pattern="~~%%")
+        result = self.connection.query(sql).fetchall()
         existing_job_tables = {row[0] for row in result}
 
         # Iterate over auto-populated tables and check if their job table exists
         for table_name in self.list_tables():
-            table = FreeTable(self.connection, f"`{self.database}`.`{table_name}`")
+            adapter = self.connection.adapter
+            full_name = f"{adapter.quote_identifier(self.database)}." f"{adapter.quote_identifier(table_name)}"
+            table = FreeTable(self.connection, full_name)
             tier = _get_tier(table.full_table_name)
             if tier in (Computed, Imported):
                 # Compute expected job table name: ~~base_name
@@ -696,7 +702,8 @@ class Schema:
         if table_name is None:
             raise DataJointError(f"Table `{name}` does not exist in schema `{self.database}`.")
 
-        full_name = f"`{self.database}`.`{table_name}`"
+        adapter = self.connection.adapter
+        full_name = f"{adapter.quote_identifier(self.database)}.{adapter.quote_identifier(table_name)}"
         return FreeTable(self.connection, full_name)
 
     def __getitem__(self, name: str) -> FreeTable:
@@ -894,7 +901,7 @@ def virtual_schema(
     --------
     >>> lab = dj.virtual_schema('my_lab')
     >>> lab.Subject.fetch()
-    >>> lab.Session & 'subject_id="M001"'
+    >>> lab.Session & "subject_id='M001'"
 
     See Also
     --------

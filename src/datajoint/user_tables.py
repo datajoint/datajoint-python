@@ -102,10 +102,11 @@ class TableMeta(type):
 
     @property
     def full_table_name(cls):
-        """The fully qualified table name (`database`.`table`)."""
+        """The fully qualified table name (quoted per backend)."""
         if cls.database is None:
             return None
-        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+        adapter = cls._connection.adapter
+        return f"{adapter.quote_identifier(cls.database)}.{adapter.quote_identifier(cls.table_name)}"
 
 
 class UserTable(Table, metaclass=TableMeta):
@@ -181,10 +182,11 @@ class PartMeta(TableMeta):
 
     @property
     def full_table_name(cls):
-        """The fully qualified table name (`database`.`table`)."""
+        """The fully qualified table name (quoted per backend)."""
         if cls.database is None or cls.table_name is None:
             return None
-        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+        adapter = cls._connection.adapter
+        return f"{adapter.quote_identifier(cls.database)}.{adapter.quote_identifier(cls.table_name)}"
 
     @property
     def master(cls):
@@ -274,10 +276,16 @@ class _AliasNode:
 
 def _get_tier(table_name):
     """given the table name, return the user table class."""
-    if not table_name.startswith("`"):
-        return _AliasNode
+    # Handle both MySQL backticks and PostgreSQL double quotes
+    if table_name.startswith("`"):
+        # MySQL format: `schema`.`table_name`
+        extracted_name = table_name.split("`")[-2]
+    elif table_name.startswith('"'):
+        # PostgreSQL format: "schema"."table_name"
+        extracted_name = table_name.split('"')[-2]
     else:
-        try:
-            return next(tier for tier in user_table_classes if re.fullmatch(tier.tier_regexp, table_name.split("`")[-2]))
-        except StopIteration:
-            return None
+        return _AliasNode
+    try:
+        return next(tier for tier in user_table_classes if re.fullmatch(tier.tier_regexp, extracted_name))
+    except StopIteration:
+        return None

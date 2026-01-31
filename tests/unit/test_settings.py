@@ -748,3 +748,123 @@ class TestStorePrefixes:
         finally:
             dj.config.stores.clear()
             dj.config.stores.update(original_stores)
+
+
+class TestBackendConfiguration:
+    """Test database backend configuration and port auto-detection."""
+
+    def test_backend_default(self):
+        """Test default backend is mysql."""
+        from datajoint.settings import DatabaseSettings
+
+        settings = DatabaseSettings()
+        assert settings.backend == "mysql"
+        assert settings.port == 3306
+
+    def test_backend_postgresql(self, monkeypatch):
+        """Test PostgreSQL backend with auto port."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", "postgresql")
+        settings = DatabaseSettings()
+        assert settings.backend == "postgresql"
+        assert settings.port == 5432
+
+    def test_backend_explicit_port_overrides(self, monkeypatch):
+        """Test explicit port overrides auto-detection."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", "postgresql")
+        monkeypatch.setenv("DJ_PORT", "9999")
+        settings = DatabaseSettings()
+        assert settings.backend == "postgresql"
+        assert settings.port == 9999
+
+    def test_backend_env_var(self, monkeypatch):
+        """Test DJ_BACKEND environment variable."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", "postgresql")
+        settings = DatabaseSettings()
+        assert settings.backend == "postgresql"
+        assert settings.port == 5432
+
+    def test_port_env_var_overrides_backend_default(self, monkeypatch):
+        """Test DJ_PORT overrides backend auto-detection."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", "postgresql")
+        monkeypatch.setenv("DJ_PORT", "8888")
+        settings = DatabaseSettings()
+        assert settings.backend == "postgresql"
+        assert settings.port == 8888
+
+    def test_invalid_backend(self, monkeypatch):
+        """Test invalid backend raises validation error."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", "sqlite")
+        with pytest.raises(ValidationError, match="Input should be 'mysql' or 'postgresql'"):
+            DatabaseSettings()
+
+    def test_config_file_backend(self, tmp_path, monkeypatch):
+        """Test loading backend from config file."""
+        import json
+
+        from datajoint.settings import Config
+
+        # Include port in config since auto-detection only happens during initialization
+        config_file = tmp_path / "test_config.json"
+        config_file.write_text(json.dumps({"database": {"backend": "postgresql", "host": "db.example.com", "port": 5432}}))
+
+        # Clear env vars so file values take effect
+        monkeypatch.delenv("DJ_BACKEND", raising=False)
+        monkeypatch.delenv("DJ_HOST", raising=False)
+        monkeypatch.delenv("DJ_PORT", raising=False)
+
+        cfg = Config()
+        cfg.load(config_file)
+        assert cfg.database.backend == "postgresql"
+        assert cfg.database.port == 5432
+        assert cfg.database.host == "db.example.com"
+
+    def test_global_config_backend(self):
+        """Test global config has backend configuration."""
+        # Global config should have backend field with default mysql
+        assert hasattr(dj.config.database, "backend")
+        # Backend should be one of the valid values
+        assert dj.config.database.backend in ["mysql", "postgresql"]
+        # Port should be set (either 3306 or 5432 or custom)
+        assert isinstance(dj.config.database.port, int)
+        assert 1 <= dj.config.database.port <= 65535
+
+    def test_port_auto_detection_on_initialization(self):
+        """Test port auto-detects only during initialization, not on live updates."""
+        from datajoint.settings import DatabaseSettings
+
+        # Start with MySQL (default)
+        settings = DatabaseSettings()
+        assert settings.port == 3306
+
+        # Change backend on live config - port won't auto-update
+        settings.backend = "postgresql"
+        # Port remains at previous value (this is expected behavior)
+        # Users should set port explicitly when changing backend on live config
+        assert settings.port == 3306  # Didn't auto-update
+
+    def test_mysql_backend_with_explicit_port(self, monkeypatch):
+        """Test MySQL backend with explicit non-default port."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", "mysql")
+        monkeypatch.setenv("DJ_PORT", "3307")
+        settings = DatabaseSettings()
+        assert settings.backend == "mysql"
+        assert settings.port == 3307
+
+    def test_backend_field_in_env_var_mapping(self):
+        """Test that backend is mapped to DJ_BACKEND in ENV_VAR_MAPPING."""
+        from datajoint.settings import ENV_VAR_MAPPING
+
+        assert "database.backend" in ENV_VAR_MAPPING
+        assert ENV_VAR_MAPPING["database.backend"] == "DJ_BACKEND"
