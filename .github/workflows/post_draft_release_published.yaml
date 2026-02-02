@@ -1,7 +1,6 @@
 name: Post Draft Release Published
 
 on:
-  # Once draft release is released, trigger the docs release
   release:
     types:
       ## pre-release and stable release
@@ -11,8 +10,6 @@ on:
 run-name: Post ${{ github.event.release.name }}
 
 jobs:
-  call-publish-docs:
-    uses: ./.github/workflows/docs.yaml
   pypi-release:
     permissions:
       # write permission is required to update version.py
