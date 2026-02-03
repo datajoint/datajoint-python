@@ -134,11 +134,20 @@ class Table(QueryExpression):
         """
         if self.connection.in_transaction:
             raise DataJointError("Cannot declare new tables inside a transaction, e.g. from inside a populate/make call")
-        # Enforce strict CamelCase #1150
-        if not is_camel_case(self.class_name):
+        # Validate class name #1150
+        class_name = self.class_name
+        if "_" in class_name:
+            warnings.warn(
+                f"Table class name `{class_name}` contains underscores. "
+                "CamelCase names without underscores are recommended.",
+                UserWarning,
+                stacklevel=2,
+            )
+            class_name = class_name.replace("_", "")
+        if not is_camel_case(class_name):
             raise DataJointError(
-                "Table class name `{name}` is invalid. Please use CamelCase. ".format(name=self.class_name)
-                + "Classes defining tables should be formatted in strict CamelCase."
+                f"Table class name `{self.class_name}` is invalid. "
+                "Class names must be in CamelCase, starting with a capital letter."
             )
         sql, _external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl = declare(
             self.full_table_name, self.definition, context, self.connection.adapter

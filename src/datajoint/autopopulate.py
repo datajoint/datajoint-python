@@ -528,9 +528,8 @@ class AutoPopulate:
                 else:
                     # spawn multiple processes
                     self.connection.close()
-                    # Remove SSLContext if present (MySQL-specific, not pickleable)
                     if hasattr(self.connection._conn, "ctx"):
-                        del self.connection._conn.ctx
+                        del self.connection._conn.ctx  # SSLContext is not pickleable
                     with (
                         mp.Pool(processes, _initialize_populate, (self, self.jobs, populate_kwargs)) as pool,
                         tqdm(desc="Processes: ", total=nkeys)

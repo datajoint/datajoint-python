@@ -2,6 +2,7 @@
 
 import re
 import shutil
+import warnings
 from pathlib import Path
 
 from .errors import DataJointError
@@ -95,6 +96,14 @@ def from_camel_case(s):
     def convert(match):
         return ("_" if match.groups()[0] else "") + match.group(0).lower()
 
+    # Handle underscores: warn and remove them
+    if "_" in s:
+        warnings.warn(
+            f"Table class name `{s}` contains underscores. " "CamelCase names without underscores are recommended.",
+            UserWarning,
+            stacklevel=3,
+        )
+        s = s.replace("_", "")
     if not is_camel_case(s):
         raise DataJointError("ClassName must be alphanumeric in CamelCase, begin with a capital letter")
     return re.sub(r"(\B[A-Z])|(\b[A-Z])", convert, s)
