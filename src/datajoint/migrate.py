@@ -5,6 +5,10 @@ This module provides tools for migrating existing schemas to use the new
 Codec system, particularly for upgrading blob columns to use
 explicit `<blob>` type declarations.
 
+.. deprecated:: 2.0.0
+    This module is deprecated and will be removed in DataJoint 2.2.
+    Complete your migrations before upgrading to 2.2.
+
 Note on Terminology
 -------------------
 This module uses "external storage" because that was the term in DataJoint 0.14.6.
@@ -16,9 +20,17 @@ from __future__ import annotations
 
 import logging
 import re
+import warnings
 from typing import TYPE_CHECKING
 
 from .errors import DataJointError
+
+warnings.warn(
+    "datajoint.migrate is deprecated and will be removed in DataJoint 2.2. "
+    "Complete your schema migrations before upgrading to 2.2.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 if TYPE_CHECKING:
     from .schemas import Schema
