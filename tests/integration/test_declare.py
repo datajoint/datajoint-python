@@ -348,8 +348,8 @@ def test_regex_mismatch(schema_any):
 
 def test_table_name_with_underscores(schema_any):
     """
-    Test issue #1150 -- Reject table names containing underscores. Tables should be in strict
-    CamelCase.
+    Test issue #1150 -- Table names with underscores should produce a warning but still work.
+    Strict CamelCase is recommended.
     """
 
     class TableNoUnderscores(dj.Manual):
@@ -363,5 +363,8 @@ def test_table_name_with_underscores(schema_any):
         """
 
     schema_any(TableNoUnderscores)
-    with pytest.raises(dj.DataJointError, match="must be alphanumeric in CamelCase"):
+    # Underscores now produce a warning instead of an error (legacy support)
+    with pytest.warns(UserWarning, match="contains underscores"):
         schema_any(Table_With_Underscores)
+    # Verify the table was created successfully
+    assert Table_With_Underscores.is_declared

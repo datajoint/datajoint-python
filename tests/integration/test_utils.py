@@ -26,12 +26,14 @@ def test_from_camel_case():
     assert from_camel_case("AllGroups") == "all_groups"
     with pytest.raises(DataJointError):
         from_camel_case("repNames")
-    with pytest.raises(DataJointError):
-        from_camel_case("10_all")
+    with pytest.warns(UserWarning, match="contains underscores"):
+        with pytest.raises(DataJointError):
+            from_camel_case("10_all")
     with pytest.raises(DataJointError):
         from_camel_case("hello world")
-    with pytest.raises(DataJointError):
-        from_camel_case("#baisc_names")
+    with pytest.warns(UserWarning, match="contains underscores"):
+        with pytest.raises(DataJointError):
+            from_camel_case("#baisc_names")
 
 
 def test_to_camel_case():
