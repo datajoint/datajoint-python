@@ -582,13 +582,24 @@ class Heading:
 
     def select(self, select_list, rename_map=None, compute_map=None):
         """
-        derive a new heading by selecting, renaming, or computing attributes.
-        In relational algebra these operators are known as project, rename, and extend.
+        Derive a new heading by selecting, renaming, or computing attributes.
 
-        :param select_list:  the full list of existing attributes to include
-        :param rename_map:  dictionary of renamed attributes: keys=new names, values=old names
-        :param compute_map: a direction of computed attributes
+        In relational algebra these operators are known as project, rename, and extend.
         This low-level method performs no error checking.
+
+        Parameters
+        ----------
+        select_list : list
+            The full list of existing attributes to include.
+        rename_map : dict, optional
+            Dictionary of renamed attributes: keys=new names, values=old names.
+        compute_map : dict, optional
+            A dictionary of computed attributes.
+
+        Returns
+        -------
+        Heading
+            New heading with selected, renamed, and computed attributes.
         """
         rename_map = rename_map or {}
         compute_map = compute_map or {}
@@ -631,16 +642,27 @@ class Heading:
         Join two headings into a new one.
 
         The primary key of the result depends on functional dependencies:
-        - A → B: PK = PK(A), A's attributes first
-        - B → A (not A → B): PK = PK(B), B's attributes first
-        - Both: PK = PK(A), left operand takes precedence
-        - Neither: PK = PK(A) ∪ PK(B), A's PK first then B's new PK attrs
 
-        :param nullable_pk: If True, skip PK optimization and use combined PK from both
-            operands. Used for left joins that bypass the A → B constraint, where the
-            right operand's PK attributes could be NULL.
+        - A -> B: PK = PK(A), A's attributes first
+        - B -> A (not A -> B): PK = PK(B), B's attributes first
+        - Both: PK = PK(A), left operand takes precedence
+        - Neither: PK = PK(A) | PK(B), A's PK first then B's new PK attrs
 
         It assumes that self and other are headings that share no common dependent attributes.
+
+        Parameters
+        ----------
+        other : Heading
+            The other heading to join with.
+        nullable_pk : bool, optional
+            If True, skip PK optimization and use combined PK from both
+            operands. Used for left joins that bypass the A -> B constraint, where the
+            right operand's PK attributes could be NULL. Default False.
+
+        Returns
+        -------
+        Heading
+            New heading resulting from the join.
         """
         if nullable_pk:
             a_determines_b = b_determines_a = False

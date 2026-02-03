@@ -9,12 +9,23 @@ from .errors import DataJointError
 
 def user_choice(prompt, choices=("yes", "no"), default=None):
     """
-    Prompts the user for confirmation.  The default value, if any, is capitalized.
+    Prompt the user for confirmation.
 
-    :param prompt: Information to display to the user.
-    :param choices: an iterable of possible choices.
-    :param default: default choice
-    :return: the user's choice
+    The default value, if any, is capitalized.
+
+    Parameters
+    ----------
+    prompt : str
+        Information to display to the user.
+    choices : tuple, optional
+        An iterable of possible choices. Default ("yes", "no").
+    default : str, optional
+        Default choice. Default None.
+
+    Returns
+    -------
+    str
+        The user's choice.
     """
     assert default is None or default in choices
     choice_list = ", ".join((choice.title() if choice == default else choice for choice in choices))
@@ -27,20 +38,32 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
 
 def get_master(full_table_name: str, adapter=None) -> str:
     """
+    Get the master table name from a part table name.
+
     If the table name is that of a part table, then return what the master table name would be.
     This follows DataJoint's table naming convention where a master and a part must be in the
     same schema and the part table is prefixed with the master table name + ``__``.
 
-    Example:
-       `ephys`.`session`    -- master (MySQL)
-       `ephys`.`session__recording`  -- part (MySQL)
-       "ephys"."session__recording"  -- part (PostgreSQL)
+    Parameters
+    ----------
+    full_table_name : str
+        Full table name including part.
+    adapter : DatabaseAdapter, optional
+        Database adapter for backend-specific parsing. Default None.
 
-    :param full_table_name: Full table name including part.
-    :type full_table_name: str
-    :param adapter: Optional database adapter for backend-specific parsing.
-    :return: Supposed master full table name or empty string if not a part table name.
-    :rtype: str
+    Returns
+    -------
+    str
+        Supposed master full table name or empty string if not a part table name.
+
+    Examples
+    --------
+    >>> get_master('`ephys`.`session__recording`')  # MySQL part table
+    '`ephys`.`session`'
+    >>> get_master('"ephys"."session__recording"')  # PostgreSQL part table
+    '"ephys"."session"'
+    >>> get_master('`ephys`.`session`')  # Not a part table
+    ''
     """
     if adapter is not None:
         result = adapter.get_master_table_name(full_table_name)
@@ -57,23 +80,44 @@ def is_camel_case(s):
     """
     Check if a string is in CamelCase notation.
 
-    :param s: string to check
-    :returns: True if the string is in CamelCase notation, False otherwise
-    Example:
-    >>> is_camel_case("TableName")  # returns True
-    >>> is_camel_case("table_name")  # returns False
+    Parameters
+    ----------
+    s : str
+        String to check.
+
+    Returns
+    -------
+    bool
+        True if the string is in CamelCase notation, False otherwise.
+
+    Examples
+    --------
+    >>> is_camel_case("TableName")
+    True
+    >>> is_camel_case("table_name")
+    False
     """
     return bool(re.match(r"^[A-Z][A-Za-z0-9]*$", s))
 
 
 def to_camel_case(s):
     """
-    Convert names with under score (_) separation into camel case names.
+    Convert names with underscore (_) separation into camel case names.
 
-    :param s: string in under_score notation
-    :returns: string in CamelCase notation
-    Example:
-    >>> to_camel_case("table_name")  # returns "TableName"
+    Parameters
+    ----------
+    s : str
+        String in under_score notation.
+
+    Returns
+    -------
+    str
+        String in CamelCase notation.
+
+    Examples
+    --------
+    >>> to_camel_case("table_name")
+    'TableName'
     """
 
     def to_upper(match):
@@ -84,12 +128,27 @@ def to_camel_case(s):
 
 def from_camel_case(s):
     """
-    Convert names in camel case into underscore (_) separated names
+    Convert names in camel case into underscore (_) separated names.
 
-    :param s: string in CamelCase notation
-    :returns: string in under_score notation
-    Example:
-    >>> from_camel_case("TableName") # yields "table_name"
+    Parameters
+    ----------
+    s : str
+        String in CamelCase notation.
+
+    Returns
+    -------
+    str
+        String in under_score notation.
+
+    Raises
+    ------
+    DataJointError
+        If the string is not in valid CamelCase notation.
+
+    Examples
+    --------
+    >>> from_camel_case("TableName")
+    'table_name'
     """
 
     def convert(match):
@@ -102,10 +161,17 @@ def from_camel_case(s):
 
 def safe_write(filepath, blob):
     """
-    A two-step write.
+    Write data to a file using a two-step process.
 
-    :param filename: full path
-    :param blob: binary data
+    Writes to a temporary file first, then renames to the final path.
+    This ensures atomic writes and prevents partial file corruption.
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Full path to the destination file.
+    blob : bytes
+        Binary data to write.
     """
     filepath = Path(filepath)
     if not filepath.is_file():
@@ -117,7 +183,19 @@ def safe_write(filepath, blob):
 
 def safe_copy(src, dest, overwrite=False):
     """
-    Copy the contents of src file into dest file as a two-step process. Skip if dest exists already
+    Copy the contents of src file into dest file as a two-step process.
+
+    Copies to a temporary file first, then renames to the final path.
+    Skips if dest exists already (unless overwrite is True).
+
+    Parameters
+    ----------
+    src : str or Path
+        Source file path.
+    dest : str or Path
+        Destination file path.
+    overwrite : bool, optional
+        If True, overwrite existing destination file. Default False.
     """
     src, dest = Path(src), Path(dest)
     if not (dest.exists() and src.samefile(dest)) and (overwrite or not dest.is_file()):
@@ -125,24 +203,3 @@ def safe_copy(src, dest, overwrite=False):
         temp_file = dest.with_suffix(dest.suffix + ".copying")
         shutil.copyfile(str(src), str(temp_file))
         temp_file.rename(dest)
-
-
-def parse_sql(filepath):
-    """
-    yield SQL statements from an SQL file
-    """
-    delimiter = ";"
-    statement = []
-    with Path(filepath).open("rt") as f:
-        for line in f:
-            line = line.strip()
-            if not line.startswith("--") and len(line) > 1:
-                if line.startswith("delimiter"):
-                    delimiter = line.split()[1]
-                else:
-                    statement.append(line)
-                    if line.endswith(delimiter):
-                        yield " ".join(statement)
-                        statement = []
-        if statement:
-            yield " ".join(statement)
