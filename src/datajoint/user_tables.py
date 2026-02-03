@@ -32,6 +32,7 @@ supported_class_attrs = {
     "to_arrow",
     "to_arrays",
     "keys",
+    "fetch",
     "fetch1",
     "head",
     "tail",
