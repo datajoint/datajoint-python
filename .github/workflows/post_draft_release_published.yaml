@@ -57,7 +57,8 @@ jobs:
           # Update src in the <img> tag
           sed -i 's|\(<img id="commit-since-release-img"[^>]*src="\)[^"]*\(".*\)|\1'"$NEW_SRC"'\2|' README.md
           git add README.md
-          git commit -m "Update README.md badge to ${{ github.event.release.tag_name }}"
+          # Only commit if there are changes (handles re-runs gracefully)
+          git diff --cached --quiet README.md || git commit -m "Update README.md badge to ${{ github.event.release.tag_name }}"
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v5
         with:
