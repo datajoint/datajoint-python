@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING
 from packaging.version import Version
 
 from .errors import DataJointError
-from . import __version__
+from .version import __version__
 
 # Show deprecation warning starting in 2.1
 if Version(__version__) >= Version("2.1"):
