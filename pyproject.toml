@@ -15,9 +15,6 @@ dependencies = [
   "networkx",
   "pydot",
   "fsspec>=2023.1.0",
-  "matplotlib",
-  "faker",
-  "urllib3",
   "pydantic-settings>=2.0.0",
 ]
 
