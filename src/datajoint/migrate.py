@@ -24,11 +24,13 @@ import re
 import warnings
 from typing import TYPE_CHECKING
 
+from packaging.version import Version
+
 from .errors import DataJointError
 from . import __version__
 
 # Show deprecation warning starting in 2.1
-if __version__ >= "2.1":
+if Version(__version__) >= Version("2.1"):
     warnings.warn(
         "datajoint.migrate is deprecated and will be removed in DataJoint 2.2. "
         "Complete your schema migrations before upgrading.",
