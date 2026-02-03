@@ -643,11 +643,12 @@ class QueryExpression:
 
         # Handle specific attributes requested
         if attrs:
-            if as_dict or as_dict is None:
-                # fetch('col1', 'col2', as_dict=True) or fetch('col1', 'col2')
+            if as_dict is True:
+                # fetch('col1', 'col2', as_dict=True) -> list of dicts
                 return self.proj(*attrs).to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
             else:
-                # fetch('col1', 'col2', as_dict=False) -> tuple of arrays
+                # fetch('col1', 'col2') or fetch('col1', 'col2', as_dict=False) -> tuple of arrays
+                # This matches DJ 1.x behavior where fetch('col') returns array(['alpha', 'beta'])
                 return self.to_arrays(*attrs, order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
 
         # Handle as_dict=True -> to_dicts()
