@@ -442,34 +442,33 @@ class QueryExpression:
         Extend self with attributes from other.
 
         The extend operation adds attributes from `other` to `self` while preserving
-        self's entity identity. It is semantically equivalent to `self.join(other, left=True)`
+        self's entity identity. It is semantically equivalent to ``self.join(other, left=True)``
         but expresses a clearer intent: extending an entity set with additional attributes
         rather than combining two entity sets.
 
-        Requirements:
-            self → other: Every attribute in other's primary key must exist in self.
-            This ensures:
-            - All rows of self are preserved (no filtering)
-            - Self's primary key remains the result's primary key (no NULL PKs)
-            - The operation is a true extension, not a Cartesian product
+        **Requirements**: ``self → other`` (self determines other). Every attribute in
+        other's primary key must exist in self. This ensures:
 
-        Conceptual model:
-            Unlike a general join (Cartesian product restricted by matching attributes),
-            extend is closer to projection—it adds new attributes to existing entities
-            without changing which entities are in the result.
+        - All rows of self are preserved (no filtering)
+        - Self's primary key remains the result's primary key (no NULL PKs)
+        - The operation is a true extension, not a Cartesian product
+
+        **Conceptual model**: Unlike a general join (Cartesian product restricted by
+        matching attributes), extend is closer to projection—it adds new attributes
+        to existing entities without changing which entities are in the result.
 
         Examples
         --------
-        Session determines Trial (session_id is in Trial's PK), but Trial does NOT
-        determine Session (trial_num not in Session).
+        Session determines Trial (``session_id`` is in Trial's PK), but Trial does NOT
+        determine Session (``trial_num`` not in Session).
 
-        Valid: extend trials with session info::
+        Valid - extend trials with session info:
 
-            Trial.extend(Session)  # Adds 'date' from Session to each Trial
+        >>> Trial.extend(Session)  # Adds 'date' from Session to each Trial
 
-        Invalid: Session cannot extend to Trial::
+        Invalid - Session cannot extend to Trial:
 
-            Session.extend(Trial)  # Error: trial_num not in Session
+        >>> Session.extend(Trial)  # Error: trial_num not in Session
 
         Parameters
         ----------
