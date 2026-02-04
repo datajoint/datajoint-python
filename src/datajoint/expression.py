@@ -190,27 +190,27 @@ class QueryExpression:
         (logical disjunction of conditions).
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.
 
-        The expressions in each row are equivalent:
+        The expressions in each row are equivalent::
 
-        rel & True                          rel
-        rel & False                         the empty entity set
-        rel & 'TRUE'                        rel
-        rel & 'FALSE'                       the empty entity set
-        rel - cond                          rel & Not(cond)
-        rel - 'TRUE'                        rel & False
-        rel - 'FALSE'                       rel
-        rel & AndList((cond1,cond2))        rel & cond1 & cond2
-        rel & AndList()                     rel
-        rel & [cond1, cond2]                rel & OrList((cond1, cond2))
-        rel & []                            rel & False
-        rel & None                          rel & False
-        rel & any_empty_entity_set          rel & False
-        rel - AndList((cond1,cond2))        rel & [Not(cond1), Not(cond2)]
-        rel - [cond1, cond2]                rel & Not(cond1) & Not(cond2)
-        rel - AndList()                     rel & False
-        rel - []                            rel
-        rel - None                          rel
-        rel - any_empty_entity_set          rel
+            rel & True                          rel
+            rel & False                         the empty entity set
+            rel & 'TRUE'                        rel
+            rel & 'FALSE'                       the empty entity set
+            rel - cond                          rel & Not(cond)
+            rel - 'TRUE'                        rel & False
+            rel - 'FALSE'                       rel
+            rel & AndList((cond1,cond2))        rel & cond1 & cond2
+            rel & AndList()                     rel
+            rel & [cond1, cond2]                rel & OrList((cond1, cond2))
+            rel & []                            rel & False
+            rel & None                          rel & False
+            rel & any_empty_entity_set          rel & False
+            rel - AndList((cond1,cond2))        rel & [Not(cond1), Not(cond2)]
+            rel - [cond1, cond2]                rel & Not(cond1) & Not(cond2)
+            rel - AndList()                     rel & False
+            rel - []                            rel
+            rel - None                          rel
+            rel - any_empty_entity_set          rel
 
         When arg is another QueryExpression, the restriction ``rel & arg`` restricts rel to elements
         that match at least one element in arg (hence arg is treated as an OrList).
