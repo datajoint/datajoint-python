@@ -1415,53 +1415,38 @@ class Union(QueryExpression):
 
 class U:
     """
-    dj.U objects are the universal sets representing all possible values of their attributes.
-    dj.U objects cannot be queried on their own but are useful for forming some queries.
-    dj.U('attr1', ..., 'attrn') represents the universal set with the primary key attributes attr1 ... attrn.
-    The universal set is the set of all possible combinations of values of the attributes.
-    Without any attributes, dj.U() represents the set with one element that has no attributes.
+    Universal set representing all possible values of specified attributes.
 
-    Restriction:
+    ``dj.U`` objects cannot be queried on their own but are useful for forming
+    certain queries. ``dj.U('attr1', ..., 'attrn')`` represents the universal set
+    with primary key attributes ``attr1 ... attrn``. Without any attributes,
+    ``dj.U()`` represents a set with one element that has no attributes.
 
-    dj.U can be used to enumerate unique combinations of values of attributes from other expressions.
-
-    The following expression yields all unique combinations of contrast and brightness found in the `stimulus` set:
+    **Restriction** - Enumerate unique combinations of attribute values:
 
     >>> dj.U('contrast', 'brightness') & stimulus
 
-    Aggregation:
+    This yields all unique combinations of contrast and brightness in ``stimulus``.
 
-    In aggregation, dj.U is used for summary calculation over an entire set:
+    **Aggregation** - Summary calculations over an entire set:
 
-    The following expression yields one element with one attribute `s` containing the total number of elements in
-    query expression `expr`:
+    >>> dj.U().aggr(expr, n='count(*)')  # Total count
 
-    >>> dj.U().aggr(expr, n='count(*)')
+    >>> dj.U().aggr(expr, n='count(distinct attr)')  # Distinct values
 
-    The following expressions both yield one element containing the number `n` of distinct values of attribute `attr` in
-    query expression `expr`.
+    >>> dj.U().aggr(expr, s='sum(attr)')  # Sum of attribute
 
-    >>> dj.U().aggr(expr, n='count(distinct attr)')
-    >>> dj.U().aggr(dj.U('attr').aggr(expr), 'n=count(*)')
+    >>> dj.U('attr1', 'attr2').aggr(expr, n='count(*)')  # Count per group
 
-    The following expression yields one element and one attribute `s` containing the sum of values of attribute `attr`
-    over entire result set of expression `expr`:
+    **Joins** - Promote attributes to primary key:
 
-    >>> dj.U().aggr(expr, s='sum(attr)')
+    If ``expr`` has attributes ``attr1`` and ``attr2``, then
+    ``expr * dj.U('attr1', 'attr2')`` yields the same result as ``expr``
+    but with ``attr1`` and ``attr2`` promoted to the primary key.
 
-    The following expression yields the set of all unique combinations of attributes `attr1`, `attr2` and the number of
-    their occurrences in the result set of query expression `expr`.
-
-    >>> dj.U(attr1,attr2).aggr(expr, n='count(*)')
-
-    Joins:
-
-    If expression `expr` has attributes 'attr1' and 'attr2', then expr * dj.U('attr1','attr2') yields the same result
-    as `expr` but `attr1` and `attr2` are promoted to the the primary key.  This is useful for producing a join on
-    non-primary key attributes.
-    For example, if `attr` is in both expr1 and expr2 but not in their primary keys, then expr1 * expr2 will throw
-    an error because in most cases, it does not make sense to join on non-primary key attributes and users must first
-    rename `attr` in one of the operands.  The expression dj.U('attr') * rel1 * rel2 overrides this constraint.
+    .. note::
+        The ``*`` operator with ``dj.U`` has been removed in DataJoint 2.0.
+        This pattern is no longer necessary with the new semantic matching system.
     """
 
     def __init__(self, *primary_key):
