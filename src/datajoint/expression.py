@@ -639,12 +639,46 @@ class QueryExpression:
 
         # Handle specific attributes requested
         if attrs:
+            # Check for special 'KEY' attribute
+            def is_key(attr):
+                return attr == "KEY"
+
+            has_key = any(is_key(a) for a in attrs)
+
+            # Handle fetch('KEY') alone - return list of primary key dicts
+            if has_key and len(attrs) == 1:
+                return list(self.keys(order_by=order_by, limit=limit, offset=offset))
+
             if as_dict is True:
                 # fetch('col1', 'col2', as_dict=True) -> list of dicts
-                return self.proj(*attrs).to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+                # Replace KEY with primary key columns
+                proj_attrs = []
+                for attr in attrs:
+                    if is_key(attr):
+                        proj_attrs.extend(self.primary_key)
+                    else:
+                        proj_attrs.append(attr)
+                return self.proj(*proj_attrs).to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
             else:
                 # fetch('col1', 'col2') or fetch('col1', 'col2', as_dict=False) -> tuple of arrays
                 # This matches DJ 1.x behavior where fetch('col') returns array(['alpha', 'beta'])
+                if has_key:
+                    # Need to handle KEY specially - it returns list of dicts, not array
+                    proj_attrs = []
+                    for attr in attrs:
+                        if is_key(attr):
+                            proj_attrs.extend(self.primary_key)
+                        else:
+                            proj_attrs.append(attr)
+                    dicts = self.proj(*proj_attrs).to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+                    # Build result, with KEY returning list of dicts
+                    results = []
+                    for attr in attrs:
+                        if is_key(attr):
+                            results.append([{k: d[k] for k in self.primary_key} for d in dicts])
+                        else:
+                            results.append(np.array([d[attr] for d in dicts]))
+                    return results[0] if len(attrs) == 1 else tuple(results)
                 return self.to_arrays(*attrs, order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
 
         # Handle as_dict=True -> to_dicts()
