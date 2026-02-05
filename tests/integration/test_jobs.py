@@ -165,6 +165,9 @@ def test_populate_reserve_jobs_with_keep_completed(clean_jobs, subject, experime
 
     Regression test for https://github.com/datajoint/datajoint-python/issues/1379
     """
+    # Clear experiment data to ensure there's work to do
+    experiment.delete()
+
     with dj.config.override(jobs={"keep_completed": True, "add_job_metadata": True}):
         # Should not raise DataJointError about semantic matching
         experiment.populate(reserve_jobs=True)
@@ -182,6 +185,9 @@ def test_populate_reserve_jobs_keep_completed_repend(clean_jobs, subject, experi
 
     Regression test for https://github.com/datajoint/datajoint-python/issues/1379
     """
+    # Clear experiment data to ensure there's work to do
+    experiment.delete()
+
     with dj.config.override(jobs={"keep_completed": True, "add_job_metadata": True}):
         # First populate
         experiment.populate(reserve_jobs=True)
