@@ -1019,10 +1019,7 @@ class QueryExpression:
                     arr = np.array(values)
                 except ValueError:
                     # Variable-size data (e.g., arrays of different shapes)
-                    # Must assign individually to avoid numpy broadcasting issues
-                    arr = np.empty(len(values), dtype=object)
-                    for i, v in enumerate(values):
-                        arr[i] = v
+                    arr = np.array(values, dtype=object)
                 result_arrays.append(arr)
 
             if include_key:
