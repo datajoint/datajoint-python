@@ -49,8 +49,11 @@ default = dict(
         "database.use_tls": None,
         "enable_python_native_blobs": True,  # python-native/dj0 encoding support
         "add_hidden_timestamp": False,
-        # file size limit for when to disable checksums
+        # file size limits for when to disable checksums (in bytes)
+        # filepath_checksum_size_limit: skip checksum verification on fetch for large files
         "filepath_checksum_size_limit": None,
+        # filepath_checksum_size_limit_insert: skip checksum computation on insert for large files
+        "filepath_checksum_size_limit_insert": None,
     }
 )
 

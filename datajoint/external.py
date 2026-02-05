@@ -276,13 +276,25 @@ class ExternalTable(Table):
         uuid = uuid_from_buffer(
             init_string=relative_filepath
         )  # hash relative path, not contents
-        contents_hash = uuid_from_file(local_filepath)
+
+        # Check if checksum should be skipped based on file size limit
+        file_size = Path(local_filepath).stat().st_size
+        size_limit = config.get("filepath_checksum_size_limit_insert")
+        skip_checksum = size_limit is not None and file_size > size_limit
+
+        if skip_checksum:
+            contents_hash = None
+            logger.warning(
+                f"Skipping checksum for '{relative_filepath}' ({file_size} bytes > {size_limit} byte limit)"
+            )
+        else:
+            contents_hash = uuid_from_file(local_filepath)
 
         # check if the remote file already exists and verify that it matches
         check_hash = (self & {"hash": uuid}).fetch("contents_hash")
         if check_hash.size:
             # the tracking entry exists, check that it's the same file as before
-            if contents_hash != check_hash[0]:
+            if not skip_checksum and contents_hash != check_hash[0]:
                 raise DataJointError(
                     f"A different version of '{relative_filepath}' has already been placed."
                 )
@@ -291,15 +303,15 @@ class ExternalTable(Table):
             self._upload_file(
                 local_filepath,
                 self._make_external_filepath(relative_filepath),
-                metadata={"contents_hash": str(contents_hash)},
+                metadata={"contents_hash": str(contents_hash) if contents_hash else ""},
             )
             self.connection.query(
                 "INSERT INTO {tab} (hash, size, filepath, contents_hash) VALUES (%s, {size}, '{filepath}', %s)".format(
                     tab=self.full_table_name,
-                    size=Path(local_filepath).stat().st_size,
+                    size=file_size,
                     filepath=relative_filepath,
                 ),
-                args=(uuid.bytes, contents_hash.bytes),
+                args=(uuid.bytes, contents_hash.bytes if contents_hash else None),
             )
         return uuid
 
