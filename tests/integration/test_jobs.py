@@ -158,3 +158,45 @@ def test_long_error_stack(clean_jobs, subject, experiment):
     experiment.jobs.error(key, "error message", long_error_stack)
     error_stack = experiment.jobs.errors.fetch1("error_stack")
     assert error_stack == long_error_stack, "error stacks do not agree"
+
+
+def test_populate_reserve_jobs_with_keep_completed(clean_jobs, subject, experiment):
+    """Test populate(reserve_jobs=True) with keep_completed=True.
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1379
+    """
+    with dj.config.override(jobs={"keep_completed": True, "add_job_metadata": True}):
+        # Should not raise DataJointError about semantic matching
+        experiment.populate(reserve_jobs=True)
+
+        # Verify jobs completed successfully
+        assert len(experiment) > 0, "No data was populated"
+        assert len(experiment.jobs.errors) == 0, "Unexpected errors during populate"
+
+        # With keep_completed=True, completed jobs should be retained
+        assert len(experiment.jobs.completed) > 0, "Completed jobs not retained"
+
+
+def test_populate_reserve_jobs_keep_completed_repend(clean_jobs, subject, experiment):
+    """Test that completed jobs are re-pended when results are deleted.
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1379
+    """
+    with dj.config.override(jobs={"keep_completed": True, "add_job_metadata": True}):
+        # First populate
+        experiment.populate(reserve_jobs=True)
+        initial_count = len(experiment)
+        completed_count = len(experiment.jobs.completed)
+
+        assert initial_count > 0, "No data was populated"
+        assert completed_count > 0, "No completed jobs"
+
+        # Delete some results
+        first_key = experiment.keys(limit=1)[0]
+        (experiment & first_key).delete()
+
+        # Refresh should re-pend the deleted job
+        experiment.jobs.refresh()
+
+        # The job for the deleted entry should be pending again
+        assert len(experiment.jobs.pending) >= 1, "Deleted job not re-pended"
