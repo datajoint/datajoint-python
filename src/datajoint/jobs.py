@@ -13,7 +13,7 @@ import os
 import platform
 import subprocess
 
-from .condition import AndList
+from .condition import AndList, Not
 from .errors import DataJointError, DuplicateError
 from .heading import Heading
 from .table import Table
@@ -370,8 +370,6 @@ class Job(Table):
 
         # Keys that need jobs: in key_source, not in target, not in jobs
         # Disable semantic_check for Job table (self) because its attributes may not have matching lineage
-        from .condition import Not
-
         new_keys = (key_source - self._target).restrict(Not(self), semantic_check=False).proj()
         new_key_list = new_keys.keys()
 
@@ -395,8 +393,10 @@ class Job(Table):
         # 2. Re-pend success jobs if keep_completed=True
         if config.jobs.keep_completed:
             # Success jobs whose keys are in key_source but not in target
-            # Disable semantic_check for Job table operations
-            success_to_repend = self.completed.restrict(key_source, semantic_check=False) - self._target
+            # Disable semantic_check for Job table operations (job table PK has different lineage than target)
+            success_to_repend = self.completed.restrict(key_source, semantic_check=False).restrict(
+                Not(self._target), semantic_check=False
+            )
             repend_keys = success_to_repend.keys()
             for key in repend_keys:
                 (self & key).delete_quick()
