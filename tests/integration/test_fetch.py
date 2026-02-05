@@ -457,3 +457,52 @@ def test_to_arrays_inhomogeneous_shapes_second_axis(schema_any):
     assert data[0].shape == (100,)
     assert data[1].shape == (1, 100)
     assert data[2].shape == (2, 100)
+
+
+def test_fetch_KEY(lang, languages):
+    """Test fetch('KEY') returns list of primary key dicts.
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1381
+    """
+    import warnings
+
+    # Suppress deprecation warning for fetch
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+
+        # fetch('KEY') should return list of primary key dicts
+        keys = lang.fetch("KEY")
+        assert isinstance(keys, list)
+        assert len(keys) == len(languages)
+        assert all(isinstance(k, dict) for k in keys)
+        # Primary key is (name, language)
+        assert all(set(k.keys()) == {"name", "language"} for k in keys)
+
+
+def test_fetch1_KEY(lang):
+    """Test fetch1('KEY') returns primary key dict.
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1381
+    """
+    key = {"name": "Edgar", "language": "Japanese"}
+    result = (lang & key).fetch1("KEY")
+    assert isinstance(result, dict)
+    assert result == key
+
+
+def test_fetch_KEY_with_other_attrs(lang):
+    """Test fetch('KEY', 'name') returns (keys_list, name_array).
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1381
+    """
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+
+        # fetch('KEY', 'name') should return tuple of (list of dicts, array)
+        keys, names = lang.fetch("KEY", "name")
+        assert isinstance(keys, list)
+        assert all(isinstance(k, dict) for k in keys)
+        assert isinstance(names, np.ndarray)
+        assert len(keys) == len(names)
