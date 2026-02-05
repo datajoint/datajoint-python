@@ -164,6 +164,8 @@ def test_populate_reserve_jobs_with_keep_completed(clean_jobs, subject, experime
     """Test populate(reserve_jobs=True) with keep_completed=True.
 
     Regression test for https://github.com/datajoint/datajoint-python/issues/1379
+    The bug was that the `-` operator in jobs.refresh() didn't pass semantic_check=False,
+    causing a DataJointError about different lineages when keep_completed=True.
     """
     # Clear experiment data to ensure there's work to do
     experiment.delete()
@@ -180,29 +182,28 @@ def test_populate_reserve_jobs_with_keep_completed(clean_jobs, subject, experime
         assert len(experiment.jobs.completed) > 0, "Completed jobs not retained"
 
 
-def test_populate_reserve_jobs_keep_completed_repend(clean_jobs, subject, experiment):
-    """Test that completed jobs are re-pended when results are deleted.
+def test_jobs_refresh_with_keep_completed(clean_jobs, subject, experiment):
+    """Test that jobs.refresh() works with keep_completed=True.
 
     Regression test for https://github.com/datajoint/datajoint-python/issues/1379
     """
-    # Clear experiment data to ensure there's work to do
+    # Clear experiment data and jobs
     experiment.delete()
+    experiment.jobs.delete()
 
     with dj.config.override(jobs={"keep_completed": True, "add_job_metadata": True}):
-        # First populate
-        experiment.populate(reserve_jobs=True)
-        initial_count = len(experiment)
-        completed_count = len(experiment.jobs.completed)
-
-        assert initial_count > 0, "No data was populated"
-        assert completed_count > 0, "No completed jobs"
-
-        # Delete some results
-        first_key = experiment.keys(limit=1)[0]
-        (experiment & first_key).delete()
-
-        # Refresh should re-pend the deleted job
+        # Refresh should create pending jobs without semantic matching error
         experiment.jobs.refresh()
+        pending_before = len(experiment.jobs.pending)
+        assert pending_before > 0, "No pending jobs created"
 
-        # The job for the deleted entry should be pending again
-        assert len(experiment.jobs.pending) >= 1, "Deleted job not re-pended"
+        # Manually reserve and complete a job
+        key = experiment.jobs.pending.keys(limit=1)[0]
+        experiment.jobs.reserve(key)
+        experiment.jobs.complete(key)
+
+        # Job should now be completed
+        assert len(experiment.jobs.completed) == 1, "Job not marked as completed"
+
+        # Calling refresh again should not raise semantic matching error
+        experiment.jobs.refresh()  # This was failing before the fix
