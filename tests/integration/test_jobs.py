@@ -158,3 +158,52 @@ def test_long_error_stack(clean_jobs, subject, experiment):
     experiment.jobs.error(key, "error message", long_error_stack)
     error_stack = experiment.jobs.errors.fetch1("error_stack")
     assert error_stack == long_error_stack, "error stacks do not agree"
+
+
+def test_populate_reserve_jobs_with_keep_completed(clean_jobs, subject, experiment):
+    """Test populate(reserve_jobs=True) with keep_completed=True.
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1379
+    The bug was that the `-` operator in jobs.refresh() didn't pass semantic_check=False,
+    causing a DataJointError about different lineages when keep_completed=True.
+    """
+    # Clear experiment data to ensure there's work to do
+    experiment.delete()
+
+    with dj.config.override(jobs={"keep_completed": True, "add_job_metadata": True}):
+        # Should not raise DataJointError about semantic matching
+        experiment.populate(reserve_jobs=True)
+
+        # Verify jobs completed successfully
+        assert len(experiment) > 0, "No data was populated"
+        assert len(experiment.jobs.errors) == 0, "Unexpected errors during populate"
+
+        # With keep_completed=True, completed jobs should be retained
+        assert len(experiment.jobs.completed) > 0, "Completed jobs not retained"
+
+
+def test_jobs_refresh_with_keep_completed(clean_jobs, subject, experiment):
+    """Test that jobs.refresh() works with keep_completed=True.
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1379
+    """
+    # Clear experiment data and jobs
+    experiment.delete()
+    experiment.jobs.delete()
+
+    with dj.config.override(jobs={"keep_completed": True, "add_job_metadata": True}):
+        # Refresh should create pending jobs without semantic matching error
+        experiment.jobs.refresh()
+        pending_before = len(experiment.jobs.pending)
+        assert pending_before > 0, "No pending jobs created"
+
+        # Manually reserve and complete a job
+        key = experiment.jobs.pending.keys(limit=1)[0]
+        experiment.jobs.reserve(key)
+        experiment.jobs.complete(key)
+
+        # Job should now be completed
+        assert len(experiment.jobs.completed) == 1, "Job not marked as completed"
+
+        # Calling refresh again should not raise semantic matching error
+        experiment.jobs.refresh()  # This was failing before the fix
