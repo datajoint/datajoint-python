@@ -397,3 +397,63 @@ def test_to_arrays_without_include_key(lang):
     names, langs = result
     assert isinstance(names, np.ndarray)
     assert isinstance(langs, np.ndarray)
+
+
+def test_to_arrays_inhomogeneous_shapes(schema_any):
+    """Test to_arrays handles arrays of different shapes correctly.
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1380
+    """
+    table = schema.Longblob()
+    table.delete()
+
+    # Insert arrays with different shapes that numpy would try to broadcast
+    table.insert(
+        [
+            {"id": 0, "data": np.random.randn(100)},  # shape (100,)
+            {"id": 1, "data": np.random.randn(100, 1)},  # shape (100, 1)
+            {"id": 2, "data": np.random.randn(100, 2)},  # shape (100, 2)
+        ]
+    )
+
+    # This should not raise ValueError
+    data = table.to_arrays("data", order_by="id")
+
+    # Should return object array with 3 elements
+    assert data.dtype == object
+    assert len(data) == 3
+
+    # Each element should preserve its original shape
+    assert data[0].shape == (100,)
+    assert data[1].shape == (100, 1)
+    assert data[2].shape == (100, 2)
+
+
+def test_to_arrays_inhomogeneous_shapes_second_axis(schema_any):
+    """Test to_arrays handles arrays differing on second axis.
+
+    Regression test for https://github.com/datajoint/datajoint-python/issues/1380
+    """
+    table = schema.Longblob()
+    table.delete()
+
+    # Insert arrays with different shapes on second axis
+    table.insert(
+        [
+            {"id": 0, "data": np.random.randn(100)},  # shape (100,)
+            {"id": 1, "data": np.random.randn(1, 100)},  # shape (1, 100)
+            {"id": 2, "data": np.random.randn(2, 100)},  # shape (2, 100)
+        ]
+    )
+
+    # This should not raise ValueError
+    data = table.to_arrays("data", order_by="id")
+
+    # Should return object array with 3 elements
+    assert data.dtype == object
+    assert len(data) == 3
+
+    # Each element should preserve its original shape
+    assert data[0].shape == (100,)
+    assert data[1].shape == (1, 100)
+    assert data[2].shape == (2, 100)
