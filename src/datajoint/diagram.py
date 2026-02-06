@@ -759,9 +759,9 @@ else:
                     display_name = name
                     schema_name = schema_map.get(name)
                     if schema_name and "." in name:
-                        prefix = name.rsplit(".", 1)[0]
-                        if prefix == cluster_labels.get(schema_name):
-                            display_name = name.rsplit(".", 1)[1]
+                        cluster_label = cluster_labels.get(schema_name)
+                        if cluster_label and name.startswith(cluster_label + "."):
+                            display_name = name[len(cluster_label) + 1 :]
                     node.set_label("<<u>" + display_name + "</u>>" if node.get("distinguished") == "True" else display_name)
                 node.set_color(props["color"])
                 node.set_style("filled")
@@ -959,10 +959,8 @@ else:
                         cls = tier_class.get(tier, "")
                         # Strip module prefix from display name if it matches the cluster label
                         display_name = node
-                        if "." in node:
-                            prefix = node.rsplit(".", 1)[0]
-                            if prefix == label:
-                                display_name = node.rsplit(".", 1)[1]
+                        if "." in node and node.startswith(label + "."):
+                            display_name = node[len(label) + 1 :]
                         class_suffix = f":::{cls}" if cls else ""
                         lines.append(f"        {safe_id}{left}{display_name}{right}{class_suffix}")
                 lines.append("    end")
