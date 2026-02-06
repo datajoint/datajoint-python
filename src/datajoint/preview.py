@@ -107,7 +107,6 @@ def repr_html(query_expression):
     rel = query_expression.proj(*heading.non_blobs)
     # Object fields use codecs - not specially handled in simplified model
     object_fields = []
-    info = heading.table_status
     tuples = rel.to_arrays(limit=config["display.limit"] + 1)
     has_more = len(tuples) > config["display.limit"]
     tuples = tuples[0 : config["display.limit"]]
@@ -155,22 +154,6 @@ def repr_html(query_expression):
             background: #f3f1ff;
             color: #000000;
         }
-        /* Tooltip container */
-        .djtooltip {
-        }
-        /* Tooltip text */
-        .djtooltip .djtooltiptext {
-            visibility: hidden;
-            width: 120px;
-            background-color: black;
-            color: #fff;
-            text-align: center;
-            padding: 5px 0;
-            border-radius: 6px;
-            /* Position the tooltip text - see examples below! */
-            position: absolute;
-            z-index: 1;
-        }
         #primary {
             font-weight: bold;
             color: black;
@@ -178,11 +161,6 @@ def repr_html(query_expression):
         #nonprimary {
             font-weight: normal;
             color: white;
-        }
-
-        /* Show the tooltip text when you mouse over the tooltip container */
-        .djtooltip:hover .djtooltiptext {
-            visibility: visible;
         }
 
         /* Dark mode support */
@@ -201,10 +179,6 @@ def repr_html(query_expression):
                 background: #3d3d3d;
                 color: #e0e0e0;
             }
-            .djtooltip .djtooltiptext {
-                background-color: #555555;
-                color: #ffffff;
-            }
             #primary {
                 color: #bd93f9;
             }
@@ -214,10 +188,7 @@ def repr_html(query_expression):
         }
     </style>
     """
-    head_template = """<div class="djtooltip">
-                            <p id="{primary}">{column}</p>
-                            <span class="djtooltiptext">{comment}</span>
-                        </div>"""
+    head_template = """<span id="{primary}" title="{comment}">{column}</span>"""
     return """
     {css}
     {title}
@@ -230,7 +201,7 @@ def repr_html(query_expression):
         {count}</div>
         """.format(
         css=css,
-        title="" if info is None else "<b>%s</b>" % info["comment"],
+        title="",  # Table comment not shown in preview; available via describe()
         head="</th><th>".join(
             head_template.format(
                 column=c,
