@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-import pkg_resources
+import pkg_resources  # requires setuptools<82
 from cryptography.exceptions import InvalidSignature
 from otumat import hash_pkg, verify
 
