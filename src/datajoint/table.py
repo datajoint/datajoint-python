@@ -1252,22 +1252,6 @@ class Table(QueryExpression):
                 FreeTable(self.connection, table).drop_quick()
             logger.info("Tables dropped. Restart kernel.")
 
-    @property
-    def size_on_disk(self):
-        """
-        Return the size of data and indices in bytes on the storage device.
-
-        Returns
-        -------
-        int
-            Size of data and indices in bytes.
-        """
-        ret = self.connection.query(
-            'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(database=self.database, table=self.table_name),
-            as_dict=True,
-        ).fetchone()
-        return ret["Data_length"] + ret["Index_length"]
-
     def describe(self, context=None, printout=False):
         """
         Return the definition string for the query using DataJoint DDL.
