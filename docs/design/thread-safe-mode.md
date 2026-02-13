@@ -52,6 +52,57 @@ conn.config.safemode = False # Write setting (always allowed)
 conn.config.stores = {...}   # Configure stores for this connection
 ```
 
+## Connection Flow: Schema → Tables
+
+### How connections propagate
+
+```
+Connection
+    ↓
+Schema (stores connection)
+    ↓
+Table classes (inherit connection from schema)
+    ↓
+Table instances (access connection via class)
+```
+
+### Schema behavior
+
+```python
+# If connection provided, use it
+schema = dj.Schema("name", connection=conn)  # schema.connection = conn
+
+# If no connection, fall back to global conn()
+schema = dj.Schema("name")  # schema.connection = dj.conn()
+```
+
+### Table behavior
+
+Tables automatically inherit their connection from their schema:
+
+```python
+@schema
+class Mouse(dj.Manual):
+    definition = "..."
+
+# Mouse._connection is set by @schema decorator
+# Mouse().connection returns Mouse._connection (from schema)
+```
+
+### In thread_safe=True mode
+
+```python
+# This fails - conn() raises ThreadSafetyError
+schema = dj.Schema("name")
+
+# This works - explicit connection
+conn = dj.Connection(host="localhost", user="u", password="p")
+schema = dj.Schema("name", connection=conn)
+
+# Tables work automatically via schema's connection
+Mouse().insert(...)  # Uses schema.connection.config for settings
+```
+
 ## Behavior
 
 | Operation | `thread_safe=False` | `thread_safe=True` |
@@ -59,10 +110,11 @@ conn.config.stores = {...}   # Configure stores for this connection
 | `dj.config` read | Works | Works |
 | `dj.config` write | Works | Raises `ThreadSafetyError` |
 | `dj.conn()` | Works | Raises `ThreadSafetyError` |
-| `dj.Schema("name")` | Works | Raises `ThreadSafetyError` |
+| `dj.Schema("name")` | Works (uses `conn()`) | Raises `ThreadSafetyError` |
 | `dj.Connection(...)` | Works | Works |
 | `conn.config` read/write | Works | Works |
 | `Schema(..., connection=conn)` | Works | Works |
+| Table operations | Use `conn.config` | Use `conn.config` |
 
 ## Read-Only Settings
 
