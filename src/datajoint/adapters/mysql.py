@@ -75,7 +75,6 @@ class MySQLAdapter(DatabaseAdapter):
             Password for authentication.
         **kwargs : Any
             Additional MySQL-specific parameters:
-            - init_command: SQL initialization command
             - ssl: TLS/SSL configuration dict (deprecated, use use_tls)
             - use_tls: bool or dict - DataJoint's SSL parameter (preferred)
             - charset: Character set (default from kwargs)
@@ -85,7 +84,6 @@ class MySQLAdapter(DatabaseAdapter):
         pymysql.Connection
             MySQL connection object.
         """
-        init_command = kwargs.get("init_command")
         # Handle both ssl (old) and use_tls (new) parameter names
         ssl_config = kwargs.get("use_tls", kwargs.get("ssl"))
         # Convert boolean True to dict for PyMySQL (PyMySQL expects dict or SSLContext)
@@ -99,7 +97,6 @@ class MySQLAdapter(DatabaseAdapter):
             "port": port,
             "user": user,
             "passwd": password,
-            "init_command": init_command,
             "sql_mode": "NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
             "charset": charset,

@@ -55,7 +55,6 @@ def conn(
     user: str | None = None,
     password: str | None = None,
     *,
-    init_fun: Callable | None = None,
     reset: bool = False,
     use_tls: bool | dict | None = None,
 ) -> Connection:
@@ -73,8 +72,6 @@ def conn(
         Database username. Required if not set in config.
     password : str, optional
         Database password. Required if not set in config.
-    init_fun : callable, optional
-        Initialization function called after connection.
     reset : bool, optional
         If True, reset existing connection. Default False.
     use_tls : bool or dict, optional
@@ -103,9 +100,8 @@ def conn(
             raise errors.DataJointError(
                 "Database password not configured. Set datajoint.config['database.password'] or pass password= argument."
             )
-        init_fun = init_fun if init_fun is not None else config["connection.init_function"]
         use_tls = use_tls if use_tls is not None else config["database.use_tls"]
-        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
+        conn.connection = Connection(host, user, password, None, use_tls)
     return conn.connection
 
 
@@ -150,8 +146,6 @@ class Connection:
         Database password.
     port : int, optional
         Port number. Overridden if specified in host.
-    init_fun : str, optional
-        SQL initialization command.
     use_tls : bool or dict, optional
         TLS encryption option.
 
@@ -169,7 +163,6 @@ class Connection:
         user: str,
         password: str,
         port: int | None = None,
-        init_fun: str | None = None,
         use_tls: bool | dict | None = None,
     ) -> None:
         if ":" in host:
@@ -190,7 +183,6 @@ class Connection:
                 # use_tls=True: enable SSL with default settings
                 self.conn_info["ssl"] = True
         self.conn_info["ssl_input"] = use_tls
-        self.init_fun = init_fun
         self._conn = None
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
@@ -227,7 +219,6 @@ class Connection:
                     port=self.conn_info["port"],
                     user=self.conn_info["user"],
                     password=self.conn_info["passwd"],
-                    init_command=self.init_fun,
                     charset=config["connection.charset"],
                     use_tls=self.conn_info.get("ssl"),
                 )
@@ -244,7 +235,6 @@ class Connection:
                         port=self.conn_info["port"],
                         user=self.conn_info["user"],
                         password=self.conn_info["passwd"],
-                        init_command=self.init_fun,
                         charset=config["connection.charset"],
                         use_tls=False,  # Explicitly disable SSL for fallback
                     )

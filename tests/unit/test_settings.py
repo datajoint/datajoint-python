@@ -504,23 +504,23 @@ class TestDisplaySettings:
 class TestCachePaths:
     """Test cache path settings."""
 
-    def test_cache_path_string(self):
-        """Test setting cache path as string."""
-        original = dj.config.cache
+    def test_query_cache_path_string(self):
+        """Test setting query_cache path as string."""
+        original = dj.config.query_cache
         try:
-            dj.config.cache = "/tmp/cache"
-            assert dj.config.cache == Path("/tmp/cache")
+            dj.config.query_cache = "/tmp/cache"
+            assert dj.config.query_cache == Path("/tmp/cache")
         finally:
-            dj.config.cache = original
+            dj.config.query_cache = original
 
-    def test_cache_path_none(self):
-        """Test cache path can be None."""
-        original = dj.config.cache
+    def test_query_cache_path_none(self):
+        """Test query_cache path can be None."""
+        original = dj.config.query_cache
         try:
-            dj.config.cache = None
-            assert dj.config.cache is None
+            dj.config.query_cache = None
+            assert dj.config.query_cache is None
         finally:
-            dj.config.cache = original
+            dj.config.query_cache = original
 
 
 class TestSaveTemplate:
