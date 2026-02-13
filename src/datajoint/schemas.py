@@ -17,7 +17,7 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 from .connection import conn
-from .errors import AccessError, DataJointError
+from .errors import AccessError, DataJointError, ThreadSafetyError
 
 if TYPE_CHECKING:
     from .connection import Connection
@@ -68,7 +68,7 @@ class Schema:
     context : dict, optional
         Namespace for foreign key lookup. None uses caller's context.
     connection : Connection, optional
-        Database connection. Defaults to ``dj.conn()``.
+        Database connection. Defaults to ``dj.conn()``. Required in thread-safe mode.
     create_schema : bool, optional
         If False, raise error if schema doesn't exist. Default True.
     create_tables : bool, optional
@@ -85,6 +85,11 @@ class Schema:
     ...     definition = '''
     ...     session_id : int
     ...     '''
+
+    In thread-safe mode, connection must be explicit:
+
+    >>> conn = dj.Connection.from_config(host='localhost', user='root', password='pw')
+    >>> schema = dj.Schema('my_schema', connection=conn)
     """
 
     def __init__(
@@ -120,7 +125,7 @@ class Schema:
         self.database = None
         self.context = context
         self.create_schema = create_schema
-        self.create_tables = create_tables if create_tables is not None else config.database.create_tables
+        self._create_tables = create_tables  # Store explicit value (may be None)
         self.add_objects = add_objects
         self.declare_list = []
         if schema_name:
@@ -129,6 +134,20 @@ class Schema:
     def is_activated(self) -> bool:
         """Check if the schema has been activated."""
         return self.database is not None
+
+    @property
+    def create_tables(self) -> bool:
+        """Whether to create tables automatically when accessed."""
+        if self._create_tables is not None:
+            return self._create_tables
+        if self.connection is None:
+            raise DataJointError("Cannot access create_tables before schema has a connection.")
+        return self.connection.config.create_tables
+
+    @create_tables.setter
+    def create_tables(self, value: bool) -> None:
+        """Set explicit create_tables value."""
+        self._create_tables = value
 
     def activate(
         self,
@@ -174,6 +193,12 @@ class Schema:
         if connection is not None:
             self.connection = connection
         if self.connection is None:
+            if config.thread_safe:
+                raise ThreadSafetyError(
+                    "Schema requires explicit connection in thread-safe mode. "
+                    "Use Schema('name', connection=conn) where conn is created via "
+                    "Connection.from_config()."
+                )
             self.connection = conn()
         self.database = schema_name
         if create_schema is not None:

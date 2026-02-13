@@ -144,10 +144,25 @@ conn = dj.Connection.from_config(tenant_config)
 
 ### Accessing Connection-Scoped Settings
 
+Settings are accessed through `connection.config`. The connection is available on:
+- `Connection` objects directly
+- `Schema.connection`
+- `Table.connection` (any table class: Manual, Lookup, Imported, Computed)
+
 ```python
 conn = dj.Connection.from_config(...)
+schema = dj.Schema("my_pipeline", connection=conn)
 
-# Read settings through connection
+@schema
+class Subject(dj.Manual):
+    definition = "subject_id : int"
+
+# All of these access the same connection-scoped config:
+conn.config.safemode              # Via connection directly
+schema.connection.config.safemode # Via schema
+Subject.connection.config.safemode # Via table class
+
+# Read settings
 conn.config.safemode          # True (default)
 conn.config.database_prefix   # ""
 conn.config.stores            # {}
@@ -173,8 +188,12 @@ class Subject(dj.Manual):
     subject_id : int
     """
 
-# Schema uses connection's settings
+# All operations use connection-scoped settings
 Subject.insert([{"subject_id": 1}])  # Uses conn.config.safemode
+
+# Access config through schema or table
+schema.connection.config.display_limit = 50
+Subject.connection.config.safemode  # Same as conn.config.safemode
 ```
 
 ---

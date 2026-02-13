@@ -11,7 +11,8 @@ import pathlib
 import re
 import warnings
 from contextlib import contextmanager
-from typing import Callable
+from pathlib import Path
+from typing import Any, Callable
 
 from . import errors
 from .adapters import get_adapter
@@ -25,6 +26,148 @@ query_log_max_length = 300
 
 
 cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
+
+
+class ConnectionConfig:
+    """
+    Connection-scoped configuration (read/write).
+
+    Provides access to settings that can vary per connection. When ``thread_safe=False``,
+    unset values forward to global ``dj.config``. When ``thread_safe=True``, unset values
+    use defaults (no global access).
+
+    Parameters
+    ----------
+    **explicit_values : Any
+        Explicitly provided configuration values. These take precedence over
+        global config and defaults.
+
+    Attributes
+    ----------
+    safemode : bool
+        Require confirmation for destructive operations.
+    database_prefix : str
+        Prefix for schema names.
+    stores : dict
+        Blob storage configuration.
+    cache : Path or None
+        Local cache directory.
+    query_cache : Path or None
+        Query cache directory.
+    reconnect : bool
+        Auto-reconnect on lost connection.
+    display_limit : int
+        Max rows to display.
+    display_width : int
+        Column width for display.
+    show_tuple_count : bool
+        Show tuple count in repr.
+    loglevel : str
+        Logging level.
+    filepath_checksum_size_limit : int or None
+        Max file size for checksum.
+
+    Examples
+    --------
+    Access settings through a connection:
+
+    >>> conn = dj.Connection.from_config(host="localhost", user="root", password="pw")
+    >>> conn.config.safemode
+    True
+    >>> conn.config.safemode = False  # Disable for this connection only
+    >>> conn.config.display_limit = 25
+    """
+
+    _DEFAULTS: dict[str, Any] = {
+        "safemode": True,
+        "database_prefix": "",
+        "stores": {},
+        "cache": None,
+        "query_cache": None,
+        "reconnect": True,
+        "create_tables": True,
+        "display_limit": 12,
+        "display_width": 14,
+        "show_tuple_count": True,
+        "loglevel": "INFO",
+        "filepath_checksum_size_limit": None,
+    }
+
+    # Mapping from ConnectionConfig names to global config paths
+    _GLOBAL_CONFIG_MAP: dict[str, str] = {
+        "safemode": "safemode",
+        "database_prefix": "database.database_prefix",
+        "stores": "stores",
+        "cache": "cache",
+        "query_cache": "query_cache",
+        "reconnect": "database.reconnect",
+        "create_tables": "database.create_tables",
+        "display_limit": "display.limit",
+        "display_width": "display.width",
+        "show_tuple_count": "display.show_tuple_count",
+        "loglevel": "loglevel",
+        "filepath_checksum_size_limit": "filepath_checksum_size_limit",
+    }
+
+    def __init__(self, **explicit_values: Any) -> None:
+        object.__setattr__(self, "_values", {})  # Mutable storage for this connection
+        object.__setattr__(self, "_thread_safe", explicit_values.pop("_thread_safe", False))
+        self._values.update(explicit_values)
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_"):
+            return object.__getattribute__(self, name)
+
+        # If set on this connection, return that value
+        if name in self._values:
+            return self._values[name]
+
+        # If thread_safe=False, forward to global config
+        if not self._thread_safe:
+            global_path = self._GLOBAL_CONFIG_MAP.get(name)
+            if global_path:
+                return config[global_path]
+
+        # Return default
+        return self._DEFAULTS.get(name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name.startswith("_"):
+            return object.__setattr__(self, name, value)
+
+        # Store in connection-local values
+        self._values[name] = value
+
+    def __repr__(self) -> str:
+        items = []
+        for name in self._DEFAULTS:
+            value = getattr(self, name)
+            items.append(f"{name}={value!r}")
+        return f"ConnectionConfig({', '.join(items)})"
+
+    def get_store_spec(self, store_name: str) -> dict:
+        """
+        Get store specification by name.
+
+        Parameters
+        ----------
+        store_name : str
+            Name of the store to retrieve.
+
+        Returns
+        -------
+        dict
+            Store specification dictionary.
+
+        Raises
+        ------
+        DataJointError
+            If the store is not configured.
+        """
+        stores = self.stores
+        if store_name not in stores:
+            raise errors.DataJointError(f"Store '{store_name}' is not configured.")
+        return stores[store_name]
 
 
 def translate_query_error(client_error: Exception, query: str, adapter) -> Exception:
@@ -179,6 +322,8 @@ class Connection:
 
     Attributes
     ----------
+    config : ConnectionConfig
+        Connection-scoped configuration settings.
     schemas : dict
         Registered schema objects.
     dependencies : Dependencies
@@ -194,6 +339,8 @@ class Connection:
         init_fun: str | None = None,
         use_tls: bool | dict | None = None,
         backend: str | None = None,
+        *,
+        _config: ConnectionConfig | None = None,
     ) -> None:
         if ":" in host:
             # the port in the hostname overrides the port argument
@@ -222,8 +369,6 @@ class Connection:
         self._conn = None
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
-        # Store reconnect setting for query() method
-        self._reconnect = True if config.thread_safe else config.database.reconnect
 
         # Select adapter based on backend
         if backend is None:
@@ -243,6 +388,9 @@ class Connection:
         self.schemas = dict()
         self.dependencies = Dependencies(self)
 
+        # Connection-scoped configuration
+        self.config = _config if _config is not None else ConnectionConfig(_thread_safe=config.thread_safe)
+
     @classmethod
     def from_config(
         cls,
@@ -255,12 +403,25 @@ class Connection:
         backend: str | None = None,
         init_fun: str | None = None,
         use_tls: bool | dict | None = None,
+        # Connection-scoped settings
+        safemode: bool | None = None,
+        database_prefix: str | None = None,
+        stores: dict | None = None,
+        cache: Path | str | None = None,
+        query_cache: Path | str | None = None,
+        reconnect: bool | None = None,
+        display_limit: int | None = None,
+        display_width: int | None = None,
+        show_tuple_count: bool | None = None,
+        loglevel: str | None = None,
+        filepath_checksum_size_limit: int | None = None,
     ) -> "Connection":
         """
         Create a connection from explicit configuration.
 
-        This is the required method for creating connections in thread-safe mode.
-        Unlike :func:`conn`, this method never accesses global state.
+        This is the recommended method for creating connections. It works in both
+        ``thread_safe=False`` and ``thread_safe=True`` modes. Unlike :func:`conn`,
+        this method does not require global state.
 
         Configuration can be provided via a dict or keyword arguments.
         Keyword arguments take precedence over dict values.
@@ -268,8 +429,7 @@ class Connection:
         Parameters
         ----------
         cfg : dict, optional
-            Configuration dict with keys: ``'host'``, ``'user'``, ``'password'``,
-            ``'port'``, ``'backend'``, ``'init_function'``, ``'use_tls'``.
+            Configuration dict with connection and settings keys.
         host : str, optional
             Database hostname. Overrides cfg['host']. Default: 'localhost'.
         user : str, optional
@@ -285,6 +445,28 @@ class Connection:
             SQL initialization command. Overrides cfg['init_function'].
         use_tls : bool or dict, optional
             TLS encryption option. Overrides cfg['use_tls'].
+        safemode : bool, optional
+            Require confirmation for destructive operations. Default: True.
+        database_prefix : str, optional
+            Prefix for schema names. Default: ''.
+        stores : dict, optional
+            Blob storage configuration. Default: {}.
+        cache : Path or str, optional
+            Local cache directory. Default: None.
+        query_cache : Path or str, optional
+            Query cache directory. Default: None.
+        reconnect : bool, optional
+            Auto-reconnect on lost connection. Default: True.
+        display_limit : int, optional
+            Max rows to display. Default: 12.
+        display_width : int, optional
+            Column width for display. Default: 14.
+        show_tuple_count : bool, optional
+            Show tuple count in repr. Default: True.
+        loglevel : str, optional
+            Logging level. Default: 'INFO'.
+        filepath_checksum_size_limit : int, optional
+            Max file size for checksum. Default: None.
 
         Returns
         -------
@@ -333,8 +515,12 @@ class Connection:
         effective_init_fun = None
         effective_use_tls = None
 
+        # Connection-scoped settings (will be passed to ConnectionConfig)
+        config_kwargs: dict[str, Any] = {}
+
         # Override with cfg dict if provided
         if cfg is not None:
+            # Connection parameters
             if "host" in cfg:
                 effective_host = cfg["host"]
             if "user" in cfg:
@@ -350,7 +536,31 @@ class Connection:
             if "use_tls" in cfg:
                 effective_use_tls = cfg["use_tls"]
 
-        # Override with explicit keyword arguments
+            # Connection-scoped settings from cfg dict
+            if "safemode" in cfg:
+                config_kwargs["safemode"] = cfg["safemode"]
+            if "database_prefix" in cfg:
+                config_kwargs["database_prefix"] = cfg["database_prefix"]
+            if "stores" in cfg:
+                config_kwargs["stores"] = cfg["stores"]
+            if "cache" in cfg:
+                config_kwargs["cache"] = cfg["cache"]
+            if "query_cache" in cfg:
+                config_kwargs["query_cache"] = cfg["query_cache"]
+            if "reconnect" in cfg:
+                config_kwargs["reconnect"] = cfg["reconnect"]
+            if "display_limit" in cfg:
+                config_kwargs["display_limit"] = cfg["display_limit"]
+            if "display_width" in cfg:
+                config_kwargs["display_width"] = cfg["display_width"]
+            if "show_tuple_count" in cfg:
+                config_kwargs["show_tuple_count"] = cfg["show_tuple_count"]
+            if "loglevel" in cfg:
+                config_kwargs["loglevel"] = cfg["loglevel"]
+            if "filepath_checksum_size_limit" in cfg:
+                config_kwargs["filepath_checksum_size_limit"] = cfg["filepath_checksum_size_limit"]
+
+        # Override with explicit keyword arguments (connection params)
         if host is not None:
             effective_host = host
         if user is not None:
@@ -366,6 +576,30 @@ class Connection:
         if use_tls is not None:
             effective_use_tls = use_tls
 
+        # Override with explicit keyword arguments (connection-scoped settings)
+        if safemode is not None:
+            config_kwargs["safemode"] = safemode
+        if database_prefix is not None:
+            config_kwargs["database_prefix"] = database_prefix
+        if stores is not None:
+            config_kwargs["stores"] = stores
+        if cache is not None:
+            config_kwargs["cache"] = cache
+        if query_cache is not None:
+            config_kwargs["query_cache"] = query_cache
+        if reconnect is not None:
+            config_kwargs["reconnect"] = reconnect
+        if display_limit is not None:
+            config_kwargs["display_limit"] = display_limit
+        if display_width is not None:
+            config_kwargs["display_width"] = display_width
+        if show_tuple_count is not None:
+            config_kwargs["show_tuple_count"] = show_tuple_count
+        if loglevel is not None:
+            config_kwargs["loglevel"] = loglevel
+        if filepath_checksum_size_limit is not None:
+            config_kwargs["filepath_checksum_size_limit"] = filepath_checksum_size_limit
+
         # Set default port based on backend if not specified
         if effective_port is None:
             effective_port = 5432 if effective_backend == "postgresql" else 3306
@@ -380,7 +614,13 @@ class Connection:
                 "Database password is required. " "Provide password= argument or include 'password' in config dict."
             )
 
-        # Create connection with explicit backend parameter
+        # Create ConnectionConfig with thread-safe flag
+        conn_config = ConnectionConfig(
+            _thread_safe=config.thread_safe,
+            **config_kwargs,
+        )
+
+        # Create connection with explicit backend parameter and config
         connection = cls(
             host=effective_host,
             user=effective_user,
@@ -389,6 +629,7 @@ class Connection:
             init_fun=effective_init_fun,
             use_tls=effective_use_tls,
             backend=effective_backend,
+            _config=conn_config,
         )
 
         return connection
@@ -611,7 +852,7 @@ class Connection:
                 return EmulatedCursor(unpack(buffer))
 
         if reconnect is None:
-            reconnect = self._reconnect
+            reconnect = self.config.reconnect
         logger.debug("Executing SQL:" + query[:query_log_max_length])
         cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
         try:
