@@ -25,11 +25,16 @@ export DJ_THREAD_SAFE=true
 
 ### Create Connections
 
+All settings can be passed to `Connection.from_config()`:
+
 ```python
 conn = dj.Connection.from_config(
     host="localhost",
     user="user",
-    password="password"
+    password="password",
+    safemode=False,
+    display_limit=25,
+    # ... any other settings
 )
 schema = dj.Schema("my_schema", connection=conn)
 ```
@@ -43,6 +48,12 @@ schema = dj.Schema("my_schema", connection=conn)
 | `dj.Schema("name")` | Works | Raises `ThreadSafetyError` |
 | `Connection.from_config()` | Works | Works |
 | `Schema(..., connection=conn)` | Works | Works |
+
+## Read-Only Settings
+
+Only `thread_safe` is read-only after initialization. It can only be set via:
+- Environment variable `DJ_THREAD_SAFE`
+- Config file `datajoint.json`
 
 ## Implementation
 
