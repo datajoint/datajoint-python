@@ -45,16 +45,21 @@ schema = dj.Schema("my_schema", connection=conn)
 - `port`: Database port (default: 3306)
 - Any other setting from `dj.config` (e.g., `safemode`, `display_limit`, `stores`)
 
-**Defaults:** Settings not explicitly provided use hardcoded defaults (same as `dj.config` defaults). Global `dj.config` is never accessed.
+**Config creation:** Uses the same `Config` class as global `dj.config`. Each connection gets its own `Config` instance via `conn.config`.
 
-**Connection-scoped settings:** Stored on `conn.config` and accessed as `conn.config.safemode`, `conn.config.display_limit`, etc.
+**Read-only after connection:** Database connection settings become read-only after connection is established:
+- `host`, `port`, `user`, `password`, `use_tls`, `backend`
+
+**Mutable settings:** All other settings remain mutable per-connection:
+- `safemode`, `display_limit`, `stores`, etc.
 
 ```python
 conn = dj.Connection.from_config(host="localhost", user="u", password="p")
 conn.config.safemode      # True (default)
 conn.config.display_limit # 12 (default)
 
-conn.config.safemode = False  # Modify for this connection only
+conn.config.safemode = False  # OK: modify for this connection
+conn.config.host = "other"    # Error: read-only after connection
 ```
 
 ## Behavior
@@ -69,9 +74,8 @@ conn.config.safemode = False  # Modify for this connection only
 
 ## Read-Only Settings
 
-Only `thread_safe` is read-only after initialization. It can only be set via:
-- Environment variable `DJ_THREAD_SAFE`
-- Config file `datajoint.json`
+- `thread_safe`: Read-only after global config initialization (set via env var or config file only)
+- `host`, `port`, `user`, `password`, `use_tls`, `backend`: Read-only on `conn.config` after connection is established
 
 ## Implementation
 
@@ -82,8 +86,8 @@ Only `thread_safe` is read-only after initialization. It can only be set via:
 5. Add guard to `Schema.__init__` when `connection=None`
 6. Add `Connection.from_config()` class method that:
    - Accepts all connection params and settings as kwargs
-   - Uses hardcoded defaults (never accesses global config)
-   - Creates `conn.config` object to store connection-scoped settings
+   - Creates a new `Config` instance for `conn.config`
+   - Marks connection settings as read-only after connection
 7. Add `ThreadSafetyError` exception
 
 ## Exceptions
