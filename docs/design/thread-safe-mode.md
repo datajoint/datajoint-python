@@ -153,8 +153,8 @@ Mouse().insert(...)  # Uses schema.connection.config for settings
 - `Schema.__init__`: Raise `ThreadSafetyError` when `connection=None` and `thread_safe=True`
 
 ### 3. Add conn.config to all connections
-- `dj.conn()`: Set `conn.config = dj.config` (same object for backward compatibility)
-- `dj.Connection(...)`: Set `self.config = copy(dj.config)` (independent copy)
+- `Connection.__init__`: Always creates `self.config = copy(dj.config)` (independent copy)
+- `dj.conn()`: After connection creation, overrides `conn.config = dj.config` (same object for backward compatibility)
 
 ### 4. Refactor internal code to use conn.config
 
