@@ -6,11 +6,11 @@ DataJoint uses global state (`dj.config`, `dj.conn()`) that is not thread-safe. 
 
 ## Solution
 
-Introduce **context** objects that encapsulate config and connection. The `dj` module provides the singleton (legacy) context. New isolated contexts are created with `dj.new()`.
+Introduce **instance** objects that encapsulate config and connection. The `dj` module provides access to a lazily-loaded singleton instance. New isolated instances are created with `dj.instance()`.
 
 ## API
 
-### Legacy API (singleton context)
+### Legacy API (singleton instance)
 
 ```python
 import datajoint as dj
@@ -24,36 +24,38 @@ class Mouse(dj.Manual):
     definition = "..."
 ```
 
-### New API (isolated context)
+Internally, `dj.config`, `dj.conn()`, and `dj.Schema()` delegate to a lazily-loaded singleton instance.
+
+### New API (isolated instance)
 
 ```python
 import datajoint as dj
 
-ctx = dj.new(
+inst = dj.instance(
     host="localhost",
     user="user",
     password="password",
 )
-ctx.config.safemode = False
-schema = ctx.Schema("my_schema")
+inst.config.safemode = False
+schema = inst.Schema("my_schema")
 
 @schema
 class Mouse(dj.Manual):
     definition = "..."
 ```
 
-### Context structure
+### Instance structure
 
-Each context exposes only:
-- `ctx.config` - Config instance (copy of `dj.config` at creation)
-- `ctx.connection` - Connection (created at context construction)
-- `ctx.Schema()` - Schema factory using context's connection
+Each instance has:
+- `inst.config` - Config (created fresh at instance creation)
+- `inst.connection` - Connection (created at instance creation)
+- `inst.Schema()` - Schema factory using instance's connection
 
 ```python
-ctx = dj.new(host="localhost", user="u", password="p")
-ctx.config            # Config instance
-ctx.connection        # Connection instance
-ctx.Schema("name")    # Creates schema using ctx.connection
+inst = dj.instance(host="localhost", user="u", password="p")
+inst.config            # Config instance
+inst.connection        # Connection instance
+inst.Schema("name")    # Creates schema using inst.connection
 ```
 
 ### Thread-safe mode
@@ -62,57 +64,67 @@ ctx.Schema("name")    # Creates schema using ctx.connection
 export DJ_THREAD_SAFE=true
 ```
 
-When `thread_safe=True`:
+`thread_safe` is read from environment/config file at module import time.
+
+When `thread_safe=True`, accessing the singleton raises `ThreadSafetyError`:
+- `dj.config` raises `ThreadSafetyError`
 - `dj.conn()` raises `ThreadSafetyError`
 - `dj.Schema()` raises `ThreadSafetyError`
-- `dj.config` only allows access to `thread_safe` (all other access raises `ThreadSafetyError`)
-- `dj.new()` works - isolated contexts are always allowed
+- `dj.instance()` works - isolated instances are always allowed
 
 ```python
 # thread_safe=True
 
-dj.config.thread_safe       # OK - allowed
-dj.config.safemode          # ThreadSafetyError
-dj.config.safemode = False  # ThreadSafetyError
-dj.conn()                   # ThreadSafetyError
-dj.Schema("name")           # ThreadSafetyError
+dj.config               # ThreadSafetyError
+dj.conn()               # ThreadSafetyError
+dj.Schema("name")       # ThreadSafetyError
 
-ctx = dj.new(host="h", user="u", password="p")  # OK
-ctx.config.safemode = False  # OK
-ctx.Schema("name")           # OK
+inst = dj.instance(host="h", user="u", password="p")  # OK
+inst.config.safemode = False  # OK
+inst.Schema("name")           # OK
 ```
 
 ## Behavior Summary
 
 | Operation | `thread_safe=False` | `thread_safe=True` |
 |-----------|--------------------|--------------------|
-| `dj.config.thread_safe` | Works | Works |
-| `dj.config.*` (other) | Works | `ThreadSafetyError` |
-| `dj.conn()` | Works | `ThreadSafetyError` |
-| `dj.Schema()` | Works | `ThreadSafetyError` |
-| `dj.new()` | Works | Works |
-| `ctx.config.*` | Works | Works |
-| `ctx.connection` | Works | Works |
-| `ctx.Schema()` | Works | Works |
+| `dj.config` | Singleton config | `ThreadSafetyError` |
+| `dj.conn()` | Singleton connection | `ThreadSafetyError` |
+| `dj.Schema()` | Uses singleton | `ThreadSafetyError` |
+| `dj.instance()` | Works | Works |
+| `inst.config` | Works | Works |
+| `inst.connection` | Works | Works |
+| `inst.Schema()` | Works | Works |
+
+## Singleton Lazy Loading
+
+The singleton instance is created lazily on first access to `dj.config`, `dj.conn()`, or `dj.Schema()`:
+
+```python
+# First access triggers singleton creation
+dj.config.safemode      # Creates singleton, returns singleton.config.safemode
+dj.conn()               # Returns singleton.connection (connects if needed)
+dj.Schema("name")       # Returns singleton.Schema("name")
+```
 
 ## Usage Example
 
 ```python
 import datajoint as dj
 
-# Create isolated context
-ctx = dj.new(
+# Create isolated instance
+inst = dj.instance(
     host="localhost",
     user="user",
     password="password",
 )
 
 # Configure
-ctx.config.safemode = False
-ctx.config.stores = {"raw": {"protocol": "file", "location": "/data"}}
+inst.config.safemode = False
+inst.config.stores = {"raw": {"protocol": "file", "location": "/data"}}
 
 # Create schema
-schema = ctx.Schema("my_schema")
+schema = inst.Schema("my_schema")
 
 @schema
 class Mouse(dj.Manual):
@@ -120,64 +132,76 @@ class Mouse(dj.Manual):
     mouse_id: int
     """
 
-@schema
-class Session(dj.Manual):
-    definition = """
-    -> Mouse
-    session_date: date
-    """
-
 # Use tables
 Mouse().insert1({"mouse_id": 1})
-Mouse().delete()  # Uses ctx.config.safemode
+Mouse().delete()  # Uses inst.config.safemode
 ```
 
 ## Implementation
 
-### 1. Create Context class
+### 1. Create Instance class
 
 ```python
-class Context:
-    def __init__(self, host, user, password, port=3306, ...):
-        self.config = copy(dj.config)  # Independent config copy
+class Instance:
+    def __init__(self, host, user, password, port=3306, **kwargs):
+        self.config = Config()  # Fresh config with defaults
+        # Apply any config overrides from kwargs
         self.connection = Connection(host, user, password, port, ...)
-        self.connection._config = self.config  # Link config to connection
+        self.connection._config = self.config
 
     def Schema(self, name, **kwargs):
         return Schema(name, connection=self.connection, **kwargs)
 ```
 
-### 2. Add dj.new()
+### 2. Add dj.instance()
 
 ```python
-def new(host, user, password, **kwargs) -> Context:
-    """Create a new isolated context with its own config and connection."""
-    return Context(host, user, password, **kwargs)
+def instance(host, user, password, **kwargs) -> Instance:
+    """Create a new isolated instance with its own config and connection."""
+    return Instance(host, user, password, **kwargs)
 ```
 
-### 3. Add thread_safe guards
-
-In `dj.config`:
-- Allow read/write of `thread_safe` always
-- When `thread_safe=True`, block all other attribute access
+### 3. Singleton with lazy loading
 
 ```python
-def __getattr__(self, name):
-    if name == "thread_safe":
-        return self._thread_safe
-    if self._thread_safe:
-        raise ThreadSafetyError("Global config is inaccessible in thread-safe mode.")
-    # ... normal access
+# Module level
+_thread_safe = _load_thread_safe_from_env_or_config()
+_singleton = None
+
+def _get_singleton():
+    if _thread_safe:
+        raise ThreadSafetyError(
+            "Global DataJoint state is disabled in thread-safe mode. "
+            "Use dj.instance() to create an isolated instance."
+        )
+    global _singleton
+    if _singleton is None:
+        _singleton = Instance(
+            host=_load_from_config("database.host"),
+            user=_load_from_config("database.user"),
+            password=_load_from_config("database.password"),
+            ...
+        )
+    return _singleton
+
+# Public API
+@property
+def config():
+    return _get_singleton().config
+
+def conn():
+    return _get_singleton().connection
+
+def Schema(name, **kwargs):
+    return _get_singleton().Schema(name, **kwargs)
 ```
 
 ### 4. Refactor internal code
 
 All internal code uses `self.connection._config` instead of global `config`:
 - Tables access config via `self.connection._config`
-- This works uniformly for both singleton and isolated contexts
+- This works uniformly for both singleton and isolated instances
 
 ## Error Messages
 
-- `dj.config.*`: `"Global config is inaccessible in thread-safe mode. Use ctx = dj.new(...) for isolated config."`
-- `dj.conn()`: `"dj.conn() is disabled in thread-safe mode. Use ctx = dj.new(...) to create an isolated context."`
-- `dj.Schema()`: `"dj.Schema() is disabled in thread-safe mode. Use ctx = dj.new(...) to create an isolated context."`
+- Singleton access: `"Global DataJoint state is disabled in thread-safe mode. Use dj.instance() to create an isolated instance."`
