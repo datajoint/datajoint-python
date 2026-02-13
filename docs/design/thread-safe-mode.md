@@ -50,12 +50,29 @@ Each instance has:
 - `inst.config` - Config (created fresh at instance creation)
 - `inst.connection` - Connection (created at instance creation)
 - `inst.Schema()` - Schema factory using instance's connection
+- `inst.FreeTable()` - FreeTable factory using instance's connection
 
 ```python
 inst = dj.instance(host="localhost", user="u", password="p")
 inst.config            # Config instance
 inst.connection        # Connection instance
 inst.Schema("name")    # Creates schema using inst.connection
+inst.FreeTable("db.tbl")  # Access table using inst.connection
+```
+
+### Table base classes vs instance methods
+
+**Base classes** (`dj.Manual`, `dj.Lookup`, etc.) - Used with `@schema` decorator:
+```python
+@schema
+class Mouse(dj.Manual):  # dj.Manual - schema links to connection
+    definition = "..."
+```
+
+**Instance methods** (`inst.Schema()`, `inst.FreeTable()`) - Need connection directly:
+```python
+schema = inst.Schema("my_schema")     # Uses inst.connection
+table = inst.FreeTable("db.table")    # Uses inst.connection
 ```
 
 ### Thread-safe mode
@@ -151,6 +168,9 @@ class Instance:
 
     def Schema(self, name, **kwargs):
         return Schema(name, connection=self.connection, **kwargs)
+
+    def FreeTable(self, full_table_name):
+        return FreeTable(self.connection, full_table_name)
 ```
 
 ### 2. Add dj.instance()
