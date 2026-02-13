@@ -347,7 +347,6 @@ class Config(BaseSettings):
         description="Thread-safe mode. When True, global config access is blocked. "
         "Once enabled, cannot be disabled. Use Connection.from_config() instead.",
     )
-    enable_python_native_blobs: bool = True
     filepath_checksum_size_limit: int | None = None
 
     # Cache paths
@@ -850,7 +849,6 @@ class Config(BaseSettings):
                 },
                 "loglevel": "INFO",
                 "safemode": True,
-                "enable_python_native_blobs": True,
                 "cache": None,
                 "query_cache": None,
                 "download_path": ".",

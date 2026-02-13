@@ -58,7 +58,6 @@ All settings become connection-scoped and are accessed via `conn.config` (read/w
 | `display_width` | int | 14 | Column width for display |
 | `show_tuple_count` | bool | True | Show tuple count in repr |
 | `loglevel` | str | "INFO" | Logging level |
-| `enable_python_native_blobs` | bool | True | Use Python-native blob serialization |
 | `filepath_checksum_size_limit` | int | None | Max file size for checksum |
 
 Connection parameters (set at creation, read-only after):
@@ -428,7 +427,6 @@ class ConnectionConfig:
         "display_width": 14,
         "show_tuple_count": True,
         "loglevel": "INFO",
-        "enable_python_native_blobs": True,
         "filepath_checksum_size_limit": None,
     }
 
