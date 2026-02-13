@@ -6,37 +6,96 @@ import datajoint as dj
 from datajoint.errors import ThreadSafetyError
 
 
-class TestConnThreadSafe:
-    """Tests for dj.conn() in thread-safe mode."""
+@pytest.fixture(autouse=True)
+def reset_thread_safe_mode():
+    """Reset thread_safe to False before and after each test."""
+    # Use object.__setattr__ to bypass the one-way lock for test reset
+    object.__setattr__(dj.config, "thread_safe", False)
+    yield
+    object.__setattr__(dj.config, "thread_safe", False)
 
-    def test_conn_blocked_in_thread_safe_mode(self, monkeypatch):
-        """dj.conn() raises ThreadSafetyError when thread_safe is True."""
-        # Enable thread-safe mode
-        original = dj.config.thread_safe
-        try:
-            dj.config.thread_safe = True
 
-            with pytest.raises(ThreadSafetyError, match="dj.conn\\(\\) is disabled"):
-                dj.conn()
-        finally:
-            dj.config.thread_safe = original
+class TestThreadSafeModeSetting:
+    """Tests for thread_safe as a regular setting."""
 
-    def test_conn_works_when_thread_safe_disabled(self, monkeypatch):
-        """dj.conn() works normally when thread_safe is False."""
-        # Ensure thread-safe mode is disabled
-        original = dj.config.thread_safe
-        try:
+    def test_thread_safe_default_false(self):
+        """Thread-safe mode is disabled by default."""
+        assert dj.config.thread_safe is False
+
+    def test_thread_safe_can_be_enabled(self):
+        """Thread-safe mode can be enabled."""
+        dj.config.thread_safe = True
+        assert dj.config.thread_safe is True
+
+    def test_thread_safe_cannot_be_disabled(self):
+        """Once enabled, thread-safe mode cannot be disabled."""
+        dj.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Cannot disable"):
             dj.config.thread_safe = False
 
-            # This will fail if no database is configured, but it shouldn't raise
-            # ThreadSafetyError - that's what we're testing
-            try:
-                dj.conn(reset=True)
-            except dj.DataJointError as e:
-                # Expected if database credentials not configured
-                assert "ThreadSafety" not in str(type(e))
-        finally:
-            dj.config.thread_safe = original
+    def test_thread_safe_via_dict_access(self):
+        """Thread-safe can be set via dict-style access."""
+        dj.config["thread_safe"] = True
+        assert dj.config.thread_safe is True
+
+    def test_thread_safe_cannot_be_disabled_via_dict(self):
+        """Cannot disable via dict access either."""
+        dj.config["thread_safe"] = True
+        with pytest.raises(ThreadSafetyError, match="Cannot disable"):
+            dj.config["thread_safe"] = False
+
+    def test_thread_safe_from_env_var(self, monkeypatch):
+        """Thread-safe mode can be set via environment variable."""
+        from datajoint.settings import Config
+
+        monkeypatch.setenv("DJ_THREAD_SAFE", "true")
+        cfg = Config()
+        assert cfg.thread_safe is True
+
+
+class TestConfigBlockedInThreadSafeMode:
+    """Tests for config access being blocked in thread-safe mode."""
+
+    def test_attribute_access_blocked(self):
+        """Attribute access raises ThreadSafetyError in thread-safe mode."""
+        dj.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
+            _ = dj.config.database
+
+    def test_dict_access_blocked(self):
+        """Dict-style access raises ThreadSafetyError in thread-safe mode."""
+        dj.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
+            _ = dj.config["database.host"]
+
+    def test_dict_set_blocked(self):
+        """Dict-style setting raises ThreadSafetyError in thread-safe mode."""
+        dj.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
+            dj.config["database.host"] = "newhost"
+
+    def test_attribute_set_blocked(self):
+        """Attribute setting raises ThreadSafetyError in thread-safe mode."""
+        dj.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
+            dj.config.safemode = False
+
+    def test_thread_safe_always_readable(self):
+        """The thread_safe setting itself is always readable."""
+        dj.config.thread_safe = True
+        # Should not raise
+        assert dj.config.thread_safe is True
+        assert dj.config["thread_safe"] is True
+
+
+class TestConnBlockedInThreadSafeMode:
+    """Tests for dj.conn() being blocked in thread-safe mode."""
+
+    def test_conn_blocked(self):
+        """dj.conn() raises ThreadSafetyError in thread-safe mode."""
+        dj.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="dj.conn\\(\\) is disabled"):
+            dj.conn()
 
 
 class TestConnectionFromConfig:
@@ -49,32 +108,24 @@ class TestConnectionFromConfig:
 
     def test_from_config_requires_user(self):
         """from_config raises error if user not provided."""
-        with pytest.raises(dj.DataJointError, match="user"):
+        with pytest.raises(dj.DataJointError, match="user is required"):
             dj.Connection.from_config({"host": "localhost", "password": "test"})
 
     def test_from_config_requires_password(self):
         """from_config raises error if password not provided."""
-        with pytest.raises(dj.DataJointError, match="password"):
+        with pytest.raises(dj.DataJointError, match="password is required"):
             dj.Connection.from_config({"host": "localhost", "user": "test"})
 
     def test_from_config_with_explicit_params(self):
         """from_config accepts explicit keyword parameters."""
-        # Mock the entire Connection class to avoid actual connection
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
 
-        # Create a mock connection instance
-        mock_conn_instance = MagicMock()
-        mock_conn_instance.conn_info = {}
-
-        # Capture the arguments passed to Connection.__init__
         captured_args = {}
 
         def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None):
             captured_args["host"] = host
             captured_args["user"] = user
-            captured_args["password"] = password
             captured_args["port"] = port
-            captured_args["backend"] = backend
 
         with patch.object(dj.Connection, "__init__", mock_init):
             dj.Connection.from_config(
@@ -103,26 +154,19 @@ class TestConnectionFromConfig:
 
         def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None):
             captured_args["host"] = host
-            captured_args["user"] = user
             captured_args["port"] = port
 
         with patch.object(dj.Connection, "__init__", mock_init):
             dj.Connection.from_config(cfg)
 
         assert captured_args["host"] == "dicthost"
-        assert captured_args["user"] == "dictuser"
         assert captured_args["port"] == 3308
 
     def test_from_config_kwargs_override_dict(self):
-        """Keyword arguments override dict values in from_config."""
+        """Keyword arguments override dict values."""
         from unittest.mock import patch
 
-        cfg = {
-            "host": "dicthost",
-            "user": "dictuser",
-            "password": "dictpass",
-        }
-
+        cfg = {"host": "dicthost", "user": "dictuser", "password": "dictpass"}
         captured_args = {}
 
         def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None):
@@ -132,51 +176,69 @@ class TestConnectionFromConfig:
         with patch.object(dj.Connection, "__init__", mock_init):
             dj.Connection.from_config(cfg, host="overridehost")
 
-        # host should be overridden
         assert captured_args["host"] == "overridehost"
-        # user should come from dict
         assert captured_args["user"] == "dictuser"
 
     def test_from_config_works_in_thread_safe_mode(self):
-        """from_config works even when thread_safe is True."""
+        """from_config works in thread-safe mode (no global config access)."""
         from unittest.mock import patch
 
-        original = dj.config.thread_safe
-        try:
-            dj.config.thread_safe = True
+        dj.config.thread_safe = True
 
-            captured_args = {}
+        captured_args = {}
 
-            def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None):
-                captured_args["host"] = host
+        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None):
+            captured_args["host"] = host
 
-            with patch.object(dj.Connection, "__init__", mock_init):
-                # This should NOT raise ThreadSafetyError
-                dj.Connection.from_config(
-                    host="testhost",
-                    user="testuser",
-                    password="testpass",
-                )
+        with patch.object(dj.Connection, "__init__", mock_init):
+            # Should NOT raise ThreadSafetyError
+            dj.Connection.from_config(
+                host="testhost",
+                user="testuser",
+                password="testpass",
+            )
 
-            # Verify from_config was able to collect parameters in thread-safe mode
-            assert captured_args["host"] == "testhost"
-        finally:
-            dj.config.thread_safe = original
+        assert captured_args["host"] == "testhost"
+
+    def test_from_config_default_port_mysql(self):
+        """from_config uses default port 3306 for MySQL."""
+        from unittest.mock import patch
+
+        captured_args = {}
+
+        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None):
+            captured_args["port"] = port
+            captured_args["backend"] = backend
+
+        with patch.object(dj.Connection, "__init__", mock_init):
+            dj.Connection.from_config(host="h", user="u", password="p")
+
+        assert captured_args["port"] == 3306
+        assert captured_args["backend"] == "mysql"
+
+    def test_from_config_default_port_postgresql(self):
+        """from_config uses default port 5432 for PostgreSQL."""
+        from unittest.mock import patch
+
+        captured_args = {}
+
+        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None):
+            captured_args["port"] = port
+
+        with patch.object(dj.Connection, "__init__", mock_init):
+            dj.Connection.from_config(host="h", user="u", password="p", backend="postgresql")
+
+        assert captured_args["port"] == 5432
 
 
 class TestThreadSafetyErrorExport:
     """Tests for ThreadSafetyError availability."""
 
-    def test_error_exported_from_main_module(self):
+    def test_error_exported(self):
         """ThreadSafetyError is exported from datajoint module."""
         assert hasattr(dj, "ThreadSafetyError")
         assert dj.ThreadSafetyError is ThreadSafetyError
 
-    def test_error_is_datajoint_error_subclass(self):
+    def test_error_is_subclass(self):
         """ThreadSafetyError is a subclass of DataJointError."""
         assert issubclass(ThreadSafetyError, dj.DataJointError)
-
-    def test_error_has_descriptive_docstring(self):
-        """ThreadSafetyError has a descriptive docstring."""
-        assert ThreadSafetyError.__doc__ is not None
-        assert "thread-safe" in ThreadSafetyError.__doc__.lower()

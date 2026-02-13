@@ -108,7 +108,7 @@ def conn(
     if config.thread_safe:
         raise errors.ThreadSafetyError(
             "dj.conn() is disabled in thread-safe mode. "
-            "Use Connection.from_config() instead for thread-safe connection management."
+            "Use Connection.from_config() with explicit configuration."
         )
 
     if not hasattr(conn, "connection") or reset:
@@ -201,8 +201,12 @@ class Connection:
             host, port = host.split(":")
             port = int(port)
         elif port is None:
-            # Use attribute access to avoid thread-safe guard on dict access
-            port = config.database.port
+            # In thread-safe mode, config is inaccessible, so we must use defaults
+            if config.thread_safe:
+                # Default based on backend
+                port = 5432 if backend == "postgresql" else 3306
+            else:
+                port = config.database.port
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
         if use_tls is not False:
             # use_tls can be: None (auto-detect), True (enable), False (disable), or dict (custom config)
@@ -219,11 +223,17 @@ class Connection:
         self._conn = None
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
+        # Store charset to avoid global config access in connect()
+        self._charset = "" if config.thread_safe else config.connection.charset
+        # Store reconnect setting for query() method
+        self._reconnect = True if config.thread_safe else config.database.reconnect
 
-        # Select adapter based on backend (explicit or from config)
+        # Select adapter based on backend
         if backend is None:
-            # Use attribute access to avoid thread-safe guard on dict access
-            backend = config.database.backend
+            if config.thread_safe:
+                backend = "mysql"  # Default in thread-safe mode
+            else:
+                backend = config.database.backend
         self.adapter = get_adapter(backend)
 
         self.connect()
@@ -252,10 +262,8 @@ class Connection:
         """
         Create a connection from explicit configuration.
 
-        This is the recommended method for creating connections in multi-tenant
-        applications or when thread-safety is required. Unlike :func:`conn`,
-        this method does not use global state and creates a new connection
-        each time it is called.
+        This is the required method for creating connections in thread-safe mode.
+        Unlike :func:`conn`, this method never accesses global state.
 
         Configuration can be provided via a dict or keyword arguments.
         Keyword arguments take precedence over dict values.
@@ -263,19 +271,19 @@ class Connection:
         Parameters
         ----------
         cfg : dict, optional
-            Configuration dict with keys like ``'host'``, ``'user'``, ``'password'``,
-            ``'port'``, ``'backend'``. If not provided, reads from global config
-            (but captures values at call time, not on each access).
+            Configuration dict with keys: ``'host'``, ``'user'``, ``'password'``,
+            ``'port'``, ``'backend'``, ``'init_function'``, ``'use_tls'``.
         host : str, optional
-            Database hostname. Overrides cfg['host'].
+            Database hostname. Overrides cfg['host']. Default: 'localhost'.
         user : str, optional
-            Database username. Overrides cfg['user'].
+            Database username. Overrides cfg['user']. Required.
         password : str, optional
-            Database password. Overrides cfg['password'].
+            Database password. Overrides cfg['password']. Required.
         port : int, optional
-            Database port. Overrides cfg['port'].
+            Database port. Overrides cfg['port']. Default: 3306 (MySQL) or 5432 (PostgreSQL).
         backend : str, optional
             Database backend ('mysql' or 'postgresql'). Overrides cfg['backend'].
+            Default: 'mysql'.
         init_fun : str, optional
             SQL initialization command. Overrides cfg['init_function'].
         use_tls : bool or dict, optional
@@ -301,14 +309,14 @@ class Connection:
         ...     password='mypassword'
         ... )
 
-        Create connection from a config dict (e.g., from a request context):
+        Create connection from a config dict (e.g., from request context):
 
-        >>> request_config = {
+        >>> tenant_config = {
         ...     'host': 'db.example.com',
         ...     'user': request.user.db_user,
         ...     'password': request.user.db_password,
         ... }
-        >>> conn = Connection.from_config(request_config)
+        >>> conn = Connection.from_config(tenant_config)
 
         Use with Schema for thread-safe pipeline access:
 
@@ -317,21 +325,16 @@ class Connection:
 
         See Also
         --------
-        conn : Singleton connection (not thread-safe).
+        conn : Singleton connection (not available in thread-safe mode).
         """
-        # Start with global config values as defaults (captured at call time)
-        # Access via attribute to avoid thread-safe guards on dict access
-        effective_host = config.database.host
-        effective_user = config.database.user
-        effective_password = (
-            config.database.password.get_secret_value()
-            if config.database.password is not None
-            else None
-        )
-        effective_port = config.database.port
-        effective_backend = config.database.backend
-        effective_init_fun = config.connection.init_function
-        effective_use_tls = config.database.use_tls
+        # Start with defaults (no global config access)
+        effective_host = "localhost"
+        effective_user = None
+        effective_password = None
+        effective_port = None  # Will be set based on backend
+        effective_backend = "mysql"
+        effective_init_fun = None
+        effective_use_tls = None
 
         # Override with cfg dict if provided
         if cfg is not None:
@@ -366,15 +369,19 @@ class Connection:
         if use_tls is not None:
             effective_use_tls = use_tls
 
+        # Set default port based on backend if not specified
+        if effective_port is None:
+            effective_port = 5432 if effective_backend == "postgresql" else 3306
+
         # Validate required fields
         if effective_user is None:
             raise errors.DataJointError(
-                "Database user not configured. "
+                "Database user is required. "
                 "Provide user= argument or include 'user' in config dict."
             )
         if effective_password is None:
             raise errors.DataJointError(
-                "Database password not configured. "
+                "Database password is required. "
                 "Provide password= argument or include 'password' in config dict."
             )
 
@@ -410,7 +417,7 @@ class Connection:
                     user=self.conn_info["user"],
                     password=self.conn_info["passwd"],
                     init_command=self.init_fun,
-                    charset=config.connection.charset,
+                    charset=self._charset,
                     use_tls=self.conn_info.get("ssl"),
                 )
             except Exception as ssl_error:
@@ -427,7 +434,7 @@ class Connection:
                         user=self.conn_info["user"],
                         password=self.conn_info["passwd"],
                         init_command=self.init_fun,
-                        charset=config.connection.charset,
+                        charset=self._charset,
                         use_tls=False,  # Explicitly disable SSL for fallback
                     )
                 else:
@@ -453,6 +460,9 @@ class Connection:
 
     def purge_query_cache(self) -> None:
         """Delete all cached query results."""
+        if config.thread_safe:
+            # Query caching requires global config; not supported in thread-safe mode
+            return
         if isinstance(config.get(cache_key), str) and pathlib.Path(config[cache_key]).is_dir():
             for path in pathlib.Path(config[cache_key]).iterdir():
                 if not path.is_dir():
@@ -608,7 +618,7 @@ class Connection:
                 return EmulatedCursor(unpack(buffer))
 
         if reconnect is None:
-            reconnect = config.database.reconnect
+            reconnect = self._reconnect
         logger.debug("Executing SQL:" + query[:query_log_max_length])
         cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
         try:

@@ -344,8 +344,8 @@ class Config(BaseSettings):
     thread_safe: bool = Field(
         default=False,
         validation_alias="DJ_THREAD_SAFE",
-        description="Enable thread-safe mode. When True, accessing global config "
-        "or dj.conn() raises ThreadSafetyError. Use Connection.from_config() instead.",
+        description="Thread-safe mode. When True, global config access is blocked. "
+        "Once enabled, cannot be disabled. Use Connection.from_config() instead.",
     )
     enable_python_native_blobs: bool = True
     filepath_checksum_size_limit: int | None = None
@@ -889,23 +889,83 @@ class Config(BaseSettings):
 
         return filepath.absolute()
 
-    # Dict-like access for convenience
-    def __getitem__(self, key: str) -> Any:
+    def __getattribute__(self, name: str) -> Any:
         """
-        Get setting by dot-notation key (e.g., 'database.host').
+        Override attribute access to block all access in thread-safe mode.
 
         Raises
         ------
         ThreadSafetyError
-            If ``thread_safe`` is True and the key is not 'thread_safe'.
-            In thread-safe mode, use attribute access on a connection-specific
-            config instead of global dict-like access.
+            If thread-safe mode is enabled (except for 'thread_safe' itself).
         """
-        # Allow checking thread_safe setting itself (and internal attributes)
-        if key != "thread_safe" and not key.startswith("_") and self.thread_safe:
+        # Always allow access to dunder methods and private attributes
+        if name.startswith("_"):
+            return object.__getattribute__(self, name)
+
+        # Always allow Pydantic model methods (model_post_init, model_dump, etc.)
+        if name.startswith("model_"):
+            return object.__getattribute__(self, name)
+
+        # Always allow checking thread_safe itself (to know which mode we're in)
+        if name == "thread_safe":
+            return object.__getattribute__(self, name)
+
+        # Check thread-safe mode (use object.__getattribute__ to avoid recursion)
+        if object.__getattribute__(self, "thread_safe"):
             raise ThreadSafetyError(
-                "Global config access is disabled in thread-safe mode. "
-                "Use Connection.from_config() with explicit configuration instead."
+                "Global config is inaccessible in thread-safe mode. "
+                "Use Connection.from_config() with explicit configuration."
+            )
+
+        return object.__getattribute__(self, name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+        Override attribute setting to enforce thread-safe mode rules.
+
+        Raises
+        ------
+        ThreadSafetyError
+            If thread-safe mode is enabled and trying to modify config,
+            or if trying to set thread_safe from True to False.
+        """
+        # Always allow setting private attributes (pydantic internals)
+        if name.startswith("_"):
+            return object.__setattr__(self, name, value)
+
+        # Special handling for thread_safe: one-way lock
+        if name == "thread_safe":
+            # Check current value (may not exist during __init__)
+            try:
+                current = object.__getattribute__(self, "thread_safe")
+                if current and not value:
+                    raise ThreadSafetyError(
+                        "Cannot disable thread-safe mode once enabled."
+                    )
+            except AttributeError:
+                pass  # First time setting during __init__
+            return object.__setattr__(self, name, value)
+
+        # Block all other modifications in thread-safe mode
+        try:
+            if object.__getattribute__(self, "thread_safe"):
+                raise ThreadSafetyError(
+                    "Global config is inaccessible in thread-safe mode. "
+                    "Use Connection.from_config() with explicit configuration."
+                )
+        except AttributeError:
+            pass  # thread_safe not set yet (during __init__)
+
+        return object.__setattr__(self, name, value)
+
+    # Dict-like access for convenience
+    def __getitem__(self, key: str) -> Any:
+        """Get setting by dot-notation key (e.g., 'database.host')."""
+        # Allow checking thread_safe itself
+        if key != "thread_safe" and self.thread_safe:
+            raise ThreadSafetyError(
+                "Global config is inaccessible in thread-safe mode. "
+                "Use Connection.from_config() with explicit configuration."
             )
         parts = key.split(".")
         obj: Any = self
@@ -922,20 +982,20 @@ class Config(BaseSettings):
         return obj
 
     def __setitem__(self, key: str, value: Any) -> None:
-        """
-        Set setting by dot-notation key (e.g., 'database.host').
+        """Set setting by dot-notation key (e.g., 'database.host')."""
+        # Special handling for thread_safe: allow setting but enforce one-way
+        if key == "thread_safe":
+            if self.thread_safe and not value:
+                raise ThreadSafetyError(
+                    "Cannot disable thread-safe mode once enabled."
+                )
+            self.thread_safe = value
+            return
 
-        Raises
-        ------
-        ThreadSafetyError
-            If ``thread_safe`` is True. In thread-safe mode, configuration
-            should not be modified via the global config object.
-        """
-        # Allow setting thread_safe itself (to enable/disable the mode)
-        if key != "thread_safe" and self.thread_safe:
+        if self.thread_safe:
             raise ThreadSafetyError(
-                "Global config modification is disabled in thread-safe mode. "
-                "Use Connection.from_config() with explicit configuration instead."
+                "Global config is inaccessible in thread-safe mode. "
+                "Use Connection.from_config() with explicit configuration."
             )
         parts = key.split(".")
         if len(parts) == 1:

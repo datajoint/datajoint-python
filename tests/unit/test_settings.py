@@ -873,91 +873,69 @@ class TestBackendConfiguration:
 class TestThreadSafeMode:
     """Tests for thread-safe configuration mode."""
 
+    @pytest.fixture(autouse=True)
+    def reset_thread_safe(self):
+        """Reset thread_safe before and after each test."""
+        from datajoint import settings
+        object.__setattr__(settings.config, "thread_safe", False)
+        yield
+        object.__setattr__(settings.config, "thread_safe", False)
+
     def test_thread_safe_default_false(self):
         """Thread-safe mode is disabled by default."""
         from datajoint.settings import Config
-
         cfg = Config()
         assert cfg.thread_safe is False
 
     def test_thread_safe_can_be_enabled(self):
         """Thread-safe mode can be enabled."""
-        from datajoint.settings import Config
+        from datajoint import settings
+        settings.config.thread_safe = True
+        assert settings.config.thread_safe is True
 
-        cfg = Config()
-        cfg.thread_safe = True
-        assert cfg.thread_safe is True
-
-    def test_thread_safe_from_env_var(self, monkeypatch):
-        """Thread-safe mode can be set via environment variable."""
-        from datajoint.settings import Config
-
-        monkeypatch.setenv("DJ_THREAD_SAFE", "true")
-        cfg = Config()
-        assert cfg.thread_safe is True
+    def test_thread_safe_one_way_lock(self):
+        """Once enabled, thread_safe cannot be disabled."""
+        from datajoint import settings
+        from datajoint.errors import ThreadSafetyError
+        settings.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Cannot disable"):
+            settings.config.thread_safe = False
 
     def test_getitem_blocked_in_thread_safe_mode(self):
         """Dict-like config access raises ThreadSafetyError in thread-safe mode."""
+        from datajoint import settings
         from datajoint.errors import ThreadSafetyError
-        from datajoint.settings import Config
-
-        cfg = Config()
-        cfg.thread_safe = True
-
-        with pytest.raises(ThreadSafetyError, match="Global config access is disabled"):
-            _ = cfg["database.host"]
+        settings.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
+            _ = settings.config["database.host"]
 
     def test_setitem_blocked_in_thread_safe_mode(self):
         """Dict-like config modification raises ThreadSafetyError in thread-safe mode."""
+        from datajoint import settings
         from datajoint.errors import ThreadSafetyError
-        from datajoint.settings import Config
+        settings.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
+            settings.config["database.host"] = "newhost"
 
-        cfg = Config()
-        cfg.thread_safe = True
+    def test_attribute_access_blocked_in_thread_safe_mode(self):
+        """Attribute access is also blocked in thread-safe mode."""
+        from datajoint import settings
+        from datajoint.errors import ThreadSafetyError
+        settings.config.thread_safe = True
+        with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
+            _ = settings.config.database
 
-        with pytest.raises(ThreadSafetyError, match="Global config modification is disabled"):
-            cfg["database.host"] = "newhost"
+    def test_thread_safe_always_readable(self):
+        """The thread_safe setting itself is always readable."""
+        from datajoint import settings
+        settings.config.thread_safe = True
+        # Should not raise
+        assert settings.config.thread_safe is True
+        assert settings.config["thread_safe"] is True
 
-    def test_thread_safe_setting_itself_accessible(self):
-        """The thread_safe setting itself can always be read."""
-        from datajoint.settings import Config
-
-        cfg = Config()
-        cfg.thread_safe = True
-
-        # Should not raise - thread_safe setting is exempt
-        value = cfg["thread_safe"]
-        assert value is True
-
-    def test_thread_safe_setting_can_be_toggled(self):
-        """The thread_safe setting can be toggled off via dict access."""
-        from datajoint.settings import Config
-
-        cfg = Config()
-        cfg.thread_safe = True
-
-        # Should not raise - can disable thread_safe mode
-        cfg["thread_safe"] = False
-        assert cfg.thread_safe is False
-
-    def test_attribute_access_always_works(self):
-        """Direct attribute access works even in thread-safe mode."""
-        from datajoint.settings import Config
-
-        cfg = Config()
-        cfg.thread_safe = True
-
-        # Attribute access is not blocked - only dict-like access
-        # This allows internal code and from_config() to read config
-        assert cfg.database.host == "localhost"
-
-    def test_internal_keys_accessible(self):
-        """Internal keys starting with _ are accessible in thread-safe mode."""
-        from datajoint.settings import Config
-
-        cfg = Config()
-        cfg.thread_safe = True
-
-        # Internal attributes should be accessible
-        # (they're used by the config system itself)
-        _ = cfg["_config_path"]  # Should not raise
+    def test_private_attributes_accessible(self):
+        """Private attributes (starting with _) are accessible in thread-safe mode."""
+        from datajoint import settings
+        settings.config.thread_safe = True
+        # Private attributes should be accessible for internal operations
+        _ = settings.config._config_path  # Should not raise
