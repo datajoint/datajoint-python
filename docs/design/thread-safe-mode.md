@@ -23,9 +23,9 @@ export DJ_THREAD_SAFE=true
 {"thread_safe": true}
 ```
 
-### Create Connections
+### Connection.from_config()
 
-All settings can be passed to `Connection.from_config()`:
+Creates a connection with explicit configuration. Works in both `thread_safe=True` and `thread_safe=False` modes.
 
 ```python
 conn = dj.Connection.from_config(
@@ -34,9 +34,27 @@ conn = dj.Connection.from_config(
     password="password",
     safemode=False,
     display_limit=25,
-    # ... any other settings
 )
 schema = dj.Schema("my_schema", connection=conn)
+```
+
+**Parameters:**
+- `host` (required): Database hostname
+- `user` (required): Database username
+- `password` (required): Database password
+- `port`: Database port (default: 3306)
+- Any other setting from `dj.config` (e.g., `safemode`, `display_limit`, `stores`)
+
+**Defaults:** Settings not explicitly provided use hardcoded defaults (same as `dj.config` defaults). Global `dj.config` is never accessed.
+
+**Connection-scoped settings:** Stored on `conn.config` and accessed as `conn.config.safemode`, `conn.config.display_limit`, etc.
+
+```python
+conn = dj.Connection.from_config(host="localhost", user="u", password="p")
+conn.config.safemode      # True (default)
+conn.config.display_limit # 12 (default)
+
+conn.config.safemode = False  # Modify for this connection only
 ```
 
 ## Behavior
@@ -62,7 +80,10 @@ Only `thread_safe` is read-only after initialization. It can only be set via:
 3. Add guards to `Config.__getattr__`, `Config.__setattr__`, `Config.__getitem__`, `Config.__setitem__`
 4. Add guard to `dj.conn()`
 5. Add guard to `Schema.__init__` when `connection=None`
-6. Add `Connection.from_config()` class method
+6. Add `Connection.from_config()` class method that:
+   - Accepts all connection params and settings as kwargs
+   - Uses hardcoded defaults (never accesses global config)
+   - Creates `conn.config` object to store connection-scoped settings
 7. Add `ThreadSafetyError` exception
 
 ## Exceptions
