@@ -23,7 +23,7 @@ This model works well for single-user scripts and notebooks but creates problems
 
 ## Design Principles
 
-1. **One-way lock** — Once enabled, thread-safe mode cannot be disabled
+1. **Deployment-time decision** — Thread-safe mode is set via environment or config file, not programmatically
 2. **Explicit over implicit** — All connection parameters must be explicitly provided
 3. **No hidden global state** — Connection behavior is fully determined by its configuration
 4. **Backward compatible** — Existing code works unchanged when `thread_safe=False`
@@ -77,29 +77,27 @@ Connection parameters (set at creation, read-only after):
 
 ### Enabling Thread-Safe Mode
 
-```python
-import datajoint as dj
+Thread-safe mode is read-only after initialization and can only be set via environment variable or config file:
 
-# Method 1: Programmatic
-dj.config.thread_safe = True
-
-# Method 2: Environment variable
-# DJ_THREAD_SAFE=true python app.py
-
-# Method 3: Config file (datajoint.json)
-# { "thread_safe": true }
+```bash
+# Method 1: Environment variable
+DJ_THREAD_SAFE=true python app.py
 ```
 
-Once enabled, cannot be disabled:
+```json
+// Method 2: Config file (datajoint.json)
+{ "thread_safe": true }
+```
+
+Programmatic setting is not allowed:
 ```python
-dj.config.thread_safe = True
-dj.config.thread_safe = False  # Raises ThreadSafetyError
+dj.config.thread_safe = True  # Raises ThreadSafetyError
 ```
 
 ### Global Config Access in Thread-Safe Mode
 
 ```python
-dj.config.thread_safe = True
+# With DJ_THREAD_SAFE=true set in environment
 
 # Only thread_safe is accessible
 dj.config.thread_safe            # OK (returns True)
@@ -259,39 +257,38 @@ schema = dj.Schema("my_schema", connection=conn)
 
 ### Connection.config Behavior
 
-When `thread_safe=False`, `conn.config` provides access to settings but **forwards to global config** for settings not explicitly provided:
+The behavior of `conn.config` depends on **which API created the connection**, not on the `thread_safe` setting:
+
+**New API** (`Connection.from_config()`) — Uses explicit values or defaults. Never accesses global config. Works identically with `thread_safe` on or off:
 
 ```python
-dj.config.thread_safe = False
-dj.config.safemode = True
+dj.config.safemode = False  # Set in global config
 dj.config.database_prefix = "dev_"
 
 conn = dj.Connection.from_config(
     host="localhost",
     user="root",
     password="secret",
-    # safemode not specified - will forward to global
+    # safemode not specified - uses default, NOT global config
 )
 
-conn.config.safemode         # True (from dj.config)
+conn.config.safemode         # True (default, not global)
+conn.config.database_prefix  # "" (default, not global)
+```
+
+**Legacy API** (`dj.conn()`) — Forwards unset values to global config for backward compatibility:
+
+```python
+dj.config.safemode = False
+dj.config.database_prefix = "dev_"
+
+conn = dj.conn()  # Legacy API
+
+conn.config.safemode         # False (from dj.config)
 conn.config.database_prefix  # "dev_" (from dj.config)
 ```
 
-When `thread_safe=True`, `conn.config` uses only explicitly provided values with defaults:
-
-```python
-dj.config.thread_safe = True
-
-conn = dj.Connection.from_config(
-    host="localhost",
-    user="root",
-    password="secret",
-    # safemode not specified - uses default
-)
-
-conn.config.safemode         # True (default)
-conn.config.database_prefix  # "" (default)
-```
+This design ensures that code using `Connection.from_config()` is portable and behaves identically whether `thread_safe` is enabled or not.
 
 ## Migration Path
 
@@ -351,18 +348,24 @@ class Config(BaseSettings):
         if name.startswith("_"):
             return object.__setattr__(self, name, value)
 
-        # thread_safe: one-way lock (can only go False -> True)
+        # thread_safe is read-only after initialization
         if name == "thread_safe":
-            current = object.__getattribute__(self, "thread_safe")
-            if current and not value:
-                raise ThreadSafetyError("Cannot disable thread-safe mode once enabled.")
+            try:
+                object.__getattribute__(self, "thread_safe")
+                # If we get here, thread_safe already exists - block the set
+                raise ThreadSafetyError(
+                    "thread_safe cannot be set programmatically. "
+                    "Set DJ_THREAD_SAFE=true in environment or datajoint.json."
+                )
+            except AttributeError:
+                pass  # First time setting during __init__ - allow it
             return object.__setattr__(self, name, value)
 
         # Block everything else in thread-safe mode
         if object.__getattribute__(self, "thread_safe"):
             raise ThreadSafetyError(
-                f"Setting '{name}' is connection-scoped in thread-safe mode. "
-                "Modify it via connection.config instead."
+                "Global config is inaccessible in thread-safe mode. "
+                "Use Connection.from_config() with explicit configuration."
             )
 
         return object.__setattr__(self, name, value)
@@ -376,8 +379,9 @@ class Connection:
                  use_tls=None, backend=None, *, _config=None):
         # ... existing connection setup ...
 
-        # Store connection-scoped config
-        self.config = _config or ConnectionConfig()
+        # Connection-scoped configuration
+        # Legacy API (dj.conn()) uses global fallback for backward compatibility
+        self.config = _config if _config is not None else ConnectionConfig(_use_global_fallback=True)
 
     @classmethod
     def from_config(cls, cfg=None, *, host=None, user=None, password=None,
@@ -393,14 +397,9 @@ class Connection:
         # ... merge cfg dict with kwargs ...
         # ... validate required fields (host, user, password) ...
 
-        # Determine thread-safe mode (check global config safely)
-        from .settings import config
-        is_thread_safe = config.thread_safe
-
-        # Build ConnectionConfig with explicit values only
-        # (unset values will forward to global or use defaults)
+        # Build ConnectionConfig - new API never falls back to global config
         conn_config = ConnectionConfig(
-            _thread_safe=is_thread_safe,
+            _use_global_fallback=False,
             **({"safemode": safemode} if safemode is not None else {}),
             **({"stores": stores} if stores is not None else {}),
             **({"database_prefix": database_prefix} if database_prefix is not None else {}),
@@ -428,8 +427,9 @@ class ConnectionConfig:
     """
     Connection-scoped configuration (read/write).
 
-    When thread_safe=False, unset values forward to global dj.config.
-    When thread_safe=True, unset values use defaults (no global access).
+    Behavior depends on how the connection was created:
+    - New API (from_config): Uses explicit values or defaults. Never accesses global config.
+    - Legacy API (dj.conn): Forwards unset values to global dj.config.
     """
 
     _DEFAULTS = {
@@ -448,7 +448,9 @@ class ConnectionConfig:
 
     def __init__(self, **explicit_values):
         self._values = {}  # Mutable storage for this connection
-        self._thread_safe = explicit_values.pop("_thread_safe", False)
+        # If True, forward unset values to global config (legacy API behavior)
+        # If False, use defaults only (new API behavior)
+        self._use_global_fallback = explicit_values.pop("_use_global_fallback", False)
         self._values.update(explicit_values)
 
     def __getattr__(self, name):
@@ -459,12 +461,12 @@ class ConnectionConfig:
         if name in self._values:
             return self._values[name]
 
-        # If thread_safe=False, forward to global config
-        if not self._thread_safe:
+        # Legacy API: forward to global config for backward compatibility
+        if self._use_global_fallback:
             from .settings import config
             return getattr(config, name, self._DEFAULTS.get(name))
 
-        # If thread_safe=True, return default
+        # New API: use defaults only (no global config access)
         return self._DEFAULTS.get(name)
 
     def __setattr__(self, name, value):

@@ -644,7 +644,11 @@ class Config(BaseSettings):
                     if env_var and os.environ.get(env_var):
                         logger.debug(f"Skipping {key} from file (env var {env_var} takes precedence)")
                         continue
-                    setattr(self, key, value)
+                    # thread_safe is read-only after init, but we allow setting from config file
+                    if key == "thread_safe":
+                        object.__setattr__(self, key, value)
+                    else:
+                        setattr(self, key, value)
             elif len(parts) == 2:
                 group, attr = parts
                 if hasattr(self, group):
@@ -923,21 +927,23 @@ class Config(BaseSettings):
         ------
         ThreadSafetyError
             If thread-safe mode is enabled and trying to modify config,
-            or if trying to set thread_safe from True to False.
+            or if trying to set thread_safe programmatically.
         """
         # Always allow setting private attributes (pydantic internals)
         if name.startswith("_"):
             return object.__setattr__(self, name, value)
 
-        # Special handling for thread_safe: one-way lock
+        # thread_safe is read-only after initialization
         if name == "thread_safe":
-            # Check current value (may not exist during __init__)
+            # Allow setting during __init__ (when attribute doesn't exist yet)
             try:
-                current = object.__getattribute__(self, "thread_safe")
-                if current and not value:
-                    raise ThreadSafetyError("Cannot disable thread-safe mode once enabled.")
+                object.__getattribute__(self, "thread_safe")
+                # If we get here, thread_safe already exists - block the set
+                raise ThreadSafetyError(
+                    "thread_safe cannot be set programmatically. " "Set DJ_THREAD_SAFE=true in environment or datajoint.json."
+                )
             except AttributeError:
-                pass  # First time setting during __init__
+                pass  # First time setting during __init__ - allow it
             return object.__setattr__(self, name, value)
 
         # Block all other modifications in thread-safe mode
@@ -977,12 +983,11 @@ class Config(BaseSettings):
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Set setting by dot-notation key (e.g., 'database.host')."""
-        # Special handling for thread_safe: allow setting but enforce one-way
+        # thread_safe is read-only - cannot be set programmatically
         if key == "thread_safe":
-            if self.thread_safe and not value:
-                raise ThreadSafetyError("Cannot disable thread-safe mode once enabled.")
-            self.thread_safe = value
-            return
+            raise ThreadSafetyError(
+                "thread_safe cannot be set programmatically. " "Set DJ_THREAD_SAFE=true in environment or datajoint.json."
+            )
 
         if self.thread_safe:
             raise ThreadSafetyError(

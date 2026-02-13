@@ -32,9 +32,13 @@ class ConnectionConfig:
     """
     Connection-scoped configuration (read/write).
 
-    Provides access to settings that can vary per connection. When ``thread_safe=False``,
-    unset values forward to global ``dj.config``. When ``thread_safe=True``, unset values
-    use defaults (no global access).
+    Provides access to settings that can vary per connection. Behavior depends on
+    how the connection was created:
+
+    - **New API** (``Connection.from_config()``): Uses explicit values or defaults.
+      Never accesses global config. Works identically with ``thread_safe`` on or off.
+    - **Legacy API** (``dj.conn()``): Forwards unset values to global ``dj.config``
+      for backward compatibility.
 
     Parameters
     ----------
@@ -111,7 +115,9 @@ class ConnectionConfig:
 
     def __init__(self, **explicit_values: Any) -> None:
         object.__setattr__(self, "_values", {})  # Mutable storage for this connection
-        object.__setattr__(self, "_thread_safe", explicit_values.pop("_thread_safe", False))
+        # If True, forward unset values to global config (legacy API behavior)
+        # If False, use defaults only (new API behavior)
+        object.__setattr__(self, "_use_global_fallback", explicit_values.pop("_use_global_fallback", False))
         self._values.update(explicit_values)
 
     def __getattr__(self, name: str) -> Any:
@@ -122,13 +128,13 @@ class ConnectionConfig:
         if name in self._values:
             return self._values[name]
 
-        # If thread_safe=False, forward to global config
-        if not self._thread_safe:
+        # Legacy API: forward to global config for backward compatibility
+        if self._use_global_fallback:
             global_path = self._GLOBAL_CONFIG_MAP.get(name)
             if global_path:
                 return config[global_path]
 
-        # Return default
+        # New API: use defaults only (no global config access)
         return self._DEFAULTS.get(name)
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -389,7 +395,8 @@ class Connection:
         self.dependencies = Dependencies(self)
 
         # Connection-scoped configuration
-        self.config = _config if _config is not None else ConnectionConfig(_thread_safe=config.thread_safe)
+        # Legacy API (dj.conn()) uses global fallback for backward compatibility
+        self.config = _config if _config is not None else ConnectionConfig(_use_global_fallback=True)
 
     @classmethod
     def from_config(
@@ -614,9 +621,9 @@ class Connection:
                 "Database password is required. " "Provide password= argument or include 'password' in config dict."
             )
 
-        # Create ConnectionConfig with thread-safe flag
+        # Create ConnectionConfig - new API never falls back to global config
         conn_config = ConnectionConfig(
-            _thread_safe=config.thread_safe,
+            _use_global_fallback=False,
             **config_kwargs,
         )
 

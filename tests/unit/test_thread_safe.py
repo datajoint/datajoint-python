@@ -10,40 +10,33 @@ from datajoint.errors import ThreadSafetyError
 @pytest.fixture(autouse=True)
 def reset_thread_safe_mode():
     """Reset thread_safe to False before and after each test."""
-    # Use object.__setattr__ to bypass the one-way lock for test reset
+    # Use object.__setattr__ to bypass read-only restriction for test reset
     object.__setattr__(dj.config, "thread_safe", False)
     yield
     object.__setattr__(dj.config, "thread_safe", False)
 
 
+def enable_thread_safe():
+    """Helper to enable thread-safe mode in tests (bypasses read-only)."""
+    object.__setattr__(dj.config, "thread_safe", True)
+
+
 class TestThreadSafeModeSetting:
-    """Tests for thread_safe as a regular setting."""
+    """Tests for thread_safe as a read-only setting."""
 
     def test_thread_safe_default_false(self):
         """Thread-safe mode is disabled by default."""
         assert dj.config.thread_safe is False
 
-    def test_thread_safe_can_be_enabled(self):
-        """Thread-safe mode can be enabled."""
-        dj.config.thread_safe = True
-        assert dj.config.thread_safe is True
+    def test_thread_safe_cannot_be_set_programmatically(self):
+        """Thread-safe mode cannot be set via attribute assignment."""
+        with pytest.raises(ThreadSafetyError, match="cannot be set programmatically"):
+            dj.config.thread_safe = True
 
-    def test_thread_safe_cannot_be_disabled(self):
-        """Once enabled, thread-safe mode cannot be disabled."""
-        dj.config.thread_safe = True
-        with pytest.raises(ThreadSafetyError, match="Cannot disable"):
-            dj.config.thread_safe = False
-
-    def test_thread_safe_via_dict_access(self):
-        """Thread-safe can be set via dict-style access."""
-        dj.config["thread_safe"] = True
-        assert dj.config.thread_safe is True
-
-    def test_thread_safe_cannot_be_disabled_via_dict(self):
-        """Cannot disable via dict access either."""
-        dj.config["thread_safe"] = True
-        with pytest.raises(ThreadSafetyError, match="Cannot disable"):
-            dj.config["thread_safe"] = False
+    def test_thread_safe_cannot_be_set_via_dict_access(self):
+        """Thread-safe mode cannot be set via dict-style access."""
+        with pytest.raises(ThreadSafetyError, match="cannot be set programmatically"):
+            dj.config["thread_safe"] = True
 
     def test_thread_safe_from_env_var(self, monkeypatch):
         """Thread-safe mode can be set via environment variable."""
@@ -53,37 +46,49 @@ class TestThreadSafeModeSetting:
         cfg = Config()
         assert cfg.thread_safe is True
 
+    def test_thread_safe_from_config_file(self, tmp_path):
+        """Thread-safe mode can be set via config file."""
+        import json
+
+        from datajoint.settings import Config
+
+        config_file = tmp_path / "datajoint.json"
+        config_file.write_text(json.dumps({"thread_safe": True}))
+        cfg = Config()
+        cfg.load(config_file)
+        assert cfg.thread_safe is True
+
 
 class TestConfigBlockedInThreadSafeMode:
     """Tests for config access being blocked in thread-safe mode."""
 
     def test_attribute_access_blocked(self):
         """Attribute access raises ThreadSafetyError in thread-safe mode."""
-        dj.config.thread_safe = True
+        enable_thread_safe()
         with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
             _ = dj.config.database
 
     def test_dict_access_blocked(self):
         """Dict-style access raises ThreadSafetyError in thread-safe mode."""
-        dj.config.thread_safe = True
+        enable_thread_safe()
         with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
             _ = dj.config["database.host"]
 
     def test_dict_set_blocked(self):
         """Dict-style setting raises ThreadSafetyError in thread-safe mode."""
-        dj.config.thread_safe = True
+        enable_thread_safe()
         with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
             dj.config["database.host"] = "newhost"
 
     def test_attribute_set_blocked(self):
         """Attribute setting raises ThreadSafetyError in thread-safe mode."""
-        dj.config.thread_safe = True
+        enable_thread_safe()
         with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
             dj.config.safemode = False
 
     def test_thread_safe_always_readable(self):
         """The thread_safe setting itself is always readable."""
-        dj.config.thread_safe = True
+        enable_thread_safe()
         # Should not raise
         assert dj.config.thread_safe is True
         assert dj.config["thread_safe"] is True
@@ -94,7 +99,7 @@ class TestConnBlockedInThreadSafeMode:
 
     def test_conn_blocked(self):
         """dj.conn() raises ThreadSafetyError in thread-safe mode."""
-        dj.config.thread_safe = True
+        enable_thread_safe()
         with pytest.raises(ThreadSafetyError, match="dj.conn\\(\\) is disabled"):
             dj.conn()
 
@@ -184,7 +189,7 @@ class TestConnectionFromConfig:
         """from_config works in thread-safe mode (no global config access)."""
         from unittest.mock import patch
 
-        dj.config.thread_safe = True
+        enable_thread_safe()
 
         captured_args = {}
 
@@ -274,36 +279,61 @@ class TestConnectionConfig:
         assert cfg.safemode is False
         assert cfg.display_limit == 50
 
-    def test_forwarding_to_global_when_not_thread_safe(self):
-        """Unset values forward to global config when thread_safe=False."""
+    def test_forwarding_to_global_with_legacy_api(self):
+        """Unset values forward to global config with legacy API (dj.conn())."""
         # Set a value in global config
         original_safemode = dj.config.safemode
-        dj.config.safemode = False
+        object.__setattr__(dj.config, "safemode", False)
 
         try:
-            cfg = ConnectionConfig(_thread_safe=False)
+            # Legacy API uses _use_global_fallback=True
+            cfg = ConnectionConfig(_use_global_fallback=True)
             # Should forward to global config
             assert cfg.safemode is False
         finally:
-            dj.config.safemode = original_safemode
+            object.__setattr__(dj.config, "safemode", original_safemode)
 
-    def test_uses_defaults_when_thread_safe(self):
-        """Unset values use defaults when thread_safe=True."""
-        cfg = ConnectionConfig(_thread_safe=True)
+    def test_uses_defaults_with_new_api(self):
+        """Unset values use defaults with new API (from_config())."""
+        # New API uses _use_global_fallback=False
+        cfg = ConnectionConfig(_use_global_fallback=False)
         # Should use default, not global config
         assert cfg.safemode is True  # default
         assert cfg.display_limit == 12  # default
 
-    def test_explicit_overrides_global(self):
-        """Explicit values override global config even when not thread_safe."""
+    def test_new_api_works_identically_regardless_of_thread_safe(self):
+        """New API (from_config) uses defaults, not global config, in both modes."""
+        # Set different values in global config
         original_safemode = dj.config.safemode
-        dj.config.safemode = True
+        object.__setattr__(dj.config, "safemode", False)  # Different from default (True)
 
         try:
-            cfg = ConnectionConfig(_thread_safe=False, safemode=False)
+            # New API with thread_safe=False
+            cfg1 = ConnectionConfig(_use_global_fallback=False)
+
+            # Enable thread_safe mode
+            enable_thread_safe()
+
+            # New API with thread_safe=True
+            cfg2 = ConnectionConfig(_use_global_fallback=False)
+
+            # Both should use defaults, not global config
+            assert cfg1.safemode is True  # default, not global (False)
+            assert cfg2.safemode is True  # default, not global (False)
+            assert cfg1.safemode == cfg2.safemode
+        finally:
+            object.__setattr__(dj.config, "safemode", original_safemode)
+
+    def test_explicit_overrides_global_with_legacy_api(self):
+        """Explicit values override global config even with legacy API."""
+        original_safemode = dj.config.safemode
+        object.__setattr__(dj.config, "safemode", True)
+
+        try:
+            cfg = ConnectionConfig(_use_global_fallback=True, safemode=False)
             assert cfg.safemode is False  # explicit value
         finally:
-            dj.config.safemode = original_safemode
+            object.__setattr__(dj.config, "safemode", original_safemode)
 
     def test_get_store_spec(self):
         """get_store_spec returns store configuration."""
@@ -395,13 +425,37 @@ class TestConnectionConfigAttribute:
         assert cfg.safemode is False
         assert cfg.display_limit == 50
 
+    def test_from_config_does_not_use_global_fallback(self):
+        """from_config creates config that doesn't fall back to global config."""
+        from unittest.mock import patch
+
+        # Set a non-default value in global config
+        original_safemode = dj.config.safemode
+        object.__setattr__(dj.config, "safemode", False)  # Different from default (True)
+
+        captured_config = {}
+
+        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+            captured_config["config"] = _config
+
+        try:
+            with patch.object(dj.Connection, "__init__", mock_init):
+                # Don't pass safemode - should use default, not global
+                dj.Connection.from_config(host="h", user="u", password="p")
+
+            cfg = captured_config["config"]
+            # Should use default (True), not global (False)
+            assert cfg.safemode is True
+        finally:
+            object.__setattr__(dj.config, "safemode", original_safemode)
+
 
 class TestSchemaThreadSafe:
     """Tests for Schema behavior in thread-safe mode."""
 
     def test_schema_without_connection_raises_in_thread_safe_mode(self):
         """Schema without explicit connection raises ThreadSafetyError."""
-        dj.config.thread_safe = True
+        enable_thread_safe()
         with pytest.raises(ThreadSafetyError, match="Schema requires explicit connection"):
             dj.Schema("test_schema")
 
@@ -409,11 +463,11 @@ class TestSchemaThreadSafe:
         """Schema with explicit connection works in thread-safe mode."""
         from unittest.mock import MagicMock, patch
 
-        dj.config.thread_safe = True
+        enable_thread_safe()
 
-        # Create a mock connection
+        # Create a mock connection with new API config (no global fallback)
         mock_conn = MagicMock(spec=dj.Connection)
-        mock_conn.config = ConnectionConfig(_thread_safe=True)
+        mock_conn.config = ConnectionConfig(_use_global_fallback=False)
 
         # Mock the schema activation to avoid database operations
         with patch.object(dj.Schema, "activate"):

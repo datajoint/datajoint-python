@@ -889,28 +889,28 @@ class TestThreadSafeMode:
         cfg = Config()
         assert cfg.thread_safe is False
 
-    def test_thread_safe_can_be_enabled(self):
-        """Thread-safe mode can be enabled."""
-        from datajoint import settings
-
-        settings.config.thread_safe = True
-        assert settings.config.thread_safe is True
-
-    def test_thread_safe_one_way_lock(self):
-        """Once enabled, thread_safe cannot be disabled."""
+    def test_thread_safe_cannot_be_set_programmatically(self):
+        """Thread-safe mode cannot be set programmatically."""
         from datajoint import settings
         from datajoint.errors import ThreadSafetyError
 
-        settings.config.thread_safe = True
-        with pytest.raises(ThreadSafetyError, match="Cannot disable"):
-            settings.config.thread_safe = False
+        with pytest.raises(ThreadSafetyError, match="cannot be set programmatically"):
+            settings.config.thread_safe = True
+
+    def test_thread_safe_cannot_be_set_via_setitem(self):
+        """Thread-safe mode cannot be set via dict access."""
+        from datajoint import settings
+        from datajoint.errors import ThreadSafetyError
+
+        with pytest.raises(ThreadSafetyError, match="cannot be set programmatically"):
+            settings.config["thread_safe"] = True
 
     def test_getitem_blocked_in_thread_safe_mode(self):
         """Dict-like config access raises ThreadSafetyError in thread-safe mode."""
         from datajoint import settings
         from datajoint.errors import ThreadSafetyError
 
-        settings.config.thread_safe = True
+        object.__setattr__(settings.config, "thread_safe", True)
         with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
             _ = settings.config["database.host"]
 
@@ -919,7 +919,7 @@ class TestThreadSafeMode:
         from datajoint import settings
         from datajoint.errors import ThreadSafetyError
 
-        settings.config.thread_safe = True
+        object.__setattr__(settings.config, "thread_safe", True)
         with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
             settings.config["database.host"] = "newhost"
 
@@ -928,7 +928,7 @@ class TestThreadSafeMode:
         from datajoint import settings
         from datajoint.errors import ThreadSafetyError
 
-        settings.config.thread_safe = True
+        object.__setattr__(settings.config, "thread_safe", True)
         with pytest.raises(ThreadSafetyError, match="Global config is inaccessible"):
             _ = settings.config.database
 
@@ -936,7 +936,7 @@ class TestThreadSafeMode:
         """The thread_safe setting itself is always readable."""
         from datajoint import settings
 
-        settings.config.thread_safe = True
+        object.__setattr__(settings.config, "thread_safe", True)
         # Should not raise
         assert settings.config.thread_safe is True
         assert settings.config["thread_safe"] is True
@@ -945,6 +945,6 @@ class TestThreadSafeMode:
         """Private attributes (starting with _) are accessible in thread-safe mode."""
         from datajoint import settings
 
-        settings.config.thread_safe = True
+        object.__setattr__(settings.config, "thread_safe", True)
         # Private attributes should be accessible for internal operations
         _ = settings.config._config_path  # Should not raise
