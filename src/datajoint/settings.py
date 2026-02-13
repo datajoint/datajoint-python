@@ -344,7 +344,8 @@ class Config(BaseSettings):
         default=False,
         validation_alias="DJ_THREAD_SAFE",
         description="Thread-safe mode. When True, global config access is blocked. "
-        "Once enabled, cannot be disabled. Use Connection.from_config() instead.",
+        "Read-only after initialization: set via DJ_THREAD_SAFE env var or datajoint.json. "
+        "Use Connection.from_config() for thread-safe connections.",
     )
     filepath_checksum_size_limit: int | None = None
 

@@ -38,7 +38,7 @@ In thread-safe mode, `dj.config` access is blocked except for `thread_safe` itse
 
 | Setting | `thread_safe=False` | `thread_safe=True` |
 |---------|---------------------|-------------------|
-| `thread_safe` | Read/write | Read-only (one-way lock) |
+| `thread_safe` | Read-only (set via env var or config file only) | Read-only |
 | All other settings | Read/write | Raises `ThreadSafetyError` |
 
 ### Connection-Scoped Settings (`conn.config`)
@@ -518,9 +518,10 @@ dj.conn()
 ThreadSafetyError: dj.conn() is disabled in thread-safe mode.
 Use Connection.from_config() with explicit configuration.
 
-# Disabling thread-safe mode
-dj.config.thread_safe = False
-ThreadSafetyError: Cannot disable thread-safe mode once enabled.
+# Setting thread-safe mode programmatically
+dj.config.thread_safe = True
+ThreadSafetyError: thread_safe cannot be set programmatically.
+Set DJ_THREAD_SAFE=true in environment or datajoint.json.
 
 # Schema without connection
 dj.Schema("my_schema")
@@ -535,9 +536,9 @@ Use Schema('name', connection=conn).
 ### Unit Tests
 
 1. **Global config in thread-safe mode**
-   - Verify only `thread_safe` is accessible
+   - Verify only `thread_safe` is accessible (read-only)
    - Verify all other settings raise ThreadSafetyError (read and write)
-   - Verify one-way lock behavior
+   - Verify thread_safe cannot be set programmatically (only via env var or config file)
 
 2. **Connection.from_config()**
    - Verify all parameters are accepted
