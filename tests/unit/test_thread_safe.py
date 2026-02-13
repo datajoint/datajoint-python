@@ -355,6 +355,42 @@ class TestConnectionConfig:
         assert "ConnectionConfig" in r
         assert "safemode=False" in r
 
+    def test_override_context_manager(self):
+        """override temporarily changes values and restores them."""
+        cfg = ConnectionConfig(safemode=True, display_limit=10)
+
+        with cfg.override(safemode=False, display_limit=50):
+            assert cfg.safemode is False
+            assert cfg.display_limit == 50
+
+        assert cfg.safemode is True
+        assert cfg.display_limit == 10
+
+    def test_override_restores_on_exception(self):
+        """override restores values even when exception is raised."""
+        cfg = ConnectionConfig(safemode=True)
+
+        try:
+            with cfg.override(safemode=False):
+                assert cfg.safemode is False
+                raise RuntimeError("test error")
+        except RuntimeError:
+            pass
+
+        assert cfg.safemode is True
+
+    def test_override_with_defaults(self):
+        """override works when value was not explicitly set."""
+        cfg = ConnectionConfig()  # Uses defaults
+        assert cfg.safemode is True  # default
+
+        with cfg.override(safemode=False):
+            assert cfg.safemode is False
+
+        # Should restore to default (not be in _values)
+        assert cfg.safemode is True
+        assert "safemode" not in cfg._values
+
 
 class TestConnectionConfigAttribute:
     """Tests for Connection.config attribute."""

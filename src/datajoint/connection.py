@@ -12,7 +12,7 @@ import re
 import warnings
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from . import errors
 from .adapters import get_adapter
@@ -174,6 +174,52 @@ class ConnectionConfig:
         if store_name not in stores:
             raise errors.DataJointError(f"Store '{store_name}' is not configured.")
         return stores[store_name]
+
+    @contextmanager
+    def override(self, **kwargs: Any) -> Iterator["ConnectionConfig"]:
+        """
+        Temporarily override configuration values for this connection.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Settings to override.
+
+        Yields
+        ------
+        ConnectionConfig
+            The config instance with overridden values.
+
+        Examples
+        --------
+        >>> with conn.config.override(safemode=False, display_limit=50):
+        ...     # conn.config.safemode is False here
+        ...     pass
+        >>> # conn.config.safemode is restored
+        """
+        from copy import deepcopy
+
+        # Save original values
+        backup = {}
+        for key, value in kwargs.items():
+            if key in self._values:
+                backup[key] = deepcopy(self._values[key])
+            elif key in self._DEFAULTS:
+                backup[key] = None  # Marker for "was not set"
+
+        try:
+            # Apply overrides
+            for key, value in kwargs.items():
+                self._values[key] = value
+            yield self
+        finally:
+            # Restore original values
+            for key, original in backup.items():
+                if original is None:
+                    # Was not set before, remove it
+                    self._values.pop(key, None)
+                else:
+                    self._values[key] = original
 
 
 def translate_query_error(client_error: Exception, query: str, adapter) -> Exception:
