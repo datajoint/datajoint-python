@@ -52,6 +52,7 @@ __all__ = [
     "errors",
     "migrate",
     "DataJointError",
+    "ThreadSafetyError",
     "logger",
     "cli",
     "ValidationResult",
@@ -73,7 +74,7 @@ from .builtin_codecs import (
 )
 from .blob import MatCell, MatStruct
 from .connection import Connection, conn
-from .errors import DataJointError
+from .errors import DataJointError, ThreadSafetyError
 from .expression import AndList, Not, Top, U
 from .logging import logger
 from .objectref import ObjectRef

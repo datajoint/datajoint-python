@@ -50,7 +50,7 @@ from typing import Any, Iterator, Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .errors import DataJointError
+from .errors import DataJointError, ThreadSafetyError
 
 CONFIG_FILENAME = "datajoint.json"
 SECRETS_DIRNAME = ".secrets"
@@ -341,6 +341,12 @@ class Config(BaseSettings):
     # Top-level settings
     loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO", validation_alias="DJ_LOG_LEVEL")
     safemode: bool = True
+    thread_safe: bool = Field(
+        default=False,
+        validation_alias="DJ_THREAD_SAFE",
+        description="Enable thread-safe mode. When True, accessing global config "
+        "or dj.conn() raises ThreadSafetyError. Use Connection.from_config() instead.",
+    )
     enable_python_native_blobs: bool = True
     filepath_checksum_size_limit: int | None = None
 
@@ -885,7 +891,22 @@ class Config(BaseSettings):
 
     # Dict-like access for convenience
     def __getitem__(self, key: str) -> Any:
-        """Get setting by dot-notation key (e.g., 'database.host')."""
+        """
+        Get setting by dot-notation key (e.g., 'database.host').
+
+        Raises
+        ------
+        ThreadSafetyError
+            If ``thread_safe`` is True and the key is not 'thread_safe'.
+            In thread-safe mode, use attribute access on a connection-specific
+            config instead of global dict-like access.
+        """
+        # Allow checking thread_safe setting itself (and internal attributes)
+        if key != "thread_safe" and not key.startswith("_") and self.thread_safe:
+            raise ThreadSafetyError(
+                "Global config access is disabled in thread-safe mode. "
+                "Use Connection.from_config() with explicit configuration instead."
+            )
         parts = key.split(".")
         obj: Any = self
         for part in parts:
@@ -901,7 +922,21 @@ class Config(BaseSettings):
         return obj
 
     def __setitem__(self, key: str, value: Any) -> None:
-        """Set setting by dot-notation key (e.g., 'database.host')."""
+        """
+        Set setting by dot-notation key (e.g., 'database.host').
+
+        Raises
+        ------
+        ThreadSafetyError
+            If ``thread_safe`` is True. In thread-safe mode, configuration
+            should not be modified via the global config object.
+        """
+        # Allow setting thread_safe itself (to enable/disable the mode)
+        if key != "thread_safe" and self.thread_safe:
+            raise ThreadSafetyError(
+                "Global config modification is disabled in thread-safe mode. "
+                "Use Connection.from_config() with explicit configuration instead."
+            )
         parts = key.split(".")
         if len(parts) == 1:
             if hasattr(self, key):

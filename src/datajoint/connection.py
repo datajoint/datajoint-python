@@ -58,12 +58,19 @@ def conn(
     init_fun: Callable | None = None,
     reset: bool = False,
     use_tls: bool | dict | None = None,
-) -> Connection:
+) -> "Connection":
     """
     Return a persistent connection object shared by multiple modules.
 
     If the connection is not yet established or reset=True, a new connection is set up.
     If connection information is not provided, it is taken from config.
+
+    .. warning::
+
+        This function uses global state and is not suitable for multi-tenant
+        applications. When ``config.thread_safe`` is True, this function raises
+        :exc:`~datajoint.errors.ThreadSafetyError`. Use
+        :meth:`Connection.from_config` instead for thread-safe connection management.
 
     Parameters
     ----------
@@ -90,7 +97,20 @@ def conn(
     ------
     DataJointError
         If user or password is not provided and not set in config.
+    ThreadSafetyError
+        If ``config.thread_safe`` is True.
+
+    See Also
+    --------
+    Connection.from_config : Thread-safe connection creation.
     """
+    # Check thread-safe mode
+    if config.thread_safe:
+        raise errors.ThreadSafetyError(
+            "dj.conn() is disabled in thread-safe mode. "
+            "Use Connection.from_config() instead for thread-safe connection management."
+        )
+
     if not hasattr(conn, "connection") or reset:
         host = host if host is not None else config["database.host"]
         user = user if user is not None else config["database.user"]
@@ -154,6 +174,9 @@ class Connection:
         SQL initialization command.
     use_tls : bool or dict, optional
         TLS encryption option.
+    backend : str, optional
+        Database backend ('mysql' or 'postgresql'). If not provided,
+        uses the value from global config.
 
     Attributes
     ----------
@@ -171,13 +194,15 @@ class Connection:
         port: int | None = None,
         init_fun: str | None = None,
         use_tls: bool | dict | None = None,
+        backend: str | None = None,
     ) -> None:
         if ":" in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(":")
             port = int(port)
         elif port is None:
-            port = config["database.port"]
+            # Use attribute access to avoid thread-safe guard on dict access
+            port = config.database.port
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
         if use_tls is not False:
             # use_tls can be: None (auto-detect), True (enable), False (disable), or dict (custom config)
@@ -195,8 +220,10 @@ class Connection:
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
 
-        # Select adapter based on configured backend
-        backend = config["database.backend"]
+        # Select adapter based on backend (explicit or from config)
+        if backend is None:
+            # Use attribute access to avoid thread-safe guard on dict access
+            backend = config.database.backend
         self.adapter = get_adapter(backend)
 
         self.connect()
@@ -208,6 +235,161 @@ class Connection:
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
+
+    @classmethod
+    def from_config(
+        cls,
+        cfg: dict | None = None,
+        *,
+        host: str | None = None,
+        user: str | None = None,
+        password: str | None = None,
+        port: int | None = None,
+        backend: str | None = None,
+        init_fun: str | None = None,
+        use_tls: bool | dict | None = None,
+    ) -> "Connection":
+        """
+        Create a connection from explicit configuration.
+
+        This is the recommended method for creating connections in multi-tenant
+        applications or when thread-safety is required. Unlike :func:`conn`,
+        this method does not use global state and creates a new connection
+        each time it is called.
+
+        Configuration can be provided via a dict or keyword arguments.
+        Keyword arguments take precedence over dict values.
+
+        Parameters
+        ----------
+        cfg : dict, optional
+            Configuration dict with keys like ``'host'``, ``'user'``, ``'password'``,
+            ``'port'``, ``'backend'``. If not provided, reads from global config
+            (but captures values at call time, not on each access).
+        host : str, optional
+            Database hostname. Overrides cfg['host'].
+        user : str, optional
+            Database username. Overrides cfg['user'].
+        password : str, optional
+            Database password. Overrides cfg['password'].
+        port : int, optional
+            Database port. Overrides cfg['port'].
+        backend : str, optional
+            Database backend ('mysql' or 'postgresql'). Overrides cfg['backend'].
+        init_fun : str, optional
+            SQL initialization command. Overrides cfg['init_function'].
+        use_tls : bool or dict, optional
+            TLS encryption option. Overrides cfg['use_tls'].
+
+        Returns
+        -------
+        Connection
+            A new database connection.
+
+        Raises
+        ------
+        DataJointError
+            If required parameters (user, password) are not provided.
+
+        Examples
+        --------
+        Create connection with explicit parameters:
+
+        >>> conn = Connection.from_config(
+        ...     host='localhost',
+        ...     user='myuser',
+        ...     password='mypassword'
+        ... )
+
+        Create connection from a config dict (e.g., from a request context):
+
+        >>> request_config = {
+        ...     'host': 'db.example.com',
+        ...     'user': request.user.db_user,
+        ...     'password': request.user.db_password,
+        ... }
+        >>> conn = Connection.from_config(request_config)
+
+        Use with Schema for thread-safe pipeline access:
+
+        >>> conn = Connection.from_config(tenant_config)
+        >>> schema = dj.Schema('my_pipeline', connection=conn)
+
+        See Also
+        --------
+        conn : Singleton connection (not thread-safe).
+        """
+        # Start with global config values as defaults (captured at call time)
+        # Access via attribute to avoid thread-safe guards on dict access
+        effective_host = config.database.host
+        effective_user = config.database.user
+        effective_password = (
+            config.database.password.get_secret_value()
+            if config.database.password is not None
+            else None
+        )
+        effective_port = config.database.port
+        effective_backend = config.database.backend
+        effective_init_fun = config.connection.init_function
+        effective_use_tls = config.database.use_tls
+
+        # Override with cfg dict if provided
+        if cfg is not None:
+            if "host" in cfg:
+                effective_host = cfg["host"]
+            if "user" in cfg:
+                effective_user = cfg["user"]
+            if "password" in cfg:
+                effective_password = cfg["password"]
+            if "port" in cfg:
+                effective_port = cfg["port"]
+            if "backend" in cfg:
+                effective_backend = cfg["backend"]
+            if "init_function" in cfg:
+                effective_init_fun = cfg["init_function"]
+            if "use_tls" in cfg:
+                effective_use_tls = cfg["use_tls"]
+
+        # Override with explicit keyword arguments
+        if host is not None:
+            effective_host = host
+        if user is not None:
+            effective_user = user
+        if password is not None:
+            effective_password = password
+        if port is not None:
+            effective_port = port
+        if backend is not None:
+            effective_backend = backend
+        if init_fun is not None:
+            effective_init_fun = init_fun
+        if use_tls is not None:
+            effective_use_tls = use_tls
+
+        # Validate required fields
+        if effective_user is None:
+            raise errors.DataJointError(
+                "Database user not configured. "
+                "Provide user= argument or include 'user' in config dict."
+            )
+        if effective_password is None:
+            raise errors.DataJointError(
+                "Database password not configured. "
+                "Provide password= argument or include 'password' in config dict."
+            )
+
+        # Create connection with explicit backend parameter
+        connection = cls(
+            host=effective_host,
+            user=effective_user,
+            password=effective_password,
+            port=effective_port,
+            init_fun=effective_init_fun,
+            use_tls=effective_use_tls,
+            backend=effective_backend,
+        )
+
+        return connection
 
     def __eq__(self, other):
         return self.conn_info == other.conn_info
@@ -228,7 +410,7 @@ class Connection:
                     user=self.conn_info["user"],
                     password=self.conn_info["passwd"],
                     init_command=self.init_fun,
-                    charset=config["connection.charset"],
+                    charset=config.connection.charset,
                     use_tls=self.conn_info.get("ssl"),
                 )
             except Exception as ssl_error:
@@ -245,7 +427,7 @@ class Connection:
                         user=self.conn_info["user"],
                         password=self.conn_info["passwd"],
                         init_command=self.init_fun,
-                        charset=config["connection.charset"],
+                        charset=config.connection.charset,
                         use_tls=False,  # Explicitly disable SSL for fallback
                     )
                 else:
@@ -426,7 +608,7 @@ class Connection:
                 return EmulatedCursor(unpack(buffer))
 
         if reconnect is None:
-            reconnect = config["database.reconnect"]
+            reconnect = config.database.reconnect
         logger.debug("Executing SQL:" + query[:query_log_max_length])
         cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
         try:

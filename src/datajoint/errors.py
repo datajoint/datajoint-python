@@ -72,3 +72,13 @@ class MissingExternalFile(DataJointError):
 
 class BucketInaccessible(DataJointError):
     """S3 bucket is inaccessible."""
+
+
+class ThreadSafetyError(DataJointError):
+    """
+    Raised when global state is accessed in thread-safe mode.
+
+    When ``config.thread_safe`` is True, accessing global configuration
+    or the singleton connection via ``dj.conn()`` raises this error.
+    Use ``Connection.from_config()`` instead for thread-safe connection management.
+    """
