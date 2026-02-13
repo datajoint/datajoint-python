@@ -6,7 +6,7 @@ DataJoint uses global state (`dj.config`, `dj.conn()`) that is not thread-safe. 
 
 ## Solution
 
-Add `thread_safe` mode that blocks global state access and requires explicit connection configuration.
+Add `thread_safe` mode that makes global config read-only and requires explicit connections with mutable connection-scoped settings.
 
 ## API
 
@@ -25,7 +25,7 @@ export DJ_THREAD_SAFE=true
 
 ### Connection.from_config()
 
-Creates a connection with explicit configuration. Works in both `thread_safe=True` and `thread_safe=False` modes.
+Creates a connection with explicit configuration. Works in both modes.
 
 ```python
 conn = dj.Connection.from_config(
@@ -43,61 +43,54 @@ schema = dj.Schema("my_schema", connection=conn)
 - `user` (required): Database username
 - `password` (required): Database password
 - `port`: Database port (default: 3306)
-- Any other setting from `dj.config` (e.g., `safemode`, `display_limit`, `stores`)
+- Any other setting (e.g., `safemode`, `display_limit`, `stores`)
 
-**Config creation:** Uses the same `Config` class as global `dj.config`. Each connection gets its own `Config` instance via `conn.config`.
-
-**Read-only after connection:** Database connection settings become read-only after connection is established:
-- `host`, `port`, `user`, `password`, `use_tls`, `backend`
-
-**Mutable settings:** All other settings remain mutable per-connection:
-- `safemode`, `display_limit`, `stores`, etc.
+**Config creation:** Copies global `dj.config`, then applies kwargs. Creates `conn.config` which is always mutable.
 
 ```python
 conn = dj.Connection.from_config(host="localhost", user="u", password="p")
-conn.config.safemode      # True (default)
-conn.config.display_limit # 12 (default)
-
-conn.config.safemode = False  # OK: modify for this connection
-conn.config.host = "other"    # Error: read-only after connection
+conn.config.safemode = False      # Always OK: conn.config is mutable
+conn.config.display_limit = 25    # Always OK
 ```
 
 ## Behavior
 
 | Operation | `thread_safe=False` | `thread_safe=True` |
 |-----------|--------------------|--------------------|
-| `dj.config.X` | Works | Raises `ThreadSafetyError` |
+| `dj.config` read | Works | Works (read-only) |
+| `dj.config` write | Works | Raises `ThreadSafetyError` |
 | `dj.conn()` | Works | Raises `ThreadSafetyError` |
 | `dj.Schema("name")` | Works | Raises `ThreadSafetyError` |
 | `Connection.from_config()` | Works | Works |
+| `conn.config` read/write | Works | Works |
 | `Schema(..., connection=conn)` | Works | Works |
 
 ## Read-Only Settings
 
-- `thread_safe`: Read-only after global config initialization (set via env var or config file only)
-- `host`, `port`, `user`, `password`, `use_tls`, `backend`: Read-only on `conn.config` after connection is established
+- `thread_safe`: Always read-only after initialization (set via env var or config file only)
+- All of `dj.config`: Read-only when `thread_safe=True`
 
 ## Implementation
 
 1. Add `thread_safe: bool = False` field to `Config` with `DJ_THREAD_SAFE` env alias
-2. Make `thread_safe` read-only after `Config` initialization
-3. Add guards to `Config.__getattr__`, `Config.__setattr__`, `Config.__getitem__`, `Config.__setitem__`
+2. Make `thread_safe` always read-only after initialization
+3. When `thread_safe=True`, make all `dj.config` writes raise `ThreadSafetyError`
 4. Add guard to `dj.conn()`
 5. Add guard to `Schema.__init__` when `connection=None`
 6. Add `Connection.from_config()` class method that:
-   - Accepts all connection params and settings as kwargs
-   - Creates a new `Config` instance for `conn.config`
-   - Marks connection settings as read-only after connection
+   - Copies global `dj.config`
+   - Applies kwargs overrides
+   - Creates mutable `conn.config`
 7. Add `ThreadSafetyError` exception
 
 ## Exceptions
 
 ```python
 class ThreadSafetyError(DataJointError):
-    """Raised when accessing global state in thread-safe mode."""
+    """Raised when modifying global state in thread-safe mode."""
 ```
 
 Error messages:
-- Config access: `"Global config is inaccessible in thread-safe mode. Use Connection.from_config() with explicit configuration."`
-- `dj.conn()`: `"dj.conn() is disabled in thread-safe mode. Use Connection.from_config() with explicit configuration."`
-- Schema without connection: `"Schema requires explicit connection in thread-safe mode. Use Schema(..., connection=conn)."`
+- Config write: `"Global config is read-only in thread-safe mode. Use conn.config for connection-scoped settings."`
+- `dj.conn()`: `"dj.conn() is disabled in thread-safe mode. Use Connection.from_config()."`
+- Schema without connection: `"Schema requires explicit connection in thread-safe mode."`
