@@ -69,7 +69,6 @@ Connection parameters (set at creation, read-only after):
 | `password` | str | *required* | Database password |
 | `backend` | str | "mysql" | Database backend |
 | `use_tls` | bool/dict | None | TLS configuration |
-| `init_function` | str | None | SQL init command |
 
 ---
 
@@ -375,7 +374,7 @@ class Config(BaseSettings):
 
 ```python
 class Connection:
-    def __init__(self, host, user, password, port=None, init_fun=None,
+    def __init__(self, host, user, password, port=None,
                  use_tls=None, backend=None, *, _config=None):
         # ... existing connection setup ...
 
@@ -387,8 +386,7 @@ class Connection:
     def from_config(cls, cfg=None, *, host=None, user=None, password=None,
                     port=None, backend=None, safemode=None, stores=None,
                     database_prefix=None, cache=None, query_cache=None,
-                    reconnect=None, init_fun=None,
-                    use_tls=None) -> "Connection":
+                    reconnect=None, use_tls=None) -> "Connection":
         """
         Create connection with explicit configuration.
 
@@ -413,7 +411,6 @@ class Connection:
             user=effective_user,
             password=effective_password,
             port=effective_port,
-            init_fun=effective_init_fun,
             use_tls=effective_use_tls,
             backend=effective_backend,
             _config=conn_config,

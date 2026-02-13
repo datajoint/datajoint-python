@@ -219,14 +219,6 @@ class DatabaseSettings(BaseSettings):
         return self
 
 
-class ConnectionSettings(BaseSettings):
-    """Connection behavior settings."""
-
-    model_config = SettingsConfigDict(extra="forbid", validate_assignment=True)
-
-    init_function: str | None = None
-
-
 class DisplaySettings(BaseSettings):
     """Display and preview settings."""
 
@@ -325,7 +317,6 @@ class Config(BaseSettings):
 
     # Nested settings groups
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
-    connection: ConnectionSettings = Field(default_factory=ConnectionSettings)
     display: DisplaySettings = Field(default_factory=DisplaySettings)
     jobs: JobsSettings = Field(default_factory=JobsSettings)
 
@@ -826,9 +817,6 @@ class Config(BaseSettings):
                     "port": 3306,
                     "reconnect": True,
                     "use_tls": None,
-                },
-                "connection": {
-                    "init_function": None,
                 },
                 "display": {
                     "limit": 12,

@@ -250,7 +250,6 @@ def conn(
     user: str | None = None,
     password: str | None = None,
     *,
-    init_fun: Callable | None = None,
     reset: bool = False,
     use_tls: bool | dict | None = None,
 ) -> "Connection":
@@ -275,8 +274,6 @@ def conn(
         Database username. Required if not set in config.
     password : str, optional
         Database password. Required if not set in config.
-    init_fun : callable, optional
-        Initialization function called after connection.
     reset : bool, optional
         If True, reset existing connection. Default False.
     use_tls : bool or dict, optional
@@ -317,9 +314,8 @@ def conn(
             raise errors.DataJointError(
                 "Database password not configured. Set datajoint.config['database.password'] or pass password= argument."
             )
-        init_fun = init_fun if init_fun is not None else config["connection.init_function"]
         use_tls = use_tls if use_tls is not None else config["database.use_tls"]
-        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
+        conn.connection = Connection(host, user, password, None, use_tls)
     return conn.connection
 
 
@@ -364,8 +360,6 @@ class Connection:
         Database password.
     port : int, optional
         Port number. Overridden if specified in host.
-    init_fun : str, optional
-        SQL initialization command.
     use_tls : bool or dict, optional
         TLS encryption option.
     backend : str, optional
@@ -388,7 +382,6 @@ class Connection:
         user: str,
         password: str,
         port: int | None = None,
-        init_fun: str | None = None,
         use_tls: bool | dict | None = None,
         backend: str | None = None,
         *,
@@ -417,7 +410,6 @@ class Connection:
                 # use_tls=True: enable SSL with default settings
                 self.conn_info["ssl"] = True
         self.conn_info["ssl_input"] = use_tls
-        self.init_fun = init_fun
         self._conn = None
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
@@ -454,7 +446,6 @@ class Connection:
         password: str | None = None,
         port: int | None = None,
         backend: str | None = None,
-        init_fun: str | None = None,
         use_tls: bool | dict | None = None,
         # Connection-scoped settings
         safemode: bool | None = None,
@@ -494,8 +485,6 @@ class Connection:
         backend : str, optional
             Database backend ('mysql' or 'postgresql'). Overrides cfg['backend'].
             Default: 'mysql'.
-        init_fun : str, optional
-            SQL initialization command. Overrides cfg['init_function'].
         use_tls : bool or dict, optional
             TLS encryption option. Overrides cfg['use_tls'].
         safemode : bool, optional
@@ -565,7 +554,6 @@ class Connection:
         effective_password = None
         effective_port = None  # Will be set based on backend
         effective_backend = "mysql"
-        effective_init_fun = None
         effective_use_tls = None
 
         # Connection-scoped settings (will be passed to ConnectionConfig)
@@ -584,8 +572,6 @@ class Connection:
                 effective_port = cfg["port"]
             if "backend" in cfg:
                 effective_backend = cfg["backend"]
-            if "init_function" in cfg:
-                effective_init_fun = cfg["init_function"]
             if "use_tls" in cfg:
                 effective_use_tls = cfg["use_tls"]
 
@@ -624,8 +610,6 @@ class Connection:
             effective_port = port
         if backend is not None:
             effective_backend = backend
-        if init_fun is not None:
-            effective_init_fun = init_fun
         if use_tls is not None:
             effective_use_tls = use_tls
 
@@ -679,7 +663,6 @@ class Connection:
             user=effective_user,
             password=effective_password,
             port=effective_port,
-            init_fun=effective_init_fun,
             use_tls=effective_use_tls,
             backend=effective_backend,
             _config=conn_config,
@@ -705,7 +688,6 @@ class Connection:
                     port=self.conn_info["port"],
                     user=self.conn_info["user"],
                     password=self.conn_info["passwd"],
-                    init_command=self.init_fun,
                     use_tls=self.conn_info.get("ssl"),
                 )
             except Exception as ssl_error:
@@ -721,7 +703,6 @@ class Connection:
                         port=self.conn_info["port"],
                         user=self.conn_info["user"],
                         password=self.conn_info["passwd"],
-                        init_command=self.init_fun,
                         use_tls=False,  # Explicitly disable SSL for fallback
                     )
                 else:

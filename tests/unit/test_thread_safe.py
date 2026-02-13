@@ -128,7 +128,7 @@ class TestConnectionFromConfig:
 
         captured_args = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_args["host"] = host
             captured_args["user"] = user
             captured_args["port"] = port
@@ -158,7 +158,7 @@ class TestConnectionFromConfig:
 
         captured_args = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_args["host"] = host
             captured_args["port"] = port
 
@@ -175,7 +175,7 @@ class TestConnectionFromConfig:
         cfg = {"host": "dicthost", "user": "dictuser", "password": "dictpass"}
         captured_args = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_args["host"] = host
             captured_args["user"] = user
 
@@ -193,7 +193,7 @@ class TestConnectionFromConfig:
 
         captured_args = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_args["host"] = host
 
         with patch.object(dj.Connection, "__init__", mock_init):
@@ -212,7 +212,7 @@ class TestConnectionFromConfig:
 
         captured_args = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_args["port"] = port
             captured_args["backend"] = backend
 
@@ -228,7 +228,7 @@ class TestConnectionFromConfig:
 
         captured_args = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_args["port"] = port
 
         with patch.object(dj.Connection, "__init__", mock_init):
@@ -401,7 +401,7 @@ class TestConnectionConfigAttribute:
 
         captured_config = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_config["config"] = _config
 
         with patch.object(dj.Connection, "__init__", mock_init):
@@ -417,7 +417,7 @@ class TestConnectionConfigAttribute:
 
         captured_config = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_config["config"] = _config
 
         with patch.object(dj.Connection, "__init__", mock_init):
@@ -443,7 +443,7 @@ class TestConnectionConfigAttribute:
 
         captured_config = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_config["config"] = _config
 
         cfg_dict = {
@@ -471,7 +471,7 @@ class TestConnectionConfigAttribute:
 
         captured_config = {}
 
-        def mock_init(self, host, user, password, port=None, init_fun=None, use_tls=None, backend=None, *, _config=None):
+        def mock_init(self, host, user, password, port=None, use_tls=None, backend=None, *, _config=None):
             captured_config["config"] = _config
 
         try:

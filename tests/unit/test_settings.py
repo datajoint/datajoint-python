@@ -561,7 +561,6 @@ class TestSaveTemplate:
 
         # Full template should have all settings groups
         assert "database" in content
-        assert "connection" in content
         assert "display" in content
         assert "stores" in content
         assert "loglevel" in content
