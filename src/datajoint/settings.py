@@ -957,7 +957,8 @@ class Config(BaseSettings):
         except AttributeError:
             pass  # thread_safe not set yet (during __init__)
 
-        return object.__setattr__(self, name, value)
+        # Use super().__setattr__ to preserve Pydantic validation
+        return super().__setattr__(name, value)
 
     # Dict-like access for convenience
     def __getitem__(self, key: str) -> Any:
