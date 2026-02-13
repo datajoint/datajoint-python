@@ -52,7 +52,6 @@ All settings become connection-scoped and are accessed via `conn.config` (read/w
 | `stores` | dict | {} | Blob storage configuration |
 | `cache` | Path | None | Local cache directory |
 | `query_cache` | Path | None | Query cache directory |
-| `charset` | str | "" | Connection charset |
 | `reconnect` | bool | True | Auto-reconnect on lost connection |
 | `display_limit` | int | 12 | Max rows to display |
 | `display_width` | int | 14 | Column width for display |
@@ -365,7 +364,7 @@ class Connection:
     def from_config(cls, cfg=None, *, host=None, user=None, password=None,
                     port=None, backend=None, safemode=None, stores=None,
                     database_prefix=None, cache=None, query_cache=None,
-                    charset=None, reconnect=None, init_fun=None,
+                    reconnect=None, init_fun=None,
                     use_tls=None) -> "Connection":
         """
         Create connection with explicit configuration.
@@ -388,7 +387,6 @@ class Connection:
             **({"database_prefix": database_prefix} if database_prefix is not None else {}),
             **({"cache": cache} if cache is not None else {}),
             **({"query_cache": query_cache} if query_cache is not None else {}),
-            **({"charset": charset} if charset is not None else {}),
             **({"reconnect": reconnect} if reconnect is not None else {}),
         )
 
@@ -421,7 +419,6 @@ class ConnectionConfig:
         "stores": {},
         "cache": None,
         "query_cache": None,
-        "charset": "",
         "reconnect": True,
         "display_limit": 12,
         "display_width": 14,

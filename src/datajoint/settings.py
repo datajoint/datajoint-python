@@ -225,7 +225,6 @@ class ConnectionSettings(BaseSettings):
     model_config = SettingsConfigDict(extra="forbid", validate_assignment=True)
 
     init_function: str | None = None
-    charset: str = ""  # pymysql uses '' as default
 
 
 class DisplaySettings(BaseSettings):
@@ -825,7 +824,6 @@ class Config(BaseSettings):
                 },
                 "connection": {
                     "init_function": None,
-                    "charset": "",
                 },
                 "display": {
                     "limit": 12,

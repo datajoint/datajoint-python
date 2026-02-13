@@ -222,8 +222,6 @@ class Connection:
         self._conn = None
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
-        # Store charset to avoid global config access in connect()
-        self._charset = "" if config.thread_safe else config.connection.charset
         # Store reconnect setting for query() method
         self._reconnect = True if config.thread_safe else config.database.reconnect
 
@@ -414,7 +412,6 @@ class Connection:
                     user=self.conn_info["user"],
                     password=self.conn_info["passwd"],
                     init_command=self.init_fun,
-                    charset=self._charset,
                     use_tls=self.conn_info.get("ssl"),
                 )
             except Exception as ssl_error:
@@ -431,7 +428,6 @@ class Connection:
                         user=self.conn_info["user"],
                         password=self.conn_info["passwd"],
                         init_command=self.init_fun,
-                        charset=self._charset,
                         use_tls=False,  # Explicitly disable SSL for fallback
                     )
                 else:

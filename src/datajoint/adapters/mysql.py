@@ -78,7 +78,6 @@ class MySQLAdapter(DatabaseAdapter):
             - init_command: SQL initialization command
             - ssl: TLS/SSL configuration dict (deprecated, use use_tls)
             - use_tls: bool or dict - DataJoint's SSL parameter (preferred)
-            - charset: Character set (default from kwargs)
 
         Returns
         -------
@@ -91,7 +90,6 @@ class MySQLAdapter(DatabaseAdapter):
         # Convert boolean True to dict for PyMySQL (PyMySQL expects dict or SSLContext)
         if ssl_config is True:
             ssl_config = {}  # Enable SSL with default settings
-        charset = kwargs.get("charset", "")
 
         # Prepare connection parameters
         conn_params = {
@@ -102,7 +100,6 @@ class MySQLAdapter(DatabaseAdapter):
             "init_command": init_command,
             "sql_mode": "NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
-            "charset": charset,
             "autocommit": True,  # DataJoint manages transactions explicitly
         }
 
