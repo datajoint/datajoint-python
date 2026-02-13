@@ -108,18 +108,78 @@ self.connection.config.display.limit
 self.connection.config.stores
 ```
 
+### In thread_safe=False mode (default)
+
+Schemas without explicit connection use global connection, controlled by `dj.config`:
+
+```python
+schema = dj.Schema("name")  # Uses dj.conn()
+# schema.connection.config IS dj.config (same object)
+# All tables controlled by dj.config uniformly
+
+dj.config.safemode = False  # Affects all tables in schema
+Mouse().delete()            # Uses dj.config.safemode
+```
+
+### Mixed connections (thread_safe=False)
+
+When some schemas use global connection and others use explicit connections:
+
+```python
+# Schema using global connection
+schema1 = dj.Schema("lab")  # schema1.connection.config IS dj.config
+
+# Schema using explicit connection
+conn = dj.Connection(host="localhost", user="u", password="p")
+schema2 = dj.Schema("analysis", connection=conn)  # schema2.connection.config is independent
+
+# dj.config affects only schema1
+dj.config.safemode = False  # Affects schema1 tables
+Mouse().delete()            # safemode=False (from dj.config)
+
+# conn.config affects only schema2
+conn.config.safemode = True  # Affects schema2 tables
+Analysis().delete()          # safemode=True (from conn.config)
+
+# They are independent
+dj.config.safemode           # False
+conn.config.safemode         # True
+```
+
+### override() behavior
+
+```python
+# Global config override - affects schemas using dj.conn()
+with dj.config.override(safemode=False):
+    Mouse().delete()      # safemode=False (schema1, global connection)
+    Analysis().delete()   # safemode=True (schema2, unchanged - has own config)
+
+# Connection-scoped override - affects only that connection
+with conn.config.override(safemode=False):
+    Mouse().delete()      # safemode=True (schema1, unchanged - uses dj.config)
+    Analysis().delete()   # safemode=False (schema2, overridden)
+```
+
 ### In thread_safe=True mode
 
 ```python
 # This fails - conn() raises ThreadSafetyError
 schema = dj.Schema("name")
 
-# This works - explicit connection
+# This works - explicit connection with independent config
 conn = dj.Connection(host="localhost", user="u", password="p")
 schema = dj.Schema("name", connection=conn)
 
-# Tables work automatically via schema's connection
-Mouse().insert(...)  # Uses schema.connection.config for settings
+# Tables use connection-scoped config
+conn.config.safemode = False  # Only affects this connection
+Mouse().delete()              # Uses conn.config.safemode
+
+# dj.config.override() raises ThreadSafetyError (modifies global state)
+with dj.config.override(safemode=False):  # ThreadSafetyError
+
+# conn.config.override() works (connection-scoped)
+with conn.config.override(safemode=False):  # OK
+    Mouse().delete()
 ```
 
 ## Behavior
