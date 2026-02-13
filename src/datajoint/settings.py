@@ -937,9 +937,7 @@ class Config(BaseSettings):
             try:
                 current = object.__getattribute__(self, "thread_safe")
                 if current and not value:
-                    raise ThreadSafetyError(
-                        "Cannot disable thread-safe mode once enabled."
-                    )
+                    raise ThreadSafetyError("Cannot disable thread-safe mode once enabled.")
             except AttributeError:
                 pass  # First time setting during __init__
             return object.__setattr__(self, name, value)
@@ -984,9 +982,7 @@ class Config(BaseSettings):
         # Special handling for thread_safe: allow setting but enforce one-way
         if key == "thread_safe":
             if self.thread_safe and not value:
-                raise ThreadSafetyError(
-                    "Cannot disable thread-safe mode once enabled."
-                )
+                raise ThreadSafetyError("Cannot disable thread-safe mode once enabled.")
             self.thread_safe = value
             return
 

@@ -107,8 +107,7 @@ def conn(
     # Check thread-safe mode
     if config.thread_safe:
         raise errors.ThreadSafetyError(
-            "dj.conn() is disabled in thread-safe mode. "
-            "Use Connection.from_config() with explicit configuration."
+            "dj.conn() is disabled in thread-safe mode. " "Use Connection.from_config() with explicit configuration."
         )
 
     if not hasattr(conn, "connection") or reset:
@@ -376,13 +375,11 @@ class Connection:
         # Validate required fields
         if effective_user is None:
             raise errors.DataJointError(
-                "Database user is required. "
-                "Provide user= argument or include 'user' in config dict."
+                "Database user is required. " "Provide user= argument or include 'user' in config dict."
             )
         if effective_password is None:
             raise errors.DataJointError(
-                "Database password is required. "
-                "Provide password= argument or include 'password' in config dict."
+                "Database password is required. " "Provide password= argument or include 'password' in config dict."
             )
 
         # Create connection with explicit backend parameter
