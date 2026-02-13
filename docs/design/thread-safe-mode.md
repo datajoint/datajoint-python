@@ -41,15 +41,23 @@ schema = dj.Schema("my_schema", connection=conn)
 
 ### conn.config
 
-Every connection has a `config` attribute that:
-- Copies from global `dj.config` at connection time
-- Is always mutable (even in thread-safe mode)
-- Provides connection-scoped settings
+Every connection has a `config` attribute for uniform access:
+
+| Connection source | `conn.config` |
+|-------------------|---------------|
+| `dj.conn()` | **Is** `dj.config` (same object) |
+| `dj.Connection(...)` | **Copy** of `dj.config` (independent) |
+
+This ensures all internal code can use `self.connection.config` uniformly.
 
 ```python
-conn.config.safemode         # Read setting
-conn.config.safemode = False # Write setting (always allowed)
-conn.config.stores = {...}   # Configure stores for this connection
+# Global connection - config is dj.config
+conn = dj.conn()
+conn.config.safemode = False  # Modifies dj.config
+
+# Explicit connection - config is independent copy
+conn = dj.Connection(host="localhost", user="u", password="p")
+conn.config.safemode = False  # Only affects this connection
 ```
 
 ## Connection Flow: Schema → Tables
@@ -57,7 +65,7 @@ conn.config.stores = {...}   # Configure stores for this connection
 ### How connections propagate
 
 ```
-Connection
+Connection (has .config)
     ↓
 Schema (stores connection)
     ↓
@@ -89,6 +97,17 @@ class Mouse(dj.Manual):
 # Mouse().connection returns Mouse._connection (from schema)
 ```
 
+### Uniform config access
+
+All internal code uses `self.connection.config`:
+
+```python
+# Works the same whether connection is from dj.conn() or dj.Connection()
+self.connection.config.safemode
+self.connection.config.display.limit
+self.connection.config.stores
+```
+
 ### In thread_safe=True mode
 
 ```python
@@ -110,9 +129,10 @@ Mouse().insert(...)  # Uses schema.connection.config for settings
 | `dj.config` read | Works | Works |
 | `dj.config` write | Works | Raises `ThreadSafetyError` |
 | `dj.conn()` | Works | Raises `ThreadSafetyError` |
+| `dj.conn().config` | Is `dj.config` | N/A |
 | `dj.Schema("name")` | Works (uses `conn()`) | Raises `ThreadSafetyError` |
 | `dj.Connection(...)` | Works | Works |
-| `conn.config` read/write | Works | Works |
+| `conn.config` | Copy of `dj.config` | Copy of `dj.config` |
 | `Schema(..., connection=conn)` | Works | Works |
 | Table operations | Use `conn.config` | Use `conn.config` |
 
@@ -132,9 +152,9 @@ Mouse().insert(...)  # Uses schema.connection.config for settings
 - `dj.conn()`: Raise `ThreadSafetyError` when `thread_safe=True`
 - `Schema.__init__`: Raise `ThreadSafetyError` when `connection=None` and `thread_safe=True`
 
-### 3. Add conn.config
-- `Connection.__init__`: Create `self.config` as copy of global `dj.config`
-- `conn.config` is always mutable
+### 3. Add conn.config to all connections
+- `dj.conn()`: Set `conn.config = dj.config` (same object for backward compatibility)
+- `dj.Connection(...)`: Set `self.config = copy(dj.config)` (independent copy)
 
 ### 4. Refactor internal code to use conn.config
 
