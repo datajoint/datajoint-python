@@ -6,7 +6,7 @@ DataJoint uses global state (`dj.config`, `dj.conn()`) that is not thread-safe. 
 
 ## Solution
 
-Introduce **instance** objects that encapsulate config and connection. The `dj` module provides access to a lazily-loaded singleton instance. New isolated instances are created with `dj.instance()`.
+Introduce **Instance** objects that encapsulate config and connection. The `dj` module provides access to a lazily-loaded singleton instance. New isolated instances are created with `dj.Instance()`.
 
 ## API
 
@@ -16,7 +16,7 @@ Introduce **instance** objects that encapsulate config and connection. The `dj` 
 import datajoint as dj
 
 dj.config.safemode = False
-dj.conn(host="localhost", user="u", password="p")
+dj.conn()  # Triggers singleton creation, returns connection
 schema = dj.Schema("my_schema")
 
 @schema
@@ -24,14 +24,19 @@ class Mouse(dj.Manual):
     definition = "..."
 ```
 
-Internally, `dj.config`, `dj.conn()`, and `dj.Schema()` delegate to a lazily-loaded singleton instance.
+Internally, `dj.config`, `dj.conn()`, and `dj.Schema()` are aliases to the singleton instance:
+- `dj.config` → `dj._singleton_instance.config`
+- `dj.conn()` → `dj._singleton_instance.connection`
+- `dj.Schema()` → `dj._singleton_instance.Schema()`
+
+The singleton is created lazily on first access to any of these.
 
 ### New API (isolated instance)
 
 ```python
 import datajoint as dj
 
-inst = dj.instance(
+inst = dj.Instance(
     host="localhost",
     user="user",
     password="password",
@@ -53,7 +58,7 @@ Each instance has:
 - `inst.FreeTable()` - FreeTable factory using instance's connection
 
 ```python
-inst = dj.instance(host="localhost", user="u", password="p")
+inst = dj.Instance(host="localhost", user="u", password="p")
 inst.config            # Config instance
 inst.connection        # Connection instance
 inst.Schema("name")    # Creates schema using inst.connection
@@ -87,7 +92,7 @@ When `thread_safe=True`, accessing the singleton raises `ThreadSafetyError`:
 - `dj.config` raises `ThreadSafetyError`
 - `dj.conn()` raises `ThreadSafetyError`
 - `dj.Schema()` raises `ThreadSafetyError`
-- `dj.instance()` works - isolated instances are always allowed
+- `dj.Instance()` works - isolated instances are always allowed
 
 ```python
 # thread_safe=True
@@ -96,7 +101,7 @@ dj.config               # ThreadSafetyError
 dj.conn()               # ThreadSafetyError
 dj.Schema("name")       # ThreadSafetyError
 
-inst = dj.instance(host="h", user="u", password="p")  # OK
+inst = dj.Instance(host="h", user="u", password="p")  # OK
 inst.config.safemode = False  # OK
 inst.Schema("name")           # OK
 ```
@@ -105,24 +110,25 @@ inst.Schema("name")           # OK
 
 | Operation | `thread_safe=False` | `thread_safe=True` |
 |-----------|--------------------|--------------------|
-| `dj.config` | Singleton config | `ThreadSafetyError` |
-| `dj.conn()` | Singleton connection | `ThreadSafetyError` |
-| `dj.Schema()` | Uses singleton | `ThreadSafetyError` |
-| `dj.instance()` | Works | Works |
+| `dj.config` | `_singleton.config` | `ThreadSafetyError` |
+| `dj.conn()` | `_singleton.connection` | `ThreadSafetyError` |
+| `dj.Schema()` | `_singleton.Schema()` | `ThreadSafetyError` |
+| `dj.Instance()` | Works | Works |
 | `inst.config` | Works | Works |
 | `inst.connection` | Works | Works |
 | `inst.Schema()` | Works | Works |
 
 ## Singleton Lazy Loading
 
-The singleton instance is created lazily on first access to `dj.config`, `dj.conn()`, or `dj.Schema()`:
+The singleton instance is created lazily on first access:
 
 ```python
-# First access triggers singleton creation
-dj.config.safemode      # Creates singleton, returns singleton.config.safemode
-dj.conn()               # Returns singleton.connection (connects if needed)
-dj.Schema("name")       # Returns singleton.Schema("name")
+dj.config          # Creates singleton, returns _singleton.config
+dj.conn()          # Creates singleton, returns _singleton.connection
+dj.Schema("name")  # Creates singleton, returns _singleton.Schema("name")
 ```
+
+All three trigger creation of the same singleton instance.
 
 ## Usage Example
 
@@ -130,7 +136,7 @@ dj.Schema("name")       # Returns singleton.Schema("name")
 import datajoint as dj
 
 # Create isolated instance
-inst = dj.instance(
+inst = dj.Instance(
     host="localhost",
     user="user",
     password="password",
@@ -173,47 +179,53 @@ class Instance:
         return FreeTable(self.connection, full_table_name)
 ```
 
-### 2. Add dj.instance()
-
-```python
-def instance(host, user, password, **kwargs) -> Instance:
-    """Create a new isolated instance with its own config and connection."""
-    return Instance(host, user, password, **kwargs)
-```
-
-### 3. Singleton with lazy loading
+### 2. Singleton with lazy loading
 
 ```python
 # Module level
 _thread_safe = _load_thread_safe_from_env_or_config()
-_singleton = None
+_singleton_instance = None
 
 def _get_singleton():
     if _thread_safe:
         raise ThreadSafetyError(
             "Global DataJoint state is disabled in thread-safe mode. "
-            "Use dj.instance() to create an isolated instance."
+            "Use dj.Instance() to create an isolated instance."
         )
-    global _singleton
-    if _singleton is None:
-        _singleton = Instance(
-            host=_load_from_config("database.host"),
-            user=_load_from_config("database.user"),
-            password=_load_from_config("database.password"),
+    global _singleton_instance
+    if _singleton_instance is None:
+        _singleton_instance = Instance(
+            host=_load_from_env_or_config("database.host"),
+            user=_load_from_env_or_config("database.user"),
+            password=_load_from_env_or_config("database.password"),
             ...
         )
-    return _singleton
+    return _singleton_instance
+```
 
-# Public API
-@property
-def config():
-    return _get_singleton().config
+### 3. Legacy API as aliases
 
+```python
+# dj.config -> singleton.config
+class _ConfigProxy:
+    def __getattr__(self, name):
+        return getattr(_get_singleton().config, name)
+    def __setattr__(self, name, value):
+        setattr(_get_singleton().config, name, value)
+
+config = _ConfigProxy()
+
+# dj.conn() -> singleton.connection
 def conn():
     return _get_singleton().connection
 
+# dj.Schema() -> singleton.Schema()
 def Schema(name, **kwargs):
     return _get_singleton().Schema(name, **kwargs)
+
+# dj.FreeTable() -> singleton.FreeTable()
+def FreeTable(full_table_name):
+    return _get_singleton().FreeTable(full_table_name)
 ```
 
 ### 4. Refactor internal code
@@ -224,4 +236,4 @@ All internal code uses `self.connection._config` instead of global `config`:
 
 ## Error Messages
 
-- Singleton access: `"Global DataJoint state is disabled in thread-safe mode. Use dj.instance() to create an isolated instance."`
+- Singleton access: `"Global DataJoint state is disabled in thread-safe mode. Use dj.Instance() to create an isolated instance."`
