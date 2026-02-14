@@ -187,8 +187,11 @@ class Connection:
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
 
+        # Config reference - defaults to global config, but Instance sets its own
+        self._config = config
+
         # Select adapter based on configured backend
-        backend = config["database.backend"]
+        backend = self._config["database.backend"]
         self.adapter = get_adapter(backend)
 
         self.connect()
@@ -219,7 +222,7 @@ class Connection:
                     port=self.conn_info["port"],
                     user=self.conn_info["user"],
                     password=self.conn_info["passwd"],
-                    charset=config["connection.charset"],
+                    charset=self._config["connection.charset"],
                     use_tls=self.conn_info.get("ssl"),
                 )
             except Exception as ssl_error:
@@ -235,7 +238,7 @@ class Connection:
                         port=self.conn_info["port"],
                         user=self.conn_info["user"],
                         password=self.conn_info["passwd"],
-                        charset=config["connection.charset"],
+                        charset=self._config["connection.charset"],
                         use_tls=False,  # Explicitly disable SSL for fallback
                     )
                 else:
@@ -261,8 +264,8 @@ class Connection:
 
     def purge_query_cache(self) -> None:
         """Delete all cached query results."""
-        if isinstance(config.get(cache_key), str) and pathlib.Path(config[cache_key]).is_dir():
-            for path in pathlib.Path(config[cache_key]).iterdir():
+        if isinstance(self._config.get(cache_key), str) and pathlib.Path(self._config[cache_key]).is_dir():
+            for path in pathlib.Path(self._config[cache_key]).iterdir():
                 if not path.is_dir():
                     path.unlink()
 
@@ -403,11 +406,11 @@ class Connection:
         if use_query_cache and not re.match(r"\s*(SELECT|SHOW)", query):
             raise errors.DataJointError("Only SELECT queries are allowed when query caching is on.")
         if use_query_cache:
-            if not config[cache_key]:
+            if not self._config[cache_key]:
                 raise errors.DataJointError(f"Provide filepath dj.config['{cache_key}'] when using query caching.")
             # Cache key is backend-specific (no identifier normalization needed)
             hash_ = hashlib.md5((str(self._query_cache)).encode() + pack(args) + query.encode()).hexdigest()
-            cache_path = pathlib.Path(config[cache_key]) / str(hash_)
+            cache_path = pathlib.Path(self._config[cache_key]) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()
             except FileNotFoundError:
@@ -416,7 +419,7 @@ class Connection:
                 return EmulatedCursor(unpack(buffer))
 
         if reconnect is None:
-            reconnect = config["database.reconnect"]
+            reconnect = self._config["database.reconnect"]
         logger.debug("Executing SQL:" + query[:query_log_max_length])
         cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
         try:

@@ -23,6 +23,7 @@ __all__ = [
     "config",
     "conn",
     "Connection",
+    "Instance",
     "Schema",
     "VirtualModule",
     "virtual_schema",
@@ -52,6 +53,7 @@ __all__ = [
     "errors",
     "migrate",
     "DataJointError",
+    "ThreadSafetyError",
     "logger",
     "cli",
     "ValidationResult",
@@ -72,16 +74,157 @@ from .builtin_codecs import (
     NpyRef,
 )
 from .blob import MatCell, MatStruct
-from .connection import Connection, conn
-from .errors import DataJointError
+from .connection import Connection
+from .errors import DataJointError, ThreadSafetyError
 from .expression import AndList, Not, Top, U
+from .instance import Instance, _ConfigProxy, _get_singleton_connection, _global_config, _check_thread_safe
 from .logging import logger
 from .objectref import ObjectRef
-from .schemas import Schema, VirtualModule, list_schemas, virtual_schema
-from .settings import config
-from .table import FreeTable, Table, ValidationResult
+from .schemas import Schema as _Schema, VirtualModule, list_schemas, virtual_schema
+from .table import FreeTable as _FreeTable, Table, ValidationResult
 from .user_tables import Computed, Imported, Lookup, Manual, Part
 from .version import __version__
+
+# =============================================================================
+# Singleton-aware API
+# =============================================================================
+# config is a proxy that delegates to the singleton instance's config
+config = _ConfigProxy()
+
+
+def conn(
+    host: str | None = None,
+    user: str | None = None,
+    password: str | None = None,
+    *,
+    reset: bool = False,
+    use_tls: bool | dict | None = None,
+) -> Connection:
+    """
+    Return a persistent connection object.
+
+    When called without arguments, returns the singleton connection.
+    When connection parameters are provided, creates a new Connection.
+
+    Parameters
+    ----------
+    host : str, optional
+        Database hostname.
+    user : str, optional
+        Database username.
+    password : str, optional
+        Database password.
+    reset : bool, optional
+        If True, reset existing connection. Default False.
+    use_tls : bool or dict, optional
+        TLS encryption option.
+
+    Returns
+    -------
+    Connection
+        Database connection.
+
+    Raises
+    ------
+    ThreadSafetyError
+        If thread_safe mode is enabled and using singleton.
+    """
+    # If any connection params provided, use legacy behavior
+    if host is not None or user is not None or password is not None or reset:
+        from .connection import conn as _legacy_conn
+
+        return _legacy_conn(host, user, password, reset=reset, use_tls=use_tls)
+
+    # Otherwise use singleton connection
+    return _get_singleton_connection()
+
+
+def Schema(
+    schema_name: str | None = None,
+    context: dict | None = None,
+    *,
+    connection: Connection | None = None,
+    create_schema: bool = True,
+    create_tables: bool | None = None,
+    add_objects: dict | None = None,
+) -> _Schema:
+    """
+    Create a Schema for binding table classes to a database schema.
+
+    When connection is not provided, uses the singleton connection.
+
+    Parameters
+    ----------
+    schema_name : str, optional
+        Database schema name.
+    context : dict, optional
+        Namespace for foreign key lookup.
+    connection : Connection, optional
+        Database connection. Defaults to singleton connection.
+    create_schema : bool, optional
+        If False, raise error if schema doesn't exist. Default True.
+    create_tables : bool, optional
+        If False, raise error when accessing missing tables.
+    add_objects : dict, optional
+        Additional objects for declaration context.
+
+    Returns
+    -------
+    Schema
+        A Schema bound to the specified connection.
+
+    Raises
+    ------
+    ThreadSafetyError
+        If thread_safe mode is enabled and using singleton.
+    """
+    if connection is None:
+        # Use singleton connection - will raise ThreadSafetyError if thread_safe=True
+        _check_thread_safe()
+        connection = _get_singleton_connection()
+
+    return _Schema(
+        schema_name,
+        context=context,
+        connection=connection,
+        create_schema=create_schema,
+        create_tables=create_tables,
+        add_objects=add_objects,
+    )
+
+
+def FreeTable(conn_or_name, full_table_name: str | None = None) -> _FreeTable:
+    """
+    Create a FreeTable for accessing a table without a dedicated class.
+
+    Can be called in two ways:
+    - ``FreeTable("schema.table")`` - uses singleton connection
+    - ``FreeTable(connection, "schema.table")`` - uses provided connection
+
+    Parameters
+    ----------
+    conn_or_name : Connection or str
+        Either a Connection object, or the full table name if using singleton.
+    full_table_name : str, optional
+        Full table name when first argument is a connection.
+
+    Returns
+    -------
+    FreeTable
+        A FreeTable instance for the specified table.
+
+    Raises
+    ------
+    ThreadSafetyError
+        If thread_safe mode is enabled and using singleton.
+    """
+    if full_table_name is None:
+        # Called as FreeTable("db.table") - use singleton connection
+        _check_thread_safe()
+        return _FreeTable(_get_singleton_connection(), conn_or_name)
+    else:
+        # Called as FreeTable(conn, "db.table") - use provided connection
+        return _FreeTable(conn_or_name, full_table_name)
 
 # =============================================================================
 # Lazy imports — heavy dependencies loaded on first access
