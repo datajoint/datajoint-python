@@ -103,17 +103,18 @@ def conn(
     """
     Return a persistent connection object.
 
-    When called without arguments, returns the singleton connection.
-    When connection parameters are provided, creates a new Connection.
+    When called without arguments, returns the singleton connection using
+    credentials from dj.config. When connection parameters are provided,
+    updates the singleton connection with the new credentials.
 
     Parameters
     ----------
     host : str, optional
-        Database hostname.
+        Database hostname. If provided, updates singleton.
     user : str, optional
-        Database username.
+        Database username. If provided, updates singleton.
     password : str, optional
-        Database password.
+        Database password. If provided, updates singleton.
     reset : bool, optional
         If True, reset existing connection. Default False.
     use_tls : bool or dict, optional
@@ -127,15 +128,38 @@ def conn(
     Raises
     ------
     ThreadSafetyError
-        If thread_safe mode is enabled and using singleton.
+        If thread_safe mode is enabled.
     """
-    # If any connection params provided, use legacy behavior
+    from .instance import _singleton_connection, _check_thread_safe, _global_config
+    import datajoint.instance as instance_module
+
+    _check_thread_safe()
+
+    # If credentials provided or reset requested, (re)create the singleton
     if host is not None or user is not None or password is not None or reset:
-        from .connection import conn as _legacy_conn
+        # Use provided values or fall back to config
+        host = host if host is not None else _global_config.database.host
+        user = user if user is not None else _global_config.database.user
+        password = password if password is not None else _global_config.database.password
+        if password is not None and hasattr(password, 'get_secret_value'):
+            password = password.get_secret_value()
+        port = _global_config.database.port
+        use_tls = use_tls if use_tls is not None else _global_config.database.use_tls
 
-        return _legacy_conn(host, user, password, reset=reset, use_tls=use_tls)
+        if user is None:
+            from .errors import DataJointError
+            raise DataJointError(
+                "Database user not configured. Set dj.config['database.user'] or pass user= argument."
+            )
+        if password is None:
+            from .errors import DataJointError
+            raise DataJointError(
+                "Database password not configured. Set dj.config['database.password'] or pass password= argument."
+            )
 
-    # Otherwise use singleton connection
+        instance_module._singleton_connection = Connection(host, user, password, port, use_tls)
+        instance_module._singleton_connection._config = _global_config
+
     return _get_singleton_connection()
 
 

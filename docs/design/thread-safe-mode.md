@@ -18,7 +18,6 @@ import datajoint as dj
 # Configure credentials (no connection yet)
 dj.config.database.user = "user"
 dj.config.database.password = "password"
-dj.config.safemode = False
 
 # First call to conn() or Schema() creates the singleton connection
 dj.conn()  # Creates connection using dj.config credentials
@@ -27,6 +26,11 @@ schema = dj.Schema("my_schema")
 @schema
 class Mouse(dj.Manual):
     definition = "..."
+```
+
+Alternatively, pass credentials directly to `conn()`:
+```python
+dj.conn(host="localhost", user="user", password="password")
 ```
 
 Internally:
@@ -45,7 +49,6 @@ inst = dj.Instance(
     user="user",
     password="password",
 )
-inst.config.safemode = False
 schema = inst.Schema("my_schema")
 
 @schema
@@ -107,7 +110,6 @@ dj.conn()               # ThreadSafetyError
 dj.Schema("name")       # ThreadSafetyError
 
 inst = dj.Instance(host="h", user="u", password="p")  # OK
-inst.config.safemode = False  # OK
 inst.Schema("name")           # OK
 ```
 
@@ -147,10 +149,6 @@ inst = dj.Instance(
     password="password",
 )
 
-# Configure
-inst.config.safemode = False
-inst.config.stores = {"raw": {"protocol": "file", "location": "/data"}}
-
 # Create schema
 schema = inst.Schema("my_schema")
 
@@ -162,7 +160,7 @@ class Mouse(dj.Manual):
 
 # Use tables
 Mouse().insert1({"mouse_id": 1})
-Mouse().delete()  # Uses inst.config.safemode
+Mouse().fetch()
 ```
 
 ## Implementation
