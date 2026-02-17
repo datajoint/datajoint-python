@@ -4575,7 +4575,11 @@ must define the property <code>key_source</code>, and must define the callback m
             </td>
             <td>
               <div class="doc-md-description">
-                <p>the query expression that yields primary key values to be passed, sequentially, to the <code>make</code> method when populate() is called. The default value is the join of the parent tables references from the primary key. Subclasses may override they key_source to change the scope or the granularity of the make calls.</p>
+                <p>the query expression that yields primary key values to be passed,
+sequentially, to the <code>make</code> method when populate() is called.
+The default value is the join of the parent tables references from the primary key.
+Subclasses may override they key_source to change the scope or the granularity
+of the make calls.</p>
               </div>
             </td>
           </tr>
@@ -4674,7 +4678,8 @@ The output of <code>make_compute</code> is a tuple that serves as the input into
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Keyword arguments passed from populate(make_kwargs=...). These are passed to make_fetch for the tripartite pattern.</p>
+                <p>Keyword arguments passed from populate(make_kwargs=...).
+These are passed to make_fetch for the tripartite pattern.</p>
               </div>
             </td>
             <td>
@@ -4901,7 +4906,9 @@ The output of <code>make_compute</code> is a tuple that serves as the input into
             </td>
             <td>
               <div class="doc-md-description">
-                <p>table to be populated. In the typical case, dj.AutoPopulate is mixed into a dj.Table class by inheritance and the target is self.</p>
+                <p>table to be populated.
+In the typical case, dj.AutoPopulate is mixed into a dj.Table class by
+inheritance and the target is self.</p>
               </div>
             </td>
           </tr>
@@ -4951,7 +4958,8 @@ The output of <code>make_compute</code> is a tuple that serves as the input into
             </td>
             <td>
               <div class="doc-md-description">
-                <p>a list of restrictions each restrict (table.key_source - target.proj())</p>
+                <p>a list of restrictions each restrict
+(table.key_source - target.proj())</p>
               </div>
             </td>
             <td>
@@ -4966,7 +4974,8 @@ The output of <code>make_compute</code> is a tuple that serves as the input into
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The list of keys (dicts) to send to self.make(). If None (default), then use self.key_source to query they keys.</p>
+                <p>The list of keys (dicts) to send to self.make().
+If None (default), then use self.key_source to query they keys.</p>
               </div>
             </td>
             <td>
@@ -5102,7 +5111,9 @@ The output of <code>make_compute</code> is a tuple that serves as the input into
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Keyword arguments which do not affect the result of computation to be passed down to each <code>make()</code> call. Computation arguments should be specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
+                <p>Keyword arguments which do not affect the result of computation
+to be passed down to each <code>make()</code> call. Computation arguments should be
+specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
               </div>
             </td>
             <td>
@@ -5127,7 +5138,9 @@ The output of <code>make_compute</code> is a tuple that serves as the input into
             </td>
             <td>
               <div class="doc-md-description">
-                <p>a dict with two keys "success_count": the count of successful <code>make()</code> calls in this <code>populate()</code> call "error_list": the error list that is filled if <code>suppress_errors</code> is True</p>
+                <p>a dict with two keys
+"success_count": the count of successful <code>make()</code> calls in this <code>populate()</code> call
+"error_list": the error list that is filled if <code>suppress_errors</code> is True</p>
               </div>
             </td>
           </tr>

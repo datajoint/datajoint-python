@@ -5766,7 +5766,8 @@ table name, database, and definition.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>the context for foreign key resolution. If None, foreign keys are not allowed.</p>
+                <p>the context for foreign key resolution. If None, foreign keys are
+not allowed.</p>
               </div>
             </td>
             <td>
@@ -6110,7 +6111,9 @@ table name, database, and definition.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>if None, then all parents are returned. If True, then only foreign keys composed of primary key attributes are considered.  If False, return foreign keys including at least one secondary attribute.</p>
+                <p>if None, then all parents are returned. If True, then only foreign keys composed of
+primary key attributes are considered.  If False, return foreign keys including at least one
+secondary attribute.</p>
               </div>
             </td>
             <td>
@@ -6165,7 +6168,8 @@ table name, database, and definition.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>list of parents as table names or table objects with (optional) foreign key information.</p>
+                <p>list of parents as table names or table objects
+with (optional) foreign key information.</p>
               </div>
             </td>
           </tr>
@@ -6260,7 +6264,9 @@ table name, database, and definition.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>if None, then all children are returned. If True, then only foreign keys composed of primary key attributes are considered.  If False, return foreign keys including at least one secondary attribute.</p>
+                <p>if None, then all children are returned. If True, then only foreign keys composed of
+primary key attributes are considered.  If False, return foreign keys including at least one
+secondary attribute.</p>
               </div>
             </td>
             <td>
@@ -6315,7 +6321,8 @@ table name, database, and definition.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>list of children as table names or table objects with (optional) foreign key information.</p>
+                <p>list of children as table names or table objects
+with (optional) foreign key information.</p>
               </div>
             </td>
           </tr>
@@ -6789,7 +6796,18 @@ assumptions.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>a <code>dict</code> containing the primary key values and the attributes to update. Setting an attribute value to None will reset it to the default value (if any).  The primary key attributes must always be provided.  Examples:  &gt;&gt;&gt; table.update1({'id': 1, 'value': 3})  # update value in record with id=1 &gt;&gt;&gt; table.update1({'id': 1, 'value': None})  # reset value to default</p>
+                <p>a <code>dict</code> containing the primary key values and the attributes to update.
+    Setting an attribute value to None will reset it to the default value (if any).</p>
+<p>The primary key attributes must always be provided.</p>
+<p>Examples:</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>table.update1({'id': 1, 'value': 3})  # update value in record with id=1
+table.update1({'id': 1, 'value': None})  # reset value to default</p>
+</blockquote>
+</blockquote>
+</blockquote>
               </div>
             </td>
             <td>
@@ -6945,7 +6963,8 @@ assumptions.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>a numpy record, a dict-like object, or an ordered sequence to be inserted as one row.</p>
+                <p>a numpy record, a dict-like object, or an ordered sequence to be inserted
+as one row.</p>
               </div>
             </td>
             <td>
@@ -7017,7 +7036,11 @@ assumptions.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Either (a) an iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence, or a query expression with the same heading as self, or (b) a pathlib.Path object specifying a path relative to the current directory with a CSV file, the contents of which will be inserted.</p>
+                <p>Either (a) an iterable where an element is a numpy record, a
+dict-like object, a pandas.DataFrame, a sequence, or a query expression with
+the same heading as self, or (b) a pathlib.Path object specifying a path
+relative to the current directory with a CSV file, the contents of which
+will be inserted.</p>
               </div>
             </td>
             <td>
@@ -7077,7 +7100,13 @@ assumptions.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Only applies in auto-populated tables. If False (default), insert may only be called from inside the make callback.  Example:  &gt;&gt;&gt; Table.insert([ &gt;&gt;&gt;     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"), &gt;&gt;&gt;     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])</p>
+                <p>Only applies in auto-populated tables. If False (default),
+    insert may only be called from inside the make callback.</p>
+<p>Example:</p>
+<pre><code>&gt;&gt;&gt; Table.insert([
+&gt;&gt;&gt;     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
+&gt;&gt;&gt;     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
+</code></pre>
               </div>
             </td>
             <td>

@@ -3641,7 +3641,12 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>order by a single attribute or the list of attributes. defaults to 'id'.  Restrictions are specified as strings and can involve any of the attributes of information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.  Examples: dj.kill('HOST LIKE "%compute%"') lists only connections from hosts containing "compute". dj.kill('TIME &gt; 600') lists only connections in their current state for more than 10 minutes</p>
+                <p>order by a single attribute or the list of attributes. defaults to 'id'.</p>
+<p>Restrictions are specified as strings and can involve any of the attributes of
+information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.</p>
+<p>Examples:
+    dj.kill('HOST LIKE "%compute%"') lists only connections from hosts containing "compute".
+    dj.kill('TIME &gt; 600') lists only connections in their current state for more than 10 minutes</p>
               </div>
             </td>
             <td>
@@ -3826,7 +3831,11 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>a datajoint.Connection object. Default calls datajoint.conn()  Restrictions are specified as strings and can involve any of the attributes of information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.  Examples: dj.kill('HOST LIKE "%compute%"') terminates connections from hosts containing "compute".</p>
+                <p>a datajoint.Connection object. Default calls datajoint.conn()</p>
+<p>Restrictions are specified as strings and can involve any of the attributes of
+information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.</p>
+<p>Examples:
+    dj.kill('HOST LIKE "%compute%"') terminates connections from hosts containing "compute".</p>
               </div>
             </td>
             <td>

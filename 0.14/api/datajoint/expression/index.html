@@ -5584,7 +5584,8 @@ ultimately call restrict()</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>a sequence or an array (treated as OR list), another QueryExpression, an SQL condition string, or an AndList.</p>
+                <p>a sequence or an array (treated as OR list), another QueryExpression, an SQL condition
+string, or an AndList.</p>
               </div>
             </td>
             <td>
@@ -5971,7 +5972,20 @@ Additionally, left=True will retain the rows of self, effectively performing a l
             </td>
             <td>
               <div class="doc-md-description">
-                <p>the projected expression. Primary key attributes cannot be excluded but may be renamed. If the attribute list contains an Ellipsis ..., then all secondary attributes are included too Prefixing an attribute name with a dash '-attr' removes the attribute from the list if present. Keyword arguments can be used to rename attributes as in name='attr', duplicate them as in name='(attr)', or self.proj(...) or self.proj(Ellipsis) -- include all attributes (return self) self.proj() -- include only primary key self.proj('attr1', 'attr2')  -- include primary key and attributes attr1 and attr2 self.proj(..., '-attr1', '-attr2')  -- include all attributes except attr1 and attr2 self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1 self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup' self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax) from other attributes available before the projection. Each attribute name can only be used once.</p>
+                <p>the projected expression.
+Primary key attributes cannot be excluded but may be renamed.
+If the attribute list contains an Ellipsis ..., then all secondary attributes are included too
+Prefixing an attribute name with a dash '-attr' removes the attribute from the list if present.
+Keyword arguments can be used to rename attributes as in name='attr', duplicate them as in name='(attr)', or
+self.proj(...) or self.proj(Ellipsis) -- include all attributes (return self)
+self.proj() -- include only primary key
+self.proj('attr1', 'attr2')  -- include primary key and attributes attr1 and attr2
+self.proj(..., '-attr1', '-attr2')  -- include all attributes except attr1 and attr2
+self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1
+self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup'
+self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax)
+from other attributes available before the projection.
+Each attribute name can only be used once.</p>
               </div>
             </td>
           </tr>
