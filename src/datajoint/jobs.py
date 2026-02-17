@@ -449,10 +449,7 @@ class Job(Table):
         pk = self._get_pk(key)
         where = make_condition(self, pk, set())
         qi = self.adapter.quote_identifier
-        assignments = ", ".join(
-            f"{qi(k)}=%s"
-            for k in ("status", "host", "pid", "connection_id", "user", "version")
-        )
+        assignments = ", ".join(f"{qi(k)}=%s" for k in ("status", "host", "pid", "connection_id", "user", "version"))
         query = (
             f"UPDATE {self.full_table_name} "
             f"SET {assignments}, {qi('reserved_time')}=CURRENT_TIMESTAMP(3) "
