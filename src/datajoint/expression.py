@@ -716,7 +716,7 @@ class QueryExpression:
         import warnings
 
         warnings.warn(
-            "fetch() is deprecated in DataJoint 2.0. " "Use to_dicts(), to_pandas(), to_arrays(), or keys() instead.",
+            "fetch() is deprecated in DataJoint 2.0. Use to_dicts(), to_pandas(), to_arrays(), or keys() instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -748,7 +748,10 @@ class QueryExpression:
                         proj_attrs.extend(self.primary_key)
                     else:
                         proj_attrs.append(attr)
-                return self.proj(*proj_attrs).to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+                dicts = self.proj(*proj_attrs).to_dicts(order_by=order_by, limit=limit, offset=offset, squeeze=squeeze)
+                # Filter to only requested attributes (proj always includes primary key)
+                requested = set(proj_attrs)
+                return [{k: v for k, v in d.items() if k in requested} for d in dicts]
             else:
                 # fetch('col1', 'col2') or fetch('col1', 'col2', as_dict=False) -> tuple of arrays
                 # This matches DJ 1.x behavior where fetch('col') returns array(['alpha', 'beta'])
