@@ -95,16 +95,19 @@ class Folder:
         if "contents_hash" in meta:
             return uuid.UUID(meta["contents_hash"])
 
-    def exists(self, name):
-        logger.debug("exists: {}:{}".format(self.bucket, name))
+    def stat(self, name):
+        """Return stat result for an object, or None if it does not exist."""
+        logger.debug("stat: {}:{}".format(self.bucket, name))
         try:
-            self.client.stat_object(self.bucket, str(name))
+            return self.client.stat_object(self.bucket, str(name))
         except minio.error.S3Error as e:
             if e.code == "NoSuchKey":
-                return False
-            else:
-                raise e
-        return True
+                return None
+            raise e
+
+    def exists(self, name):
+        logger.debug("exists: {}:{}".format(self.bucket, name))
+        return self.stat(name) is not None
 
     def get_size(self, name):
         logger.debug("get_size: {}:{}".format(self.bucket, name))

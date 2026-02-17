@@ -300,11 +300,36 @@ class ExternalTable(Table):
                 )
         else:
             # upload the file and create its tracking entry
-            self._upload_file(
-                local_filepath,
-                self._make_external_filepath(relative_filepath),
-                metadata={"contents_hash": str(contents_hash) if contents_hash else ""},
-            )
+            external_path = self._make_external_filepath(relative_filepath)
+            already_uploaded = False
+            if self.spec["protocol"] == "s3":
+                stat = self.s3.stat(str(external_path))
+                if stat is not None and stat.size == file_size:
+                    # Verify contents_hash from S3 metadata when available
+                    if skip_checksum:
+                        already_uploaded = True
+                    else:
+                        remote_meta = {
+                            k.lower().lstrip("x-amz-meta-"): v
+                            for k, v in (stat.metadata or {}).items()
+                        }
+                        remote_hash = remote_meta.get("contents_hash", "")
+                        if remote_hash == str(contents_hash):
+                            already_uploaded = True
+                    if already_uploaded:
+                        logger.info(
+                            f"File already exists on S3 with matching size"
+                            f"{'' if skip_checksum else ' and checksum'}"
+                            f", skipping upload: '{relative_filepath}'"
+                        )
+            if not already_uploaded:
+                self._upload_file(
+                    local_filepath,
+                    external_path,
+                    metadata={
+                        "contents_hash": str(contents_hash) if contents_hash else ""
+                    },
+                )
             self.connection.query(
                 "INSERT INTO {tab} (hash, size, filepath, contents_hash) VALUES (%s, {size}, '{filepath}', %s)".format(
                     tab=self.full_table_name,
