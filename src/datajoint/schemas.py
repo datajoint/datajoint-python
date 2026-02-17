@@ -318,26 +318,6 @@ class Schema:
     def __repr__(self):
         return "Schema `{name}`\n".format(name=self.database)
 
-    @property
-    def size_on_disk(self) -> int:
-        """
-        Return the total size of all tables in the schema.
-
-        Returns
-        -------
-        int
-            Size in bytes (data + indices).
-        """
-        self._assert_exists()
-        return int(
-            self.connection.query(
-                """
-            SELECT SUM(data_length + index_length)
-            FROM information_schema.tables WHERE table_schema='{db}'
-            """.format(db=self.database)
-            ).fetchone()[0]
-        )
-
     def make_classes(self, into: dict[str, Any] | None = None) -> None:
         """
         Create Python table classes for tables in the schema.

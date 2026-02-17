@@ -282,11 +282,5 @@ def test_table_regexp(schema_any):
             ), "Regular expression matches for {name} but should not".format(name=name)
 
 
-def test_table_size(experiment):
-    """test getting the size of the table and its indices in bytes"""
-    number_of_bytes = experiment.size_on_disk
-    assert isinstance(number_of_bytes, int) and number_of_bytes > 100
-
-
 def test_repr_html(ephys):
     assert ephys._repr_html_().strip().startswith("<style")
