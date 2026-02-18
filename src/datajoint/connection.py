@@ -11,7 +11,6 @@ import pathlib
 import re
 import warnings
 from contextlib import contextmanager
-from typing import Callable
 
 from . import errors
 from .adapters import get_adapter
