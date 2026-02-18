@@ -253,6 +253,40 @@ All internal code uses `self.connection._config` instead of global `config`:
 - Tables access config via `self.connection._config`
 - This works uniformly for both singleton and isolated instances
 
+## Global State Audit
+
+All module-level mutable state was reviewed for thread-safety implications.
+
+### Guarded (blocked in thread-safe mode)
+
+| State | Location | Mechanism |
+|-------|----------|-----------|
+| `config` singleton | `settings.py:979` | `_ConfigProxy` raises `ThreadSafetyError`; use `inst.config` instead |
+| `conn()` singleton | `connection.py:108` | `_check_thread_safe()` guard; use `inst.connection` instead |
+
+These are the two globals that carry connection-scoped state (credentials, database settings) and are the primary source of cross-tenant interference.
+
+### Safe by design (no guard needed)
+
+| State | Location | Rationale |
+|-------|----------|-----------|
+| `_codec_registry` | `codecs.py:47` | Effectively immutable after import. Registration runs in `__init_subclass__` under Python's import lock. Runtime mutation (`_load_entry_points`) is idempotent under the GIL. Codecs are part of the type system, not connection-scoped. |
+| `_entry_points_loaded` | `codecs.py:48` | Bool flag for idempotent lazy loading; worst case under concurrent access is redundant work, not corruption. |
+
+### Low risk (no guard needed)
+
+| State | Location | Rationale |
+|-------|----------|-----------|
+| Logging side effects | `logging.py:8,17,40-45,56` | Standard Python logging configuration. Monkey-patches `Logger` and replaces `sys.excepthook` at import time. Not DataJoint-specific mutable state. |
+| `use_32bit_dims` | `blob.py:65` | Runtime flag affecting deserialization. Rarely changed; not connection-scoped. |
+| `compression` dict | `blob.py:61` | Decompressor function registry. Populated at import time, effectively read-only thereafter. |
+| `_lazy_modules` | `__init__.py:92` | Import caching via `globals()` mutation. Protected by Python's import lock. |
+| `ADAPTERS` dict | `adapters/__init__.py:16` | Backend registry. Populated at import time, read-only in practice. |
+
+### Design principle
+
+Only state that is **connection-scoped** (credentials, database settings, connection objects) needs thread-safe guards. State that is **code-scoped** (type registries, import caches, logging configuration) is shared across all threads by design and does not vary between tenants.
+
 ## Error Messages
 
 - Singleton access: `"Global DataJoint state is disabled in thread-safe mode. Use dj.Instance() to create an isolated instance."`
