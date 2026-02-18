@@ -43,7 +43,15 @@ from .errors import DataJointError
 
 logger = logging.getLogger(__name__.split(".")[0])
 
-# Global codec registry - maps name to Codec instance
+# Global codec registry - maps name to Codec instance.
+#
+# Thread safety: This registry is effectively immutable after import.
+# Registration happens in __init_subclass__ during class definition, which is
+# serialized by Python's import lock. The only runtime mutation is
+# _load_entry_points(), which is idempotent and guarded by a bool flag;
+# under CPython's GIL, concurrent calls may do redundant work but cannot
+# corrupt the dict. Codecs are part of the type system (tied to code, not to
+# any particular connection or tenant), so per-instance isolation is unnecessary.
 _codec_registry: dict[str, Codec] = {}
 _entry_points_loaded: bool = False
 
