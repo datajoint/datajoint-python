@@ -53,7 +53,7 @@ def ordered_dir(class_: type) -> list[str]:
     return attr_list
 
 
-class Schema:
+class _Schema:
     """
     Decorator that binds table classes to a database schema.
 
@@ -832,7 +832,7 @@ class VirtualModule(types.ModuleType):
             Additional objects to add to the module namespace.
         """
         super(VirtualModule, self).__init__(name=module_name)
-        _schema = Schema(
+        _schema = _Schema(
             schema_name,
             create_schema=create_schema,
             create_tables=create_tables,

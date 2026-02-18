@@ -44,7 +44,7 @@ from .hash_registry import delete_path, get_store_backend
 from .errors import DataJointError
 
 if TYPE_CHECKING:
-    from .schemas import Schema
+    from .schemas import _Schema as Schema
 
 logger = logging.getLogger(__name__.split(".")[0])
 

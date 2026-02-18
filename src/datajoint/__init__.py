@@ -80,7 +80,7 @@ from .expression import AndList, Not, Top, U
 from .instance import Instance, _ConfigProxy, _get_singleton_connection, _global_config, _check_thread_safe
 from .logging import logger
 from .objectref import ObjectRef
-from .schemas import Schema as _Schema, VirtualModule, list_schemas, virtual_schema
+from .schemas import _Schema, VirtualModule, list_schemas, virtual_schema
 from .table import FreeTable as _FreeTable, Table, ValidationResult
 from .user_tables import Computed, Imported, Lookup, Manual, Part
 from .version import __version__
@@ -166,26 +166,20 @@ def conn(
     return _get_singleton_connection()
 
 
-def Schema(
-    schema_name: str | None = None,
-    context: dict | None = None,
-    *,
-    connection: Connection | None = None,
-    create_schema: bool = True,
-    create_tables: bool | None = None,
-    add_objects: dict | None = None,
-) -> _Schema:
+class Schema(_Schema):
     """
-    Create a Schema for binding table classes to a database schema.
+    Decorator that binds table classes to a database schema.
 
     When connection is not provided, uses the singleton connection.
+    In thread-safe mode (``DJ_THREAD_SAFE=true``), a connection must be
+    provided explicitly or use ``dj.Instance().Schema()`` instead.
 
     Parameters
     ----------
     schema_name : str, optional
-        Database schema name.
+        Database schema name. If omitted, call ``activate()`` later.
     context : dict, optional
-        Namespace for foreign key lookup.
+        Namespace for foreign key lookup. None uses caller's context.
     connection : Connection, optional
         Database connection. Defaults to singleton connection.
     create_schema : bool, optional
@@ -195,29 +189,41 @@ def Schema(
     add_objects : dict, optional
         Additional objects for declaration context.
 
-    Returns
-    -------
-    Schema
-        A Schema bound to the specified connection.
-
     Raises
     ------
     ThreadSafetyError
-        If thread_safe mode is enabled and using singleton.
-    """
-    if connection is None:
-        # Use singleton connection - will raise ThreadSafetyError if thread_safe=True
-        _check_thread_safe()
-        connection = _get_singleton_connection()
+        If thread_safe mode is enabled and no connection is provided.
 
-    return _Schema(
-        schema_name,
-        context=context,
-        connection=connection,
-        create_schema=create_schema,
-        create_tables=create_tables,
-        add_objects=add_objects,
-    )
+    Examples
+    --------
+    >>> schema = dj.Schema('my_schema')
+    >>> @schema
+    ... class Session(dj.Manual):
+    ...     definition = '''
+    ...     session_id : int
+    ...     '''
+    """
+
+    def __init__(
+        self,
+        schema_name: str | None = None,
+        context: dict | None = None,
+        *,
+        connection: Connection | None = None,
+        create_schema: bool = True,
+        create_tables: bool | None = None,
+        add_objects: dict | None = None,
+    ) -> None:
+        if connection is None:
+            _check_thread_safe()
+        super().__init__(
+            schema_name,
+            context=context,
+            connection=connection,
+            create_schema=create_schema,
+            create_tables=create_tables,
+            add_objects=add_objects,
+        )
 
 
 def FreeTable(conn_or_name, full_table_name: str | None = None) -> _FreeTable:

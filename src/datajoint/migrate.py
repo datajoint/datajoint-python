@@ -39,7 +39,7 @@ if Version(__version__) >= Version("2.1"):
     )
 
 if TYPE_CHECKING:
-    from .schemas import Schema
+    from .schemas import _Schema as Schema
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -653,7 +653,7 @@ def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
     - Future populate() calls will fill in metadata for new rows
     - This does NOT retroactively populate metadata for existing rows
     """
-    from .schemas import Schema
+    from .schemas import _Schema
     from .table import Table
 
     result = {
@@ -664,7 +664,7 @@ def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
     }
 
     # Determine tables to process
-    if isinstance(target, Schema):
+    if isinstance(target, _Schema):
         schema = target
         # Get all user tables in the schema
         tables_query = """

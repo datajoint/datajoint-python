@@ -15,7 +15,7 @@ from .errors import ThreadSafetyError
 from .settings import Config, _create_config, config as _settings_config
 
 if TYPE_CHECKING:
-    from .schemas import Schema as SchemaClass
+    from .schemas import _Schema as SchemaClass
     from .table import FreeTable as FreeTableClass
 
 
@@ -140,9 +140,9 @@ class Instance:
         Schema
             A Schema using this instance's connection.
         """
-        from .schemas import Schema
+        from .schemas import _Schema
 
-        return Schema(
+        return _Schema(
             schema_name,
             context=context,
             connection=self.connection,
