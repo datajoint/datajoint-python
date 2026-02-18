@@ -135,8 +135,12 @@ def conn(
 
     _check_thread_safe()
 
-    # If credentials provided or reset requested, (re)create the singleton
-    if host is not None or user is not None or password is not None or reset:
+    # If reset requested, always recreate
+    # If credentials provided and no singleton exists, create one
+    # If credentials provided and singleton exists, return existing singleton
+    if reset or (
+        instance_module._singleton_connection is None and (host is not None or user is not None or password is not None)
+    ):
         # Use provided values or fall back to config
         host = host if host is not None else _global_config.database.host
         user = user if user is not None else _global_config.database.user

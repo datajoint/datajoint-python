@@ -265,5 +265,5 @@ def test_uppercase_schema(db_creds_root):
         id: smallint
         """
 
-    schema2.drop()
-    schema1.drop()
+    schema2.drop(prompt=False)
+    schema1.drop(prompt=False)

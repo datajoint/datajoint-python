@@ -16,8 +16,8 @@ import types
 import warnings
 from typing import TYPE_CHECKING, Any
 
-from .connection import conn
 from .errors import AccessError, DataJointError
+from .instance import _get_singleton_connection
 
 if TYPE_CHECKING:
     from .connection import Connection
@@ -173,7 +173,7 @@ class Schema:
         if connection is not None:
             self.connection = connection
         if self.connection is None:
-            self.connection = conn()
+            self.connection = _get_singleton_connection()
         self.database = schema_name
         if create_schema is not None:
             self.create_schema = create_schema
@@ -860,7 +860,7 @@ def list_schemas(connection: Connection | None = None) -> list[str]:
     """
     return [
         r[0]
-        for r in (connection or conn()).query(
+        for r in (connection or _get_singleton_connection()).query(
             'SELECT schema_name FROM information_schema.schemata WHERE schema_name <> "information_schema"'
         )
     ]

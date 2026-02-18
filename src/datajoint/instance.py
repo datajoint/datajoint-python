@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 from .connection import Connection
 from .errors import ThreadSafetyError
-from .settings import Config, _create_config
+from .settings import Config, _create_config, config as _settings_config
 
 if TYPE_CHECKING:
     from .schemas import Schema as SchemaClass
@@ -179,7 +179,8 @@ class Instance:
 # The global config is created at module load time and can be modified
 # The singleton connection is created lazily when conn() or Schema() is called
 
-_global_config: Config = _create_config()
+# Reuse the config created in settings.py — there must be exactly one global config
+_global_config: Config = _settings_config
 _singleton_connection: Connection | None = None
 
 
