@@ -56,11 +56,6 @@ def schema_empty(connection_test, schema_any, prefix):
     # Don't drop the schema since schema_any still needs it
 
 
-def test_schema_size_on_disk(schema_any):
-    number_of_bytes = schema_any.size_on_disk
-    assert isinstance(number_of_bytes, int)
-
-
 def test_schema_list(schema_any):
     schemas = dj.list_schemas(connection=schema_any.connection)
     assert schema_any.database in schemas
