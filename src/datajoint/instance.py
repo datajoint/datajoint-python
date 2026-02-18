@@ -194,8 +194,7 @@ def _check_thread_safe() -> None:
     """
     if _load_thread_safe():
         raise ThreadSafetyError(
-            "Global DataJoint state is disabled in thread-safe mode. "
-            "Use dj.Instance() to create an isolated instance."
+            "Global DataJoint state is disabled in thread-safe mode. " "Use dj.Instance() to create an isolated instance."
         )
 
 
@@ -221,9 +220,8 @@ def _get_singleton_connection() -> Connection:
 
         host = _global_config.database.host
         user = _global_config.database.user
-        password = _global_config.database.password
-        if password is not None:
-            password = password.get_secret_value()
+        raw_password = _global_config.database.password
+        password = raw_password.get_secret_value() if raw_password is not None else None
         port = _global_config.database.port
         use_tls = _global_config.database.use_tls
 

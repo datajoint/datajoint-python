@@ -1,7 +1,5 @@
 """Tests for thread-safe mode functionality."""
 
-import os
-
 import pytest
 
 

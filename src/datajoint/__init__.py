@@ -130,8 +130,8 @@ def conn(
     ThreadSafetyError
         If thread_safe mode is enabled.
     """
-    from .instance import _singleton_connection, _check_thread_safe, _global_config
     import datajoint.instance as instance_module
+    from pydantic import SecretStr
 
     _check_thread_safe()
 
@@ -140,19 +140,18 @@ def conn(
         # Use provided values or fall back to config
         host = host if host is not None else _global_config.database.host
         user = user if user is not None else _global_config.database.user
-        password = password if password is not None else _global_config.database.password
-        if password is not None and hasattr(password, 'get_secret_value'):
-            password = password.get_secret_value()
+        raw_password = password if password is not None else _global_config.database.password
+        password = raw_password.get_secret_value() if isinstance(raw_password, SecretStr) else raw_password
         port = _global_config.database.port
         use_tls = use_tls if use_tls is not None else _global_config.database.use_tls
 
         if user is None:
             from .errors import DataJointError
-            raise DataJointError(
-                "Database user not configured. Set dj.config['database.user'] or pass user= argument."
-            )
+
+            raise DataJointError("Database user not configured. Set dj.config['database.user'] or pass user= argument.")
         if password is None:
             from .errors import DataJointError
+
             raise DataJointError(
                 "Database password not configured. Set dj.config['database.password'] or pass password= argument."
             )
@@ -249,6 +248,7 @@ def FreeTable(conn_or_name, full_table_name: str | None = None) -> _FreeTable:
     else:
         # Called as FreeTable(conn, "db.table") - use provided connection
         return _FreeTable(conn_or_name, full_table_name)
+
 
 # =============================================================================
 # Lazy imports — heavy dependencies loaded on first access
