@@ -163,6 +163,89 @@ Mouse().insert1({"mouse_id": 1})
 Mouse().fetch()
 ```
 
+## Architecture
+
+### Object graph
+
+There is exactly **one** global `Config` object created at import time in `settings.py`. Both the legacy API and the `Instance` API hang off `Connection` objects, each of which carries a `_config` reference.
+
+```
+settings.py
+  config = _create_config()          ← THE single global Config
+
+instance.py
+  _global_config = settings.config   ← same object (not a copy)
+  _singleton_connection = None       ← lazily created Connection
+
+__init__.py
+  dj.config = _ConfigProxy()         ← proxy → _global_config (with thread-safety check)
+  dj.conn()                          ← returns _singleton_connection
+  dj.Schema()                        ← uses _singleton_connection
+  dj.FreeTable()                     ← uses _singleton_connection
+
+Connection (singleton)
+  _config → _global_config           ← same Config that dj.config writes to
+
+Connection (Instance)
+  _config → fresh Config             ← isolated per-instance
+```
+
+### Config flow: singleton path
+
+```
+dj.config["safemode"] = False
+       ↓ _ConfigProxy.__setitem__
+_global_config["safemode"] = False   (same object as settings.config)
+       ↓
+Connection._config["safemode"]       (points to _global_config)
+       ↓
+schema.drop() reads self.connection._config["safemode"]  → False ✓
+```
+
+### Config flow: Instance path
+
+```
+inst = dj.Instance(host=..., user=..., password=...)
+       ↓
+inst.config = _create_config()       (fresh Config, independent)
+inst.connection._config = inst.config
+       ↓
+inst.config["safemode"] = False
+       ↓
+schema.drop() reads self.connection._config["safemode"]  → False ✓
+```
+
+### Key invariant
+
+**All runtime config reads go through `self.connection._config`**, never through the global `config` directly. This ensures both the singleton and Instance paths read the correct config.
+
+### Connection-scoped config reads
+
+Every module that previously imported `from .settings import config` now reads config from the connection:
+
+| Module | What was read | How it's read now |
+|--------|--------------|-------------------|
+| `schemas.py` | `config["safemode"]`, `config.database.create_tables` | `self.connection._config[...]` |
+| `table.py` | `config["safemode"]` in `delete()`, `drop()` | `self.connection._config["safemode"]` |
+| `expression.py` | `config["loglevel"]` in `__repr__()` | `self.connection._config["loglevel"]` |
+| `preview.py` | `config["display.*"]` (8 reads) | `query_expression.connection._config[...]` |
+| `autopopulate.py` | `config.jobs.allow_new_pk_fields`, `auto_refresh` | `self.connection._config.jobs.*` |
+| `jobs.py` | `config.jobs.default_priority`, `stale_timeout`, `keep_completed` | `self.connection._config.jobs.*` |
+| `declare.py` | `config.jobs.add_job_metadata` | `config` param (threaded from `table.py`) |
+| `diagram.py` | `config.display.diagram_direction` | `self._connection._config.display.*` |
+| `staged_insert.py` | `config.get_store_spec()` | `self._table.connection._config.get_store_spec()` |
+
+### Functions that receive config as a parameter
+
+Some module-level functions cannot access `self.connection`. Config is threaded through:
+
+| Function | Caller | How config arrives |
+|----------|--------|--------------------|
+| `declare()` in `declare.py` | `Table.declare()` in `table.py` | `config=self.connection._config` kwarg |
+| `_get_job_version()` in `jobs.py` | `AutoPopulate._make_tuples()`, `Job.reserve()` | `config=self.connection._config` positional arg |
+
+Both functions accept `config=None` and fall back to the global `settings.config` for backward compatibility.
+
 ## Implementation
 
 ### 1. Create Instance class
@@ -185,8 +268,11 @@ class Instance:
 ### 2. Global config and singleton connection
 
 ```python
-# Module level
-_global_config = _create_config()  # Created at import time
+# settings.py - THE single global config
+config = _create_config()  # Created at import time
+
+# instance.py - reuses the same config object
+_global_config = settings.config   # Same reference, not a copy
 _singleton_connection = None       # Created lazily
 
 def _check_thread_safe():
@@ -224,8 +310,12 @@ class _ConfigProxy:
 
 config = _ConfigProxy()
 
-# dj.conn() -> singleton connection
-def conn():
+# dj.conn() -> singleton connection (persistent across calls)
+def conn(host=None, user=None, password=None, *, reset=False):
+    _check_thread_safe()
+    if reset or (_singleton_connection is None and credentials_provided):
+        _singleton_connection = Connection(...)
+        _singleton_connection._config = _global_config
     return _get_singleton_connection()
 
 # dj.Schema() -> uses singleton connection
@@ -238,20 +328,11 @@ def Schema(name, connection=None, **kwargs):
 # dj.FreeTable() -> uses singleton connection
 def FreeTable(conn_or_name, full_table_name=None):
     if full_table_name is None:
-        # Called as FreeTable("db.table")
         _check_thread_safe()
         return _FreeTable(_get_singleton_connection(), conn_or_name)
     else:
-        # Called as FreeTable(conn, "db.table")
         return _FreeTable(conn_or_name, full_table_name)
 ```
-
-### 4. Refactor internal code
-
-All internal code uses `self.connection._config` instead of global `config`:
-- Connection stores reference to its config as `self._config`
-- Tables access config via `self.connection._config`
-- This works uniformly for both singleton and isolated instances
 
 ## Global State Audit
 
