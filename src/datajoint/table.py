@@ -23,7 +23,6 @@ from .errors import (
 )
 from .expression import QueryExpression
 from .heading import Heading
-from .settings import config
 from .staged_insert import staged_insert1 as _staged_insert1
 from .utils import get_master, is_camel_case, user_choice
 
@@ -153,7 +152,7 @@ class Table(QueryExpression):
                 "Class names must be in CamelCase, starting with a capital letter."
             )
         sql, _external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl = declare(
-            self.full_table_name, self.definition, context, self.connection.adapter
+            self.full_table_name, self.definition, context, self.connection.adapter, config=self.connection._config
         )
 
         # Call declaration hook for validation (subclasses like AutoPopulate can override)
@@ -1119,7 +1118,7 @@ class Table(QueryExpression):
                 raise DataJointError("Exceeded maximum number of delete attempts.")
             return delete_count
 
-        prompt = config["safemode"] if prompt is None else prompt
+        prompt = self.connection._config["safemode"] if prompt is None else prompt
 
         # Start transaction
         if transaction:
@@ -1227,7 +1226,7 @@ class Table(QueryExpression):
             raise DataJointError(
                 "A table with an applied restriction cannot be dropped. Call drop() on the unrestricted Table."
             )
-        prompt = config["safemode"] if prompt is None else prompt
+        prompt = self.connection._config["safemode"] if prompt is None else prompt
 
         self.connection.dependencies.load()
         do_drop = True

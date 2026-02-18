@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from .connection import Connection
 from .heading import Heading
 from .jobs import Job
-from .settings import config
 from .table import FreeTable, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
 from .utils import to_camel_case, user_choice
@@ -120,7 +119,7 @@ class Schema:
         self.database = None
         self.context = context
         self.create_schema = create_schema
-        self.create_tables = create_tables if create_tables is not None else config.database.create_tables
+        self.create_tables = create_tables  # None means "use connection config default"
         self.add_objects = add_objects
         self.declare_list = []
         if schema_name:
@@ -293,7 +292,10 @@ class Schema:
         # instantiate the class, declare the table if not already
         instance = table_class()
         is_declared = instance.is_declared
-        if not is_declared and not assert_declared and self.create_tables:
+        create_tables = (
+            self.create_tables if self.create_tables is not None else self.connection._config.database.create_tables
+        )
+        if not is_declared and not assert_declared and create_tables:
             instance.declare(context)
             self.connection.dependencies.clear()
         is_declared = is_declared or instance.is_declared
@@ -409,7 +411,7 @@ class Schema:
         AccessError
             If insufficient permissions to drop the schema.
         """
-        prompt = config["safemode"] if prompt is None else prompt
+        prompt = self.connection._config["safemode"] if prompt is None else prompt
 
         if not self.exists:
             logger.info("Schema named `{database}` does not exist. Doing nothing.".format(database=self.database))

@@ -146,10 +146,8 @@ class AutoPopulate:
             If native (non-FK) PK attributes are found, unless bypassed via
             ``dj.config.jobs.allow_new_pk_fields_in_computed_tables = True``.
         """
-        from .settings import config
-
         # Check if validation is bypassed
-        if config.jobs.allow_new_pk_fields_in_computed_tables:
+        if self.connection._config.jobs.allow_new_pk_fields_in_computed_tables:
             return
 
         # Check for native (non-FK) primary key attributes
@@ -477,8 +475,6 @@ class AutoPopulate:
         """
         from tqdm import tqdm
 
-        from .settings import config
-
         # Define a signal handler for SIGTERM
         def handler(signum, frame):
             logger.info("Populate terminated by SIGTERM")
@@ -489,7 +485,7 @@ class AutoPopulate:
         try:
             # Refresh job queue if configured
             if refresh is None:
-                refresh = config.jobs.auto_refresh
+                refresh = self.connection._config.jobs.auto_refresh
             if refresh:
                 # Use delay=-1 to ensure jobs are immediately schedulable
                 # (avoids race condition with scheduled_time <= CURRENT_TIMESTAMP(3) check)
@@ -659,7 +655,7 @@ class AutoPopulate:
                     key,
                     start_time=datetime.datetime.fromtimestamp(start_time),
                     duration=duration,
-                    version=_get_job_version(),
+                    version=_get_job_version(self.connection._config),
                 )
 
             if jobs is not None:

@@ -14,7 +14,6 @@ from typing import IO, Any
 import fsspec
 
 from .errors import DataJointError
-from .settings import config
 from .storage import StorageBackend, build_object_path
 
 
@@ -69,7 +68,7 @@ class StagedInsert:
         """Ensure storage backend is initialized."""
         if self._backend is None:
             try:
-                spec = config.get_store_spec()  # Uses stores.default
+                spec = self._table.connection._config.get_store_spec()  # Uses stores.default
                 self._backend = StorageBackend(spec)
             except DataJointError:
                 raise DataJointError(
@@ -110,7 +109,7 @@ class StagedInsert:
             )
 
         # Get storage spec (uses stores.default)
-        spec = config.get_store_spec()
+        spec = self._table.connection._config.get_store_spec()
         partition_pattern = spec.get("partition_pattern")
         token_length = spec.get("token_length", 8)
 

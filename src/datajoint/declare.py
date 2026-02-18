@@ -15,7 +15,6 @@ import pyparsing as pp
 from .codecs import lookup_codec
 from .condition import translate_attribute
 from .errors import DataJointError
-from .settings import config
 
 # Core DataJoint types - scientist-friendly names that are fully supported
 # These are recorded in field comments using :type: syntax for reconstruction
@@ -401,7 +400,7 @@ def prepare_declare(
 
 
 def declare(
-    full_table_name: str, definition: str, context: dict, adapter
+    full_table_name: str, definition: str, context: dict, adapter, *, config=None
 ) -> tuple[str, list[str], list[str], dict[str, tuple[str, str]], list[str], list[str]]:
     r"""
     Parse a definition and generate SQL CREATE TABLE statement.
@@ -416,6 +415,8 @@ def declare(
         Namespace for resolving foreign key references.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    config : Config, optional
+        Configuration object. If None, falls back to global config.
 
     Returns
     -------
@@ -464,6 +465,10 @@ def declare(
     ) = prepare_declare(definition, context, adapter)
 
     # Add hidden job metadata for Computed/Imported tables (not parts)
+    if config is None:
+        from .settings import config as _config
+
+        config = _config
     if config.jobs.add_job_metadata:
         # Check if this is a Computed (__) or Imported (_) table, but not a Part (contains __ in middle)
         is_computed = table_name.startswith("__") and "__" not in table_name[2:]

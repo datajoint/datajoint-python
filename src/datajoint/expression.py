@@ -20,7 +20,6 @@ import pandas
 from .errors import DataJointError
 from .codecs import decode_attribute
 from .preview import preview, repr_html
-from .settings import config
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -1247,7 +1246,7 @@ class QueryExpression:
         str
             String representation of the QueryExpression.
         """
-        return super().__repr__() if config["loglevel"].lower() == "debug" else self.preview()
+        return super().__repr__() if self.connection._config["loglevel"].lower() == "debug" else self.preview()
 
     def preview(self, limit=None, width=None):
         """
