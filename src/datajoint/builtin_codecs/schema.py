@@ -108,6 +108,7 @@ class SchemaCodec(Codec, register=False):
         primary_key: dict,
         ext: str | None = None,
         store_name: str | None = None,
+        config=None,
     ) -> tuple[str, str]:
         """
         Build schema-addressed storage path.
@@ -131,6 +132,8 @@ class SchemaCodec(Codec, register=False):
             File extension (e.g., ".npy", ".zarr").
         store_name : str, optional
             Store name for retrieving partition configuration.
+        config : Config, optional
+            Config instance. If None, falls back to global settings.config.
 
         Returns
         -------
@@ -139,7 +142,9 @@ class SchemaCodec(Codec, register=False):
             is a unique identifier.
         """
         from ..storage import build_object_path
-        from .. import config
+
+        if config is None:
+            from ..settings import config
 
         # Get store configuration for partition_pattern and token_length
         spec = config.get_store_spec(store_name)
@@ -156,7 +161,7 @@ class SchemaCodec(Codec, register=False):
             token_length=token_length,
         )
 
-    def _get_backend(self, store_name: str | None = None):
+    def _get_backend(self, store_name: str | None = None, config=None):
         """
         Get storage backend by name.
 
@@ -164,6 +169,8 @@ class SchemaCodec(Codec, register=False):
         ----------
         store_name : str, optional
             Store name. If None, returns default store.
+        config : Config, optional
+            Config instance. If None, falls back to global settings.config.
 
         Returns
         -------
@@ -172,4 +179,4 @@ class SchemaCodec(Codec, register=False):
         """
         from ..hash_registry import get_store_backend
 
-        return get_store_backend(store_name)
+        return get_store_backend(store_name, config=config)

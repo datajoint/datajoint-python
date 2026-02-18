@@ -234,6 +234,14 @@ Every module that previously imported `from .settings import config` now reads c
 | `declare.py` | `config.jobs.add_job_metadata` | `config` param (threaded from `table.py`) |
 | `diagram.py` | `config.display.diagram_direction` | `self._connection._config.display.*` |
 | `staged_insert.py` | `config.get_store_spec()` | `self._table.connection._config.get_store_spec()` |
+| `hash_registry.py` | `config.get_store_spec()` in 5 functions | `config` kwarg (falls back to `settings.config`) |
+| `builtin_codecs/hash.py` | `config` via hash_registry | `_config` from key dict → `config` kwarg to hash_registry |
+| `builtin_codecs/attach.py` | `config.get("download_path")` | `_config` from key dict (falls back to `settings.config`) |
+| `builtin_codecs/filepath.py` | `config.get_store_spec()` | `_config` from key dict (falls back to `settings.config`) |
+| `builtin_codecs/schema.py` | `config.get_store_spec()` in helpers | `config` kwarg to `_build_path()`, `_get_backend()` |
+| `builtin_codecs/npy.py` | `config` via schema helpers | `_config` from key dict → `config` kwarg to helpers |
+| `builtin_codecs/object.py` | `config` via schema helpers | `_config` from key dict → `config` kwarg to helpers |
+| `gc.py` | `config` via hash_registry | `schemas[0].connection._config` → `config` kwarg |
 
 ### Functions that receive config as a parameter
 
@@ -243,8 +251,14 @@ Some module-level functions cannot access `self.connection`. Config is threaded 
 |----------|--------|--------------------|
 | `declare()` in `declare.py` | `Table.declare()` in `table.py` | `config=self.connection._config` kwarg |
 | `_get_job_version()` in `jobs.py` | `AutoPopulate._make_tuples()`, `Job.reserve()` | `config=self.connection._config` positional arg |
+| `get_store_backend()` in `hash_registry.py` | codecs, gc.py | `config` kwarg from key dict or schema connection |
+| `get_store_subfolding()` in `hash_registry.py` | `put_hash()` | `config` kwarg chained from caller |
+| `put_hash()` in `hash_registry.py` | `HashCodec.encode()` | `config` kwarg from `_config` in key dict |
+| `get_hash()` in `hash_registry.py` | `HashCodec.decode()` | `config` kwarg from `_config` in key dict |
+| `delete_path()` in `hash_registry.py` | `gc.collect()` | `config` kwarg from `schemas[0].connection._config` |
+| `decode_attribute()` in `codecs.py` | `expression.py` fetch methods | `connection` kwarg → extracts `connection._config` |
 
-Both functions accept `config=None` and fall back to the global `settings.config` for backward compatibility.
+All functions accept `config=None` and fall back to the global `settings.config` for backward compatibility.
 
 ## Implementation
 

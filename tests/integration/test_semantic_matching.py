@@ -325,7 +325,9 @@ class TestRebuildLineageUtility:
 
     def test_rebuild_lineage_method_exists(self):
         """The rebuild_lineage method should exist on Schema."""
-        assert hasattr(dj.Schema, "rebuild_lineage")
+        from datajoint.schemas import Schema as _Schema
+
+        assert hasattr(_Schema, "rebuild_lineage")
 
     def test_rebuild_lineage_populates_table(self, schema_semantic):
         """schema.rebuild_lineage() should populate the ~lineage table."""

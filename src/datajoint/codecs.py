@@ -515,7 +515,7 @@ def lookup_codec(codec_spec: str) -> tuple[Codec, str | None]:
 # =============================================================================
 
 
-def decode_attribute(attr, data, squeeze: bool = False):
+def decode_attribute(attr, data, squeeze: bool = False, connection=None):
     """
     Decode raw database value using attribute's codec or native type handling.
 
@@ -528,6 +528,8 @@ def decode_attribute(attr, data, squeeze: bool = False):
         attr: Attribute from the table's heading.
         data: Raw value fetched from the database.
         squeeze: If True, remove singleton dimensions from numpy arrays.
+        connection: Connection instance for config access. If provided,
+            ``connection._config`` is passed to codecs via the key dict.
 
     Returns:
         Decoded Python value.
@@ -560,9 +562,14 @@ def decode_attribute(attr, data, squeeze: bool = False):
         elif final_dtype.lower() == "binary(16)":
             data = uuid_module.UUID(bytes=data)
 
+        # Build decode key with config if connection is available
+        decode_key = None
+        if connection is not None:
+            decode_key = {"_config": connection._config}
+
         # Apply decoders in reverse order: innermost first, then outermost
         for codec in reversed(type_chain):
-            data = codec.decode(data, key=None)
+            data = codec.decode(data, key=decode_key)
 
         # Squeeze arrays if requested
         if squeeze and isinstance(data, np.ndarray):

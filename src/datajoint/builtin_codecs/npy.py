@@ -336,9 +336,10 @@ class NpyCodec(SchemaCodec):
 
         # Extract context using inherited helper
         schema, table, field, primary_key = self._extract_context(key)
+        config = (key or {}).get("_config")
 
         # Build schema-addressed storage path
-        path, _ = self._build_path(schema, table, field, primary_key, ext=".npy", store_name=store_name)
+        path, _ = self._build_path(schema, table, field, primary_key, ext=".npy", store_name=store_name, config=config)
 
         # Serialize to .npy format
         buffer = io.BytesIO()
@@ -346,7 +347,7 @@ class NpyCodec(SchemaCodec):
         npy_bytes = buffer.getvalue()
 
         # Upload to storage using inherited helper
-        backend = self._get_backend(store_name)
+        backend = self._get_backend(store_name, config=config)
         backend.put_buffer(npy_bytes, path)
 
         # Return metadata (includes numpy-specific shape/dtype)
@@ -373,5 +374,6 @@ class NpyCodec(SchemaCodec):
         NpyRef
             Lazy array reference with metadata access and numpy integration.
         """
-        backend = self._get_backend(stored.get("store"))
+        config = (key or {}).get("_config")
+        backend = self._get_backend(stored.get("store"), config=config)
         return NpyRef(stored, backend)

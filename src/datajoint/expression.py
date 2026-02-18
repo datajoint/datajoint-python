@@ -715,7 +715,7 @@ class QueryExpression:
         import warnings
 
         warnings.warn(
-            "fetch() is deprecated in DataJoint 2.0. " "Use to_dicts(), to_pandas(), to_arrays(), or keys() instead.",
+            "fetch() is deprecated in DataJoint 2.0. Use to_dicts(), to_pandas(), to_arrays(), or keys() instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -817,7 +817,10 @@ class QueryExpression:
             row = cursor.fetchone()
             if not row or cursor.fetchone():
                 raise DataJointError("fetch1 requires exactly one tuple in the input set.")
-            return {name: decode_attribute(heading[name], row[name], squeeze=squeeze) for name in heading.names}
+            return {
+                name: decode_attribute(heading[name], row[name], squeeze=squeeze, connection=self.connection)
+                for name in heading.names
+            }
         else:
             # Handle "KEY" specially - it means primary key columns
             def is_key(attr):
@@ -892,7 +895,10 @@ class QueryExpression:
         expr = self._apply_top(order_by, limit, offset)
         cursor = expr.cursor(as_dict=True)
         heading = expr.heading
-        return [{name: decode_attribute(heading[name], row[name], squeeze) for name in heading.names} for row in cursor]
+        return [
+            {name: decode_attribute(heading[name], row[name], squeeze, connection=expr.connection) for name in heading.names}
+            for row in cursor
+        ]
 
     def to_pandas(self, order_by=None, limit=None, offset=None, squeeze=False):
         """
@@ -1063,7 +1069,7 @@ class QueryExpression:
             return result_arrays[0] if len(attrs) == 1 else tuple(result_arrays)
         else:
             # Fetch all columns as structured array
-            get = partial(decode_attribute, squeeze=squeeze)
+            get = partial(decode_attribute, squeeze=squeeze, connection=expr.connection)
             cursor = expr.cursor(as_dict=False)
             rows = list(cursor.fetchall())
 
@@ -1217,7 +1223,10 @@ class QueryExpression:
         cursor = self.cursor(as_dict=True)
         heading = self.heading
         for row in cursor:
-            yield {name: decode_attribute(heading[name], row[name], squeeze=False) for name in heading.names}
+            yield {
+                name: decode_attribute(heading[name], row[name], squeeze=False, connection=self.connection)
+                for name in heading.names
+            }
 
     def cursor(self, as_dict=False):
         """

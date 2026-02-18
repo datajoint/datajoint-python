@@ -140,8 +140,7 @@ class Table(QueryExpression):
         class_name = self.class_name
         if "_" in class_name:
             warnings.warn(
-                f"Table class name `{class_name}` contains underscores. "
-                "CamelCase names without underscores are recommended.",
+                f"Table class name `{class_name}` contains underscores. CamelCase names without underscores are recommended.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -1413,6 +1412,7 @@ class Table(QueryExpression):
                 "_schema": self.database,
                 "_table": self.table_name,
                 "_field": name,
+                "_config": self.connection._config,
             }
             # Add primary key values from row if available
             if row is not None:
