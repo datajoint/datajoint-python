@@ -80,7 +80,7 @@ conda install -c conda-forge datajoint
   - [How-To Guides](https://docs.datajoint.com/how-to/) — Task-oriented guides
   - [API Reference](https://docs.datajoint.com/api/) — Complete API documentation
   - [Migration Guide](https://docs.datajoint.com/how-to/migrate-to-v20/) — Upgrade from legacy versions
-- **[DataJoint Elements](https://datajoint.com/docs/elements/)** — Example pipelines for neuroscience
+- **[DataJoint Elements](https://docs.datajoint.com/elements/)** — Example pipelines for neuroscience
 - **[GitHub Discussions](https://github.com/datajoint/datajoint-python/discussions)** — Community support
 
 ## Contributing
