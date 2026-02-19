@@ -170,6 +170,27 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def split_full_table_name(self, full_table_name: str) -> tuple[str, str]:
+        """
+        Split a fully-qualified table name into schema and table components.
+
+        Inverse of quoting: strips backend-specific identifier quotes
+        and splits into (schema, table).
+
+        Parameters
+        ----------
+        full_table_name : str
+            Quoted full table name (e.g., ```\\`schema\\`.\\`table\\` ``` or
+            ``"schema"."table"``).
+
+        Returns
+        -------
+        tuple[str, str]
+            (schema_name, table_name) with quotes stripped.
+        """
+        ...
+
+    @abstractmethod
     def quote_string(self, value: str) -> str:
         """
         Quote a string literal for this backend.

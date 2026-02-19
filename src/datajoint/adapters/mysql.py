@@ -200,6 +200,11 @@ class MySQLAdapter(DatabaseAdapter):
         """
         return f"`{name}`"
 
+    def split_full_table_name(self, full_table_name: str) -> tuple[str, str]:
+        """Split ```\\`schema\\`.\\`table\\` ``` into ``('schema', 'table')``."""
+        schema, table = full_table_name.replace("`", "").split(".")
+        return schema, table
+
     def quote_string(self, value: str) -> str:
         """
         Quote string literal for MySQL with escaping.

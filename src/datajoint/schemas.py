@@ -549,7 +549,7 @@ class _Schema:
 
         def make_class_definition(table):
             tier = _get_tier(table).__name__
-            class_name = table.split(".")[1].strip("`")
+            class_name = self.connection.adapter.split_full_table_name(table)[1]
             indent = ""
             if tier == "Part":
                 class_name = class_name.split("__")[-1]
@@ -608,7 +608,10 @@ class _Schema:
         self.connection.dependencies.load()
         return [
             t
-            for d, t in (table_name.replace("`", "").split(".") for table_name in self.connection.dependencies.topo_sort())
+            for d, t in (
+                self.connection.adapter.split_full_table_name(table_name)
+                for table_name in self.connection.dependencies.topo_sort()
+            )
             if d == self.database
         ]
 

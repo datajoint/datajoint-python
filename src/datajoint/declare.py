@@ -294,12 +294,9 @@ def compile_foreign_key(
     # ref.support[0] may have cached quoting from a different backend
     # Extract database and table name and rebuild with current adapter
     parent_full_name = ref.support[0]
-    # Try to parse as database.table (with or without quotes)
-    parts = parent_full_name.replace('"', "").replace("`", "").split(".")
-    if len(parts) == 2:
-        ref_table_name = f"{adapter.quote_identifier(parts[0])}.{adapter.quote_identifier(parts[1])}"
-    else:
-        ref_table_name = adapter.quote_identifier(parts[0])
+    # Parse as database.table using the adapter's quoting convention
+    parts = adapter.split_full_table_name(parent_full_name)
+    ref_table_name = f"{adapter.quote_identifier(parts[0])}.{adapter.quote_identifier(parts[1])}"
 
     foreign_key_sql.append(
         f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
