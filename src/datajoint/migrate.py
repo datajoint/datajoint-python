@@ -7,7 +7,7 @@ explicit `<blob>` type declarations.
 
 .. note::
     This module is provided temporarily to assist with migration from pre-2.0.
-    It will be deprecated in DataJoint 2.1 and removed in 2.2.
+    It will be deprecated in DataJoint 2.1 and removed in 2.3.
     Complete your migrations while on DataJoint 2.0.
 
 Note on Terminology
@@ -32,7 +32,7 @@ from .version import __version__
 # Show deprecation warning starting in 2.1
 if Version(__version__) >= Version("2.1"):
     warnings.warn(
-        "datajoint.migrate is deprecated and will be removed in DataJoint 2.2. "
+        "datajoint.migrate is deprecated and will be removed in DataJoint 2.3. "
         "Complete your schema migrations before upgrading.",
         DeprecationWarning,
         stacklevel=2,
