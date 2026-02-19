@@ -166,7 +166,9 @@ class TestInstanceBackend:
 
         with patch("datajoint.instance.Connection"):
             inst = Instance(
-                host="localhost", user="root", password="secret",
+                host="localhost",
+                user="root",
+                password="secret",
                 backend="postgresql",
             )
             assert inst.config.database.backend == "postgresql"
@@ -179,7 +181,9 @@ class TestInstanceBackend:
 
         with patch("datajoint.instance.Connection"):
             inst = Instance(
-                host="localhost", user="root", password="secret",
+                host="localhost",
+                user="root",
+                password="secret",
             )
             assert inst.config.database.backend == "mysql"
 
@@ -187,11 +191,13 @@ class TestInstanceBackend:
         """Instance(backend='postgresql') uses port 5432 by default."""
         monkeypatch.setenv("DJ_THREAD_SAFE", "false")
         from datajoint.instance import Instance
-        from unittest.mock import patch, call
+        from unittest.mock import patch
 
         with patch("datajoint.instance.Connection") as MockConn:
             Instance(
-                host="localhost", user="root", password="secret",
+                host="localhost",
+                user="root",
+                password="secret",
                 backend="postgresql",
             )
             # Connection should be called with port 5432 (PostgreSQL default)
