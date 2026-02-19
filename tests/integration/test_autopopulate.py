@@ -112,6 +112,79 @@ def test_allow_insert(clean_autopopulate, subject, experiment):
         experiment.insert1(key)
 
 
+def test_populate_antijoin_with_secondary_attrs(clean_autopopulate, subject, experiment):
+    """Test that populate correctly computes pending keys via antijoin.
+
+    Regression test for a bug where `key_source - self` returned all keys
+    instead of just unpopulated ones when the target table has secondary
+    attributes. The antijoin must match on primary key only, ignoring
+    secondary attributes. Without `.proj()`, the antijoin could fail to
+    exclude already-populated keys.
+
+    This affected both direct mode (reserve_jobs=False) and distributed mode
+    (reserve_jobs=True), causing workers to waste time re-checking already
+    completed entries.
+    """
+    assert subject, "root tables are empty"
+    assert not experiment, "table already filled?"
+
+    total_keys = len(experiment.key_source)
+    assert total_keys > 0
+
+    # Partially populate (only 2 entries)
+    experiment.populate(max_calls=2)
+    assert len(experiment) == 2
+
+    # The critical test: key_source - target must return only unpopulated keys.
+    # Before the fix, this returned all keys (== total_keys) because the
+    # antijoin failed to match on PK when secondary attributes were present.
+    pending = experiment.key_source - experiment
+    assert len(pending) == total_keys - 2, (
+        f"Antijoin returned {len(pending)} pending keys, expected {total_keys - 2}. "
+        f"key_source - target may not be matching on primary key only."
+    )
+
+    # Also verify progress() reports correct counts
+    remaining, total = experiment.progress()
+    assert total == total_keys
+    assert remaining == total_keys - 2
+
+    # Populate the rest and verify antijoin returns 0
+    experiment.populate()
+    pending_after = experiment.key_source - experiment
+    assert len(pending_after) == 0, (
+        f"Antijoin returned {len(pending_after)} pending keys after full populate, expected 0."
+    )
+
+
+def test_populate_distributed_antijoin(clean_autopopulate, subject, experiment):
+    """Test that reserve_jobs=True correctly identifies pending keys.
+
+    When using distributed mode, jobs.refresh() must only insert truly pending
+    keys into the jobs table, not already-completed ones. This verifies the
+    antijoin in jobs.refresh() works correctly with secondary attributes.
+    """
+    assert subject, "root tables are empty"
+    assert not experiment, "table already filled?"
+
+    total_keys = len(experiment.key_source)
+
+    # Partially populate
+    experiment.populate(max_calls=2)
+    assert len(experiment) == 2
+
+    # Refresh jobs — should only create entries for unpopulated keys
+    experiment.jobs.refresh(delay=-1)
+    pending_jobs = len(experiment.jobs.pending)
+    assert pending_jobs == total_keys - 2, (
+        f"jobs.refresh() created {pending_jobs} pending jobs, expected {total_keys - 2}. "
+        f"The antijoin in refresh() may not be excluding already-completed keys."
+    )
+
+    # Clean up
+    experiment.jobs.delete_quick()
+
+
 def test_load_dependencies(prefix, connection_test):
     schema = dj.Schema(f"{prefix}_load_dependencies_populate", connection=connection_test)
 
