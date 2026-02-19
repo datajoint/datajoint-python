@@ -155,6 +155,123 @@ class TestInstance:
         assert callable(Instance)
 
 
+class TestInstanceBackend:
+    """Test Instance backend parameter."""
+
+    def test_instance_backend_sets_config(self, monkeypatch):
+        """Instance(backend=...) sets config.database.backend."""
+        monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        from datajoint.instance import Instance
+        from unittest.mock import patch
+
+        with patch("datajoint.instance.Connection"):
+            inst = Instance(
+                host="localhost", user="root", password="secret",
+                backend="postgresql",
+            )
+            assert inst.config.database.backend == "postgresql"
+
+    def test_instance_backend_default_from_config(self, monkeypatch):
+        """Instance without backend uses config default."""
+        monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        from datajoint.instance import Instance
+        from unittest.mock import patch
+
+        with patch("datajoint.instance.Connection"):
+            inst = Instance(
+                host="localhost", user="root", password="secret",
+            )
+            assert inst.config.database.backend == "mysql"
+
+    def test_instance_backend_affects_port_default(self, monkeypatch):
+        """Instance(backend='postgresql') uses port 5432 by default."""
+        monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        from datajoint.instance import Instance
+        from unittest.mock import patch, call
+
+        with patch("datajoint.instance.Connection") as MockConn:
+            Instance(
+                host="localhost", user="root", password="secret",
+                backend="postgresql",
+            )
+            # Connection should be called with port 5432 (PostgreSQL default)
+            args, kwargs = MockConn.call_args
+            assert args[3] == 5432  # port is the 4th positional arg
+
+
+class TestCrossConnectionValidation:
+    """Test that cross-connection operations are rejected."""
+
+    def test_join_different_connections_raises(self):
+        """Join of expressions from different connections raises DataJointError."""
+        from datajoint.expression import QueryExpression
+        from datajoint.errors import DataJointError
+        from unittest.mock import MagicMock
+
+        expr1 = QueryExpression()
+        expr1._connection = MagicMock()
+        expr1._heading = MagicMock()
+        expr1._heading.names = []
+
+        expr2 = QueryExpression()
+        expr2._connection = MagicMock()  # different connection object
+        expr2._heading = MagicMock()
+        expr2._heading.names = []
+
+        with pytest.raises(DataJointError, match="different connections"):
+            expr1 * expr2
+
+    def test_join_same_connection_allowed(self):
+        """Join of expressions from the same connection does not raise."""
+        from datajoint.condition import assert_join_compatibility
+        from datajoint.expression import QueryExpression
+        from unittest.mock import MagicMock
+
+        shared_conn = MagicMock()
+
+        expr1 = QueryExpression()
+        expr1._connection = shared_conn
+        expr1._heading = MagicMock()
+        expr1._heading.names = []
+        expr1._heading.lineage_available = False
+
+        expr2 = QueryExpression()
+        expr2._connection = shared_conn
+        expr2._heading = MagicMock()
+        expr2._heading.names = []
+        expr2._heading.lineage_available = False
+
+        # Should not raise
+        assert_join_compatibility(expr1, expr2)
+
+    def test_restriction_different_connections_raises(self):
+        """Restriction by expression from different connection raises DataJointError."""
+        from datajoint.expression import QueryExpression
+        from datajoint.errors import DataJointError
+        from unittest.mock import MagicMock
+
+        expr1 = QueryExpression()
+        expr1._connection = MagicMock()
+        expr1._heading = MagicMock()
+        expr1._heading.names = ["a"]
+        expr1._heading.__getitem__ = MagicMock()
+        expr1._heading.new_attributes = set()
+        expr1._support = ["`db`.`t1`"]
+        expr1._restriction = []
+        expr1._restriction_attributes = set()
+        expr1._joins = []
+        expr1._top = None
+        expr1._original_heading = expr1._heading
+
+        expr2 = QueryExpression()
+        expr2._connection = MagicMock()  # different connection
+        expr2._heading = MagicMock()
+        expr2._heading.names = ["a"]
+
+        with pytest.raises(DataJointError, match="different connections"):
+            expr1 & expr2
+
+
 class TestThreadSafetyError:
     """Test ThreadSafetyError exception."""
 

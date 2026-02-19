@@ -8,7 +8,7 @@ database contexts for multi-tenant applications.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from .connection import Connection
 from .errors import ThreadSafetyError
@@ -54,9 +54,11 @@ class Instance:
     password : str
         Database password.
     port : int, optional
-        Database port. Default from config or 3306.
+        Database port. Defaults to 3306 for MySQL, 5432 for PostgreSQL.
     use_tls : bool or dict, optional
         TLS configuration.
+    backend : str, optional
+        Database backend: ``"mysql"`` or ``"postgresql"``. Default from config.
     **kwargs : Any
         Additional config overrides applied to this instance's config.
 
@@ -81,10 +83,18 @@ class Instance:
         password: str,
         port: int | None = None,
         use_tls: bool | dict | None = None,
+        backend: Literal["mysql", "postgresql"] | None = None,
         **kwargs: Any,
     ) -> None:
         # Create fresh config with defaults loaded from env/file
         self.config = _create_config()
+
+        # Apply backend override before other kwargs (port default depends on it)
+        if backend is not None:
+            self.config.database.backend = backend
+            # Re-derive port default since _create_config resolved it before backend was set
+            if port is None and "database__port" not in kwargs:
+                self.config.database.port = 5432 if backend == "postgresql" else 3306
 
         # Apply any config overrides from kwargs
         for key, value in kwargs.items():

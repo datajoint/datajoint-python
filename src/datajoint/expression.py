@@ -1414,8 +1414,11 @@ class Union(QueryExpression):
             arg2 = arg2()  # instantiate if a class
         if not isinstance(arg2, QueryExpression):
             raise DataJointError("A QueryExpression can only be unioned with another QueryExpression")
-        if arg1.connection != arg2.connection:
-            raise DataJointError("Cannot operate on QueryExpressions originating from different connections.")
+        if arg1.connection is not arg2.connection:
+            raise DataJointError(
+                "Cannot operate on expressions from different connections. "
+                "Ensure both operands use the same dj.Instance or global connection."
+            )
         if set(arg1.primary_key) != set(arg2.primary_key):
             raise DataJointError("The operands of a union must share the same primary key.")
         if set(arg1.heading.secondary_attributes) & set(arg2.heading.secondary_attributes):
