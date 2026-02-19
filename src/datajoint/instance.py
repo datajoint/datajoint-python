@@ -21,21 +21,19 @@ if TYPE_CHECKING:
 
 def _load_thread_safe() -> bool:
     """
-    Load thread_safe setting from environment or config file.
+    Check if thread-safe mode is enabled.
+
+    Thread-safe mode is controlled by the ``DJ_THREAD_SAFE`` environment
+    variable, which must be set before the process starts.
 
     Returns
     -------
     bool
         True if thread-safe mode is enabled.
     """
-    # Check environment variable first
     env_val = os.environ.get("DJ_THREAD_SAFE", "").lower()
     if env_val in ("true", "1", "yes"):
         return True
-    if env_val in ("false", "0", "no"):
-        return False
-
-    # Default: thread-safe mode is off
     return False
 
 
@@ -104,11 +102,16 @@ class Instance:
         if port is None:
             port = self.config.database.port
 
-        # Create connection
-        self.connection = Connection(host, user, password, port, use_tls)
-
-        # Attach config to connection so tables can access it
-        self.connection._config = self.config
+        # Create connection with this instance's config and backend
+        self.connection = Connection(
+            host,
+            user,
+            password,
+            port,
+            use_tls,
+            backend=self.config.database.backend,
+            config_override=self.config,
+        )
 
     def Schema(
         self,
@@ -235,9 +238,7 @@ def _get_singleton_connection() -> Connection:
                 "Database password not configured. Set dj.config['database.password'] or DJ_PASS environment variable."
             )
 
-        _singleton_connection = Connection(host, user, password, port, use_tls)
-        # Attach global config to connection
-        _singleton_connection._config = _global_config
+        _singleton_connection = Connection(host, user, password, port, use_tls, config_override=_global_config)
 
     return _singleton_connection
 

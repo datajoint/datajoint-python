@@ -160,8 +160,7 @@ def conn(
                 "Database password not configured. Set dj.config['database.password'] or pass password= argument."
             )
 
-        instance_module._singleton_connection = Connection(host, user, password, port, use_tls)
-        instance_module._singleton_connection._config = _global_config
+        instance_module._singleton_connection = Connection(host, user, password, port, use_tls, config_override=_global_config)
 
     return _get_singleton_connection()
 
