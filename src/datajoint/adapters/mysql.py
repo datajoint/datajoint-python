@@ -656,6 +656,32 @@ class MySQLAdapter(DatabaseAdapter):
             f"ORDER BY constraint_name, ordinal_position"
         )
 
+    def load_primary_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """Query to load all primary key columns across schemas."""
+        tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
+        return (
+            f"SELECT {tab_expr} as tab, column_name "
+            f"FROM information_schema.key_column_usage "
+            f"WHERE table_name NOT LIKE {like_pattern} "
+            f"AND table_schema in ({schemas_list}) "
+            f"AND constraint_name='PRIMARY'"
+        )
+
+    def load_foreign_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """Query to load all foreign key relationships across schemas."""
+        tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
+        ref_tab_expr = "concat('`', referenced_table_schema, '`.`', referenced_table_name, '`')"
+        return (
+            f"SELECT constraint_name, "
+            f"{tab_expr} as referencing_table, "
+            f"{ref_tab_expr} as referenced_table, "
+            f"column_name, referenced_column_name "
+            f"FROM information_schema.key_column_usage "
+            f"WHERE referenced_table_name NOT LIKE {like_pattern} "
+            f"AND (referenced_table_schema in ({schemas_list}) "
+            f"OR referenced_table_schema is not NULL AND table_schema in ({schemas_list}))"
+        )
+
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
         """Query to get FK constraint details from information_schema."""
         return (

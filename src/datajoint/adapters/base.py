@@ -728,6 +728,55 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def load_primary_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """
+        Generate query to load primary key columns for all tables across schemas.
+
+        Used by the dependency graph to build the schema graph.
+
+        Parameters
+        ----------
+        schemas_list : str
+            Comma-separated, quoted schema names for an IN clause.
+        like_pattern : str
+            SQL LIKE pattern to exclude (e.g., "'~%%'" for internal tables).
+
+        Returns
+        -------
+        str
+            SQL query returning rows with columns:
+            - tab: fully qualified table name (quoted)
+            - column_name: primary key column name
+        """
+        ...
+
+    @abstractmethod
+    def load_foreign_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """
+        Generate query to load foreign key relationships across schemas.
+
+        Used by the dependency graph to build the schema graph.
+
+        Parameters
+        ----------
+        schemas_list : str
+            Comma-separated, quoted schema names for an IN clause.
+        like_pattern : str
+            SQL LIKE pattern to exclude (e.g., "'~%%'" for internal tables).
+
+        Returns
+        -------
+        str
+            SQL query returning rows (as dicts) with columns:
+            - constraint_name: FK constraint name
+            - referencing_table: fully qualified child table name (quoted)
+            - referenced_table: fully qualified parent table name (quoted)
+            - column_name: FK column in child table
+            - referenced_column_name: referenced column in parent table
+        """
+        ...
+
+    @abstractmethod
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
         """
         Generate query to get foreign key constraint details from information_schema.

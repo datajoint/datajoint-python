@@ -164,92 +164,21 @@ class Dependencies(nx.DiGraph):
         # Build schema list for IN clause
         schemas_list = ", ".join(adapter.quote_string(s) for s in self._conn.schemas)
 
-        # Backend-specific queries for primary keys and foreign keys
-        # Note: Both PyMySQL and psycopg2 use %s placeholders, so escape % as %%
+        # Load primary keys and foreign keys via adapter methods
+        # Note: Both PyMySQL and psycopg use %s placeholders, so escape % as %%
         like_pattern = "'~%%'"
 
-        if adapter.backend == "mysql":
-            # MySQL: use concat() and MySQL-specific information_schema columns
-            tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
+        # load primary key info
+        keys = self._conn.query(adapter.load_primary_keys_sql(schemas_list, like_pattern))
+        pks = defaultdict(set)
+        for key in keys:
+            pks[key[0]].add(key[1])
 
-            # load primary key info (MySQL uses constraint_name='PRIMARY')
-            keys = self._conn.query(
-                f"""
-                SELECT {tab_expr} as tab, column_name
-                FROM information_schema.key_column_usage
-                WHERE table_name NOT LIKE {like_pattern}
-                    AND table_schema in ({schemas_list})
-                    AND constraint_name='PRIMARY'
-                """
-            )
-            pks = defaultdict(set)
-            for key in keys:
-                pks[key[0]].add(key[1])
-
-            # load foreign keys (MySQL has referenced_* columns)
-            ref_tab_expr = "concat('`', referenced_table_schema, '`.`', referenced_table_name, '`')"
-            fk_keys = self._conn.query(
-                f"""
-                SELECT constraint_name,
-                    {tab_expr} as referencing_table,
-                    {ref_tab_expr} as referenced_table,
-                    column_name, referenced_column_name
-                FROM information_schema.key_column_usage
-                WHERE referenced_table_name NOT LIKE {like_pattern}
-                    AND (referenced_table_schema in ({schemas_list})
-                         OR referenced_table_schema is not NULL AND table_schema in ({schemas_list}))
-                """,
-                as_dict=True,
-            )
-        else:
-            # PostgreSQL: use || concatenation and different query structure
-            tab_expr = "'\"' || kcu.table_schema || '\".\"' || kcu.table_name || '\"'"
-
-            # load primary key info (PostgreSQL uses constraint_type='PRIMARY KEY')
-            keys = self._conn.query(
-                f"""
-                SELECT {tab_expr} as tab, kcu.column_name
-                FROM information_schema.key_column_usage kcu
-                JOIN information_schema.table_constraints tc
-                    ON kcu.constraint_name = tc.constraint_name
-                    AND kcu.table_schema = tc.table_schema
-                WHERE kcu.table_name NOT LIKE {like_pattern}
-                    AND kcu.table_schema in ({schemas_list})
-                    AND tc.constraint_type = 'PRIMARY KEY'
-                """
-            )
-            pks = defaultdict(set)
-            for key in keys:
-                pks[key[0]].add(key[1])
-
-            # load foreign keys using pg_constraint system catalogs
-            # The information_schema approach creates a Cartesian product for composite FKs
-            # because constraint_column_usage doesn't have ordinal_position.
-            # Using pg_constraint with unnest(conkey, confkey) WITH ORDINALITY gives correct mapping.
-            fk_keys = self._conn.query(
-                f"""
-                SELECT
-                    c.conname as constraint_name,
-                    '"' || ns1.nspname || '"."' || cl1.relname || '"' as referencing_table,
-                    '"' || ns2.nspname || '"."' || cl2.relname || '"' as referenced_table,
-                    a1.attname as column_name,
-                    a2.attname as referenced_column_name
-                FROM pg_constraint c
-                JOIN pg_class cl1 ON c.conrelid = cl1.oid
-                JOIN pg_namespace ns1 ON cl1.relnamespace = ns1.oid
-                JOIN pg_class cl2 ON c.confrelid = cl2.oid
-                JOIN pg_namespace ns2 ON cl2.relnamespace = ns2.oid
-                CROSS JOIN LATERAL unnest(c.conkey, c.confkey) WITH ORDINALITY AS cols(conkey, confkey, ord)
-                JOIN pg_attribute a1 ON a1.attrelid = cl1.oid AND a1.attnum = cols.conkey
-                JOIN pg_attribute a2 ON a2.attrelid = cl2.oid AND a2.attnum = cols.confkey
-                WHERE c.contype = 'f'
-                    AND cl1.relname NOT LIKE {like_pattern}
-                    AND (ns2.nspname in ({schemas_list})
-                         OR ns1.nspname in ({schemas_list}))
-                ORDER BY c.conname, cols.ord
-                """,
-                as_dict=True,
-            )
+        # load foreign keys
+        fk_keys = self._conn.query(
+            adapter.load_foreign_keys_sql(schemas_list, like_pattern),
+            as_dict=True,
+        )
 
         # add nodes to the graph
         for n, pk in pks.items():
