@@ -345,7 +345,7 @@ class _Schema:
                 del frame
         tables = [
             row[0]
-            for row in self.connection.query("SHOW TABLES in `%s`" % self.database)
+            for row in self.connection.query(self.connection.adapter.list_tables_sql(self.database))
             if lookup_class_name("`{db}`.`{tab}`".format(db=self.database, tab=row[0]), into, 0) is None
         ]
         master_classes = (Lookup, Manual, Imported, Computed)
@@ -423,13 +423,7 @@ class _Schema:
         """
         if self.database is None:
             raise DataJointError("Schema must be activated first.")
-        return bool(
-            self.connection.query(
-                "SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{database}'".format(
-                    database=self.database
-                )
-            ).rowcount
-        )
+        return bool(self.connection.query(self.connection.adapter.schema_exists_sql(self.database)).rowcount)
 
     @property
     def lineage_table_exists(self) -> bool:
@@ -838,12 +832,8 @@ def list_schemas(connection: Connection | None = None) -> list[str]:
     list[str]
         Names of all accessible schemas.
     """
-    return [
-        r[0]
-        for r in (connection or _get_singleton_connection()).query(
-            'SELECT schema_name FROM information_schema.schemata WHERE schema_name <> "information_schema"'
-        )
-    ]
+    conn = connection or _get_singleton_connection()
+    return [r[0] for r in conn.query(conn.adapter.list_schemas_sql())]
 
 
 def virtual_schema(

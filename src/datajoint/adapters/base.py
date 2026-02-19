@@ -616,6 +616,23 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def schema_exists_sql(self, schema_name: str) -> str:
+        """
+        Generate query to check if a schema exists.
+
+        Parameters
+        ----------
+        schema_name : str
+            Name of schema to check.
+
+        Returns
+        -------
+        str
+            SQL query that returns a row if the schema exists.
+        """
+        ...
+
+    @abstractmethod
     def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """
         Generate query to list tables in a schema.

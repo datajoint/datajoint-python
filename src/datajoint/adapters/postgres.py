@@ -721,6 +721,10 @@ class PostgreSQLAdapter(DatabaseAdapter):
             "WHERE schema_name NOT IN ('pg_catalog', 'information_schema')"
         )
 
+    def schema_exists_sql(self, schema_name: str) -> str:
+        """Query to check if a schema exists in PostgreSQL."""
+        return f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = {self.quote_string(schema_name)}"
+
     def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """Query to list tables in a schema."""
         sql = (

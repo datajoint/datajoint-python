@@ -611,6 +611,10 @@ class MySQLAdapter(DatabaseAdapter):
         """Query to list all databases in MySQL."""
         return "SELECT schema_name FROM information_schema.schemata"
 
+    def schema_exists_sql(self, schema_name: str) -> str:
+        """Query to check if a database exists in MySQL."""
+        return f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = {self.quote_string(schema_name)}"
+
     def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """Query to list tables in a database."""
         sql = f"SHOW TABLES IN {self.quote_identifier(schema_name)}"
