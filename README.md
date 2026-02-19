@@ -42,8 +42,8 @@ DataJoint is a framework for scientific data pipelines based on the **Relational
   </td>
   <td>Citation</td>
   <td>
-    <a href="https://doi.org/10.1101/031658">
-      <img src="https://img.shields.io/badge/DOI-10.1101/031658-blue.svg" alt="DOI" />
+    <a href="https://doi.org/10.48550/arXiv.2602.16585">
+      <img src="https://img.shields.io/badge/DOI-10.48550/arXiv.2602.16585-blue.svg" alt="DOI" />
     </a>
   </td>
   <td>Coverage</td>
