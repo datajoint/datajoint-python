@@ -115,15 +115,8 @@ def test_allow_insert(clean_autopopulate, subject, experiment):
 def test_populate_antijoin_with_secondary_attrs(clean_autopopulate, subject, experiment):
     """Test that populate correctly computes pending keys via antijoin.
 
-    Regression test for a bug where `key_source - self` returned all keys
-    instead of just unpopulated ones when the target table has secondary
-    attributes. The antijoin must match on primary key only, ignoring
-    secondary attributes. Without `.proj()`, the antijoin could fail to
-    exclude already-populated keys.
-
-    This affected both direct mode (reserve_jobs=False) and distributed mode
-    (reserve_jobs=True), causing workers to waste time re-checking already
-    completed entries.
+    Verifies that partial populate + antijoin gives correct pending counts.
+    Note: Experiment.make() inserts fake_experiments_per_subject rows per key.
     """
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -131,20 +124,15 @@ def test_populate_antijoin_with_secondary_attrs(clean_autopopulate, subject, exp
     total_keys = len(experiment.key_source)
     assert total_keys > 0
 
-    # Partially populate (only 2 entries)
+    # Partially populate (2 keys from key_source)
     experiment.populate(max_calls=2)
-    assert len(experiment) == 2
+    assert len(experiment) == 2 * experiment.fake_experiments_per_subject
 
-    # The critical test: key_source - target must return only unpopulated keys.
-    # Before the fix, this returned all keys (== total_keys) because the
-    # antijoin failed to match on PK when secondary attributes were present.
+    # key_source - target must return only unpopulated keys
     pending = experiment.key_source - experiment
-    assert len(pending) == total_keys - 2, (
-        f"Antijoin returned {len(pending)} pending keys, expected {total_keys - 2}. "
-        f"key_source - target may not be matching on primary key only."
-    )
+    assert len(pending) == total_keys - 2, f"Antijoin returned {len(pending)} pending keys, expected {total_keys - 2}."
 
-    # Also verify progress() reports correct counts
+    # Verify progress() reports correct counts
     remaining, total = experiment.progress()
     assert total == total_keys
     assert remaining == total_keys - 2
@@ -152,17 +140,14 @@ def test_populate_antijoin_with_secondary_attrs(clean_autopopulate, subject, exp
     # Populate the rest and verify antijoin returns 0
     experiment.populate()
     pending_after = experiment.key_source - experiment
-    assert len(pending_after) == 0, (
-        f"Antijoin returned {len(pending_after)} pending keys after full populate, expected 0."
-    )
+    assert len(pending_after) == 0, f"Antijoin returned {len(pending_after)} pending keys after full populate, expected 0."
 
 
 def test_populate_distributed_antijoin(clean_autopopulate, subject, experiment):
     """Test that reserve_jobs=True correctly identifies pending keys.
 
     When using distributed mode, jobs.refresh() must only insert truly pending
-    keys into the jobs table, not already-completed ones. This verifies the
-    antijoin in jobs.refresh() works correctly with secondary attributes.
+    keys into the jobs table, not already-completed ones.
     """
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -171,18 +156,106 @@ def test_populate_distributed_antijoin(clean_autopopulate, subject, experiment):
 
     # Partially populate
     experiment.populate(max_calls=2)
-    assert len(experiment) == 2
+    assert len(experiment) == 2 * experiment.fake_experiments_per_subject
 
     # Refresh jobs — should only create entries for unpopulated keys
     experiment.jobs.refresh(delay=-1)
     pending_jobs = len(experiment.jobs.pending)
-    assert pending_jobs == total_keys - 2, (
-        f"jobs.refresh() created {pending_jobs} pending jobs, expected {total_keys - 2}. "
-        f"The antijoin in refresh() may not be excluding already-completed keys."
-    )
+    assert pending_jobs == total_keys - 2, f"jobs.refresh() created {pending_jobs} pending jobs, expected {total_keys - 2}."
 
     # Clean up
     experiment.jobs.delete_quick()
+
+
+def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
+    """Regression test: antijoin with overlapping secondary attribute names.
+
+    This reproduces the bug where `key_source - self` returns ALL keys instead
+    of just unpopulated ones. The condition is:
+
+    1. key_source returns secondary attributes (e.g., num_samples, quality)
+    2. The target table has secondary attributes with the SAME NAMES
+    3. The VALUES differ between source and target after populate
+
+    Without .proj() on the target, SQL matches on ALL common column names
+    (including secondary attrs), so different values mean no match, and all
+    keys appear "pending" even after populate.
+
+    Real-world example: LightningPoseOutput (key_source) has num_frames,
+    quality, processing_datetime as secondary attrs. InitialContainer (target)
+    also has those same-named columns with different values.
+    """
+    test_schema = dj.Schema(f"{prefix}_antijoin_overlap", connection=connection_test)
+
+    @test_schema
+    class Sensor(dj.Lookup):
+        definition = """
+        sensor_id : int32
+        ---
+        num_samples : int32
+        quality : float
+        """
+        contents = [
+            (1, 100, 0.95),
+            (2, 200, 0.87),
+            (3, 150, 0.92),
+            (4, 175, 0.89),
+        ]
+
+    @test_schema
+    class ProcessedSensor(dj.Computed):
+        definition = """
+        -> Sensor
+        ---
+        num_samples : int32       # same name as Sensor's secondary attr
+        quality : float           # same name as Sensor's secondary attr
+        result : float
+        """
+
+        @property
+        def key_source(self):
+            return Sensor()  # returns sensor_id + num_samples + quality
+
+        def make(self, key):
+            # Values intentionally differ from source — this is what triggers
+            # the bug: the antijoin tries to match on num_samples and quality
+            # too, and since values differ, no match is found.
+            self.insert1(
+                dict(
+                    sensor_id=key["sensor_id"],
+                    num_samples=key["num_samples"] * 2,
+                    quality=round(key["quality"] + 0.05, 2),
+                    result=key["num_samples"] * key["quality"],
+                )
+            )
+
+    try:
+        # Partially populate (2 out of 4)
+        ProcessedSensor().populate(max_calls=2)
+        assert len(ProcessedSensor()) == 2
+
+        total_keys = len(ProcessedSensor().key_source)
+        assert total_keys == 4
+
+        # The critical test: populate() must correctly identify remaining keys.
+        # Before the fix, populate() used `key_source - self` which matched on
+        # num_samples and quality too, returning all 4 keys as "pending".
+        ProcessedSensor().populate()
+        assert len(ProcessedSensor()) == 4, (
+            f"After full populate, expected 4 entries but got {len(ProcessedSensor())}. "
+            f"populate() likely re-processed already-completed keys."
+        )
+
+        # Verify progress reports 0 remaining
+        remaining, total = ProcessedSensor().progress()
+        assert remaining == 0, f"Expected 0 remaining, got {remaining}"
+        assert total == 4
+
+        # Verify antijoin with .proj() is correct
+        pending = ProcessedSensor().key_source - ProcessedSensor().proj()
+        assert len(pending) == 0
+    finally:
+        test_schema.drop(force=True)
 
 
 def test_load_dependencies(prefix, connection_test):
