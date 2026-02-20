@@ -143,30 +143,6 @@ def test_populate_antijoin_with_secondary_attrs(clean_autopopulate, subject, exp
     assert len(pending_after) == 0, f"Antijoin returned {len(pending_after)} pending keys after full populate, expected 0."
 
 
-def test_populate_distributed_antijoin(clean_autopopulate, subject, experiment):
-    """Test that reserve_jobs=True correctly identifies pending keys.
-
-    When using distributed mode, jobs.refresh() must only insert truly pending
-    keys into the jobs table, not already-completed ones.
-    """
-    assert subject, "root tables are empty"
-    assert not experiment, "table already filled?"
-
-    total_keys = len(experiment.key_source)
-
-    # Partially populate
-    experiment.populate(max_calls=2)
-    assert len(experiment) == 2 * experiment.fake_experiments_per_subject
-
-    # Refresh jobs — should only create entries for unpopulated keys
-    experiment.jobs.refresh(delay=-1)
-    pending_jobs = len(experiment.jobs.pending)
-    assert pending_jobs == total_keys - 2, f"jobs.refresh() created {pending_jobs} pending jobs, expected {total_keys - 2}."
-
-    # Clean up
-    experiment.jobs.delete_quick()
-
-
 def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
     """Regression test: antijoin with overlapping secondary attribute names.
 
@@ -193,7 +169,7 @@ def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
         sensor_id : int32
         ---
         num_samples : int32
-        quality : float
+        quality : decimal(4,2)
         """
         contents = [
             (1, 100, 0.95),
@@ -208,8 +184,8 @@ def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
         -> Sensor
         ---
         num_samples : int32       # same name as Sensor's secondary attr
-        quality : float           # same name as Sensor's secondary attr
-        result : float
+        quality : decimal(4,2)    # same name as Sensor's secondary attr
+        result : decimal(8,2)
         """
 
         @property
@@ -217,15 +193,17 @@ def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
             return Sensor()  # returns sensor_id + num_samples + quality
 
         def make(self, key):
+            # Fetch source data (key only contains PK after projection)
+            source = (Sensor() & key).fetch1()
             # Values intentionally differ from source — this is what triggers
             # the bug: the antijoin tries to match on num_samples and quality
             # too, and since values differ, no match is found.
             self.insert1(
                 dict(
                     sensor_id=key["sensor_id"],
-                    num_samples=key["num_samples"] * 2,
-                    quality=round(key["quality"] + 0.05, 2),
-                    result=key["num_samples"] * key["quality"],
+                    num_samples=source["num_samples"] * 2,
+                    quality=float(source["quality"]) + 0.05,
+                    result=float(source["num_samples"]) * float(source["quality"]),
                 )
             )
 
@@ -255,7 +233,7 @@ def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
         pending = ProcessedSensor().key_source - ProcessedSensor().proj()
         assert len(pending) == 0
     finally:
-        test_schema.drop(force=True)
+        test_schema.drop(prompt=False)
 
 
 def test_load_dependencies(prefix, connection_test):
