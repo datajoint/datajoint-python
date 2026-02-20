@@ -403,7 +403,7 @@ class AutoPopulate:
         """
         from tqdm import tqdm
 
-        keys = (self._jobs_to_do(restrictions) - self).keys()
+        keys = (self._jobs_to_do(restrictions) - self.proj()).keys()
 
         logger.debug("Found %d keys to populate" % len(keys))
 
@@ -701,7 +701,7 @@ class AutoPopulate:
         if not common_attrs:
             # No common attributes - fall back to two-query method
             total = len(todo)
-            remaining = len(todo - self)
+            remaining = len(todo - self.proj())
         else:
             # Build a single query that computes both total and remaining
             # Using LEFT JOIN with COUNT(DISTINCT) to handle 1:many relationships

@@ -370,7 +370,7 @@ class Job(Table):
 
         # Keys that need jobs: in key_source, not in target, not in jobs
         # Disable semantic_check for Job table (self) because its attributes may not have matching lineage
-        new_keys = (key_source - self._target).restrict(Not(self), semantic_check=False).proj()
+        new_keys = (key_source - self._target.proj()).restrict(Not(self), semantic_check=False).proj()
         new_key_list = new_keys.keys()
 
         if new_key_list:
