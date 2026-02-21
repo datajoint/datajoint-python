@@ -39,13 +39,13 @@ No error parsing, no trial-and-error. The same pattern can be applied to cascade
 
 ## Design
 
-### Core concept: `RestrictedDiagram`
+### Core concept: Restricted Diagram
 
-A `RestrictedDiagram` is a `Diagram` augmented with per-node restrictions. Applying a restriction to one node propagates it downstream through FK edges, using the `attr_map` stored on each edge.
+A restricted diagram is a `Diagram` augmented with per-node restrictions. A restriction is applied to one table and propagates downstream through FK edges using the `attr_map` stored on each edge.
 
 ```python
-# Apply restriction to Session node, propagate to all descendants
-rd = dj.Diagram(schema).restrict(Session & 'subject_id=1')
+# Apply restriction to Session, propagate to all descendants
+rd = dj.Diagram(schema) & (Session & 'subject_id=1')
 
 # Preview what would be affected
 rd.preview()
@@ -57,112 +57,9 @@ rd.delete()
 rd.export('/path/to/backup/')
 ```
 
-### Unrestricted nodes are not affected
-
-A restricted diagram distinguishes between three kinds of nodes:
-
-1. **Directly restricted** — the user applied a restriction to this node
-2. **Indirectly restricted** — a restriction propagated to this node from an ancestor
-3. **Unrestricted** — no restriction reached this node
-
-**Only restricted nodes (direct or indirect) participate in operations.** Unrestricted nodes are left untouched. This is critical for delete: if you restrict `Session & 'subject=1'`, only `Session` and its downstream dependents are affected. Tables in the diagram that are not downstream of `Session` (e.g., `Equipment`, `Lab`) are not deleted.
-
-The restricted diagram's `topo_sort()` for operations should only yield nodes that carry a restriction. Unrestricted nodes are effectively invisible to the operation.
-
-### Multiple restrictions: OR vs AND
-
-When multiple restrictions are applied to different tables in the diagram, downstream nodes may receive restrictions from multiple parents. How these combine depends on the operation.
-
-**Example:** A diagram with `Lab`, `Session → Recording`. `Recording` depends on both `Session` and `Lab`.
-
-```python
-rd = dj.Diagram(schema)
-rd.restrict(Session & 'subject=1')   # R1 propagates to Recording
-rd.restrict(Lab & 'lab="brody"')     # R2 propagates to Recording
-```
-
-Recording now has two propagated restrictions:
-- R1: rows referencing subject=1 sessions
-- R2: rows referencing brody lab
-
-**For delete (OR / union):** A recording should be deleted if it is tainted by *any* restricted parent. Deleting subject 1 means all their recordings go, regardless of which lab. Deleting brody lab means all their recordings go, regardless of subject. The two restrictions combine with OR.
-
-**For export/publish (AND / intersection):** A recording should be exported only if it satisfies *all* criteria. You want specifically brody lab's subject 1 recordings. The two restrictions combine with AND.
-
-**Implementation:** The diagram stores restrictions as separate **restriction sets**, one per `restrict()` call. Each set propagates independently. The combination logic is deferred to the operation:
-
-```python
-class RestrictedDiagram:
-    # Each restrict() call creates a new restriction set.
-    # A restriction set is a dict mapping table_name → list[restriction]
-    # (list = OR within a set, for multiple FK paths from different parents)
-    _restriction_sets: list[dict[str, list]]
-
-    def restrict(self, table_expr):
-        """Add a new restriction set. Propagate downstream."""
-        new_set = {}
-        # ... propagate and populate new_set ...
-        self._restriction_sets.append(new_set)
-        return self
-
-    def _effective_restriction(self, table_name, mode="or"):
-        """
-        Compute the effective restriction for a node.
-
-        mode="or":  union across sets — row included if ANY set restricts it
-                    (for delete: tainted by any restricted parent)
-        mode="and": intersection across sets — row included only if ALL sets restrict it
-                    (for export: must satisfy all criteria)
-        """
-        sets_with_table = [s[table_name] for s in self._restriction_sets
-                           if table_name in s]
-        if not sets_with_table:
-            return None  # unrestricted — not affected
-
-        if mode == "or":
-            # Union: flatten all restriction sets into one OR-list
-            combined = []
-            for restriction_list in sets_with_table:
-                combined.extend(restriction_list)
-            return combined  # list = OR in DataJoint
-
-        elif mode == "and":
-            # Intersection: each set is applied as a separate AND condition
-            # Start with the table, apply each set's restrictions sequentially
-            # Within each set, restrictions are OR (multiple FK paths)
-            # Across sets, restrictions are AND (multiple restrict() calls)
-            return sets_with_table  # caller applies: for s in sets: expr &= s
-
-    def delete(self, ...):
-        """Delete uses OR — any restricted parent taints the row."""
-        for table_name in reversed(self._restricted_topo_sort()):
-            restriction = self._effective_restriction(table_name, mode="or")
-            ...
-
-    def export(self, ...):
-        """Export uses AND — row must satisfy all criteria."""
-        for table_name in self._restricted_topo_sort():
-            restriction = self._effective_restriction(table_name, mode="and")
-            ...
-```
-
-**Why this works:**
-
-Within a single restriction set, multiple restrictions at the same node (from different FK paths) are always OR — a row that references a restricted parent through *any* FK is affected. This is structural and operation-independent.
-
-*Across* restriction sets (separate `restrict()` calls on different tables), the combination depends on the operation. The diagram stores them separately and lets the operation choose.
-
-**Edge case — node restricted in some sets but not others:**
-
-For AND mode (export): if a node is downstream of restriction set R1 but not R2, what happens? The node has restrictions from R1 but none from R2. Two options:
-- **Strict AND**: node is excluded (no data exported) because it doesn't satisfy all criteria
-- **Lenient AND**: only apply AND across sets that actually reach this node
-
-Lenient AND is more useful: `restrict(Session & 'subject=1') & restrict(Stimulus & 'type="visual"')` should export recordings that are from subject 1 AND use visual stimuli, but should also export the `Session` rows for subject 1 even though `Stimulus` restrictions don't propagate up to `Session`. The lenient interpretation applies AND only where multiple restriction sets converge.
-
 ### Restriction propagation
 
-Each restriction set propagates independently through the graph. Within a set, each node carries a list of restrictions (OR-combined for multiple FK paths).
+A restriction is applied to one table node. It propagates downstream through FK edges in topological order. Each downstream node accumulates a restriction derived from its restricted parent(s).
 
 **Propagation rules for edge `Parent → Child` with `attr_map`:**
 
@@ -172,10 +69,73 @@ Each restriction set propagates independently through the graph. Within a set, e
 2. **Aliased FK** (`attr_map` renames, e.g. `{'source_mouse': 'mouse_id'}`):
    Restrict child by `parent.proj(**{fk: pk for fk, pk in attr_map.items()})`.
 
-3. **Multiple FK paths to the same child** (via alias nodes):
-   Each path produces a separate restriction within the same set. These combine with OR — a child row is affected if it references restricted parent rows through *any* FK.
-
 This reuses the existing restriction logic from the current `cascade()` function (lines 1082–1090 of `table.py`), but applies it upfront during graph traversal rather than reactively from error messages.
+
+### Converging paths
+
+A child node may have multiple restricted ancestors. When restrictions from different parents converge at the same child, the combination depends on the operation:
+
+**Example:**
+
+```
+Session ──→ Recording ←── Stimulus
+   ↓                         ↓
+subject=1               type="visual"
+```
+
+`Recording` depends on both `Session` and `Stimulus`. If `Session` is restricted to `subject=1` and `Stimulus` is restricted to `type="visual"`, `Recording` receives two propagated restrictions:
+- R1: rows referencing subject=1 sessions
+- R2: rows referencing visual stimuli
+
+**For delete — OR (union):** A recording is deleted if it is tainted by *any* restricted parent. This is the correct semantic for referential integrity: if the parent row is being deleted, all child rows referencing it must go.
+
+**For export — AND (intersection):** A recording is exported only if it satisfies *all* restricted ancestors. You want specifically subject 1's visual stimulus recordings.
+
+**Implementation:** The diagram stores per-node restrictions as a list — one entry per converging path. The operation applies the appropriate combination:
+
+```python
+class RestrictedDiagram:
+    # Per-node restrictions: table_name → list of restrictions (one per arriving path)
+    _restrictions: dict[str, list]
+
+    def delete(self, ...):
+        """Delete: OR at convergence — any tainted row is deleted."""
+        for table_name in reversed(self._restricted_topo_sort()):
+            ft = FreeTable(conn, table_name)
+            # list restriction = OR in DataJoint
+            ft._restriction = self._restrictions[table_name]
+            ft.delete_quick()
+
+    def export(self, ...):
+        """Export: AND at convergence — row must satisfy all restricted ancestors."""
+        for table_name in self._restricted_topo_sort():
+            ft = FreeTable(conn, table_name)
+            for restriction in self._restrictions[table_name]:
+                ft &= restriction  # sequential & = AND
+            # ... fetch and export ft ...
+```
+
+### Multiple FK paths from same parent (alias nodes)
+
+Separate from convergence of different parents, a child may reference the *same* parent through multiple FKs (e.g., `source_mouse` and `target_mouse` both referencing `Mouse`). These are represented in the dependency graph as alias nodes.
+
+Multiple FK paths from the same restricted parent always combine with **OR** regardless of operation — a child row that references a restricted parent through *any* FK is affected. This is structural, not operation-dependent.
+
+During propagation:
+1. Walk `out_edges(parent)` — yields edges to real tables and alias nodes.
+2. For alias nodes: read `attr_map` from `parent → alias` edge, follow `alias → child` to find the real child table.
+3. Accumulate restrictions per real child table. Multiple paths from the same parent produce OR-combined entries in the restriction list.
+
+### Non-downstream tables
+
+**Delete:** Only the restricted table and its downstream dependents are affected. Tables in the diagram that are not downstream are excluded — they have no restriction and are not touched. The operation only visits nodes in `_restrictions`.
+
+**Export:** Non-downstream tables **remain** in the export. They provide referential context — the `Lab` and `Session` rows referenced by the exported `Recording` rows should be included to maintain referential integrity in the export. This requires upward propagation after the initial downward pass: for each restricted node, include the parent rows that are actually referenced.
+
+```
+Delete scope:   restricted node ──→ downstream only
+Export scope:   upstream context ←── restricted node ──→ downstream
+```
 
 ### `part_integrity` as a Diagram-level policy
 
@@ -196,11 +156,9 @@ In the restricted diagram design, `part_integrity` becomes a policy on the diagr
 **`"cascade"`:** During propagation, when a restriction reaches a part table whose master is not already restricted, propagate the restriction *upward* from part to master: `master &= (master.proj() & restricted_part.proj())`. Then continue propagating the master's restriction to *its* descendants. This replaces the current ad-hoc upward cascade in lines 1086–1108 of `table.py`.
 
 ```python
-# part_integrity becomes a diagram policy
-rd = dj.Diagram(schema).restrict(
-    PartTable & 'key=1',
-    part_integrity="cascade"
-)
+# part_integrity affects propagation
+rd = dj.Diagram(schema) & (PartTable & 'key=1')
+rd.delete(part_integrity="cascade")
 # Master is now also restricted to rows matching the part restriction
 ```
 
@@ -220,12 +178,14 @@ def delete(self):
     conn = self._connection
     conn.dependencies.load()
 
-    # Get all restricted nodes in reverse topological order (leaves first)
-    tables = [t for t in self.topo_sort() if not t.isdigit() and self._restrictions.get(t)]
+    # Only restricted nodes, in reverse topological order (leaves first)
+    tables = [t for t in self.topo_sort()
+              if not t.isdigit() and t in self._restrictions]
 
     with conn.transaction:
         for table_name in reversed(tables):
             ft = FreeTable(conn, table_name)
+            # list = OR (delete any row tainted by any restricted parent)
             ft._restriction = self._restrictions[table_name]
             ft.delete_quick()
 ```
@@ -257,75 +217,26 @@ except IntegrityError as error:
 
 This preserves error-message parsing as a **diagnostic fallback** rather than as the primary cascade mechanism. The error is actionable: the user knows to activate the missing schema.
 
-### Alias node handling
-
-The dependency graph uses numeric alias nodes (`"1"`, `"2"`, ...) to represent aliased FKs while keeping the graph acyclic. During restriction propagation:
-
-1. Walk `out_edges(parent)` — this yields edges to both real tables and alias nodes.
-2. For alias nodes: read the `attr_map` from the `parent → alias` edge, then follow `alias → child` to find the real child table.
-3. Accumulate restrictions per real child table. Multiple paths (alias + direct) to the same child produce OR-combined restrictions.
-
-```python
-def _propagate_restriction(self, parent_name, parent_restriction):
-    """Propagate restriction from parent to all children via FK edges."""
-    for _, target, edge_data in self.out_edges(parent_name, data=True):
-        attr_map = edge_data["attr_map"]
-
-        # Follow through alias node to real child
-        if target.isdigit():
-            alias_node = target
-            real_children = list(self.successors(alias_node))
-            child_name = real_children[0] if real_children else None
-        else:
-            child_name = target
-
-        if child_name is None:
-            continue
-
-        # Compute child restriction using attr_map
-        parent_expr = FreeTable(self._connection, parent_name)
-        parent_expr._restriction = parent_restriction
-
-        if edge_data["aliased"]:
-            child_restriction = parent_expr.proj(
-                **{fk: pk for fk, pk in attr_map.items()}
-            )
-        else:
-            child_restriction = parent_expr.proj()
-
-        # Accumulate as OR (list = OR in DataJoint restriction semantics)
-        self._restrictions.setdefault(child_name, [])
-        self._restrictions[child_name].append(child_restriction)
-```
-
 ### API
 
 ```python
-# From a table with restriction — single restriction set
+# From a table with restriction
 rd = dj.Diagram(Session & 'subject_id=1')
 
-# Explicit restrict call — adds a restriction set
-rd = dj.Diagram(schema).restrict(Session & 'subject_id=1')
-
-# Operator syntax (proposed in #865) — each & adds a restriction set
+# Operator syntax (proposed in #865)
 rd = dj.Diagram(schema) & (Session & 'subject_id=1')
-
-# Multiple restrictions — two separate restriction sets
-# For delete (OR): delete recordings from subject 1 OR from brody lab
-# For export (AND): export recordings from subject 1 AND from brody lab
-rd = dj.Diagram(schema) & (Session & 'subject_id=1') & (Lab & 'lab="brody"')
 
 # With part_integrity policy
 rd = dj.Diagram(schema) & (PartTable & 'key=1')
 rd.delete(part_integrity="cascade")
 
 # Preview before executing
-rd.preview()   # show affected tables and row counts per restriction set
+rd.preview()   # show affected tables and row counts
 rd.draw()      # visualize with restricted nodes highlighted
 
-# Operations choose combination logic
-rd.delete()              # OR across restriction sets (any taint → delete)
-rd.export(path)          # AND across restriction sets (all criteria → export)
+# Operations
+rd.delete()              # OR at convergence, downstream only
+rd.export(path)          # AND at convergence, includes upstream context
 ```
 
 ## Advantages over current approach
@@ -345,15 +256,15 @@ rd.export(path)          # AND across restriction sets (all criteria → export)
 ### Phase 1: RestrictedDiagram core
 
 1. Add `_restrictions: dict[str, list]` to `Diagram` — per-node restriction storage
-2. Implement `_propagate_restriction()` — walk edges, compute child restrictions via `attr_map`
+2. Implement `_propagate_downstream()` — walk edges in topo order, compute child restrictions via `attr_map`
 3. Implement `restrict(table_expr)` — entry point: extract table name + restriction, propagate
 4. Implement `__and__` operator — syntax sugar for `restrict()`
-5. Handle alias nodes during propagation
+5. Handle alias nodes during propagation (OR for multiple FK paths from same parent)
 6. Handle `part_integrity` during propagation (upward cascade from part to master)
 
 ### Phase 2: Graph-driven delete
 
-1. Implement `Diagram.delete()` — reverse topo order, `delete_quick()` at each node
+1. Implement `Diagram.delete()` — reverse topo order, OR at convergence, `delete_quick()` at each restricted node
 2. Add unloaded-schema fallback error handling
 3. Migrate `Table.delete()` to construct a `RestrictedDiagram` internally
 4. Preserve `Part.delete()` behavior with diagram-based `part_integrity`
@@ -366,15 +277,16 @@ rd.export(path)          # AND across restriction sets (all criteria → export)
 
 ### Phase 4: Export and backup (future, #864/#560)
 
-1. `Diagram.export(path)` — forward topo order, fetch + write at each node
-2. `Diagram.restore(path)` — forward topo order, insert at each node
+1. `Diagram.export(path)` — forward topo order, AND at convergence, fetch + write at each node
+2. Upward pass to include referenced parent rows (referential context)
+3. `Diagram.restore(path)` — forward topo order, insert at each node
 
 ## Files affected
 
 | File | Change |
 |------|--------|
-| `src/datajoint/diagram.py` | Add `_restrictions`, `restrict()`, `__and__`, `_propagate_restriction()`, `delete()`, `preview()` |
-| `src/datajoint/table.py` | Rewrite `Table.delete()` to use `RestrictedDiagram` internally |
+| `src/datajoint/diagram.py` | Add `_restrictions`, `restrict()`, `__and__`, `_propagate_downstream()`, `delete()`, `preview()` |
+| `src/datajoint/table.py` | Rewrite `Table.delete()` to use restricted diagram internally |
 | `src/datajoint/user_tables.py` | Update `Part.delete()` to use diagram-based part_integrity |
 | `src/datajoint/dependencies.py` | Possibly add helper methods for edge traversal with attr_map |
 | `tests/integration/test_cascading_delete.py` | Update tests, add graph-driven cascade tests |
@@ -382,7 +294,7 @@ rd.export(path)          # AND across restriction sets (all criteria → export)
 
 ## Open questions
 
-1. **Should `Diagram & restriction` return a new `RestrictedDiagram` subclass or augment `Diagram` in place?**
+1. **Should `Diagram & restriction` return a new subclass or augment `Diagram` in place?**
    A new subclass keeps the existing `Diagram` (visualization) clean. But the restriction machinery is intimately tied to the graph structure, suggesting in-place augmentation.
 
 2. **Upward propagation scope for `part_integrity="cascade"`:**
@@ -394,10 +306,7 @@ rd.export(path)          # AND across restriction sets (all criteria → export)
 4. **Lazy vs eager restriction propagation:**
    Eager: propagate all restrictions when `restrict()` is called (computes row counts immediately).
    Lazy: store parent restrictions and propagate during `delete()`/`export()` (defers queries).
-   Eager is better for preview but may issue many queries upfront. Lazy is more efficient when the user just wants to delete without preview. Consider lazy propagation with eager option for preview.
+   Eager is better for preview but may issue many queries upfront. Lazy is more efficient when the user just wants to delete without preview.
 
-5. **Lenient vs strict AND for export:**
-   When using AND mode across restriction sets, a node may be downstream of some restriction sets but not others. Lenient AND (apply intersection only where sets converge) is more practical but harder to reason about. Strict AND (node must be restricted by all sets) is simpler but may be too aggressive. Need to validate with real export use cases.
-
-6. **Restricting the same table in multiple `restrict()` calls:**
-   If the user calls `rd.restrict(Session & 'subject=1')` then `rd.restrict(Session & 'subject=2')`, these become two restriction sets. For delete (OR): deletes subject 1 and subject 2. For export (AND): exports rows that are somehow both subject 1 and 2 (empty set). Should restricting the same table in multiple calls be treated specially — perhaps accumulating within a single set instead?
+5. **Export: upward context scope.**
+   When exporting, non-downstream tables should be included for referential integrity. How far upstream? Options: (a) all ancestors of restricted nodes, (b) only directly referenced parents, (c) full referential closure. Full closure is safest but may pull in large amounts of unrestricted data.
