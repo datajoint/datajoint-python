@@ -230,6 +230,39 @@ except IntegrityError as error:
 
 This preserves error-message parsing as a **diagnostic fallback** rather than as the primary cascade mechanism. The error is actionable: the user knows to activate the missing schema.
 
+### Unifying `drop`
+
+The current `Table.drop()` already uses graph-driven traversal — it is the model for this design. With the diagram, `drop` becomes a natural operation alongside `delete`:
+
+```python
+# Current Table.drop() — already graph-driven
+self.connection.dependencies.load()
+tables = [t for t in self.connection.dependencies.descendants(self.full_table_name)
+          if not t.isdigit()]
+for table in reversed(tables):
+    FreeTable(self.connection, table).drop_quick()
+```
+
+`drop` is DDL (drops entire tables), not DML (deletes rows). There is no restriction to propagate — but the traversal order, `part_integrity` checks, preview, and unloaded-schema error handling are shared infrastructure.
+
+With the diagram, `Table.drop()` becomes:
+
+```python
+# Table.drop() internally:
+rd = dj.Diagram(self)    # self + all descendants
+rd.drop()                # reverse topo order, drop_quick() at each node
+```
+
+`Diagram.drop()` uses the same reverse-topo traversal as `Diagram.delete()` but calls `drop_quick()` (DDL) instead of `delete_quick()` (DML) and ignores restrictions — all nodes in the diagram are dropped.
+
+The `part_integrity` checks for drop are simpler (only `"enforce"` and `"ignore"`, no `"cascade"`). These move from `Part.drop()` into the diagram's pre-check: before dropping, verify that no part table would be dropped without its master (unless `part_integrity="ignore"`).
+
+Shared infrastructure between `delete` and `drop`:
+- Dependency graph traversal in reverse topo order
+- `part_integrity` pre-checks
+- Unloaded-schema error handling (diagnostic fallback)
+- Preview (`Diagram.preview()` shows what would be affected)
+
 ### API
 
 ```python
@@ -245,6 +278,11 @@ rd = (dj.Diagram(schema)
 rd.preview()      # show selected tables and row counts
 rd.export(path)   # includes upstream context, AND at convergence
 
+# drop: no restriction, drops entire tables
+rd = dj.Diagram(Session)   # Session + all descendants
+rd.preview()               # show tables that would be dropped
+rd.drop()                  # reverse topo order, drop_quick() at each node
+
 # cascade with part_integrity
 rd = dj.Diagram(schema).cascade(PartTable & 'key=1', part_integrity="cascade")
 rd.delete()
@@ -254,8 +292,13 @@ rd.delete()
 # equivalent to:
 # dj.Diagram(Session).cascade(Session & 'subject_id=1').delete()
 
+# Table.drop() internally constructs a diagram
+Session.drop()
+# equivalent to:
+# dj.Diagram(Session).drop()
+
 # Preview and visualization
-rd.draw()      # visualize with restricted nodes highlighted
+rd.draw()      # visualize with restricted/affected nodes highlighted
 ```
 
 ## Advantages over current approach
@@ -281,13 +324,15 @@ rd.draw()      # visualize with restricted nodes highlighted
 5. Handle alias nodes during propagation (always OR for multiple FK paths from same parent)
 6. Handle `part_integrity` during cascade propagation (upward cascade from part to master)
 
-### Phase 2: Graph-driven delete
+### Phase 2: Graph-driven delete and drop
 
 1. Implement `Diagram.delete()` — reverse topo order, `delete_quick()` at each cascade-restricted node
-2. Add unloaded-schema fallback error handling
-3. Migrate `Table.delete()` to construct a diagram + `cascade()` internally
-4. Preserve `Part.delete()` behavior with diagram-based `part_integrity`
-5. Remove error-message parsing from the critical path (retain as diagnostic fallback)
+2. Implement `Diagram.drop()` — reverse topo order, `drop_quick()` at each node (no restrictions)
+3. Shared: unloaded-schema fallback error handling, `part_integrity` pre-checks
+4. Migrate `Table.delete()` to construct a diagram + `cascade()` internally
+5. Migrate `Table.drop()` to construct a diagram + `drop()` internally
+6. Preserve `Part.delete()` and `Part.drop()` behavior with diagram-based `part_integrity`
+7. Remove error-message parsing from the delete critical path (retain as diagnostic fallback)
 
 ### Phase 3: Preview and visualization
 
@@ -304,9 +349,9 @@ rd.draw()      # visualize with restricted nodes highlighted
 
 | File | Change |
 |------|--------|
-| `src/datajoint/diagram.py` | Add `cascade()`, `restrict()`, `_propagate_downstream()`, `delete()`, `preview()` |
-| `src/datajoint/table.py` | Rewrite `Table.delete()` to use `diagram.cascade()` internally |
-| `src/datajoint/user_tables.py` | Update `Part.delete()` to use diagram-based part_integrity |
+| `src/datajoint/diagram.py` | Add `cascade()`, `restrict()`, `_propagate_downstream()`, `delete()`, `drop()`, `preview()` |
+| `src/datajoint/table.py` | Rewrite `Table.delete()` and `Table.drop()` to use diagram internally |
+| `src/datajoint/user_tables.py` | Update `Part.delete()` and `Part.drop()` to use diagram-based part_integrity |
 | `src/datajoint/dependencies.py` | Possibly add helper methods for edge traversal with attr_map |
 | `tests/integration/test_cascading_delete.py` | Update tests, add graph-driven cascade tests |
 | `tests/integration/test_diagram.py` | New tests for restricted diagram |
