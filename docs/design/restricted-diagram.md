@@ -41,19 +41,22 @@ No error parsing, no trial-and-error. The same pattern can be applied to cascade
 
 ### Core concept: Restricted Diagram
 
-A restricted diagram is a `Diagram` augmented with per-node restrictions. A restriction is applied to one table and propagates downstream through FK edges using the `attr_map` stored on each edge.
+A restricted diagram is a `Diagram` augmented with per-node restrictions. Two distinct operators apply restrictions with different propagation semantics:
+
+- **`cascade(expr)`** — OR at convergence. "This data and everything depending on it." Used for delete.
+- **`restrict(expr)`** — AND at convergence. "The cross-section matching all criteria." Used for export.
+
+Both propagate restrictions downstream through FK edges using `attr_map`. They differ only in how restrictions combine when multiple restricted ancestors converge at the same child node.
 
 ```python
-# Apply restriction to Session, propagate to all descendants
-rd = dj.Diagram(schema) & (Session & 'subject_id=1')
-
-# Preview what would be affected
+# Delete: cascade (OR at convergence, downstream only)
+rd = dj.Diagram(schema).cascade(Session & 'subject_id=1')
 rd.preview()
-
-# Execute cascading delete
 rd.delete()
 
-# Or export the restricted cross-section
+# Export: restrict (AND at convergence, includes upstream context)
+rd = dj.Diagram(schema).restrict(Session & 'subject_id=1').restrict(Stimulus & 'type="visual"')
+rd.preview()
 rd.export('/path/to/backup/')
 ```
 
@@ -73,7 +76,7 @@ This reuses the existing restriction logic from the current `cascade()` function
 
 ### Converging paths
 
-A child node may have multiple restricted ancestors. When restrictions from different parents converge at the same child, the combination depends on the operation:
+A child node may have multiple restricted ancestors. When restrictions from different parents converge at the same child, the combination depends on which operator was used:
 
 **Example:**
 
@@ -83,36 +86,46 @@ Session ──→ Recording ←── Stimulus
 subject=1               type="visual"
 ```
 
-`Recording` depends on both `Session` and `Stimulus`. If `Session` is restricted to `subject=1` and `Stimulus` is restricted to `type="visual"`, `Recording` receives two propagated restrictions:
+`Recording` depends on both `Session` and `Stimulus`. Both are restricted. `Recording` receives two propagated restrictions:
 - R1: rows referencing subject=1 sessions
 - R2: rows referencing visual stimuli
 
-**For delete — OR (union):** A recording is deleted if it is tainted by *any* restricted parent. This is the correct semantic for referential integrity: if the parent row is being deleted, all child rows referencing it must go.
+**`cascade` — OR (union):** A recording is deleted if it is tainted by *any* restricted parent. This is the correct semantic for referential integrity: if the parent row is being deleted, all child rows referencing it must go.
 
-**For export — AND (intersection):** A recording is exported only if it satisfies *all* restricted ancestors. You want specifically subject 1's visual stimulus recordings.
+```python
+rd = dj.Diagram(schema).cascade(Session & 'subject=1')
+# Recording restricted to: referencing subject=1 sessions
+# Stimulus: not downstream of Session, not affected
+```
 
-**Implementation:** The diagram stores per-node restrictions as a list — one entry per converging path. The operation applies the appropriate combination:
+Note: `cascade` typically starts from one table. If multiple tables need cascading, each `cascade()` call adds OR restrictions to downstream nodes.
+
+**`restrict` — AND (intersection):** A recording is exported only if it satisfies *all* restricted ancestors. You want specifically subject 1's visual stimulus recordings.
+
+```python
+rd = dj.Diagram(schema).restrict(Session & 'subject=1').restrict(Stimulus & 'type="visual"')
+# Recording restricted to: subject=1 sessions AND visual stimuli
+# Session: restricted to subject=1 (includes upstream context)
+# Stimulus: restricted to type="visual" (includes upstream context)
+```
+
+**Implementation:** The diagram stores per-node restrictions tagged by operator. `cascade` appends to a list (OR), `restrict` appends to an `AndList` (AND):
 
 ```python
 class RestrictedDiagram:
-    # Per-node restrictions: table_name → list of restrictions (one per arriving path)
-    _restrictions: dict[str, list]
+    # Per-node: separate lists for cascade (OR) and restrict (AND) conditions
+    _cascade_restrictions: dict[str, list]     # list = OR in DataJoint
+    _restrict_conditions: dict[str, AndList]   # AndList = AND in DataJoint
 
-    def delete(self, ...):
-        """Delete: OR at convergence — any tainted row is deleted."""
-        for table_name in reversed(self._restricted_topo_sort()):
-            ft = FreeTable(conn, table_name)
-            # list restriction = OR in DataJoint
-            ft._restriction = self._restrictions[table_name]
-            ft.delete_quick()
+    def cascade(self, table_expr):
+        """OR propagation — for delete. Tainted by any restricted parent."""
+        # propagate downstream, accumulate as OR (append to list)
+        ...
 
-    def export(self, ...):
-        """Export: AND at convergence — row must satisfy all restricted ancestors."""
-        for table_name in self._restricted_topo_sort():
-            ft = FreeTable(conn, table_name)
-            for restriction in self._restrictions[table_name]:
-                ft &= restriction  # sequential & = AND
-            # ... fetch and export ft ...
+    def restrict(self, table_expr):
+        """AND propagation — for export. Must satisfy all restricted ancestors."""
+        # propagate downstream, accumulate as AND (append to AndList)
+        ...
 ```
 
 ### Multiple FK paths from same parent (alias nodes)
@@ -128,13 +141,13 @@ During propagation:
 
 ### Non-downstream tables
 
-**Delete:** Only the restricted table and its downstream dependents are affected. Tables in the diagram that are not downstream are excluded — they have no restriction and are not touched. The operation only visits nodes in `_restrictions`.
+**`cascade` (delete):** Only the restricted table and its downstream dependents are affected. Tables in the diagram that are not downstream are excluded — they have no restriction and are not touched.
 
-**Export:** Non-downstream tables **remain** in the export. They provide referential context — the `Lab` and `Session` rows referenced by the exported `Recording` rows should be included to maintain referential integrity in the export. This requires upward propagation after the initial downward pass: for each restricted node, include the parent rows that are actually referenced.
+**`restrict` (export):** Non-downstream tables **remain** in the export. They provide referential context — the `Lab` and `Session` rows referenced by the exported `Recording` rows should be included to maintain referential integrity in the export. This requires upward propagation after the initial downward pass: for each restricted node, include the parent rows that are actually referenced.
 
 ```
-Delete scope:   restricted node ──→ downstream only
-Export scope:   upstream context ←── restricted node ──→ downstream
+cascade scope:   restricted node ──→ downstream only
+restrict scope:  upstream context ←── restricted node ──→ downstream
 ```
 
 ### `part_integrity` as a Diagram-level policy
@@ -156,9 +169,9 @@ In the restricted diagram design, `part_integrity` becomes a policy on the diagr
 **`"cascade"`:** During propagation, when a restriction reaches a part table whose master is not already restricted, propagate the restriction *upward* from part to master: `master &= (master.proj() & restricted_part.proj())`. Then continue propagating the master's restriction to *its* descendants. This replaces the current ad-hoc upward cascade in lines 1086–1108 of `table.py`.
 
 ```python
-# part_integrity affects propagation
-rd = dj.Diagram(schema) & (PartTable & 'key=1')
-rd.delete(part_integrity="cascade")
+# part_integrity affects cascade propagation
+rd = dj.Diagram(schema).cascade(PartTable & 'key=1', part_integrity="cascade")
+rd.delete()
 # Master is now also restricted to rows matching the part restriction
 ```
 
@@ -174,19 +187,19 @@ The current `Part.delete()` override (in `user_tables.py:219`) gates access base
 
 ```python
 def delete(self):
-    """Execute cascading delete using the restricted diagram."""
+    """Execute cascading delete using cascade restrictions."""
     conn = self._connection
     conn.dependencies.load()
 
-    # Only restricted nodes, in reverse topological order (leaves first)
+    # Only cascade-restricted nodes, in reverse topological order (leaves first)
     tables = [t for t in self.topo_sort()
-              if not t.isdigit() and t in self._restrictions]
+              if not t.isdigit() and t in self._cascade_restrictions]
 
     with conn.transaction:
         for table_name in reversed(tables):
             ft = FreeTable(conn, table_name)
-            # list = OR (delete any row tainted by any restricted parent)
-            ft._restriction = self._restrictions[table_name]
+            # list = OR (delete any row tainted by any restricted ancestor)
+            ft._restriction = self._cascade_restrictions[table_name]
             ft.delete_quick()
 ```
 
@@ -220,23 +233,29 @@ This preserves error-message parsing as a **diagnostic fallback** rather than as
 ### API
 
 ```python
-# From a table with restriction
-rd = dj.Diagram(Session & 'subject_id=1')
-
-# Operator syntax (proposed in #865)
-rd = dj.Diagram(schema) & (Session & 'subject_id=1')
-
-# With part_integrity policy
-rd = dj.Diagram(schema) & (PartTable & 'key=1')
-rd.delete(part_integrity="cascade")
-
-# Preview before executing
+# cascade: OR propagation for delete
+rd = dj.Diagram(schema).cascade(Session & 'subject_id=1')
 rd.preview()   # show affected tables and row counts
-rd.draw()      # visualize with restricted nodes highlighted
+rd.delete()    # downstream only, OR at convergence
 
-# Operations
-rd.delete()              # OR at convergence, downstream only
-rd.export(path)          # AND at convergence, includes upstream context
+# restrict: AND propagation for export
+rd = (dj.Diagram(schema)
+      .restrict(Session & 'subject_id=1')
+      .restrict(Stimulus & 'type="visual"'))
+rd.preview()      # show selected tables and row counts
+rd.export(path)   # includes upstream context, AND at convergence
+
+# cascade with part_integrity
+rd = dj.Diagram(schema).cascade(PartTable & 'key=1', part_integrity="cascade")
+rd.delete()
+
+# Table.delete() internally constructs a cascade diagram
+(Session & 'subject_id=1').delete()
+# equivalent to:
+# dj.Diagram(Session).cascade(Session & 'subject_id=1').delete()
+
+# Preview and visualization
+rd.draw()      # visualize with restricted nodes highlighted
 ```
 
 ## Advantages over current approach
@@ -255,18 +274,18 @@ rd.export(path)          # AND at convergence, includes upstream context
 
 ### Phase 1: RestrictedDiagram core
 
-1. Add `_restrictions: dict[str, list]` to `Diagram` — per-node restriction storage
-2. Implement `_propagate_downstream()` — walk edges in topo order, compute child restrictions via `attr_map`
-3. Implement `restrict(table_expr)` — entry point: extract table name + restriction, propagate
-4. Implement `__and__` operator — syntax sugar for `restrict()`
-5. Handle alias nodes during propagation (OR for multiple FK paths from same parent)
-6. Handle `part_integrity` during propagation (upward cascade from part to master)
+1. Add `_cascade_restrictions` and `_restrict_conditions` to `Diagram` — per-node restriction storage
+2. Implement `_propagate_downstream(mode)` — walk edges in topo order, compute child restrictions via `attr_map`, accumulate as OR (cascade) or AND (restrict)
+3. Implement `cascade(table_expr)` — OR propagation entry point
+4. Implement `restrict(table_expr)` — AND propagation entry point
+5. Handle alias nodes during propagation (always OR for multiple FK paths from same parent)
+6. Handle `part_integrity` during cascade propagation (upward cascade from part to master)
 
 ### Phase 2: Graph-driven delete
 
-1. Implement `Diagram.delete()` — reverse topo order, OR at convergence, `delete_quick()` at each restricted node
+1. Implement `Diagram.delete()` — reverse topo order, `delete_quick()` at each cascade-restricted node
 2. Add unloaded-schema fallback error handling
-3. Migrate `Table.delete()` to construct a `RestrictedDiagram` internally
+3. Migrate `Table.delete()` to construct a diagram + `cascade()` internally
 4. Preserve `Part.delete()` behavior with diagram-based `part_integrity`
 5. Remove error-message parsing from the critical path (retain as diagnostic fallback)
 
@@ -277,7 +296,7 @@ rd.export(path)          # AND at convergence, includes upstream context
 
 ### Phase 4: Export and backup (future, #864/#560)
 
-1. `Diagram.export(path)` — forward topo order, AND at convergence, fetch + write at each node
+1. `Diagram.export(path)` — forward topo order, fetch + write at each restrict-restricted node
 2. Upward pass to include referenced parent rows (referential context)
 3. `Diagram.restore(path)` — forward topo order, insert at each node
 
@@ -285,8 +304,8 @@ rd.export(path)          # AND at convergence, includes upstream context
 
 | File | Change |
 |------|--------|
-| `src/datajoint/diagram.py` | Add `_restrictions`, `restrict()`, `__and__`, `_propagate_downstream()`, `delete()`, `preview()` |
-| `src/datajoint/table.py` | Rewrite `Table.delete()` to use restricted diagram internally |
+| `src/datajoint/diagram.py` | Add `cascade()`, `restrict()`, `_propagate_downstream()`, `delete()`, `preview()` |
+| `src/datajoint/table.py` | Rewrite `Table.delete()` to use `diagram.cascade()` internally |
 | `src/datajoint/user_tables.py` | Update `Part.delete()` to use diagram-based part_integrity |
 | `src/datajoint/dependencies.py` | Possibly add helper methods for edge traversal with attr_map |
 | `tests/integration/test_cascading_delete.py` | Update tests, add graph-driven cascade tests |
@@ -294,8 +313,8 @@ rd.export(path)          # AND at convergence, includes upstream context
 
 ## Open questions
 
-1. **Should `Diagram & restriction` return a new subclass or augment `Diagram` in place?**
-   A new subclass keeps the existing `Diagram` (visualization) clean. But the restriction machinery is intimately tied to the graph structure, suggesting in-place augmentation.
+1. **Should `cascade()`/`restrict()` return a new object or mutate in place?**
+   Returning a new object enables chaining (`diagram.restrict(A).restrict(B)`) and keeps the original diagram reusable. Mutating in place is simpler but prevents reuse.
 
 2. **Upward propagation scope for `part_integrity="cascade"`:**
    When a restriction propagates up from part to master, should the master's restriction then propagate to the master's *other* parts and descendants? The current implementation does this (lines 1098–1108 of `table.py`). The diagram approach would naturally do the same — restricting the master triggers downstream propagation to all its children.
