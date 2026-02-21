@@ -20,7 +20,6 @@ import pandas
 from .errors import DataJointError
 from .codecs import decode_attribute
 from .preview import preview, repr_html
-from .settings import config
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -716,7 +715,7 @@ class QueryExpression:
         import warnings
 
         warnings.warn(
-            "fetch() is deprecated in DataJoint 2.0. " "Use to_dicts(), to_pandas(), to_arrays(), or keys() instead.",
+            "fetch() is deprecated in DataJoint 2.0. Use to_dicts(), to_pandas(), to_arrays(), or keys() instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -818,7 +817,10 @@ class QueryExpression:
             row = cursor.fetchone()
             if not row or cursor.fetchone():
                 raise DataJointError("fetch1 requires exactly one tuple in the input set.")
-            return {name: decode_attribute(heading[name], row[name], squeeze=squeeze) for name in heading.names}
+            return {
+                name: decode_attribute(heading[name], row[name], squeeze=squeeze, connection=self.connection)
+                for name in heading.names
+            }
         else:
             # Handle "KEY" specially - it means primary key columns
             def is_key(attr):
@@ -893,7 +895,10 @@ class QueryExpression:
         expr = self._apply_top(order_by, limit, offset)
         cursor = expr.cursor(as_dict=True)
         heading = expr.heading
-        return [{name: decode_attribute(heading[name], row[name], squeeze) for name in heading.names} for row in cursor]
+        return [
+            {name: decode_attribute(heading[name], row[name], squeeze, connection=expr.connection) for name in heading.names}
+            for row in cursor
+        ]
 
     def to_pandas(self, order_by=None, limit=None, offset=None, squeeze=False):
         """
@@ -1064,7 +1069,7 @@ class QueryExpression:
             return result_arrays[0] if len(attrs) == 1 else tuple(result_arrays)
         else:
             # Fetch all columns as structured array
-            get = partial(decode_attribute, squeeze=squeeze)
+            get = partial(decode_attribute, squeeze=squeeze, connection=expr.connection)
             cursor = expr.cursor(as_dict=False)
             rows = list(cursor.fetchall())
 
@@ -1218,7 +1223,10 @@ class QueryExpression:
         cursor = self.cursor(as_dict=True)
         heading = self.heading
         for row in cursor:
-            yield {name: decode_attribute(heading[name], row[name], squeeze=False) for name in heading.names}
+            yield {
+                name: decode_attribute(heading[name], row[name], squeeze=False, connection=self.connection)
+                for name in heading.names
+            }
 
     def cursor(self, as_dict=False):
         """
@@ -1247,7 +1255,7 @@ class QueryExpression:
         str
             String representation of the QueryExpression.
         """
-        return super().__repr__() if config["loglevel"].lower() == "debug" else self.preview()
+        return super().__repr__() if self.connection._config["loglevel"].lower() == "debug" else self.preview()
 
     def preview(self, limit=None, width=None):
         """
@@ -1406,8 +1414,11 @@ class Union(QueryExpression):
             arg2 = arg2()  # instantiate if a class
         if not isinstance(arg2, QueryExpression):
             raise DataJointError("A QueryExpression can only be unioned with another QueryExpression")
-        if arg1.connection != arg2.connection:
-            raise DataJointError("Cannot operate on QueryExpressions originating from different connections.")
+        if arg1.connection is not arg2.connection:
+            raise DataJointError(
+                "Cannot operate on expressions from different connections. "
+                "Ensure both operands use the same dj.Instance or global connection."
+            )
         if set(arg1.primary_key) != set(arg2.primary_key):
             raise DataJointError("The operands of a union must share the same primary key.")
         if set(arg1.heading.secondary_attributes) & set(arg2.heading.secondary_attributes):

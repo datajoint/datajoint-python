@@ -16,7 +16,6 @@ import networkx as nx
 
 from .dependencies import topo_sort
 from .errors import DataJointError
-from .settings import config
 from .table import Table, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _AliasNode, _get_tier
 
@@ -105,6 +104,7 @@ else:
                 self.nodes_to_show = set(source.nodes_to_show)
                 self._expanded_nodes = set(source._expanded_nodes)
                 self.context = source.context
+                self._connection = source._connection
                 super().__init__(source)
                 return
 
@@ -126,6 +126,7 @@ else:
                     raise DataJointError("Could not find database connection in %s" % repr(source[0]))
 
             # initialize graph from dependencies
+            self._connection = connection
             connection.dependencies.load()
             super().__init__(connection.dependencies)
 
@@ -584,7 +585,7 @@ else:
             Tables are grouped by schema, with the Python module name shown as the
             group label when available.
             """
-            direction = config.display.diagram_direction
+            direction = self._connection._config.display.diagram_direction
             graph = self._make_graph()
 
             # Apply collapse logic if needed
@@ -857,7 +858,7 @@ else:
                 Session --> Neuron
             """
             graph = self._make_graph()
-            direction = config.display.diagram_direction
+            direction = self._connection._config.display.diagram_direction
 
             # Apply collapse logic if needed
             graph, collapsed_counts = self._apply_collapse(graph)

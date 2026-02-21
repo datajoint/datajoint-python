@@ -244,6 +244,13 @@ def assert_join_compatibility(
     if isinstance(expr1, U) or isinstance(expr2, U):
         return
 
+    # Check that both expressions use the same connection
+    if expr1.connection is not expr2.connection:
+        raise DataJointError(
+            "Cannot operate on expressions from different connections. "
+            "Ensure both operands use the same dj.Instance or global connection."
+        )
+
     if semantic_check:
         # Check if lineage tracking is available for both expressions
         if not expr1.heading.lineage_available or not expr2.heading.lineage_available:

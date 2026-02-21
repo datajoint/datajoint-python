@@ -98,14 +98,15 @@ class AttachCodec(Codec):
         """
         from pathlib import Path
 
-        from ..settings import config
-
         # Split on first null byte
         null_pos = stored.index(b"\x00")
         filename = stored[:null_pos].decode("utf-8")
         contents = stored[null_pos + 1 :]
 
         # Write to download path
+        config = (key or {}).get("_config")
+        if config is None:
+            from ..settings import config
         download_path = Path(config.get("download_path", "."))
         download_path.mkdir(parents=True, exist_ok=True)
         local_path = download_path / filename

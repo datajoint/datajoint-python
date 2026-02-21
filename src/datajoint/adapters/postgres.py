@@ -249,6 +249,11 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """
         return f'"{name}"'
 
+    def split_full_table_name(self, full_table_name: str) -> tuple[str, str]:
+        """Split ``"schema"."table"`` into ``('schema', 'table')``."""
+        schema, table = full_table_name.replace('"', "").split(".")
+        return schema, table
+
     def quote_string(self, value: str) -> str:
         """
         Quote string literal for PostgreSQL with escaping.
@@ -721,6 +726,10 @@ class PostgreSQLAdapter(DatabaseAdapter):
             "WHERE schema_name NOT IN ('pg_catalog', 'information_schema')"
         )
 
+    def schema_exists_sql(self, schema_name: str) -> str:
+        """Query to check if a schema exists in PostgreSQL."""
+        return f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = {self.quote_string(schema_name)}"
+
     def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """Query to list tables in a schema."""
         sql = (
@@ -793,6 +802,44 @@ class PostgreSQLAdapter(DatabaseAdapter):
             f"  AND constraint_type = 'FOREIGN KEY'"
             f") "
             f"ORDER BY kcu.constraint_name, kcu.ordinal_position"
+        )
+
+    def load_primary_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """Query to load all primary key columns across schemas."""
+        tab_expr = "'\"' || kcu.table_schema || '\".\"' || kcu.table_name || '\"'"
+        return (
+            f"SELECT {tab_expr} as tab, kcu.column_name "
+            f"FROM information_schema.key_column_usage kcu "
+            f"JOIN information_schema.table_constraints tc "
+            f"ON kcu.constraint_name = tc.constraint_name "
+            f"AND kcu.table_schema = tc.table_schema "
+            f"WHERE kcu.table_name NOT LIKE {like_pattern} "
+            f"AND kcu.table_schema in ({schemas_list}) "
+            f"AND tc.constraint_type = 'PRIMARY KEY'"
+        )
+
+    def load_foreign_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """Query to load all foreign key relationships across schemas."""
+        return (
+            f"SELECT "
+            f"c.conname as constraint_name, "
+            f"'\"' || ns1.nspname || '\".\"' || cl1.relname || '\"' as referencing_table, "
+            f"'\"' || ns2.nspname || '\".\"' || cl2.relname || '\"' as referenced_table, "
+            f"a1.attname as column_name, "
+            f"a2.attname as referenced_column_name "
+            f"FROM pg_constraint c "
+            f"JOIN pg_class cl1 ON c.conrelid = cl1.oid "
+            f"JOIN pg_namespace ns1 ON cl1.relnamespace = ns1.oid "
+            f"JOIN pg_class cl2 ON c.confrelid = cl2.oid "
+            f"JOIN pg_namespace ns2 ON cl2.relnamespace = ns2.oid "
+            f"CROSS JOIN LATERAL unnest(c.conkey, c.confkey) WITH ORDINALITY AS cols(conkey, confkey, ord) "
+            f"JOIN pg_attribute a1 ON a1.attrelid = cl1.oid AND a1.attnum = cols.conkey "
+            f"JOIN pg_attribute a2 ON a2.attrelid = cl2.oid AND a2.attnum = cols.confkey "
+            f"WHERE c.contype = 'f' "
+            f"AND cl1.relname NOT LIKE {like_pattern} "
+            f"AND (ns2.nspname in ({schemas_list}) "
+            f"OR ns1.nspname in ({schemas_list})) "
+            f"ORDER BY c.conname, cols.ord"
         )
 
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:

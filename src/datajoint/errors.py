@@ -72,3 +72,7 @@ class MissingExternalFile(DataJointError):
 
 class BucketInaccessible(DataJointError):
     """S3 bucket is inaccessible."""
+
+
+class ThreadSafetyError(DataJointError):
+    """Global DataJoint state is disabled in thread-safe mode."""

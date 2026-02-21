@@ -11,13 +11,16 @@ import pathlib
 import re
 import warnings
 from contextlib import contextmanager
-from typing import Callable
+from typing import TYPE_CHECKING
 
 from . import errors
 from .adapters import get_adapter
 from .blob import pack, unpack
 from .dependencies import Dependencies
 from .settings import config
+
+if TYPE_CHECKING:
+    from .settings import Config
 from .version import __version__
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -55,7 +58,6 @@ def conn(
     user: str | None = None,
     password: str | None = None,
     *,
-    init_fun: Callable | None = None,
     reset: bool = False,
     use_tls: bool | dict | None = None,
 ) -> Connection:
@@ -73,8 +75,6 @@ def conn(
         Database username. Required if not set in config.
     password : str, optional
         Database password. Required if not set in config.
-    init_fun : callable, optional
-        Initialization function called after connection.
     reset : bool, optional
         If True, reset existing connection. Default False.
     use_tls : bool or dict, optional
@@ -103,9 +103,8 @@ def conn(
             raise errors.DataJointError(
                 "Database password not configured. Set datajoint.config['database.password'] or pass password= argument."
             )
-        init_fun = init_fun if init_fun is not None else config["connection.init_function"]
         use_tls = use_tls if use_tls is not None else config["database.use_tls"]
-        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
+        conn.connection = Connection(host, user, password, None, use_tls)
     return conn.connection
 
 
@@ -150,8 +149,6 @@ class Connection:
         Database password.
     port : int, optional
         Port number. Overridden if specified in host.
-    init_fun : str, optional
-        SQL initialization command.
     use_tls : bool or dict, optional
         TLS encryption option.
 
@@ -169,15 +166,20 @@ class Connection:
         user: str,
         password: str,
         port: int | None = None,
-        init_fun: str | None = None,
         use_tls: bool | dict | None = None,
+        *,
+        backend: str | None = None,
+        config_override: "Config | None" = None,
     ) -> None:
+        # Config reference — use override if provided, else global config
+        self._config = config_override if config_override is not None else config
+
         if ":" in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(":")
             port = int(port)
         elif port is None:
-            port = config["database.port"]
+            port = self._config["database.port"]
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
         if use_tls is not False:
             # use_tls can be: None (auto-detect), True (enable), False (disable), or dict (custom config)
@@ -190,13 +192,13 @@ class Connection:
                 # use_tls=True: enable SSL with default settings
                 self.conn_info["ssl"] = True
         self.conn_info["ssl_input"] = use_tls
-        self.init_fun = init_fun
         self._conn = None
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
 
-        # Select adapter based on configured backend
-        backend = config["database.backend"]
+        # Select adapter: explicit backend > config backend
+        if backend is None:
+            backend = self._config["database.backend"]
         self.adapter = get_adapter(backend)
 
         self.connect()
@@ -227,8 +229,7 @@ class Connection:
                     port=self.conn_info["port"],
                     user=self.conn_info["user"],
                     password=self.conn_info["passwd"],
-                    init_command=self.init_fun,
-                    charset=config["connection.charset"],
+                    charset=self._config["connection.charset"],
                     use_tls=self.conn_info.get("ssl"),
                 )
             except Exception as ssl_error:
@@ -244,8 +245,7 @@ class Connection:
                         port=self.conn_info["port"],
                         user=self.conn_info["user"],
                         password=self.conn_info["passwd"],
-                        init_command=self.init_fun,
-                        charset=config["connection.charset"],
+                        charset=self._config["connection.charset"],
                         use_tls=False,  # Explicitly disable SSL for fallback
                     )
                 else:
@@ -271,8 +271,8 @@ class Connection:
 
     def purge_query_cache(self) -> None:
         """Delete all cached query results."""
-        if isinstance(config.get(cache_key), str) and pathlib.Path(config[cache_key]).is_dir():
-            for path in pathlib.Path(config[cache_key]).iterdir():
+        if isinstance(self._config.get(cache_key), str) and pathlib.Path(self._config[cache_key]).is_dir():
+            for path in pathlib.Path(self._config[cache_key]).iterdir():
                 if not path.is_dir():
                     path.unlink()
 
@@ -413,11 +413,11 @@ class Connection:
         if use_query_cache and not re.match(r"\s*(SELECT|SHOW)", query):
             raise errors.DataJointError("Only SELECT queries are allowed when query caching is on.")
         if use_query_cache:
-            if not config[cache_key]:
+            if not self._config[cache_key]:
                 raise errors.DataJointError(f"Provide filepath dj.config['{cache_key}'] when using query caching.")
             # Cache key is backend-specific (no identifier normalization needed)
             hash_ = hashlib.md5((str(self._query_cache)).encode() + pack(args) + query.encode()).hexdigest()
-            cache_path = pathlib.Path(config[cache_key]) / str(hash_)
+            cache_path = pathlib.Path(self._config[cache_key]) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()
             except FileNotFoundError:
@@ -426,7 +426,7 @@ class Connection:
                 return EmulatedCursor(unpack(buffer))
 
         if reconnect is None:
-            reconnect = config["database.reconnect"]
+            reconnect = self._config["database.reconnect"]
         logger.debug("Executing SQL:" + query[:query_log_max_length])
         cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
         try:

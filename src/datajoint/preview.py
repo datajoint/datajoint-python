@@ -2,8 +2,6 @@
 
 import json
 
-from .settings import config
-
 
 def _format_object_display(json_data):
     """Format object metadata for display in query results."""
@@ -44,6 +42,7 @@ def _get_blob_placeholder(heading, field_name, html_escape=False):
 def preview(query_expression, limit, width):
     heading = query_expression.heading
     rel = query_expression.proj(*heading.non_blobs)
+    config = query_expression.connection._config
     # Object fields use codecs - not specially handled in simplified model
     object_fields = []
     if limit is None:
@@ -105,6 +104,7 @@ def preview(query_expression, limit, width):
 def repr_html(query_expression):
     heading = query_expression.heading
     rel = query_expression.proj(*heading.non_blobs)
+    config = query_expression.connection._config
     # Object fields use codecs - not specially handled in simplified model
     object_fields = []
     tuples = rel.to_arrays(limit=config["display.limit"] + 1)

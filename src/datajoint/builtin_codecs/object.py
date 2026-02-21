@@ -104,6 +104,7 @@ class ObjectCodec(SchemaCodec):
 
         # Extract context using inherited helper
         schema, table, field, primary_key = self._extract_context(key)
+        config = (key or {}).get("_config")
 
         # Check for pre-computed metadata (from staged insert)
         if isinstance(value, dict) and "path" in value:
@@ -145,10 +146,10 @@ class ObjectCodec(SchemaCodec):
             raise TypeError(f"<object> expects bytes or path, got {type(value).__name__}")
 
         # Build storage path using inherited helper
-        path, token = self._build_path(schema, table, field, primary_key, ext=ext, store_name=store_name)
+        path, token = self._build_path(schema, table, field, primary_key, ext=ext, store_name=store_name, config=config)
 
         # Get storage backend using inherited helper
-        backend = self._get_backend(store_name)
+        backend = self._get_backend(store_name, config=config)
 
         # Upload content
         if is_dir:
@@ -192,7 +193,8 @@ class ObjectCodec(SchemaCodec):
         """
         from ..objectref import ObjectRef
 
-        backend = self._get_backend(stored.get("store"))
+        config = (key or {}).get("_config")
+        backend = self._get_backend(stored.get("store"), config=config)
         return ObjectRef.from_json(stored, backend=backend)
 
     def validate(self, value: Any) -> None:

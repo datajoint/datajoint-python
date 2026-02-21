@@ -38,7 +38,6 @@ import logging
 from typing import Any
 
 from .errors import DataJointError
-from .settings import config
 from .storage import StorageBackend
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -131,7 +130,7 @@ def build_hash_path(
         return f"_hash/{schema_name}/{content_hash}"
 
 
-def get_store_backend(store_name: str | None = None) -> StorageBackend:
+def get_store_backend(store_name: str | None = None, config=None) -> StorageBackend:
     """
     Get a StorageBackend for hash-addressed storage.
 
@@ -139,18 +138,22 @@ def get_store_backend(store_name: str | None = None) -> StorageBackend:
     ----------
     store_name : str, optional
         Name of the store to use. If None, uses stores.default.
+    config : Config, optional
+        Config instance. If None, falls back to global settings.config.
 
     Returns
     -------
     StorageBackend
         StorageBackend instance.
     """
+    if config is None:
+        from .settings import config
     # get_store_spec handles None by using stores.default
     spec = config.get_store_spec(store_name)
     return StorageBackend(spec)
 
 
-def get_store_subfolding(store_name: str | None = None) -> tuple[int, ...] | None:
+def get_store_subfolding(store_name: str | None = None, config=None) -> tuple[int, ...] | None:
     """
     Get the subfolding configuration for a store.
 
@@ -158,12 +161,16 @@ def get_store_subfolding(store_name: str | None = None) -> tuple[int, ...] | Non
     ----------
     store_name : str, optional
         Name of the store. If None, uses stores.default.
+    config : Config, optional
+        Config instance. If None, falls back to global settings.config.
 
     Returns
     -------
     tuple[int, ...] | None
         Subfolding pattern (e.g., (2, 2)) or None for flat storage.
     """
+    if config is None:
+        from .settings import config
     spec = config.get_store_spec(store_name)
     subfolding = spec.get("subfolding")
     if subfolding is not None:
@@ -175,6 +182,7 @@ def put_hash(
     data: bytes,
     schema_name: str,
     store_name: str | None = None,
+    config=None,
 ) -> dict[str, Any]:
     """
     Store content using hash-addressed storage.
@@ -193,6 +201,8 @@ def put_hash(
         Database/schema name for path isolation.
     store_name : str, optional
         Name of the store. If None, uses default store.
+    config : Config, optional
+        Config instance. If None, falls back to global settings.config.
 
     Returns
     -------
@@ -200,10 +210,10 @@ def put_hash(
         Metadata dict with keys: hash, path, schema, store, size.
     """
     content_hash = compute_hash(data)
-    subfolding = get_store_subfolding(store_name)
+    subfolding = get_store_subfolding(store_name, config=config)
     path = build_hash_path(content_hash, schema_name, subfolding)
 
-    backend = get_store_backend(store_name)
+    backend = get_store_backend(store_name, config=config)
 
     # Check if content already exists (deduplication within schema)
     if not backend.exists(path):
@@ -221,7 +231,7 @@ def put_hash(
     }
 
 
-def get_hash(metadata: dict[str, Any]) -> bytes:
+def get_hash(metadata: dict[str, Any], config=None) -> bytes:
     """
     Retrieve content using stored metadata.
 
@@ -232,6 +242,8 @@ def get_hash(metadata: dict[str, Any]) -> bytes:
     ----------
     metadata : dict
         Metadata dict with keys: path, hash, store (optional).
+    config : Config, optional
+        Config instance. If None, falls back to global settings.config.
 
     Returns
     -------
@@ -249,15 +261,13 @@ def get_hash(metadata: dict[str, Any]) -> bytes:
     expected_hash = metadata["hash"]
     store_name = metadata.get("store")
 
-    backend = get_store_backend(store_name)
+    backend = get_store_backend(store_name, config=config)
     data = backend.get_buffer(path)
 
     # Verify hash for integrity
     actual_hash = compute_hash(data)
     if actual_hash != expected_hash:
-        raise DataJointError(
-            f"Hash mismatch: expected {expected_hash}, got {actual_hash}. " f"Data at {path} may be corrupted."
-        )
+        raise DataJointError(f"Hash mismatch: expected {expected_hash}, got {actual_hash}. Data at {path} may be corrupted.")
 
     return data
 
@@ -265,6 +275,7 @@ def get_hash(metadata: dict[str, Any]) -> bytes:
 def delete_path(
     path: str,
     store_name: str | None = None,
+    config=None,
 ) -> bool:
     """
     Delete content at the specified path from storage.
@@ -278,6 +289,8 @@ def delete_path(
         Storage path (as stored in metadata).
     store_name : str, optional
         Name of the store. If None, uses default store.
+    config : Config, optional
+        Config instance. If None, falls back to global settings.config.
 
     Returns
     -------
@@ -288,7 +301,7 @@ def delete_path(
     --------
     This permanently deletes content. Ensure no references exist first.
     """
-    backend = get_store_backend(store_name)
+    backend = get_store_backend(store_name, config=config)
 
     if backend.exists(path):
         backend.remove(path)

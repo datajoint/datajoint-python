@@ -108,10 +108,9 @@ def test_sigterm(clean_jobs, schema_any):
 
 
 def test_suppress_dj_errors(clean_jobs, schema_any):
-    """Test that DataJoint errors are suppressible without native py blobs."""
+    """Test that DataJoint errors are suppressible."""
     error_class = schema.ErrorClass()
-    with dj.config.override(enable_python_native_blobs=False):
-        error_class.populate(reserve_jobs=True, suppress_errors=True)
+    error_class.populate(reserve_jobs=True, suppress_errors=True)
     assert len(schema.DjExceptionName()) == len(error_class.jobs.errors) > 0
 
 

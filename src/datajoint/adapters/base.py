@@ -170,6 +170,27 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def split_full_table_name(self, full_table_name: str) -> tuple[str, str]:
+        """
+        Split a fully-qualified table name into schema and table components.
+
+        Inverse of quoting: strips backend-specific identifier quotes
+        and splits into (schema, table).
+
+        Parameters
+        ----------
+        full_table_name : str
+            Quoted full table name (e.g., ```\\`schema\\`.\\`table\\` ``` or
+            ``"schema"."table"``).
+
+        Returns
+        -------
+        tuple[str, str]
+            (schema_name, table_name) with quotes stripped.
+        """
+        ...
+
+    @abstractmethod
     def quote_string(self, value: str) -> str:
         """
         Quote a string literal for this backend.
@@ -616,6 +637,23 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def schema_exists_sql(self, schema_name: str) -> str:
+        """
+        Generate query to check if a schema exists.
+
+        Parameters
+        ----------
+        schema_name : str
+            Name of schema to check.
+
+        Returns
+        -------
+        str
+            SQL query that returns a row if the schema exists.
+        """
+        ...
+
+    @abstractmethod
     def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """
         Generate query to list tables in a schema.
@@ -707,6 +745,55 @@ class DatabaseAdapter(ABC):
         -------
         str
             SQL query to get foreign key constraints.
+        """
+        ...
+
+    @abstractmethod
+    def load_primary_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """
+        Generate query to load primary key columns for all tables across schemas.
+
+        Used by the dependency graph to build the schema graph.
+
+        Parameters
+        ----------
+        schemas_list : str
+            Comma-separated, quoted schema names for an IN clause.
+        like_pattern : str
+            SQL LIKE pattern to exclude (e.g., "'~%%'" for internal tables).
+
+        Returns
+        -------
+        str
+            SQL query returning rows with columns:
+            - tab: fully qualified table name (quoted)
+            - column_name: primary key column name
+        """
+        ...
+
+    @abstractmethod
+    def load_foreign_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """
+        Generate query to load foreign key relationships across schemas.
+
+        Used by the dependency graph to build the schema graph.
+
+        Parameters
+        ----------
+        schemas_list : str
+            Comma-separated, quoted schema names for an IN clause.
+        like_pattern : str
+            SQL LIKE pattern to exclude (e.g., "'~%%'" for internal tables).
+
+        Returns
+        -------
+        str
+            SQL query returning rows (as dicts) with columns:
+            - constraint_name: FK constraint name
+            - referencing_table: fully qualified child table name (quoted)
+            - referenced_table: fully qualified parent table name (quoted)
+            - column_name: FK column in child table
+            - referenced_column_name: referenced column in parent table
         """
         ...
 
