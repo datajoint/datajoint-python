@@ -75,7 +75,6 @@ class MySQLAdapter(DatabaseAdapter):
             Password for authentication.
         **kwargs : Any
             Additional MySQL-specific parameters:
-            - init_command: SQL initialization command
             - ssl: TLS/SSL configuration dict (deprecated, use use_tls)
             - use_tls: bool or dict - DataJoint's SSL parameter (preferred)
             - charset: Character set (default from kwargs)
@@ -85,7 +84,6 @@ class MySQLAdapter(DatabaseAdapter):
         pymysql.Connection
             MySQL connection object.
         """
-        init_command = kwargs.get("init_command")
         # Handle both ssl (old) and use_tls (new) parameter names
         ssl_config = kwargs.get("use_tls", kwargs.get("ssl"))
         # Convert boolean True to dict for PyMySQL (PyMySQL expects dict or SSLContext)
@@ -99,7 +97,6 @@ class MySQLAdapter(DatabaseAdapter):
             "port": port,
             "user": user,
             "passwd": password,
-            "init_command": init_command,
             "sql_mode": "NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
             "charset": charset,
@@ -202,6 +199,11 @@ class MySQLAdapter(DatabaseAdapter):
             Backtick-quoted identifier: `name`
         """
         return f"`{name}`"
+
+    def split_full_table_name(self, full_table_name: str) -> tuple[str, str]:
+        """Split ```\\`schema\\`.\\`table\\` ``` into ``('schema', 'table')``."""
+        schema, table = full_table_name.replace("`", "").split(".")
+        return schema, table
 
     def quote_string(self, value: str) -> str:
         """
@@ -614,6 +616,10 @@ class MySQLAdapter(DatabaseAdapter):
         """Query to list all databases in MySQL."""
         return "SELECT schema_name FROM information_schema.schemata"
 
+    def schema_exists_sql(self, schema_name: str) -> str:
+        """Query to check if a database exists in MySQL."""
+        return f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = {self.quote_string(schema_name)}"
+
     def list_tables_sql(self, schema_name: str, pattern: str | None = None) -> str:
         """Query to list tables in a database."""
         sql = f"SHOW TABLES IN {self.quote_identifier(schema_name)}"
@@ -653,6 +659,32 @@ class MySQLAdapter(DatabaseAdapter):
             f"AND table_name = {self.quote_string(table_name)} "
             f"AND referenced_table_name IS NOT NULL "
             f"ORDER BY constraint_name, ordinal_position"
+        )
+
+    def load_primary_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """Query to load all primary key columns across schemas."""
+        tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
+        return (
+            f"SELECT {tab_expr} as tab, column_name "
+            f"FROM information_schema.key_column_usage "
+            f"WHERE table_name NOT LIKE {like_pattern} "
+            f"AND table_schema in ({schemas_list}) "
+            f"AND constraint_name='PRIMARY'"
+        )
+
+    def load_foreign_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
+        """Query to load all foreign key relationships across schemas."""
+        tab_expr = "concat('`', table_schema, '`.`', table_name, '`')"
+        ref_tab_expr = "concat('`', referenced_table_schema, '`.`', referenced_table_name, '`')"
+        return (
+            f"SELECT constraint_name, "
+            f"{tab_expr} as referencing_table, "
+            f"{ref_tab_expr} as referenced_table, "
+            f"column_name, referenced_column_name "
+            f"FROM information_schema.key_column_usage "
+            f"WHERE referenced_table_name NOT LIKE {like_pattern} "
+            f"AND (referenced_table_schema in ({schemas_list}) "
+            f"OR referenced_table_schema is not NULL AND table_schema in ({schemas_list}))"
         )
 
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:

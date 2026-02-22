@@ -536,13 +536,13 @@ def mock_stores(stores_config):
 
 @pytest.fixture
 def mock_cache(tmpdir_factory):
-    og_cache = dj.config.get("cache")
-    dj.config["cache"] = tmpdir_factory.mktemp("cache")
+    og_cache = dj.config.get("download_path")
+    dj.config["download_path"] = str(tmpdir_factory.mktemp("cache"))
     yield
     if og_cache is None:
-        del dj.config["cache"]
+        del dj.config["download_path"]
     else:
-        dj.config["cache"] = og_cache
+        dj.config["download_path"] = og_cache
 
 
 @pytest.fixture(scope="session")

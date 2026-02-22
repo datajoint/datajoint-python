@@ -7,23 +7,20 @@ database schemas, and utilities for schema introspection and management.
 
 from __future__ import annotations
 
-import collections
 import inspect
-import itertools
 import logging
 import re
 import types
 import warnings
 from typing import TYPE_CHECKING, Any
 
-from .connection import conn
 from .errors import AccessError, DataJointError
+from .instance import _get_singleton_connection
 
 if TYPE_CHECKING:
     from .connection import Connection
 from .heading import Heading
 from .jobs import Job
-from .settings import config
 from .table import FreeTable, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
 from .utils import to_camel_case, user_choice
@@ -54,7 +51,7 @@ def ordered_dir(class_: type) -> list[str]:
     return attr_list
 
 
-class Schema:
+class _Schema:
     """
     Decorator that binds table classes to a database schema.
 
@@ -120,7 +117,7 @@ class Schema:
         self.database = None
         self.context = context
         self.create_schema = create_schema
-        self.create_tables = create_tables if create_tables is not None else config.database.create_tables
+        self.create_tables = create_tables  # None means "use connection config default"
         self.add_objects = add_objects
         self.declare_list = []
         if schema_name:
@@ -174,7 +171,7 @@ class Schema:
         if connection is not None:
             self.connection = connection
         if self.connection is None:
-            self.connection = conn()
+            self.connection = _get_singleton_connection()
         self.database = schema_name
         if create_schema is not None:
             self.create_schema = create_schema
@@ -293,7 +290,10 @@ class Schema:
         # instantiate the class, declare the table if not already
         instance = table_class()
         is_declared = instance.is_declared
-        if not is_declared and not assert_declared and self.create_tables:
+        create_tables = (
+            self.create_tables if self.create_tables is not None else self.connection._config.database.create_tables
+        )
+        if not is_declared and not assert_declared and create_tables:
             instance.declare(context)
             self.connection.dependencies.clear()
         is_declared = is_declared or instance.is_declared
@@ -343,7 +343,7 @@ class Schema:
                 del frame
         tables = [
             row[0]
-            for row in self.connection.query("SHOW TABLES in `%s`" % self.database)
+            for row in self.connection.query(self.connection.adapter.list_tables_sql(self.database))
             if lookup_class_name("`{db}`.`{tab}`".format(db=self.database, tab=row[0]), into, 0) is None
         ]
         master_classes = (Lookup, Manual, Imported, Computed)
@@ -389,7 +389,7 @@ class Schema:
         AccessError
             If insufficient permissions to drop the schema.
         """
-        prompt = config["safemode"] if prompt is None else prompt
+        prompt = self.connection._config["safemode"] if prompt is None else prompt
 
         if not self.exists:
             logger.info("Schema named `{database}` does not exist. Doing nothing.".format(database=self.database))
@@ -421,13 +421,7 @@ class Schema:
         """
         if self.database is None:
             raise DataJointError("Schema must be activated first.")
-        return bool(
-            self.connection.query(
-                "SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{database}'".format(
-                    database=self.database
-                )
-            ).rowcount
-        )
+        return bool(self.connection.query(self.connection.adapter.schema_exists_sql(self.database)).rowcount)
 
     @property
     def lineage_table_exists(self) -> bool:
@@ -520,83 +514,6 @@ class Schema:
 
         return jobs_list
 
-    @property
-    def code(self):
-        self._assert_exists()
-        return self.save()
-
-    def save(self, python_filename: str | None = None) -> str:
-        """
-        Generate Python code that recreates this schema.
-
-        Parameters
-        ----------
-        python_filename : str, optional
-            If provided, write the code to this file.
-
-        Returns
-        -------
-        str
-            Python module source code defining this schema.
-
-        Notes
-        -----
-        This method is in preparation for a future release and is not
-        officially supported.
-        """
-        self.connection.dependencies.load()
-        self._assert_exists()
-        module_count = itertools.count()
-        # add virtual modules for referenced modules with names vmod0, vmod1, ...
-        module_lookup = collections.defaultdict(lambda: "vmod" + str(next(module_count)))
-        db = self.database
-
-        def make_class_definition(table):
-            tier = _get_tier(table).__name__
-            class_name = table.split(".")[1].strip("`")
-            indent = ""
-            if tier == "Part":
-                class_name = class_name.split("__")[-1]
-                indent += "    "
-            class_name = to_camel_case(class_name)
-
-            def replace(s):
-                d, tabs = s.group(1), s.group(2)
-                return ("" if d == db else (module_lookup[d] + ".")) + ".".join(
-                    to_camel_case(tab) for tab in tabs.lstrip("__").split("__")
-                )
-
-            return ("" if tier == "Part" else "\n@schema\n") + (
-                '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}"""'
-            ).format(
-                class_name=class_name,
-                indent=indent,
-                tier=tier,
-                defi=re.sub(
-                    r"`([^`]+)`.`([^`]+)`",
-                    replace,
-                    FreeTable(self.connection, table).describe(),
-                ).replace("\n", "\n    " + indent),
-            )
-
-        tables = self.connection.dependencies.topo_sort()
-        body = "\n\n".join(make_class_definition(table) for table in tables)
-        python_code = "\n\n".join(
-            (
-                '"""This module was auto-generated by datajoint from an existing schema"""',
-                "import datajoint as dj\n\nschema = dj.Schema('{db}')".format(db=db),
-                "\n".join(
-                    "{module} = dj.VirtualModule('{module}', '{schema_name}')".format(module=v, schema_name=k)
-                    for k, v in module_lookup.items()
-                ),
-                body,
-            )
-        )
-        if python_filename is None:
-            return python_code
-        with open(python_filename, "wt") as f:
-            f.write(python_code)
-
     def list_tables(self) -> list[str]:
         """
         Return all user tables in the schema.
@@ -612,7 +529,10 @@ class Schema:
         self.connection.dependencies.load()
         return [
             t
-            for d, t in (table_name.replace("`", "").split(".") for table_name in self.connection.dependencies.topo_sort())
+            for d, t in (
+                self.connection.adapter.split_full_table_name(table_name)
+                for table_name in self.connection.dependencies.topo_sort()
+            )
             if d == self.database
         ]
 
@@ -810,7 +730,7 @@ class VirtualModule(types.ModuleType):
             Additional objects to add to the module namespace.
         """
         super(VirtualModule, self).__init__(name=module_name)
-        _schema = Schema(
+        _schema = _Schema(
             schema_name,
             create_schema=create_schema,
             create_tables=create_tables,
@@ -836,12 +756,8 @@ def list_schemas(connection: Connection | None = None) -> list[str]:
     list[str]
         Names of all accessible schemas.
     """
-    return [
-        r[0]
-        for r in (connection or conn()).query(
-            'SELECT schema_name FROM information_schema.schemata WHERE schema_name <> "information_schema"'
-        )
-    ]
+    conn = connection or _get_singleton_connection()
+    return [r[0] for r in conn.query(conn.adapter.list_schemas_sql())]
 
 
 def virtual_schema(

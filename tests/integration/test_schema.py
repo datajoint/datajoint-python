@@ -228,14 +228,6 @@ def test_list_tables(schema_simp):
     assert actual == expected, f"Missing from list_tables(): {expected - actual}"
 
 
-def test_schema_save_any(schema_any):
-    assert "class Experiment(dj.Imported)" in schema_any.code
-
-
-def test_schema_save_empty(schema_empty):
-    assert "class Experiment(dj.Imported)" in schema_empty.code
-
-
 def test_uppercase_schema(db_creds_root):
     """
     https://github.com/datajoint/datajoint-python/issues/564
@@ -260,5 +252,5 @@ def test_uppercase_schema(db_creds_root):
         id: smallint
         """
 
-    schema2.drop()
-    schema1.drop()
+    schema2.drop(prompt=False)
+    schema1.drop(prompt=False)

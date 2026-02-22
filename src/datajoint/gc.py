@@ -44,7 +44,7 @@ from .hash_registry import delete_path, get_store_backend
 from .errors import DataJointError
 
 if TYPE_CHECKING:
-    from .schemas import Schema
+    from .schemas import _Schema as Schema
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -308,7 +308,7 @@ def scan_schema_references(
     return referenced
 
 
-def list_stored_hashes(store_name: str | None = None) -> dict[str, int]:
+def list_stored_hashes(store_name: str | None = None, config=None) -> dict[str, int]:
     """
     List all hash-addressed items in storage.
 
@@ -320,6 +320,8 @@ def list_stored_hashes(store_name: str | None = None) -> dict[str, int]:
     ----------
     store_name : str, optional
         Store to scan (None = default store).
+    config : Config, optional
+        Config instance. If None, falls back to global settings.config.
 
     Returns
     -------
@@ -328,7 +330,7 @@ def list_stored_hashes(store_name: str | None = None) -> dict[str, int]:
     """
     import re
 
-    backend = get_store_backend(store_name)
+    backend = get_store_backend(store_name, config=config)
     stored: dict[str, int] = {}
 
     # Hash-addressed storage: _hash/{schema}/{subfolders...}/{hash}
@@ -369,7 +371,7 @@ def list_stored_hashes(store_name: str | None = None) -> dict[str, int]:
     return stored
 
 
-def list_schema_paths(store_name: str | None = None) -> dict[str, int]:
+def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, int]:
     """
     List all schema-addressed items in storage.
 
@@ -380,13 +382,15 @@ def list_schema_paths(store_name: str | None = None) -> dict[str, int]:
     ----------
     store_name : str, optional
         Store to scan (None = default store).
+    config : Config, optional
+        Config instance. If None, falls back to global settings.config.
 
     Returns
     -------
     dict[str, int]
         Dict mapping storage path to size in bytes.
     """
-    backend = get_store_backend(store_name)
+    backend = get_store_backend(store_name, config=config)
     stored: dict[str, int] = {}
 
     try:
@@ -427,7 +431,7 @@ def list_schema_paths(store_name: str | None = None) -> dict[str, int]:
     return stored
 
 
-def delete_schema_path(path: str, store_name: str | None = None) -> bool:
+def delete_schema_path(path: str, store_name: str | None = None, config=None) -> bool:
     """
     Delete a schema-addressed directory from storage.
 
@@ -437,13 +441,15 @@ def delete_schema_path(path: str, store_name: str | None = None) -> bool:
         Storage path (relative to store root).
     store_name : str, optional
         Store name (None = default store).
+    config : Config, optional
+        Config instance. If None, falls back to global settings.config.
 
     Returns
     -------
     bool
         True if deleted, False if not found.
     """
-    backend = get_store_backend(store_name)
+    backend = get_store_backend(store_name, config=config)
 
     try:
         full_path = backend._full_path(path)
@@ -497,15 +503,18 @@ def scan(
     if not schemas:
         raise DataJointError("At least one schema must be provided")
 
+    # Extract config from the first schema's connection
+    _config = schemas[0].connection._config if schemas else None
+
     # --- Hash-addressed storage ---
     hash_referenced = scan_hash_references(*schemas, store_name=store_name, verbose=verbose)
-    hash_stored = list_stored_hashes(store_name)
+    hash_stored = list_stored_hashes(store_name, config=_config)
     orphaned_hashes = set(hash_stored.keys()) - hash_referenced
     hash_orphaned_bytes = sum(hash_stored.get(h, 0) for h in orphaned_hashes)
 
     # --- Schema-addressed storage ---
     schema_paths_referenced = scan_schema_references(*schemas, store_name=store_name, verbose=verbose)
-    schema_paths_stored = list_schema_paths(store_name)
+    schema_paths_stored = list_schema_paths(store_name, config=_config)
     orphaned_paths = set(schema_paths_stored.keys()) - schema_paths_referenced
     schema_paths_orphaned_bytes = sum(schema_paths_stored.get(p, 0) for p in orphaned_paths)
 
@@ -570,6 +579,9 @@ def collect(
     # First scan to find orphaned items
     stats = scan(*schemas, store_name=store_name, verbose=verbose)
 
+    # Extract config from the first schema's connection
+    _config = schemas[0].connection._config if schemas else None
+
     hash_deleted = 0
     schema_paths_deleted = 0
     bytes_freed = 0
@@ -578,12 +590,12 @@ def collect(
     if not dry_run:
         # Delete orphaned hashes
         if stats["hash_orphaned"] > 0:
-            hash_stored = list_stored_hashes(store_name)
+            hash_stored = list_stored_hashes(store_name, config=_config)
 
             for path in stats["orphaned_hashes"]:
                 try:
                     size = hash_stored.get(path, 0)
-                    if delete_path(path, store_name):
+                    if delete_path(path, store_name, config=_config):
                         hash_deleted += 1
                         bytes_freed += size
                         if verbose:
@@ -594,12 +606,12 @@ def collect(
 
         # Delete orphaned schema paths
         if stats["schema_paths_orphaned"] > 0:
-            schema_paths_stored = list_schema_paths(store_name)
+            schema_paths_stored = list_schema_paths(store_name, config=_config)
 
             for path in stats["orphaned_paths"]:
                 try:
                     size = schema_paths_stored.get(path, 0)
-                    if delete_schema_path(path, store_name):
+                    if delete_schema_path(path, store_name, config=_config):
                         schema_paths_deleted += 1
                         bytes_freed += size
                         if verbose:

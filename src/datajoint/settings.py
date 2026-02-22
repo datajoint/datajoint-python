@@ -224,7 +224,6 @@ class ConnectionSettings(BaseSettings):
 
     model_config = SettingsConfigDict(extra="forbid", validate_assignment=True)
 
-    init_function: str | None = None
     charset: str = ""  # pymysql uses '' as default
 
 
@@ -341,11 +340,8 @@ class Config(BaseSettings):
     # Top-level settings
     loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO", validation_alias="DJ_LOG_LEVEL")
     safemode: bool = True
-    enable_python_native_blobs: bool = True
-    filepath_checksum_size_limit: int | None = None
 
-    # Cache paths
-    cache: Path | None = None
+    # Cache path for query results
     query_cache: Path | None = None
 
     # Download path for attachments and filepaths
@@ -362,7 +358,7 @@ class Config(BaseSettings):
         logger.setLevel(v)
         return v
 
-    @field_validator("cache", "query_cache", mode="before")
+    @field_validator("query_cache", mode="before")
     @classmethod
     def convert_path(cls, v: Any) -> Path | None:
         """Convert string paths to Path objects."""
@@ -819,7 +815,6 @@ class Config(BaseSettings):
                     "use_tls": None,
                 },
                 "connection": {
-                    "init_function": None,
                     "charset": "",
                 },
                 "display": {
@@ -844,8 +839,6 @@ class Config(BaseSettings):
                 },
                 "loglevel": "INFO",
                 "safemode": True,
-                "enable_python_native_blobs": True,
-                "cache": None,
                 "query_cache": None,
                 "download_path": ".",
             }

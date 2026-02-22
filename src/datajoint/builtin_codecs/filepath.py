@@ -98,8 +98,11 @@ class FilepathCodec(Codec):
         """
         from datetime import datetime, timezone
 
-        from .. import config
         from ..hash_registry import get_store_backend
+
+        config = (key or {}).get("_config")
+        if config is None:
+            from ..settings import config
 
         path = str(value)
 
@@ -137,7 +140,7 @@ class FilepathCodec(Codec):
                 raise ValueError(f"<filepath@> must use prefix '{filepath_prefix}' (filepath_prefix). Got path: {path}")
 
         # Verify file exists
-        backend = get_store_backend(store_name)
+        backend = get_store_backend(store_name, config=config)
         if not backend.exists(path):
             raise FileNotFoundError(f"File not found in store '{store_name or 'default'}': {path}")
 
@@ -174,8 +177,9 @@ class FilepathCodec(Codec):
         from ..objectref import ObjectRef
         from ..hash_registry import get_store_backend
 
+        config = (key or {}).get("_config")
         store_name = stored.get("store")
-        backend = get_store_backend(store_name)
+        backend = get_store_backend(store_name, config=config)
         return ObjectRef.from_json(stored, backend=backend)
 
     def validate(self, value: Any) -> None:

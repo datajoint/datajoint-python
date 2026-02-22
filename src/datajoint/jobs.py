@@ -24,16 +24,22 @@ TRUNCATION_APPENDIX = "...truncated"
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def _get_job_version() -> str:
+def _get_job_version(config=None) -> str:
     """
     Get version string based on config settings.
+
+    Parameters
+    ----------
+    config : Config, optional
+        Configuration object. If None, falls back to global config.
 
     Returns
     -------
     str
         Version string, or empty string if version tracking disabled.
     """
-    from .settings import config
+    if config is None:
+        from .settings import config
 
     method = config.jobs.version_method
     if method is None or method == "none":
@@ -349,17 +355,15 @@ class Job(Table):
         3. Remove stale jobs: jobs older than stale_timeout whose keys not in key_source
         4. Remove orphaned jobs: reserved jobs older than orphan_timeout (if specified)
         """
-        from .settings import config
-
         # Ensure jobs table exists
         if not self.is_declared:
             self.declare()
 
         # Get defaults from config
         if priority is None:
-            priority = config.jobs.default_priority
+            priority = self.connection._config.jobs.default_priority
         if stale_timeout is None:
-            stale_timeout = config.jobs.stale_timeout
+            stale_timeout = self.connection._config.jobs.stale_timeout
 
         result = {"added": 0, "removed": 0, "orphaned": 0, "re_pended": 0}
 
@@ -370,7 +374,7 @@ class Job(Table):
 
         # Keys that need jobs: in key_source, not in target, not in jobs
         # Disable semantic_check for Job table (self) because its attributes may not have matching lineage
-        new_keys = (key_source - self._target).restrict(Not(self), semantic_check=False).proj()
+        new_keys = (key_source - self._target.proj()).restrict(Not(self), semantic_check=False).proj()
         new_key_list = new_keys.keys()
 
         if new_key_list:
@@ -392,7 +396,7 @@ class Job(Table):
                     pass  # Job already exists
 
         # 2. Re-pend success jobs if keep_completed=True
-        if config.jobs.keep_completed:
+        if self.connection._config.jobs.keep_completed:
             # Success jobs whose keys are in key_source but not in target
             # Disable semantic_check for Job table operations (job table PK has different lineage than target)
             success_to_repend = self.completed.restrict(key_source, semantic_check=False).restrict(
@@ -462,7 +466,7 @@ class Job(Table):
             os.getpid(),
             self.connection.connection_id,
             self.connection.get_user(),
-            _get_job_version(),
+            _get_job_version(self.connection._config),
         ]
         cursor = self.connection.query(query, args=args)
         return cursor.rowcount == 1
@@ -485,9 +489,7 @@ class Job(Table):
         - If True: updates status to ``'success'`` with completion time and duration
         - If False: deletes the job entry
         """
-        from .settings import config
-
-        if config.jobs.keep_completed:
+        if self.connection._config.jobs.keep_completed:
             # Use server time for completed_time
             server_now = self.connection.query("SELECT CURRENT_TIMESTAMP").fetchone()[0]
             pk = self._get_pk(key)
@@ -545,13 +547,11 @@ class Job(Table):
         key : dict
             Primary key dict of the job.
         """
-        from .settings import config
-
         pk = self._get_pk(key)
         if pk in self:
             self.update1({**pk, "status": "ignore"})
         else:
-            priority = config.jobs.default_priority
+            priority = self.connection._config.jobs.default_priority
             self.insert1({**pk, "status": "ignore", "priority": priority})
 
     def progress(self) -> dict:

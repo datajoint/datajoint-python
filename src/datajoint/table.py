@@ -139,8 +139,7 @@ class Table(QueryExpression):
         class_name = self.class_name
         if "_" in class_name:
             warnings.warn(
-                f"Table class name `{class_name}` contains underscores. "
-                "CamelCase names without underscores are recommended.",
+                f"Table class name `{class_name}` contains underscores. CamelCase names without underscores are recommended.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -151,7 +150,7 @@ class Table(QueryExpression):
                 "Class names must be in CamelCase, starting with a capital letter."
             )
         sql, _external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl = declare(
-            self.full_table_name, self.definition, context, self.connection.adapter
+            self.full_table_name, self.definition, context, self.connection.adapter, config=self.connection._config
         )
 
         # Call declaration hook for validation (subclasses like AutoPopulate can override)
@@ -233,12 +232,7 @@ class Table(QueryExpression):
         # FK attributes: copy lineage from parent (whether in PK or not)
         for attr, (parent_table, parent_attr) in fk_attribute_map.items():
             # Parse parent table name: `schema`.`table` or "schema"."table" -> (schema, table)
-            parent_clean = parent_table.replace("`", "").replace('"', "")
-            if "." in parent_clean:
-                parent_db, parent_tbl = parent_clean.split(".", 1)
-            else:
-                parent_db = self.database
-                parent_tbl = parent_clean
+            parent_db, parent_tbl = self.connection.adapter.split_full_table_name(parent_table)
 
             # Get parent's lineage for this attribute
             parent_lineage = get_lineage(self.connection, parent_db, parent_tbl, parent_attr)
@@ -1221,6 +1215,7 @@ class Table(QueryExpression):
                 "_schema": self.database,
                 "_table": self.table_name,
                 "_field": name,
+                "_config": self.connection._config,
             }
             # Add primary key values from row if available
             if row is not None:

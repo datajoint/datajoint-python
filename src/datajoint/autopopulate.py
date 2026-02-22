@@ -146,10 +146,8 @@ class AutoPopulate:
             If native (non-FK) PK attributes are found, unless bypassed via
             ``dj.config.jobs.allow_new_pk_fields_in_computed_tables = True``.
         """
-        from .settings import config
-
         # Check if validation is bypassed
-        if config.jobs.allow_new_pk_fields_in_computed_tables:
+        if self.connection._config.jobs.allow_new_pk_fields_in_computed_tables:
             return
 
         # Check for native (non-FK) primary key attributes
@@ -403,7 +401,7 @@ class AutoPopulate:
         """
         from tqdm import tqdm
 
-        keys = (self._jobs_to_do(restrictions) - self).keys()
+        keys = (self._jobs_to_do(restrictions) - self.proj()).keys()
 
         logger.debug("Found %d keys to populate" % len(keys))
 
@@ -477,8 +475,6 @@ class AutoPopulate:
         """
         from tqdm import tqdm
 
-        from .settings import config
-
         # Define a signal handler for SIGTERM
         def handler(signum, frame):
             logger.info("Populate terminated by SIGTERM")
@@ -489,7 +485,7 @@ class AutoPopulate:
         try:
             # Refresh job queue if configured
             if refresh is None:
-                refresh = config.jobs.auto_refresh
+                refresh = self.connection._config.jobs.auto_refresh
             if refresh:
                 # Use delay=-1 to ensure jobs are immediately schedulable
                 # (avoids race condition with scheduled_time <= CURRENT_TIMESTAMP(3) check)
@@ -659,7 +655,7 @@ class AutoPopulate:
                     key,
                     start_time=datetime.datetime.fromtimestamp(start_time),
                     duration=duration,
-                    version=_get_job_version(),
+                    version=_get_job_version(self.connection._config),
                 )
 
             if jobs is not None:
@@ -701,7 +697,7 @@ class AutoPopulate:
         if not common_attrs:
             # No common attributes - fall back to two-query method
             total = len(todo)
-            remaining = len(todo - self)
+            remaining = len(todo - self.proj())
         else:
             # Build a single query that computes both total and remaining
             # Using LEFT JOIN with COUNT(DISTINCT) to handle 1:many relationships

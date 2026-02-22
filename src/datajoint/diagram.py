@@ -23,7 +23,6 @@ import networkx as nx
 from .condition import AndList
 from .dependencies import extract_master, topo_sort
 from .errors import DataJointError, IntegrityError
-from .settings import config
 from .table import Table, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _AliasNode, _get_tier
 from .utils import user_choice
@@ -598,7 +597,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
         from .table import FreeTable
 
-        prompt = config["safemode"] if prompt is None else prompt
+        prompt = self._connection._config["safemode"] if prompt is None else prompt
 
         if not self._cascade_restrictions:
             raise DataJointError("No cascade restrictions applied. Call cascade() first.")
@@ -706,7 +705,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
         from .table import FreeTable
 
-        prompt = config["safemode"] if prompt is None else prompt
+        prompt = self._connection._config["safemode"] if prompt is None else prompt
         conn = self._connection
 
         tables = [t for t in topo_sort(self) if not t.isdigit() and t in self.nodes_to_show]
@@ -1039,7 +1038,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
         if not diagram_active:
             raise DataJointError("Install pygraphviz and pydot libraries to enable diagram visualization.")
-        direction = config.display.diagram_direction
+        direction = self._connection._config.display.diagram_direction
         graph = self._make_graph()
 
         # Apply collapse logic if needed
@@ -1308,7 +1307,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
             Session --> Neuron
         """
         graph = self._make_graph()
-        direction = config.display.diagram_direction
+        direction = self._connection._config.display.diagram_direction
 
         # Apply collapse logic if needed
         graph, collapsed_counts = self._apply_collapse(graph)

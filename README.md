@@ -42,8 +42,8 @@ DataJoint is a framework for scientific data pipelines based on the **Relational
   </td>
   <td>Citation</td>
   <td>
-    <a href="https://doi.org/10.1101/031658">
-      <img src="https://img.shields.io/badge/DOI-10.1101/031658-blue.svg" alt="DOI" />
+    <a href="https://doi.org/10.48550/arXiv.2602.16585">
+      <img src="https://img.shields.io/badge/DOI-10.48550/arXiv.2602.16585-blue.svg" alt="DOI" />
     </a>
   </td>
   <td>Coverage</td>
@@ -80,7 +80,7 @@ conda install -c conda-forge datajoint
   - [How-To Guides](https://docs.datajoint.com/how-to/) — Task-oriented guides
   - [API Reference](https://docs.datajoint.com/api/) — Complete API documentation
   - [Migration Guide](https://docs.datajoint.com/how-to/migrate-to-v20/) — Upgrade from legacy versions
-- **[DataJoint Elements](https://datajoint.com/docs/elements/)** — Example pipelines for neuroscience
+- **[DataJoint Elements](https://docs.datajoint.com/elements/)** — Example pipelines for neuroscience
 - **[GitHub Discussions](https://github.com/datajoint/datajoint-python/discussions)** — Community support
 
 ## Contributing

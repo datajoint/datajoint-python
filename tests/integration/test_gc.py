@@ -251,7 +251,7 @@ class TestCollect:
         assert stats["hash_deleted"] == 1
         assert stats["bytes_freed"] == 100
         assert stats["dry_run"] is False
-        mock_delete.assert_called_once_with("_hash/schema/orphan_path", "test_store")
+        mock_delete.assert_called_once_with("_hash/schema/orphan_path", "test_store", config=mock_schema.connection._config)
 
     @patch("datajoint.gc.delete_schema_path")
     @patch("datajoint.gc.list_schema_paths")
@@ -278,7 +278,7 @@ class TestCollect:
         assert stats["schema_paths_deleted"] == 1
         assert stats["bytes_freed"] == 500
         assert stats["dry_run"] is False
-        mock_delete.assert_called_once_with("schema/table/pk/field", "test_store")
+        mock_delete.assert_called_once_with("schema/table/pk/field", "test_store", config=mock_schema.connection._config)
 
 
 class TestFormatStats:
