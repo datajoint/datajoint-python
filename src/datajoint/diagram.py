@@ -445,11 +445,11 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 # Build parent FreeTable with current restriction
                 parent_ft = FreeTable(self._connection, node)
                 restr = restrictions[node]
-                if mode == "cascade" and restr:
-                    parent_ft._restriction = restr  # plain list → OR
-                elif mode == "restrict":
-                    parent_ft._restriction = restr  # AndList → AND
-                # else: cascade with empty list → unrestricted
+                if restr:
+                    if mode == "cascade":
+                        parent_ft.restrict_in_place(restr)  # list → OR
+                    else:
+                        parent_ft._restriction = restr  # AndList → AND
 
                 parent_attrs = self._restriction_attrs.get(node, set())
 
@@ -507,7 +507,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                                 child_ft = FreeTable(self._connection, target)
                                 child_restr = restrictions.get(target, [])
                                 if child_restr:
-                                    child_ft._restriction = child_restr
+                                    child_ft.restrict_in_place(child_restr)
                                 master_ft = FreeTable(self._connection, master_name)
                                 from .condition import make_condition
 
@@ -625,7 +625,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 ft = FreeTable(conn, t)
                 restr = self._cascade_restrictions[t]
                 if restr:
-                    ft._restriction = restr
+                    ft.restrict_in_place(restr)
                 logger.info("{table} ({count} tuples)".format(table=t, count=len(ft)))
 
         # Start transaction
@@ -649,7 +649,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 ft = FreeTable(conn, table_name)
                 restr = self._cascade_restrictions[table_name]
                 if restr:
-                    ft._restriction = restr
+                    ft.restrict_in_place(restr)
                 count = ft.delete_quick(get_count=True)
                 logger.info("Deleting {count} rows from {table}".format(count=count, table=table_name))
                 if table_name == tables[0]:
@@ -752,7 +752,10 @@ class Diagram(nx.DiGraph):  # noqa: C901
             ft = FreeTable(self._connection, node)
             restr = restrictions[node]
             if restr:
-                ft._restriction = restr
+                if isinstance(restr, list) and not isinstance(restr, AndList):
+                    ft.restrict_in_place(restr)  # cascade: list → OR
+                else:
+                    ft._restriction = restr  # restrict: AndList → AND
             result[node] = len(ft)
 
         for t, count in result.items():
