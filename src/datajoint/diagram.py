@@ -97,6 +97,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self._cascade_restrictions = copy_module.deepcopy(source._cascade_restrictions)
             self._restrict_conditions = copy_module.deepcopy(source._restrict_conditions)
             self._restriction_attrs = copy_module.deepcopy(source._restriction_attrs)
+            self._part_integrity = source._part_integrity
+            self._cascade_seed = source._cascade_seed
             super().__init__(source)
             return
 
@@ -124,6 +126,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         self._cascade_restrictions = {}
         self._restrict_conditions = {}
         self._restriction_attrs = {}
+        self._part_integrity = "enforce"
+        self._cascade_seed = None
 
         # Enumerate nodes from all the items in the list
         self.nodes_to_show = set()
@@ -191,6 +195,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         result._cascade_restrictions = {}
         result._restrict_conditions = {}
         result._restriction_attrs = {}
+        result._part_integrity = "enforce"
+        result._cascade_seed = None
         return result
 
     def add_parts(self) -> "Diagram":
@@ -369,6 +375,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 "cascade and restrict modes are mutually exclusive."
             )
         result = Diagram(self)
+        result._part_integrity = part_integrity
+        result._cascade_seed = table_expr.full_table_name
         node = table_expr.full_table_name
         if node not in result.nodes():
             raise DataJointError(f"Table {node} is not in the diagram.")
@@ -605,15 +613,18 @@ class Diagram(nx.DiGraph):  # noqa: C901
         conn = self._connection
 
         # Pre-check part_integrity="enforce": ensure no part is deleted
-        # before its master
-        for node in self._cascade_restrictions:
-            master = extract_master(node)
-            if master and master not in self._cascade_restrictions:
-                raise DataJointError(
-                    f"Attempt to delete part table {node} before "
-                    f"its master {master}. Delete from the master first, "
-                    f"or use part_integrity='ignore' or 'cascade'."
-                )
+        # before its master (skip the cascade seed — explicitly targeted)
+        if self._part_integrity == "enforce":
+            for node in self._cascade_restrictions:
+                if node == self._cascade_seed:
+                    continue
+                master = extract_master(node)
+                if master and master not in self._cascade_restrictions:
+                    raise DataJointError(
+                        f"Attempt to delete part table {node} before "
+                        f"its master {master}. Delete from the master first, "
+                        f"or use part_integrity='ignore' or 'cascade'."
+                    )
 
         # Get non-alias nodes with restrictions in topological order
         all_sorted = topo_sort(self)
