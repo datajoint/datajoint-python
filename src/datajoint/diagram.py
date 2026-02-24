@@ -518,7 +518,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                                 master_restr = make_condition(
                                     master_ft,
                                     (master_ft.proj() & child_ft.proj()).to_arrays(),
-                                    master_ft._restriction_attributes,
+                                    master_ft.restriction_attributes,
                                 )
                                 restrictions[master_name] = [master_restr]
                                 self._restriction_attrs[master_name] = set()
