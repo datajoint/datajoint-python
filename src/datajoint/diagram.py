@@ -98,7 +98,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self._restrict_conditions = copy_module.deepcopy(source._restrict_conditions)
             self._restriction_attrs = copy_module.deepcopy(source._restriction_attrs)
             self._part_integrity = source._part_integrity
-            self._cascade_seed = source._cascade_seed
             super().__init__(source)
             return
 
@@ -127,7 +126,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
         self._restrict_conditions = {}
         self._restriction_attrs = {}
         self._part_integrity = "enforce"
-        self._cascade_seed = None
 
         # Enumerate nodes from all the items in the list
         self.nodes_to_show = set()
@@ -196,7 +194,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
         result._restrict_conditions = {}
         result._restriction_attrs = {}
         result._part_integrity = "enforce"
-        result._cascade_seed = None
         return result
 
     def add_parts(self) -> "Diagram":
@@ -376,7 +373,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             )
         result = Diagram(self)
         result._part_integrity = part_integrity
-        result._cascade_seed = table_expr.full_table_name
         node = table_expr.full_table_name
         if node not in result.nodes():
             raise DataJointError(f"Table {node} is not in the diagram.")
@@ -612,20 +608,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         conn = self._connection
 
-        # Pre-check part_integrity="enforce": ensure no part is deleted
-        # before its master (skip the cascade seed — explicitly targeted)
-        if self._part_integrity == "enforce":
-            for node in self._cascade_restrictions:
-                if node == self._cascade_seed:
-                    continue
-                master = extract_master(node)
-                if master and master not in self._cascade_restrictions:
-                    raise DataJointError(
-                        f"Attempt to delete part table {node} before "
-                        f"its master {master}. Delete from the master first, "
-                        f"or use part_integrity='ignore' or 'cascade'."
-                    )
-
         # Get non-alias nodes with restrictions in topological order
         all_sorted = topo_sort(self)
         tables = [t for t in all_sorted if not t.isdigit() and t in self._cascade_restrictions]
@@ -655,6 +637,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         # Execute deletes in reverse topological order (leaves first)
         root_count = 0
+        deleted_tables = set()
         try:
             for table_name in reversed(tables):
                 ft = FreeTable(conn, table_name)
@@ -662,6 +645,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 if restr:
                     ft.restrict_in_place(restr)
                 count = ft.delete_quick(get_count=True)
+                if count > 0:
+                    deleted_tables.add(table_name)
                 logger.info("Deleting {count} rows from {table}".format(count=count, table=table_name))
                 if table_name == tables[0]:
                     root_count = count
@@ -680,6 +665,20 @@ class Diagram(nx.DiGraph):  # noqa: C901
             if transaction:
                 conn.cancel_transaction()
             raise
+
+        # Post-check part_integrity="enforce": roll back if a part table
+        # had rows deleted without its master also having rows deleted.
+        if self._part_integrity == "enforce" and deleted_tables:
+            for table_name in deleted_tables:
+                master = extract_master(table_name)
+                if master and master not in deleted_tables:
+                    if transaction:
+                        conn.cancel_transaction()
+                    raise DataJointError(
+                        f"Attempt to delete part table {table_name} before "
+                        f"its master {master}. Delete from the master first, "
+                        f"or use part_integrity='ignore' or 'cascade'."
+                    )
 
         # Confirm and commit
         if root_count == 0:
