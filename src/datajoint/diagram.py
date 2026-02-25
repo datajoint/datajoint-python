@@ -772,6 +772,51 @@ class Diagram(nx.DiGraph):  # noqa: C901
             logger.info("{table} ({count} tuples)".format(table=t, count=count))
         return result
 
+    def prune(self):
+        """
+        Remove tables with zero matching rows from the diagram.
+
+        Without prior restrictions, removes physically empty tables.
+        With restrictions (``cascade()`` or ``restrict()``), removes
+        tables where the restricted query yields zero rows.
+
+        Returns
+        -------
+        Diagram
+            New Diagram with empty tables removed.
+        """
+        from .table import FreeTable
+
+        result = Diagram(self)
+        restrictions = result._cascade_restrictions or result._restrict_conditions
+
+        if restrictions:
+            # Restricted: check row counts under restriction
+            for node in list(restrictions):
+                if node.isdigit():
+                    continue
+                ft = FreeTable(self._connection, node)
+                restr = restrictions[node]
+                if restr:
+                    if isinstance(restr, list) and not isinstance(restr, AndList):
+                        ft.restrict_in_place(restr)
+                    else:
+                        ft._restriction = restr
+                if len(ft) == 0:
+                    restrictions.pop(node)
+                    result._restriction_attrs.pop(node, None)
+                    result.nodes_to_show.discard(node)
+        else:
+            # Unrestricted: check physical row counts
+            for node in list(result.nodes_to_show):
+                if node.isdigit():
+                    continue
+                ft = FreeTable(self._connection, node)
+                if len(ft) == 0:
+                    result.nodes_to_show.discard(node)
+
+        return result
+
     def _make_graph(self) -> nx.DiGraph:
         """
         Build graph object ready for drawing.
