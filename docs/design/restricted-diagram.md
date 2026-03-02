@@ -276,7 +276,17 @@ rd = (dj.Diagram(schema)
       .restrict(Session & 'subject_id=1')
       .restrict(Stimulus & 'type="visual"'))
 rd.preview()      # show selected tables and row counts
-rd.export(path)   # includes upstream context, AND at convergence
+
+# prune: remove tables with zero matching rows
+rd = (dj.Diagram(schema)
+      .restrict(Subject & {'species': 'mouse'})
+      .restrict(Session & 'session_date > "2024-01-01"')
+      .prune())
+rd.preview()   # only tables with matching rows
+rd             # visualize the export subgraph
+
+# unrestricted prune: remove physically empty tables
+dj.Diagram(schema).prune()
 
 # drop: no restriction, drops entire tables
 rd = dj.Diagram(Session)   # Session + all descendants
@@ -296,9 +306,6 @@ rd.delete()
 Session.drop()
 # equivalent to:
 # dj.Diagram(Session).drop()
-
-# Preview and visualization
-rd.draw()      # visualize with restricted/affected nodes highlighted
 ```
 
 ## Advantages over current approach
@@ -313,64 +320,49 @@ rd.draw()      # visualize with restricted/affected nodes highlighted
 | Reusability | Delete-only | Delete, export, backup, sharing |
 | Inspectability | Opaque recursive cascade | Preview affected data before executing |
 
-## Implementation plan
+## Implementation status
 
-### Phase 1: RestrictedDiagram core
+### Phase 1: Diagram restructure and restriction propagation ✓
 
-1. Add `_cascade_restrictions` and `_restrict_conditions` to `Diagram` — per-node restriction storage
-2. Implement `_propagate_downstream(mode)` — walk edges in topo order, compute child restrictions via `attr_map`, accumulate as OR (cascade) or AND (restrict)
-3. Implement `cascade(table_expr)` — OR propagation entry point
-4. Implement `restrict(table_expr)` — AND propagation entry point
-5. Handle alias nodes during propagation (always OR for multiple FK paths from same parent)
-6. Handle `part_integrity` during cascade propagation (upward cascade from part to master)
+Single `Diagram(nx.DiGraph)` class with `_cascade_restrictions`, `_restrict_conditions`, `_restriction_attrs`, `_part_integrity`. `cascade()`, `restrict()`, `_propagate_restrictions()`, `_apply_propagation_rule()`. Alias node handling, `part_integrity="cascade"` upward propagation.
 
-### Phase 2: Graph-driven delete and drop
+### Phase 2: Graph-driven operations ✓
 
-1. Implement `Diagram.delete()` — reverse topo order, `delete_quick()` at each cascade-restricted node
-2. Implement `Diagram.drop()` — reverse topo order, `drop_quick()` at each node (no restrictions)
-3. Shared: unloaded-schema fallback error handling, `part_integrity` pre-checks
-4. Migrate `Table.delete()` to construct a diagram + `cascade()` internally
-5. Migrate `Table.drop()` to construct a diagram + `drop()` internally
-6. Preserve `Part.delete()` and `Part.drop()` behavior with diagram-based `part_integrity`
-7. Remove error-message parsing from the delete critical path (retain as diagnostic fallback)
+`delete()`, `drop()`, `preview()`, `prune()`, `_from_table()`. Unloaded-schema fallback error handling. `Table.delete()` and `Table.drop()` rewritten to delegate to `Diagram`. Dead cascade code removed.
 
-### Phase 3: Preview and visualization
+### Phase 3: Tests ✓
 
-1. `Diagram.preview()` — show restricted nodes with row counts
-2. `Diagram.draw()` — highlight restricted nodes, show restriction labels
+All existing tests pass. 5 prune integration tests added to `test_erd.py`.
 
 ### Phase 4: Export and backup (future, #864/#560)
 
-1. `Diagram.export(path)` — forward topo order, fetch + write at each restrict-restricted node
-2. Upward pass to include referenced parent rows (referential context)
-3. `Diagram.restore(path)` — forward topo order, insert at each node
+Not yet implemented. See "Future work" above.
 
-## Files affected
+## Files changed
 
 | File | Change |
 |------|--------|
-| `src/datajoint/diagram.py` | Add `cascade()`, `restrict()`, `_propagate_downstream()`, `delete()`, `drop()`, `preview()` |
-| `src/datajoint/table.py` | Rewrite `Table.delete()` and `Table.drop()` to use diagram internally |
-| `src/datajoint/user_tables.py` | Update `Part.delete()` and `Part.drop()` to use diagram-based part_integrity |
-| `src/datajoint/dependencies.py` | Possibly add helper methods for edge traversal with attr_map |
-| `tests/integration/test_cascading_delete.py` | Update tests, add graph-driven cascade tests |
-| `tests/integration/test_diagram.py` | New tests for restricted diagram |
+| `src/datajoint/diagram.py` | Single `Diagram(nx.DiGraph)` class with `cascade()`, `restrict()`, `_propagate_restrictions()`, `_apply_propagation_rule()`, `delete()`, `drop()`, `preview()`, `prune()`, `_from_table()` |
+| `src/datajoint/table.py` | `Table.delete()` (~200 → ~10 lines) and `Table.drop()` (~35 → ~10 lines) rewritten to delegate to `Diagram`. Dead cascade code removed |
+| `src/datajoint/user_tables.py` | `Part.drop()`: pass `part_integrity` through to `super().drop()` |
+| `tests/integration/test_erd.py` | 5 prune integration tests added |
 
-## Open questions
+## Resolved design decisions
 
-1. **Should `cascade()`/`restrict()` return a new object or mutate in place?**
-   Returning a new object enables chaining (`diagram.restrict(A).restrict(B)`) and keeps the original diagram reusable. Mutating in place is simpler but prevents reuse.
+| Question | Resolution |
+|----------|------------|
+| Return new or mutate? | Return new `Diagram` — enables chaining and keeps original reusable |
+| Upward propagation scope? | Master's restriction propagates to all its descendants (natural from re-running `_propagate_restrictions`) |
+| Transaction boundaries? | Build diagram (read-only), preview, confirm, execute all deletes in one transaction |
+| Lazy vs eager propagation? | Eager — propagate when `cascade()`/`restrict()` is called. Restrictions are `QueryExpression` objects, not executed until `preview()`/`delete()` |
+| Export upward context? | Deferred to future work (Phase 4) |
 
-2. **Upward propagation scope for `part_integrity="cascade"`:**
-   When a restriction propagates up from part to master, should the master's restriction then propagate to the master's *other* parts and descendants? The current implementation does this (lines 1098–1108 of `table.py`). The diagram approach would naturally do the same — restricting the master triggers downstream propagation to all its children.
+## Future work
 
-3. **Transaction boundaries:**
-   The current `Table.delete()` wraps everything in a single transaction with user confirmation. The diagram-based delete should preserve this: build the restricted diagram (read-only), show preview, get confirmation, then execute all deletes in one transaction.
+### Export and backup (#864/#560)
 
-4. **Lazy vs eager restriction propagation:**
-   Eager: propagate all restrictions when `restrict()` is called (computes row counts immediately).
-   Lazy: store parent restrictions and propagate during `delete()`/`export()` (defers queries).
-   Eager is better for preview but may issue many queries upfront. Lazy is more efficient when the user just wants to delete without preview.
+Not yet implemented. Planned:
 
-5. **Export: upward context scope.**
-   When exporting, non-downstream tables should be included for referential integrity. How far upstream? Options: (a) all ancestors of restricted nodes, (b) only directly referenced parents, (c) full referential closure. Full closure is safest but may pull in large amounts of unrestricted data.
+- `Diagram.export(path)` — forward topo order, fetch + write at each restrict-restricted node
+- Upward pass to include referenced parent rows (referential context)
+- `Diagram.restore(path)` — forward topo order, insert at each node

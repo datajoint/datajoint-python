@@ -34,6 +34,7 @@ self._connection        # Connection — stored during __init__
 self._cascade_restrictions   # dict[str, list] — per-node OR restrictions
 self._restrict_conditions    # dict[str, AndList] — per-node AND restrictions
 self._restriction_attrs      # dict[str, set] — restriction attribute names per node
+self._part_integrity         # str — "enforce", "ignore", or "cascade"
 ```
 
 Initialized empty in `__init__`. Copied in the copy constructor (`Diagram(other_diagram)`).
@@ -105,17 +106,22 @@ rd = dj.Diagram(schema).restrict(Session & cond).restrict(Stimulus & cond2)
 1. Verify no existing cascade restrictions (raise if present)
 2. Same algorithm as `cascade` but accumulates into `_restrict_conditions` using `AndList`
 
-### `_propagate_to_children(self, parent_node, mode)`
+### `_propagate_restrictions(self, start_node, mode, part_integrity="enforce")`
 
-Internal. Propagates restriction from one node to its children.
+Internal. Propagates restrictions from `start_node` to all its descendants in topological order. Only processes descendants of `start_node` to avoid duplicate propagation when chaining `restrict()`.
 
-For each `out_edge(parent_node)`:
+Uses multiple passes (up to 10) to handle `part_integrity="cascade"` upward propagation, which can add new restricted nodes that need further propagation.
 
-1. Get `child_name, edge_props` from edge
-2. If child is an alias node (`.isdigit()`), follow through to the real child
-3. Get `attr_map`, `aliased` from `edge_props`
-4. Build parent `FreeTable` with current restriction
-5. Compute child restriction using propagation rules:
+For each restricted node, iterates over `out_edges(node)`:
+
+1. If target is an alias node (`.isdigit()`), follow through to real child via `out_edges(alias_node)`
+2. Delegate to `_apply_propagation_rule()` for the actual restriction computation
+3. Track propagated edges to avoid duplicate work
+4. Handle `part_integrity="cascade"`: if child is a part table and its master is not already restricted, propagate upward from part to master using `make_condition(master, (master.proj() & part.proj()).to_arrays(), ...)`, expand the allowed node set, and continue to next pass
+
+### `_apply_propagation_rule(self, parent_ft, parent_attrs, child_node, attr_map, aliased, mode, restrictions)`
+
+Internal. Applies one of three propagation rules to a parent→child edge:
 
 | Condition | Child restriction |
 |-----------|-------------------|
@@ -123,11 +129,11 @@ For each `out_edge(parent_node)`:
 | Aliased FK (`attr_map` renames columns) | `parent_ft.proj(**{fk: pk for fk, pk in attr_map.items()})` |
 | Non-aliased AND `parent_restriction_attrs ⊄ child.primary_key` | `parent_ft.proj()` |
 
-6. Accumulate on child:
-   - `cascade` mode: `_cascade_restrictions[child].extend(child_restr)` — list = OR
-   - `restrict` mode: `_restrict_conditions[child].extend(child_restr)` — AndList = AND
+Accumulates on child:
+- `cascade` mode: `restrictions.setdefault(child, []).extend(...)` — list = OR
+- `restrict` mode: `restrictions.setdefault(child, AndList()).extend(...)` — AndList = AND
 
-7. Handle `part_integrity="cascade"`: if child is a part table and its master is not already restricted, propagate upward from part to master using `make_condition(master, (master.proj() & part.proj()).to_arrays(), ...)`, then re-propagate from the master.
+Updates `_restriction_attrs` for the child with the relevant attribute names.
 
 ### `delete(self, transaction=True, prompt=None) -> int`
 
@@ -140,15 +146,16 @@ rd.delete()
 
 **Algorithm:**
 
-1. Pre-check `part_integrity="enforce"`: for each node in `_cascade_restrictions`, if it's a part table and its master is not restricted, raise `DataJointError`
-2. Get nodes with restrictions in topological order
-3. If `prompt`: show preview (table name + row count for each)
-4. Start transaction (if `transaction=True`)
-5. Iterate in **reverse** topological order (leaves first):
+1. Get non-alias nodes with restrictions in topological order
+2. If `prompt`: show preview (table name + row count for each)
+3. Start transaction (if `transaction=True`)
+4. Iterate in **reverse** topological order (leaves first):
    - `ft = FreeTable(conn, table_name)`
-   - `ft._restriction = self._cascade_restrictions[table_name]`
+   - `ft.restrict_in_place(self._cascade_restrictions[table_name])`
    - `ft.delete_quick(get_count=True)`
-6. On `IntegrityError`: diagnostic fallback — parse FK error for actionable message about unloaded schemas
+   - Track which tables had rows deleted
+5. On `IntegrityError`: cancel transaction, diagnostic fallback — parse FK error for actionable message about unloaded schemas
+6. Post-check `part_integrity="enforce"`: if any part table had rows deleted but its master did not, cancel transaction and raise `DataJointError`
 7. Confirm/commit transaction (same logic as current `Table.delete`)
 8. Return count from the root table
 
@@ -179,6 +186,34 @@ rd.preview()  # logs and returns {table_name: count}
 ```
 
 Returns dict of `{full_table_name: row_count}` for each node that has a cascade or restrict restriction.
+
+### `prune(self) -> Diagram`
+
+Removes tables with zero matching rows from the diagram. Returns a new `Diagram`.
+
+```python
+# Unrestricted: remove physically empty tables
+dj.Diagram(schema).prune()
+
+# After restrict: remove tables with zero matching rows
+dj.Diagram(schema).restrict(Session & cond).prune()
+```
+
+**Algorithm:**
+
+1. `result = Diagram(self)` — copy
+2. If restrictions exist (`_cascade_restrictions` or `_restrict_conditions`):
+   - For each restricted node, build `FreeTable` with restriction applied
+   - If `len(ft) == 0`: remove node from restrictions dict, `_restriction_attrs`, and `nodes_to_show`
+3. If no restrictions (unrestricted diagram):
+   - For each node in `nodes_to_show`, check `len(FreeTable(conn, node))`
+   - If 0: remove from `nodes_to_show`
+4. Return `result`
+
+**Properties:**
+- Idempotent — pruning twice yields the same result
+- Chainable — `restrict()` can be called after `prune()`
+- Skips alias nodes (`.isdigit()`)
 
 ### Visualization methods (gated)
 
@@ -307,23 +342,24 @@ For `_restrict_conditions`: values are `AndList` (AND). Each `.restrict()` call 
 
 | File | Change |
 |------|--------|
-| `src/datajoint/diagram.py` | Restructure: single `Diagram(nx.DiGraph)` class, gate only visualization. Add `_connection`, restriction dicts, `cascade()`, `restrict()`, `_propagate_to_children()`, `delete()`, `drop()`, `preview()`, `_from_table()` |
+| `src/datajoint/diagram.py` | Restructure: single `Diagram(nx.DiGraph)` class, gate only visualization. Add `_connection`, restriction dicts, `_part_integrity`, `cascade()`, `restrict()`, `_propagate_restrictions()`, `_apply_propagation_rule()`, `delete()`, `drop()`, `preview()`, `prune()`, `_from_table()` |
 | `src/datajoint/table.py` | Rewrite `Table.delete()` (~200 → ~10 lines), `Table.drop()` (~35 → ~10 lines). Remove error-driven cascade code |
 | `src/datajoint/user_tables.py` | `Part.drop()`: pass `part_integrity` through to `super().drop()` |
-| `tests/integration/test_diagram_operations.py` | **New** — tests for `cascade`, `delete`, `drop`, `preview` |
+| `tests/integration/test_erd.py` | Add 5 `prune()` integration tests: unrestricted, after restrict, after cascade, idempotency, prune-then-restrict chaining |
 
 ## Verification
 
-1. All existing tests pass unchanged:
-   - `pytest tests/integration/test_cascading_delete.py -v`
-   - `pytest tests/integration/test_cascade_delete.py -v`
-   - `pytest tests/integration/test_erd.py -v`
-2. New tests pass: `pytest tests/integration/test_diagram_operations.py -v`
-3. Manual: `(Session & 'subject_id=1').delete()` behaves identically
-4. Manual: `dj.Diagram(schema).cascade(Session & cond).preview()` shows correct counts
-5. `dj.Diagram` works without matplotlib/pygraphviz for operational methods
+All phases complete. Tests passing:
 
-## Open questions resolved
+1. All existing tests pass unchanged:
+   - `pytest tests/integration/test_cascading_delete.py -v` — 12 tests
+   - `pytest tests/integration/test_cascade_delete.py -v` — 6 tests (3 MySQL + 3 PostgreSQL)
+   - `pytest tests/integration/test_erd.py -v` — 7 existing + 5 new prune tests
+2. Manual: `(Session & 'subject_id=1').delete()` behaves identically
+3. Manual: `dj.Diagram(schema).cascade(Session & cond).preview()` shows correct counts
+4. `dj.Diagram` works without matplotlib/pygraphviz for operational methods
+
+## Resolved design decisions
 
 | Question | Resolution |
 |----------|------------|
@@ -334,23 +370,23 @@ For `_restrict_conditions`: values are `AndList` (AND). Each `.restrict()` call 
 | Upward cascade scope? | Master's restriction propagates to all its descendants (natural from re-running propagation) |
 | Can cascade and restrict be mixed? | No. Mutually exclusive modes. `cascade` applied once; `restrict` chainable |
 
-## Implementation phases
+## Implementation phases (all complete)
 
-### Phase 1: Restructure `Diagram` class
-Remove the `if/else` gate. Single class. Gate only visualization methods.
-Store `_connection` and restriction dicts. Adjust copy constructor.
+### Phase 1: Restructure `Diagram` class ✓
+Single class. Gate only visualization methods.
+Store `_connection`, restriction dicts, `_part_integrity`. Copy constructor copies all.
 
-### Phase 2: Restriction propagation
-`cascade()`, `restrict()`, `_propagate_to_children()`.
+### Phase 2: Restriction propagation ✓
+`cascade()`, `restrict()`, `_propagate_restrictions()`, `_apply_propagation_rule()`.
 Propagation rules, alias node handling, `part_integrity="cascade"` upward propagation.
 
-### Phase 3: Diagram operations
-`delete()`, `drop()`, `preview()`, `_from_table()`.
+### Phase 3: Diagram operations ✓
+`delete()`, `drop()`, `preview()`, `prune()`, `_from_table()`.
 Diagnostic fallback for unloaded schemas. Transaction handling.
 
-### Phase 4: Migrate `Table.delete()` and `Table.drop()`
-Rewrite to delegate to `Diagram`. Update `Part.drop()`.
-Remove dead cascade code from `table.py`.
+### Phase 4: Migrate `Table.delete()` and `Table.drop()` ✓
+Rewritten to delegate to `Diagram`. Updated `Part.drop()`.
+Dead cascade code removed from `table.py`.
 
-### Phase 5: Tests
-Run existing tests. Add `test_diagram_operations.py`.
+### Phase 5: Tests ✓
+Existing tests pass. 5 prune integration tests added to `test_erd.py`.
