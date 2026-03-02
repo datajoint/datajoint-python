@@ -10,7 +10,7 @@ The original cascade delete worked by trial-and-error: attempt `DELETE` on the p
 
 This approach has several problems:
 
-- **MySQL 8 with limited privileges:** Returns error 1217 (`ROW_IS_REFERENCED`) instead of 1451 (`ROW_IS_REFERENCED_2`), which provides no table name. The cascade crashes (#1110).
+- **MySQL 8 with limited privileges:** Returns error 1217 (`ROW_IS_REFERENCED`) instead of 1451 (`ROW_IS_REFERENCED_2`), which provides no table name. The cascade crashes ([#1110](https://github.com/datajoint/datajoint-python/issues/1110)).
 - **PostgreSQL overhead:** PostgreSQL aborts the entire transaction on any error. Each failed delete attempt requires `SAVEPOINT` / `ROLLBACK TO SAVEPOINT` round-trips.
 - **Fragile parsing:** Different MySQL versions and privilege levels produce different error message formats.
 
@@ -124,7 +124,7 @@ dj.Diagram(schema).cascade(PartTable & 'key=1', part_integrity="cascade").delete
 
 | | Error-driven | Graph-driven |
 |---|---|---|
-| MySQL 8 + limited privileges | Crashes (#1110) | Works — no error parsing needed |
+| MySQL 8 + limited privileges | Crashes ([#1110](https://github.com/datajoint/datajoint-python/issues/1110)) | Works — no error parsing needed |
 | PostgreSQL | Savepoint overhead per attempt | No errors triggered |
 | Multiple FKs to same child | One-at-a-time via retry loop | All paths resolved upfront |
 | part_integrity enforcement | Post-hoc check after delete | Post-check with transaction rollback |
