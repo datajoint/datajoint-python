@@ -97,6 +97,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self._cascade_restrictions = copy_module.deepcopy(source._cascade_restrictions)
             self._restrict_conditions = copy_module.deepcopy(source._restrict_conditions)
             self._restriction_attrs = copy_module.deepcopy(source._restriction_attrs)
+            self._part_integrity = getattr(source, "_part_integrity", "enforce")
             super().__init__(source)
             return
 
@@ -369,6 +370,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 "cascade and restrict modes are mutually exclusive."
             )
         result = Diagram(self)
+        result._part_integrity = part_integrity
         node = table_expr.full_table_name
         if node not in result.nodes():
             raise DataJointError(f"Table {node} is not in the diagram.")
@@ -379,6 +381,34 @@ class Diagram(nx.DiGraph):  # noqa: C901
         # Propagate downstream
         result._propagate_restrictions(node, mode="cascade", part_integrity=part_integrity)
         return result
+
+    @staticmethod
+    def _restrict_freetable(ft, restrictions, mode="cascade"):
+        """
+        Apply cascade/restrict restrictions to a FreeTable.
+
+        Uses ``restrict()`` to properly convert each restriction (AndList,
+        QueryExpression, etc.) into SQL via ``make_condition``, rather than
+        assigning raw objects to ``_restriction`` which would produce
+        invalid SQL in ``where_clause``.
+
+        For cascade mode (delete), restrictions from different parent edges
+        are OR-ed: a row is deleted if ANY of its FK references point to a
+        deleted row.
+
+        For restrict mode (export), restrictions are AND-ed: a row is
+        included only if ALL ancestor conditions are satisfied.
+        """
+        if not restrictions:
+            return ft
+        if mode == "cascade":
+            # OR semantics — passing a list to restrict() creates an OrList
+            return ft.restrict(restrictions)
+        else:
+            # AND semantics — each restriction narrows further
+            for r in restrictions:
+                ft = ft.restrict(r)
+            return ft
 
     def restrict(self, table_expr):
         """
@@ -445,11 +475,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 # Build parent FreeTable with current restriction
                 parent_ft = FreeTable(self._connection, node)
                 restr = restrictions[node]
-                if mode == "cascade" and restr:
-                    parent_ft._restriction = restr  # plain list → OR
-                elif mode == "restrict":
-                    parent_ft._restriction = restr  # AndList → AND
-                # else: cascade with empty list → unrestricted
+                if restr:
+                    parent_ft = self._restrict_freetable(parent_ft, restr, mode=mode)
 
                 parent_attrs = self._restriction_attrs.get(node, set())
 
@@ -507,14 +534,14 @@ class Diagram(nx.DiGraph):  # noqa: C901
                                 child_ft = FreeTable(self._connection, target)
                                 child_restr = restrictions.get(target, [])
                                 if child_restr:
-                                    child_ft._restriction = child_restr
+                                    child_ft = self._restrict_freetable(child_ft, child_restr, mode=mode)
                                 master_ft = FreeTable(self._connection, master_name)
                                 from .condition import make_condition
 
                                 master_restr = make_condition(
                                     master_ft,
                                     (master_ft.proj() & child_ft.proj()).to_arrays(),
-                                    master_ft._restriction_attributes,
+                                    master_ft.restriction_attributes,
                                 )
                                 restrictions[master_name] = [master_restr]
                                 self._restriction_attrs[master_name] = set()
@@ -579,7 +606,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         self._restriction_attrs.setdefault(child_node, set()).update(child_attrs)
 
-    def delete(self, transaction=True, prompt=None):
+    def delete(self, transaction=True, prompt=None, dry_run=False):
         """
         Execute cascading delete using cascade restrictions.
 
@@ -589,13 +616,19 @@ class Diagram(nx.DiGraph):  # noqa: C901
             Wrap in a transaction. Default True.
         prompt : bool or None, optional
             Show preview and ask confirmation. Default ``dj.config['safemode']``.
+        dry_run : bool, optional
+            If True, return affected row counts without deleting. Default False.
 
         Returns
         -------
-        int
-            Number of rows deleted from the root table.
+        int or dict[str, int]
+            Number of rows deleted from the root table, or (if ``dry_run``)
+            a mapping of full table name to affected row count.
         """
         from .table import FreeTable
+
+        if dry_run:
+            return self.preview()
 
         prompt = self._connection._config["safemode"] if prompt is None else prompt
 
@@ -606,14 +639,15 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         # Pre-check part_integrity="enforce": ensure no part is deleted
         # before its master
-        for node in self._cascade_restrictions:
-            master = extract_master(node)
-            if master and master not in self._cascade_restrictions:
-                raise DataJointError(
-                    f"Attempt to delete part table {node} before "
-                    f"its master {master}. Delete from the master first, "
-                    f"or use part_integrity='ignore' or 'cascade'."
-                )
+        if getattr(self, "_part_integrity", "enforce") == "enforce":
+            for node in self._cascade_restrictions:
+                master = extract_master(node)
+                if master and master not in self._cascade_restrictions:
+                    raise DataJointError(
+                        f"Attempt to delete part table {node} before "
+                        f"its master {master}. Delete from the master first, "
+                        f"or use part_integrity='ignore' or 'cascade'."
+                    )
 
         # Get non-alias nodes with restrictions in topological order
         all_sorted = topo_sort(self)
@@ -623,9 +657,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         if prompt:
             for t in tables:
                 ft = FreeTable(conn, t)
-                restr = self._cascade_restrictions[t]
-                if restr:
-                    ft._restriction = restr
+                ft = self._restrict_freetable(ft, self._cascade_restrictions[t])
                 logger.info("{table} ({count} tuples)".format(table=t, count=len(ft)))
 
         # Start transaction
@@ -647,9 +679,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         try:
             for table_name in reversed(tables):
                 ft = FreeTable(conn, table_name)
-                restr = self._cascade_restrictions[table_name]
-                if restr:
-                    ft._restriction = restr
+                ft = self._restrict_freetable(ft, self._cascade_restrictions[table_name])
                 count = ft.delete_quick(get_count=True)
                 logger.info("Deleting {count} rows from {table}".format(count=count, table=table_name))
                 if table_name == tables[0]:
@@ -692,7 +722,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 root_count = 0
         return root_count
 
-    def drop(self, prompt=None, part_integrity="enforce"):
+    def drop(self, prompt=None, part_integrity="enforce", dry_run=False):
         """
         Drop all tables in the diagram in reverse topological order.
 
@@ -702,6 +732,13 @@ class Diagram(nx.DiGraph):  # noqa: C901
             Show preview and ask confirmation. Default ``dj.config['safemode']``.
         part_integrity : str, optional
             ``"enforce"`` (default) or ``"ignore"``.
+        dry_run : bool, optional
+            If True, return row counts without dropping. Default False.
+
+        Returns
+        -------
+        dict[str, int] or None
+            If ``dry_run``, mapping of full table name to row count.
         """
         from .table import FreeTable
 
@@ -719,6 +756,14 @@ class Diagram(nx.DiGraph):  # noqa: C901
                             part=part, master=master
                         )
                     )
+
+        if dry_run:
+            result = {}
+            for t in tables:
+                count = len(FreeTable(conn, t))
+                result[t] = count
+                logger.info("{table} ({count} tuples)".format(table=t, count=count))
+            return result
 
         do_drop = True
         if prompt:
@@ -742,6 +787,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         from .table import FreeTable
 
         restrictions = self._cascade_restrictions or self._restrict_conditions
+        mode = "cascade" if self._cascade_restrictions else "restrict"
         if not restrictions:
             raise DataJointError("No restrictions applied. " "Call cascade() or restrict() first.")
 
@@ -750,9 +796,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
             if node.isdigit() or node not in restrictions:
                 continue
             ft = FreeTable(self._connection, node)
-            restr = restrictions[node]
-            if restr:
-                ft._restriction = restr
+            ft = self._restrict_freetable(ft, restrictions[node], mode=mode)
             result[node] = len(ft)
 
         for t, count in result.items():

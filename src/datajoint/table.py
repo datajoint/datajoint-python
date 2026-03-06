@@ -973,7 +973,8 @@ class Table(QueryExpression):
         transaction: bool = True,
         prompt: bool | None = None,
         part_integrity: str = "enforce",
-    ) -> int:
+        dry_run: bool = False,
+    ) -> int | dict[str, int]:
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
@@ -991,9 +992,12 @@ class Table(QueryExpression):
                 - ``"enforce"`` (default): Error if parts would be deleted without masters.
                 - ``"ignore"``: Allow deleting parts without masters (breaks integrity).
                 - ``"cascade"``: Also delete masters when parts are deleted (maintains integrity).
+            dry_run: If `True`, return a dict mapping full table names to affected
+                row counts without deleting any data. Default False.
 
         Returns:
-            Number of deleted rows (excluding those from dependent tables).
+            Number of deleted rows (excluding those from dependent tables), or
+            (if ``dry_run``) a dict mapping full table name to affected row count.
 
         Raises:
             DataJointError: When deleting within an existing transaction.
@@ -1006,7 +1010,7 @@ class Table(QueryExpression):
 
         diagram = Diagram._from_table(self)
         diagram = diagram.cascade(self, part_integrity=part_integrity)
-        return diagram.delete(transaction=transaction, prompt=prompt)
+        return diagram.delete(transaction=transaction, prompt=prompt, dry_run=dry_run)
 
     def drop_quick(self):
         """
@@ -1046,7 +1050,7 @@ class Table(QueryExpression):
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
-    def drop(self, prompt: bool | None = None, part_integrity: str = "enforce"):
+    def drop(self, prompt: bool | None = None, part_integrity: str = "enforce", dry_run: bool = False):
         """
         Drop the table and all tables that reference it, recursively.
 
@@ -1059,6 +1063,12 @@ class Table(QueryExpression):
             part_integrity: Policy for master-part integrity. One of:
                 - ``"enforce"`` (default): Error if parts would be dropped without masters.
                 - ``"ignore"``: Allow dropping parts without masters.
+            dry_run: If `True`, return a dict mapping full table names to row
+                counts without dropping any tables. Default False.
+
+        Returns:
+            dict[str, int] or None: If ``dry_run``, mapping of full table name
+            to row count. Otherwise None.
         """
         if self.restriction:
             raise DataJointError(
@@ -1067,7 +1077,7 @@ class Table(QueryExpression):
         from .diagram import Diagram
 
         diagram = Diagram._from_table(self)
-        diagram.drop(prompt=prompt, part_integrity=part_integrity)
+        return diagram.drop(prompt=prompt, part_integrity=part_integrity, dry_run=dry_run)
 
     def describe(self, context=None, printout=False):
         """

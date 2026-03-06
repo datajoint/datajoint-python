@@ -11,7 +11,7 @@ def schema_simp_pop(schema_simp):
     # Clean up tables first to ensure fresh state with module-scoped schema
     # Delete in reverse dependency order
     Profile().delete()
-    Website().delete()
+    Website().delete(part_integrity="ignore")
     G().delete()
     E().delete()
     D().delete()
