@@ -22,26 +22,51 @@ This approach has several problems:
 
 `dj.Diagram` provides set operators for specifying subsets of *tables*. Per-node restrictions complete the functionality for specifying cross-sections of *data* — enabling delete, export, backup, and sharing.
 
-## Core Concept
+## Architecture
 
-A restricted diagram is a `Diagram` augmented with per-node restrictions. Two operators apply restrictions with different propagation semantics:
+Single `class Diagram(nx.DiGraph)` with all operational methods always available. Only visualization methods (`draw`, `make_dot`, `make_svg`, `make_png`, `make_image`, `make_mermaid`, `save`, `_repr_svg_`) are gated on `diagram_active`.
 
-- **`cascade(expr)`** — OR at convergence. "This data and everything depending on it." For delete.
-- **`restrict(expr)`** — AND at convergence. "The cross-section matching all criteria." For export.
+`Dependencies` is the canonical store of the FK graph. `Diagram` copies from it and constructs derived views.
 
-Both propagate restrictions downstream through FK edges using `attr_map`. They differ only in how restrictions combine when multiple restricted ancestors converge at the same child.
+### Instance attributes
+
+```python
+self._connection             # Connection
+self._cascade_restrictions   # dict[str, list] — per-node OR restrictions (cascade mode)
+self._restrict_conditions    # dict[str, AndList] — per-node AND restrictions (restrict mode)
+self._restriction_attrs      # dict[str, set] — restriction attribute names per node
+self._part_integrity         # str — "enforce", "ignore", or "cascade" (set by cascade())
+```
+
+### Restriction modes
+
+A diagram operates in one of three states: **unrestricted** (initial), **cascade**, or **restrict**. The modes are mutually exclusive. `cascade` is applied once; `restrict` can be chained.
+
+```python
+# cascade: applied once, OR at convergence, for delete
+rd = dj.Diagram(schema).cascade(Session & 'subject_id=1')
+
+# restrict: chainable, AND at convergence, for export
+rd = dj.Diagram(schema).restrict(Session & cond).restrict(Stimulus & cond2)
+
+# Mixing raises DataJointError
+```
 
 ## Restriction Propagation
 
 A restriction applied to one table node propagates downstream through FK edges in topological order. Each downstream node accumulates a restriction derived from its restricted parent(s).
 
-**Propagation rules for edge `Parent → Child` with `attr_map`:**
+### Propagation rules
 
-1. **Non-aliased FK** (`attr_map` is identity, e.g. `{'mouse_id': 'mouse_id'}`):
-   If the parent's restriction attributes are a subset of the child's primary key, copy the restriction directly. Otherwise, restrict child by `parent.proj()`.
+For edge `Parent → Child` with `attr_map`:
 
-2. **Aliased FK** (`attr_map` renames, e.g. `{'source_mouse': 'mouse_id'}`):
-   Restrict child by `parent.proj(**{fk: pk for fk, pk in attr_map.items()})`.
+| Condition | Child restriction |
+|-----------|-------------------|
+| Non-aliased AND `parent_attrs ⊆ child.primary_key` | Copy parent restriction directly |
+| Aliased FK (`attr_map` renames columns) | `parent_ft.proj(**{fk: pk for fk, pk in attr_map.items()})` |
+| Non-aliased AND `parent_attrs ⊄ child.primary_key` | `parent_ft.proj()` |
+
+Restrictions are applied via `restrict()` → `make_condition()`, ensuring `AndList` and `QueryExpression` objects are properly converted to SQL. Direct assignment to `_restriction` is never used, as `where_clause()` would produce invalid SQL from `str(AndList)` or `str(QueryExpression)`.
 
 ### Converging paths
 
@@ -55,35 +80,102 @@ subject=1               type="visual"
 
 `Recording` receives two propagated restrictions: R1 from Session, R2 from Stimulus.
 
-**`cascade` — OR (union):** A recording is deleted if tainted by *any* restricted parent. Correct for referential integrity: if the parent row is being deleted, all child rows referencing it must go.
+**`cascade` — OR (union):** A recording is deleted if tainted by *any* restricted parent. Correct for referential integrity: if the parent row is being deleted, all child rows referencing it must go. Implemented by passing the full restriction list to `restrict()`, which creates an OrList.
 
-**`restrict` — AND (intersection):** A recording is included only if it satisfies *all* restricted ancestors. Correct for subsetting: only rows matching every condition are selected.
+**`restrict` — AND (intersection):** A recording is included only if it satisfies *all* restricted ancestors. Correct for subsetting: only rows matching every condition are selected. Implemented by iterating restrictions and calling `restrict()` for each.
 
-**Implementation:** `cascade` appends to a `list` (OR in DataJoint). `restrict` appends to an `AndList` (AND in DataJoint). The two modes are mutually exclusive on the same diagram.
+| DataJoint type | Python type | SQL meaning |
+|----------------|-------------|-------------|
+| OR-combined restrictions | `list` | `WHERE (r1) OR (r2) OR ...` |
+| AND-combined restrictions | `AndList` | `WHERE (r1) AND (r2) AND ...` |
+| No restriction | empty `list` or `AndList()` | No WHERE clause (all rows) |
 
-### Multiple FK paths from same parent (alias nodes)
+### Multiple FK paths from same parent
 
-A child may reference the same parent through multiple FKs (e.g., `source_mouse` and `target_mouse` both referencing `Mouse`). These are represented as alias nodes in the dependency graph.
-
-Multiple FK paths from the same restricted parent always combine with **OR** regardless of operation — structural, not operation-dependent.
+A child may reference the same parent through multiple FKs (e.g., `source_mouse` and `target_mouse` both referencing `Mouse`). These are represented as alias nodes in the dependency graph. Multiple FK paths from the same restricted parent always combine with **OR** — structural, not operation-dependent.
 
 ### `part_integrity`
 
 | Mode | Behavior |
 |------|----------|
-| `"enforce"` | Error if parts would be deleted without their masters |
+| `"enforce"` | Data-driven post-check: raises only when rows were actually deleted from a Part without its master also being deleted. Avoids false positives when a Part appears in the cascade but has zero affected rows. |
 | `"ignore"` | Allow deleting parts without masters |
 | `"cascade"` | Propagate restriction upward from part to master, then re-propagate downstream |
-
-### Pruning
-
-After applying restrictions, some tables may have zero matching rows. `prune()` removes these from the diagram, leaving only the subgraph with actual data. Without prior restrictions, `prune()` removes physically empty tables.
 
 ### Unloaded schemas
 
 If a child table lives in a schema not loaded into the dependency graph, the graph-driven delete won't know about it. The final parent `delete_quick()` fails with an FK error. Error-message parsing is retained as a **diagnostic fallback** to produce an actionable error: "activate schema X."
 
-## API
+## Methods
+
+### `cascade(self, table_expr, part_integrity="enforce") -> Diagram`
+
+Apply cascade restriction and propagate downstream. Returns a new `Diagram`. One-shot — cannot be called twice or mixed with `restrict()`.
+
+1. Verify no existing cascade or restrict restrictions
+2. Copy diagram, seed `_cascade_restrictions[root]` with `list(table_expr.restriction)`
+3. Propagate via `_propagate_restrictions(root, mode="cascade", part_integrity=part_integrity)`
+
+### `restrict(self, table_expr) -> Diagram`
+
+Apply restrict condition and propagate downstream. Returns a new `Diagram`. Chainable — can be called multiple times. Cannot be mixed with `cascade()`.
+
+1. Verify no existing cascade restrictions
+2. Copy diagram, seed/extend `_restrict_conditions[root]` with `table_expr.restriction`
+3. Propagate via `_propagate_restrictions(root, mode="restrict")`
+
+### `delete(self, transaction=True, prompt=None, dry_run=False) -> int | dict`
+
+Execute cascading delete. Requires `cascade()` first.
+
+1. If `dry_run`: return `preview()` without modifying data
+2. Get non-alias nodes with restrictions in topological order
+3. If `prompt`: show preview (table name + row count for each)
+4. Start transaction
+5. Delete in **reverse** topological order (leaves first) via `_restrict_freetable()` + `delete_quick()`
+6. On `IntegrityError`: cancel transaction, parse FK error for actionable message about unloaded schemas
+7. Post-check `part_integrity="enforce"`: if any part table had rows deleted but its master did not, cancel transaction and raise
+8. Confirm/commit, return count from the root table
+
+### `drop(self, prompt=None, part_integrity="enforce", dry_run=False)`
+
+Drop all tables in `nodes_to_show` in reverse topological order. Pre-checks `part_integrity` structurally (tables, not rows). If `dry_run`, returns row counts without dropping.
+
+### `preview(self) -> dict[str, int]`
+
+Return `{full_table_name: row_count}` for each node with a restriction. Requires `cascade()` or `restrict()` first. Uses `_restrict_freetable()` to apply restrictions with correct OR/AND semantics.
+
+### `prune(self) -> Diagram`
+
+Remove tables with zero matching rows. With restrictions, removes nodes where the restricted query yields zero rows. Without restrictions, removes physically empty tables. Idempotent and chainable.
+
+### `_restrict_freetable(ft, restrictions, mode="cascade") -> FreeTable`
+
+Static helper. Applies restrictions to a `FreeTable` using `restrict()` for proper SQL generation.
+
+- **cascade mode:** Passes the entire restriction list to `restrict()`, creating an OrList (OR semantics).
+- **restrict mode:** Iterates restrictions, calling `restrict()` for each (AND semantics).
+
+### `_from_table(cls, table_expr) -> Diagram`
+
+Classmethod factory for `Table.delete()` and `Table.drop()`. Creates a Diagram containing `table_expr` and all its descendants.
+
+## `Table` Integration
+
+```python
+def delete(self, transaction=True, prompt=None, part_integrity="enforce", dry_run=False):
+    diagram = Diagram._from_table(self)
+    diagram = diagram.cascade(self, part_integrity=part_integrity)
+    return diagram.delete(transaction=transaction, prompt=prompt, dry_run=dry_run)
+
+def drop(self, prompt=None, part_integrity="enforce", dry_run=False):
+    if self.restriction:
+        raise DataJointError("A restricted Table cannot be dropped.")
+    diagram = Diagram._from_table(self)
+    diagram.drop(prompt=prompt, part_integrity=part_integrity, dry_run=dry_run)
+```
+
+## API Examples
 
 ```python
 # cascade: OR propagation for delete
@@ -103,21 +195,13 @@ rd = (dj.Diagram(schema)
       .restrict(Session & 'session_date > "2024-01-01"')
       .prune())
 rd.preview()   # only tables with matching rows
-rd             # visualize the export subgraph
 
-# unrestricted prune: remove physically empty tables
-dj.Diagram(schema).prune()
-
-# drop: no restriction, drops entire tables
-dj.Diagram(Session).drop()
-
-# cascade with part_integrity
-dj.Diagram(schema).cascade(PartTable & 'key=1', part_integrity="cascade").delete()
+# dry_run: preview without executing
+counts = (Session & 'subject_id=1').delete(dry_run=True)
+# returns {full_table_name: affected_row_count}
 
 # Table.delete() delegates to Diagram internally
 (Session & 'subject_id=1').delete()
-# equivalent to:
-# dj.Diagram._from_table(Session).cascade(Session & 'subject_id=1').delete()
 ```
 
 ## Advantages
@@ -127,7 +211,7 @@ dj.Diagram(schema).cascade(PartTable & 'key=1', part_integrity="cascade").delete
 | MySQL 8 + limited privileges | Crashes ([#1110](https://github.com/datajoint/datajoint-python/issues/1110)) | Works — no error parsing needed |
 | PostgreSQL | Savepoint overhead per attempt | No errors triggered |
 | Multiple FKs to same child | One-at-a-time via retry loop | All paths resolved upfront |
-| part_integrity enforcement | Post-hoc check after delete | Post-check with transaction rollback |
+| part_integrity enforcement | Post-hoc check after delete | Data-driven post-check (no false positives) |
 | Unloaded schemas | Crash with opaque error | Clear error: "activate schema X" |
 | Reusability | Delete-only | Delete, drop, export, prune |
-| Inspectability | Opaque recursive cascade | Preview affected data before executing |
+| Inspectability | Opaque recursive cascade | `preview()` / `dry_run` before executing |
