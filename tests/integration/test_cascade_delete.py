@@ -188,3 +188,86 @@ def test_cascade_delete_with_renamed_attrs(schema_by_backend):
     assert remaining_obs[0]["obs_id"] == 3
     assert remaining_obs[0]["subject_id"] == 2
     assert remaining_obs[0]["measurement"] == 15.3
+
+
+def test_delete_dry_run(schema_by_backend):
+    """dry_run=True returns affected row counts without deleting data."""
+
+    @schema_by_backend
+    class Parent(dj.Manual):
+        definition = """
+        parent_id : int
+        ---
+        name : varchar(255)
+        """
+
+    @schema_by_backend
+    class Child(dj.Manual):
+        definition = """
+        -> Parent
+        child_id : int
+        ---
+        data : varchar(255)
+        """
+
+    Parent.insert1((1, "P1"))
+    Parent.insert1((2, "P2"))
+    Child.insert1((1, 1, "C1-1"))
+    Child.insert1((1, 2, "C1-2"))
+    Child.insert1((2, 1, "C2-1"))
+
+    # dry_run on restricted delete
+    counts = (Parent & {"parent_id": 1}).delete(dry_run=True)
+
+    assert isinstance(counts, dict)
+    assert counts[Parent.full_table_name] == 1
+    assert counts[Child.full_table_name] == 2
+
+    # Data must still be intact
+    assert len(Parent()) == 2
+    assert len(Child()) == 3
+
+    # dry_run on unrestricted delete
+    counts_all = Parent.delete(dry_run=True)
+    assert counts_all[Parent.full_table_name] == 2
+    assert counts_all[Child.full_table_name] == 3
+
+    # Still intact
+    assert len(Parent()) == 2
+    assert len(Child()) == 3
+
+
+def test_drop_dry_run(schema_by_backend):
+    """dry_run=True returns row counts without dropping tables."""
+
+    @schema_by_backend
+    class Parent(dj.Manual):
+        definition = """
+        parent_id : int
+        ---
+        name : varchar(255)
+        """
+
+    @schema_by_backend
+    class Child(dj.Manual):
+        definition = """
+        -> Parent
+        child_id : int
+        ---
+        data : varchar(255)
+        """
+
+    Parent.insert1((1, "P1"))
+    Child.insert1((1, 1, "C1"))
+
+    counts = Parent.drop(dry_run=True)
+
+    assert isinstance(counts, dict)
+    assert counts[Parent.full_table_name] == 1
+    assert counts[Child.full_table_name] == 1
+
+    # Tables must still exist and have data
+    assert Parent.is_declared
+    assert Child.is_declared
+    assert len(Parent()) == 1
+    assert len(Child()) == 1

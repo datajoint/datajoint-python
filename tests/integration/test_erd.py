@@ -1,6 +1,8 @@
+import pytest as _pytest
+
 import datajoint as dj
 
-from tests.schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L
+from tests.schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L, Profile, Website
 
 
 def test_decorator(schema_simp):
@@ -61,3 +63,105 @@ def test_part_table_parsing(schema_simp):
     graph = erd._make_graph()
     assert "OutfitLaunch" in graph.nodes()
     assert "OutfitLaunch.OutfitPiece" in graph.nodes()
+
+
+# --- prune() tests ---
+
+
+@_pytest.fixture
+def schema_simp_pop(schema_simp):
+    """Populate the simple schema for prune tests."""
+    Profile().delete()
+    Website().delete()
+    G().delete()
+    E().delete()
+    D().delete()
+    B().delete()
+    L().delete()
+    A().delete()
+
+    A().insert(A.contents, skip_duplicates=True)
+    L().insert(L.contents, skip_duplicates=True)
+    B().populate()
+    D().populate()
+    E().populate()
+    G().populate()
+    yield schema_simp
+
+
+def test_prune_unrestricted(schema_simp_pop):
+    """Prune on unrestricted diagram removes physically empty tables."""
+    diag = dj.Diagram(schema_simp_pop, context=LOCALS_SIMPLE)
+    original_count = len(diag.nodes_to_show)
+    pruned = diag.prune()
+
+    # Populated tables (A, L, B, B.C, D, E, E.F, G, etc.) should survive
+    for cls in (A, B, D, E, L):
+        assert cls.full_table_name in pruned.nodes_to_show, f"{cls.__name__} should not be pruned"
+
+    # Empty tables like Profile should be removed
+    assert Profile.full_table_name not in pruned.nodes_to_show, "empty Profile should be pruned"
+
+    # Pruned diagram should have fewer nodes
+    assert len(pruned.nodes_to_show) < original_count
+
+
+def test_prune_after_restrict(schema_simp_pop):
+    """Prune after restrict removes tables with zero matching rows."""
+    diag = dj.Diagram(schema_simp_pop, context=LOCALS_SIMPLE)
+    restricted = diag.restrict(A & "id_a=0")
+    counts = restricted.preview()
+
+    pruned = restricted.prune()
+    pruned_counts = pruned.preview()
+
+    # Every table in pruned preview should have > 0 rows
+    assert all(c > 0 for c in pruned_counts.values()), "pruned diagram should have no zero-count tables"
+
+    # Tables with zero rows in the original preview should be gone
+    for table, count in counts.items():
+        if count == 0:
+            assert table not in pruned._restrict_conditions, f"{table} had 0 rows but was not pruned"
+
+
+def test_prune_after_cascade(schema_simp_pop):
+    """Prune after cascade removes tables with zero matching rows."""
+    diag = dj.Diagram(schema_simp_pop, context=LOCALS_SIMPLE)
+    cascaded = diag.cascade(A & "id_a=0")
+    counts = cascaded.preview()
+
+    pruned = cascaded.prune()
+    pruned_counts = pruned.preview()
+
+    assert all(c > 0 for c in pruned_counts.values())
+
+    for table, count in counts.items():
+        if count == 0:
+            assert table not in pruned._cascade_restrictions, f"{table} had 0 rows but was not pruned"
+
+
+def test_prune_idempotent(schema_simp_pop):
+    """Pruning twice gives the same result."""
+    diag = dj.Diagram(schema_simp_pop, context=LOCALS_SIMPLE)
+    restricted = diag.restrict(A & "id_a=0")
+    pruned_once = restricted.prune()
+    pruned_twice = pruned_once.prune()
+
+    assert pruned_once.nodes_to_show == pruned_twice.nodes_to_show
+    assert set(pruned_once._restrict_conditions) == set(pruned_twice._restrict_conditions)
+
+
+def test_prune_then_restrict(schema_simp_pop):
+    """Restrict can be called after prune."""
+    diag = dj.Diagram(schema_simp_pop, context=LOCALS_SIMPLE)
+    pruned = diag.restrict(A & "id_a < 5").prune()
+    # Restrict again on the same seed table with a tighter condition
+    further = pruned.restrict(A & "id_a=0")
+
+    # Should not raise; further restriction should narrow results
+    counts = further.preview()
+    assert all(c >= 0 for c in counts.values())
+    # Tighter restriction should produce fewer or equal rows
+    pruned_counts = pruned.preview()
+    for table in counts:
+        assert counts[table] <= pruned_counts.get(table, 0)

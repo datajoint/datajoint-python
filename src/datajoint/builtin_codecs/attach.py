@@ -107,6 +107,7 @@ class AttachCodec(Codec):
         config = (key or {}).get("_config")
         if config is None:
             from ..settings import config
+        assert config is not None
         download_path = Path(config.get("download_path", "."))
         download_path.mkdir(parents=True, exist_ok=True)
         local_path = download_path / filename
