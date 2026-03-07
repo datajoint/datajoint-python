@@ -382,26 +382,22 @@ class Diagram(nx.DiGraph):  # noqa: C901
         result._propagate_restrictions(node, mode="cascade", part_integrity=part_integrity)
         return result
 
-    @staticmethod
-    def _restrict_freetable(ft, restrictions, mode="cascade"):
+    def _restricted_table(self, node):
         """
-        Apply cascade/restrict restrictions to a FreeTable.
+        Return a FreeTable for ``node`` with this diagram's restrictions applied.
 
-        Uses ``restrict()`` to properly convert each restriction (AndList,
-        QueryExpression, etc.) into SQL via ``make_condition``, rather than
-        assigning raw objects to ``_restriction`` which would produce
-        invalid SQL in ``where_clause``.
-
-        For cascade mode (delete), restrictions from different parent edges
-        are OR-ed: a row is deleted if ANY of its FK references point to a
-        deleted row.
-
-        For restrict mode (export), restrictions are AND-ed: a row is
-        included only if ALL ancestor conditions are satisfied.
+        Cascade restrictions are OR-combined (a row is affected if ANY
+        FK reference points to a deleted row).  Restrict conditions are
+        AND-combined (a row is included only when ALL ancestor conditions
+        are satisfied).
         """
+        from .table import FreeTable
+
+        ft = FreeTable(self._connection, node)
+        restrictions = (self._cascade_restrictions or self._restrict_conditions).get(node, [])
         if not restrictions:
             return ft
-        if mode == "cascade":
+        if self._cascade_restrictions:
             # OR semantics — passing a list to restrict() creates an OrList
             return ft.restrict(restrictions)
         else:
@@ -473,10 +469,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                     continue
 
                 # Build parent FreeTable with current restriction
-                parent_ft = FreeTable(self._connection, node)
-                restr = restrictions[node]
-                if restr:
-                    parent_ft = self._restrict_freetable(parent_ft, restr, mode=mode)
+                parent_ft = self._restricted_table(node)
 
                 parent_attrs = self._restriction_attrs.get(node, set())
 
@@ -531,10 +524,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                                 and master_name not in visited_masters
                             ):
                                 visited_masters.add(master_name)
-                                child_ft = FreeTable(self._connection, target)
-                                child_restr = restrictions.get(target, [])
-                                if child_restr:
-                                    child_ft = self._restrict_freetable(child_ft, child_restr, mode=mode)
+                                child_ft = self._restricted_table(target)
                                 master_ft = FreeTable(self._connection, master_name)
                                 from .condition import make_condition
 
@@ -625,8 +615,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             Number of rows deleted from the root table, or (if ``dry_run``)
             a mapping of full table name to affected row count.
         """
-        from .table import FreeTable
-
         if dry_run:
             return self.preview()
 
@@ -644,8 +632,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         # Preview
         if prompt:
             for t in tables:
-                ft = FreeTable(conn, t)
-                ft = self._restrict_freetable(ft, self._cascade_restrictions[t])
+                ft = self._restricted_table(t)
                 logger.info("{table} ({count} tuples)".format(table=t, count=len(ft)))
 
         # Start transaction
@@ -667,8 +654,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         deleted_tables = set()
         try:
             for table_name in reversed(tables):
-                ft = FreeTable(conn, table_name)
-                ft = self._restrict_freetable(ft, self._cascade_restrictions[table_name])
+                ft = self._restricted_table(table_name)
                 count = ft.delete_quick(get_count=True)
                 if count > 0:
                     deleted_tables.add(table_name)
@@ -789,10 +775,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         dict[str, int]
             Mapping of full table name to affected row count.
         """
-        from .table import FreeTable
-
         restrictions = self._cascade_restrictions or self._restrict_conditions
-        mode = "cascade" if self._cascade_restrictions else "restrict"
         if not restrictions:
             raise DataJointError("No restrictions applied. " "Call cascade() or restrict() first.")
 
@@ -800,9 +783,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         for node in topo_sort(self):
             if node.isdigit() or node not in restrictions:
                 continue
-            ft = FreeTable(self._connection, node)
-            ft = self._restrict_freetable(ft, restrictions[node], mode=mode)
-            result[node] = len(ft)
+            result[node] = len(self._restricted_table(node))
 
         for t, count in result.items():
             logger.info("{table} ({count} tuples)".format(table=t, count=count))
@@ -825,16 +806,13 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         result = Diagram(self)
         restrictions = result._cascade_restrictions or result._restrict_conditions
-        mode = "cascade" if result._cascade_restrictions else "restrict"
 
         if restrictions:
             # Restricted: check row counts under restriction
             for node in list(restrictions):
                 if node.isdigit():
                     continue
-                ft = FreeTable(self._connection, node)
-                ft = self._restrict_freetable(ft, restrictions[node], mode=mode)
-                if len(ft) == 0:
+                if len(result._restricted_table(node)) == 0:
                     restrictions.pop(node)
                     result._restriction_attrs.pop(node, None)
                     result.nodes_to_show.discard(node)
