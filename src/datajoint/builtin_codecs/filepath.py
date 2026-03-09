@@ -102,7 +102,8 @@ class FilepathCodec(Codec):
 
         config = (key or {}).get("_config")
         if config is None:
-            from ..settings import config
+            from ..settings import config  # type: ignore[assignment]
+        assert config is not None
 
         path = str(value)
 

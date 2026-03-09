@@ -339,14 +339,20 @@ def test_long_table_name(schema_any):
         schema_any(WhyWouldAnyoneCreateATableNameThisLong)
 
 
-def test_regex_mismatch(schema_any):
+def test_index_attribute_name(schema_any):
+    """Attributes named 'index' should not be misclassified as index declarations (#1411)."""
+
     class IndexAttribute(dj.Manual):
         definition = """
-        index: int
+        index : int
+        ---
+        index_value : float
         """
 
-    with pytest.raises(dj.DataJointError):
-        schema_any(IndexAttribute)
+    schema_any(IndexAttribute)
+    assert "index" in IndexAttribute.heading.attributes
+    assert "index_value" in IndexAttribute.heading.attributes
+    IndexAttribute.drop()
 
 
 def test_table_name_with_underscores(schema_any):
