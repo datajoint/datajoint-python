@@ -110,15 +110,16 @@ If a child table lives in a schema not loaded into the dependency graph, the gra
 
 ### `cascade(self, table_expr, part_integrity="enforce") -> Diagram`
 
-Apply cascade restriction and propagate downstream. Returns a new `Diagram`. One-shot — cannot be called twice or mixed with `restrict()`.
+Prepare a cascading delete. Propagate a restriction downstream, then trim the diagram to the cascade subgraph. Returns a new `Diagram` containing only the seed table and its descendants. One-shot — cannot be called twice or mixed with `restrict()`.
 
 1. Verify no existing cascade or restrict restrictions
 2. Copy diagram, seed `_cascade_restrictions[root]` with `list(table_expr.restriction)`
 3. Propagate via `_propagate_restrictions(root, mode="cascade", part_integrity=part_integrity)`
+4. Trim graph: keep only nodes in `_cascade_restrictions` plus alias nodes connecting them; remove all ancestors and unrelated tables
 
 ### `restrict(self, table_expr) -> Diagram`
 
-Apply restrict condition and propagate downstream. Returns a new `Diagram`. Chainable — can be called multiple times. Cannot be mixed with `cascade()`.
+Select a data subset for export or inspection. Propagate a restriction downstream but preserve the full diagram (ancestors and unrelated tables remain). Returns a new `Diagram`. Chainable — can be called multiple times from different seed tables. Cannot be mixed with `cascade()`.
 
 1. Verify no existing cascade restrictions
 2. Copy diagram, seed/extend `_restrict_conditions[root]` with `table_expr.restriction`
@@ -129,10 +130,10 @@ Apply restrict condition and propagate downstream. Returns a new `Diagram`. Chai
 Execute cascading delete. Requires `cascade()` first.
 
 1. If `dry_run`: return `preview()` without modifying data
-2. Get non-alias nodes with restrictions in topological order
+2. Get all non-alias nodes in topological order (graph is already trimmed by `cascade()`)
 3. If `prompt`: show preview (table name + row count for each)
 4. Start transaction
-5. Delete in **reverse** topological order (leaves first) via `_restrict_freetable()` + `delete_quick()`
+5. Delete in **reverse** topological order (leaves first) via `_restricted_table()` + `delete_quick()`
 6. On `IntegrityError`: cancel transaction, parse FK error for actionable message about unloaded schemas
 7. Post-check `part_integrity="enforce"`: if any part table had rows deleted but its master did not, cancel transaction and raise
 8. Confirm/commit, return count from the root table
@@ -143,15 +144,15 @@ Drop all tables in `nodes_to_show` in reverse topological order. Pre-checks `par
 
 ### `preview(self) -> dict[str, int]`
 
-Return `{full_table_name: row_count}` for each node with a restriction. Requires `cascade()` or `restrict()` first. Uses `_restrict_freetable()` to apply restrictions with correct OR/AND semantics.
+Return `{full_table_name: row_count}` for each node with a restriction. Requires `cascade()` or `restrict()` first. Uses `_restricted_table()` to apply restrictions with correct OR/AND semantics.
 
 ### `prune(self) -> Diagram`
 
 Remove tables with zero matching rows. With restrictions, removes nodes where the restricted query yields zero rows. Without restrictions, removes physically empty tables. Idempotent and chainable.
 
-### `_restrict_freetable(ft, restrictions, mode="cascade") -> FreeTable`
+### `_restricted_table(self, node) -> FreeTable`
 
-Static helper. Applies restrictions to a `FreeTable` using `restrict()` for proper SQL generation.
+Instance method. Creates a `FreeTable` for the given node and applies its accumulated restrictions using `restrict()` for proper SQL generation.
 
 - **cascade mode:** Passes the entire restriction list to `restrict()`, creating an OrList (OR semantics).
 - **restrict mode:** Iterates restrictions, calling `restrict()` for each (AND semantics).
