@@ -226,7 +226,7 @@ class Part(UserTable, metaclass=PartMeta):
                 - ``"ignore"``: Allow direct deletion (breaks master-part integrity).
                 - ``"cascade"``: Delete parts AND cascade up to delete master.
             **kwargs: Additional arguments passed to Table.delete()
-                      (transaction, prompt)
+                      (transaction, prompt, dry_run)
 
         Raises:
             DataJointError: If part_integrity="enforce" (direct Part deletes prohibited)

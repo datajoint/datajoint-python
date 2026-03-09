@@ -271,3 +271,36 @@ def test_drop_dry_run(schema_by_backend):
     assert Child.is_declared
     assert len(Parent()) == 1
     assert len(Child()) == 1
+
+
+def test_part_delete_dry_run(schema_by_backend):
+    """dry_run=True on Part.delete() returns affected row counts without deleting."""
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int
+        ---
+        name : varchar(255)
+        """
+
+        class Detail(dj.Part):
+            definition = """
+            -> master
+            detail_id : int
+            ---
+            data : varchar(255)
+            """
+
+    Master.insert1((1, "M1"))
+    Master.Detail.insert([(1, 1, "D1"), (1, 2, "D2")])
+
+    # dry_run with part_integrity="ignore" should return counts without deleting
+    counts = (Master.Detail & {"master_id": 1}).delete(part_integrity="ignore", dry_run=True)
+
+    assert isinstance(counts, dict)
+    assert counts[Master.Detail.full_table_name] == 2
+
+    # Data must still be intact
+    assert len(Master()) == 1
+    assert len(Master.Detail()) == 2
