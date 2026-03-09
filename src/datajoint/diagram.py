@@ -380,6 +380,15 @@ class Diagram(nx.DiGraph):  # noqa: C901
         result._restriction_attrs[node] = set(table_expr.restriction_attributes)
         # Propagate downstream
         result._propagate_restrictions(node, mode="cascade", part_integrity=part_integrity)
+        # Trim graph to cascade subgraph: only restricted tables
+        # (seed + descendants) plus alias nodes connecting them.
+        keep = set(result._cascade_restrictions)
+        for alias in (n for n in result.nodes() if n.isdigit()):
+            if set(result.predecessors(alias)) & keep and set(result.successors(alias)) & keep:
+                keep.add(alias)
+        result.remove_nodes_from(set(result.nodes()) - keep)
+        result.nodes_to_show &= keep
+        result._expanded_nodes &= keep
         return result
 
     def _restricted_table(self, node):
@@ -625,9 +634,9 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         conn = self._connection
 
-        # Get non-alias nodes with restrictions in topological order
+        # Get non-alias nodes in topological order (graph is already trimmed by cascade())
         all_sorted = topo_sort(self)
-        tables = [t for t in all_sorted if not t.isdigit() and t in self._cascade_restrictions]
+        tables = [t for t in all_sorted if not t.isdigit()]
 
         # Preview
         if prompt:
