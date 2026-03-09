@@ -233,6 +233,9 @@ markers = [
     "postgresql: marks tests that run on PostgreSQL backend (select with '-m postgresql')",
     "backend_agnostic: marks tests that should pass on all backends (auto-marked for parameterized tests)",
 ]
+filterwarnings = [
+    "ignore::pyparsing.exceptions.PyparsingDeprecationWarning",
+]
 
 
 [tool.pixi.workspace]
