@@ -234,7 +234,7 @@ markers = [
     "backend_agnostic: marks tests that should pass on all backends (auto-marked for parameterized tests)",
 ]
 filterwarnings = [
-    "ignore::pyparsing.exceptions.PyparsingDeprecationWarning",
+    "ignore:.*deprecated.*:DeprecationWarning:matplotlib",
 ]
 
 
