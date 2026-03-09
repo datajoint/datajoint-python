@@ -237,7 +237,7 @@ class Part(UserTable, metaclass=PartMeta):
                 "or use part_integrity='ignore' to break integrity, "
                 "or part_integrity='cascade' to also delete master."
             )
-        super().delete(part_integrity=part_integrity, **kwargs)
+        return super().delete(part_integrity=part_integrity, **kwargs)
 
     def drop(self, part_integrity: str = "enforce", dry_run: bool = False):
         """
