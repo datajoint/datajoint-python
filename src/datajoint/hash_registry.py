@@ -32,13 +32,18 @@ See Also
 datajoint.gc : Garbage collection for orphaned storage items.
 """
 
+from __future__ import annotations
+
 import base64
 import hashlib
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .errors import DataJointError
 from .storage import StorageBackend
+
+if TYPE_CHECKING:
+    from .settings import Config
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -130,7 +135,7 @@ def build_hash_path(
         return f"_hash/{schema_name}/{content_hash}"
 
 
-def get_store_backend(store_name: str | None = None, config: Any = None) -> StorageBackend:
+def get_store_backend(store_name: str | None = None, config: Config | None = None) -> StorageBackend:
     """
     Get a StorageBackend for hash-addressed storage.
 
@@ -147,13 +152,14 @@ def get_store_backend(store_name: str | None = None, config: Any = None) -> Stor
         StorageBackend instance.
     """
     if config is None:
-        from .settings import config
+        from .settings import config  # type: ignore[assignment]
+    assert config is not None
     # get_store_spec handles None by using stores.default
     spec = config.get_store_spec(store_name)
     return StorageBackend(spec)
 
 
-def get_store_subfolding(store_name: str | None = None, config: Any = None) -> tuple[int, ...] | None:
+def get_store_subfolding(store_name: str | None = None, config: Config | None = None) -> tuple[int, ...] | None:
     """
     Get the subfolding configuration for a store.
 
@@ -170,7 +176,8 @@ def get_store_subfolding(store_name: str | None = None, config: Any = None) -> t
         Subfolding pattern (e.g., (2, 2)) or None for flat storage.
     """
     if config is None:
-        from .settings import config
+        from .settings import config  # type: ignore[assignment]
+    assert config is not None
     spec = config.get_store_spec(store_name)
     subfolding = spec.get("subfolding")
     if subfolding is not None:
@@ -182,7 +189,7 @@ def put_hash(
     data: bytes,
     schema_name: str,
     store_name: str | None = None,
-    config: Any = None,
+    config: Config | None = None,
 ) -> dict[str, Any]:
     """
     Store content using hash-addressed storage.
@@ -231,7 +238,7 @@ def put_hash(
     }
 
 
-def get_hash(metadata: dict[str, Any], config: Any = None) -> bytes:
+def get_hash(metadata: dict[str, Any], config: Config | None = None) -> bytes:
     """
     Retrieve content using stored metadata.
 
@@ -275,7 +282,7 @@ def get_hash(metadata: dict[str, Any], config: Any = None) -> bytes:
 def delete_path(
     path: str,
     store_name: str | None = None,
-    config: Any = None,
+    config: Config | None = None,
 ) -> bool:
     """
     Delete content at the specified path from storage.
