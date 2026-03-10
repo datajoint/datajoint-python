@@ -4,7 +4,10 @@ Diagram for DataJoint schemas.
 This module provides the Diagram class for constructing derived views of the
 dependency graph. Diagram supports set operators (+, -, *) for selecting subsets
 of tables, restriction propagation (cascade, restrict) for selecting subsets of
-data, and operations (delete, drop, preview) for acting on those selections.
+data, and inspection (preview, prune) for viewing those selections.
+
+Mutation operations (delete, drop) live in Table, which uses Diagram internally
+for graph computation.
 
 Visualization methods (draw, make_dot, make_svg, etc.) require matplotlib and
 pygraphviz. All other methods are always available.
@@ -22,10 +25,9 @@ import networkx as nx
 
 from .condition import AndList
 from .dependencies import extract_master, topo_sort
-from .errors import DataJointError, IntegrityError
+from .errors import DataJointError
 from .table import Table, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _AliasNode, _get_tier
-from .utils import user_choice
 
 try:
     from matplotlib import pyplot as plt
@@ -604,176 +606,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             child_attrs = set(attr_map.values())
 
         self._restriction_attrs.setdefault(child_node, set()).update(child_attrs)
-
-    def delete(self, transaction=True, prompt=None, dry_run=False):
-        """
-        Execute cascading delete using cascade restrictions.
-
-        Parameters
-        ----------
-        transaction : bool, optional
-            Wrap in a transaction. Default True.
-        prompt : bool or None, optional
-            Show preview and ask confirmation. Default ``dj.config['safemode']``.
-        dry_run : bool, optional
-            If True, return affected row counts without deleting. Default False.
-
-        Returns
-        -------
-        int or dict[str, int]
-            Number of rows deleted from the root table, or (if ``dry_run``)
-            a mapping of full table name to affected row count.
-        """
-        if dry_run:
-            return self.preview()
-
-        prompt = self._connection._config["safemode"] if prompt is None else prompt
-
-        if not self._cascade_restrictions:
-            raise DataJointError("No cascade restrictions applied. Call cascade() first.")
-
-        conn = self._connection
-
-        # Get non-alias nodes in topological order (graph is already trimmed by cascade())
-        all_sorted = topo_sort(self)
-        tables = [t for t in all_sorted if not t.isdigit()]
-
-        # Preview
-        if prompt:
-            for t in tables:
-                ft = self._restricted_table(t)
-                logger.info("{table} ({count} tuples)".format(table=t, count=len(ft)))
-
-        # Start transaction
-        if transaction:
-            if not conn.in_transaction:
-                conn.start_transaction()
-            else:
-                if not prompt:
-                    transaction = False
-                else:
-                    raise DataJointError(
-                        "Delete cannot use a transaction within an "
-                        "ongoing transaction. Set transaction=False "
-                        "or prompt=False."
-                    )
-
-        # Execute deletes in reverse topological order (leaves first)
-        root_count = 0
-        deleted_tables = set()
-        try:
-            for table_name in reversed(tables):
-                ft = self._restricted_table(table_name)
-                count = ft.delete_quick(get_count=True)
-                if count > 0:
-                    deleted_tables.add(table_name)
-                logger.info("Deleting {count} rows from {table}".format(count=count, table=table_name))
-                if table_name == tables[0]:
-                    root_count = count
-        except IntegrityError as error:
-            if transaction:
-                conn.cancel_transaction()
-            match = conn.adapter.parse_foreign_key_error(error.args[0])
-            if match:
-                raise DataJointError(
-                    "Delete blocked by table {child} in an unloaded "
-                    "schema. Activate all dependent schemas before "
-                    "deleting.".format(child=match["child"])
-                ) from None
-            raise DataJointError("Delete blocked by FK in unloaded/inaccessible schema.") from None
-        except:
-            if transaction:
-                conn.cancel_transaction()
-            raise
-
-        # Post-check part_integrity="enforce": roll back if a part table
-        # had rows deleted without its master also having rows deleted.
-        if getattr(self, "_part_integrity", "enforce") == "enforce" and deleted_tables:
-            for table_name in deleted_tables:
-                master = extract_master(table_name)
-                if master and master not in deleted_tables:
-                    if transaction:
-                        conn.cancel_transaction()
-                    raise DataJointError(
-                        f"Attempt to delete part table {table_name} before "
-                        f"its master {master}. Delete from the master first, "
-                        f"or use part_integrity='ignore' or 'cascade'."
-                    )
-
-        # Confirm and commit
-        if root_count == 0:
-            if prompt:
-                logger.warning("Nothing to delete.")
-            if transaction:
-                conn.cancel_transaction()
-        elif not transaction:
-            logger.info("Delete completed")
-        else:
-            if not prompt or user_choice("Commit deletes?", default="no") == "yes":
-                if transaction:
-                    conn.commit_transaction()
-                if prompt:
-                    logger.info("Delete committed.")
-            else:
-                if transaction:
-                    conn.cancel_transaction()
-                if prompt:
-                    logger.warning("Delete cancelled")
-                root_count = 0
-        return root_count
-
-    def drop(self, prompt=None, part_integrity="enforce", dry_run=False):
-        """
-        Drop all tables in the diagram in reverse topological order.
-
-        Parameters
-        ----------
-        prompt : bool or None, optional
-            Show preview and ask confirmation. Default ``dj.config['safemode']``.
-        part_integrity : str, optional
-            ``"enforce"`` (default) or ``"ignore"``.
-        dry_run : bool, optional
-            If True, return row counts without dropping. Default False.
-
-        Returns
-        -------
-        dict[str, int] or None
-            If ``dry_run``, mapping of full table name to row count.
-        """
-        from .table import FreeTable
-
-        prompt = self._connection._config["safemode"] if prompt is None else prompt
-        conn = self._connection
-
-        tables = [t for t in topo_sort(self) if not t.isdigit() and t in self.nodes_to_show]
-
-        if part_integrity == "enforce":
-            for part in tables:
-                master = extract_master(part)
-                if master and master not in tables:
-                    raise DataJointError(
-                        "Attempt to drop part table {part} before its " "master {master}. Drop the master first.".format(
-                            part=part, master=master
-                        )
-                    )
-
-        if dry_run:
-            result = {}
-            for t in tables:
-                count = len(FreeTable(conn, t))
-                result[t] = count
-                logger.info("{table} ({count} tuples)".format(table=t, count=count))
-            return result
-
-        do_drop = True
-        if prompt:
-            for t in tables:
-                logger.info("{table} ({count} tuples)".format(table=t, count=len(FreeTable(conn, t))))
-            do_drop = user_choice("Proceed?", default="no") == "yes"
-        if do_drop:
-            for t in reversed(tables):
-                FreeTable(conn, t).drop_quick()
-            logger.info("Tables dropped. Restart kernel.")
 
     def preview(self):
         """

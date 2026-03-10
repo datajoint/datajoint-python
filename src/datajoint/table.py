@@ -14,10 +14,12 @@ import pandas
 
 from .condition import make_condition
 from .declare import alter, declare
+from .dependencies import extract_master, topo_sort
 from .errors import (
     AccessError,
     DataJointError,
     DuplicateError,
+    IntegrityError,
     UnknownAttributeError,
 )
 from .expression import QueryExpression
@@ -1010,7 +1012,100 @@ class Table(QueryExpression):
 
         diagram = Diagram._from_table(self)
         diagram = diagram.cascade(self, part_integrity=part_integrity)
-        return diagram.delete(transaction=transaction, prompt=prompt, dry_run=dry_run)
+
+        if dry_run:
+            return diagram.preview()
+
+        conn = self.connection
+        prompt = conn._config["safemode"] if prompt is None else prompt
+
+        # Get non-alias nodes in topological order (graph is already trimmed by cascade())
+        all_sorted = topo_sort(diagram)
+        tables = [t for t in all_sorted if not t.isdigit()]
+
+        # Preview
+        if prompt:
+            for t in tables:
+                ft = diagram._restricted_table(t)
+                logger.info("{table} ({count} tuples)".format(table=t, count=len(ft)))
+
+        # Start transaction
+        if transaction:
+            if not conn.in_transaction:
+                conn.start_transaction()
+            else:
+                if not prompt:
+                    transaction = False
+                else:
+                    raise DataJointError(
+                        "Delete cannot use a transaction within an "
+                        "ongoing transaction. Set transaction=False "
+                        "or prompt=False."
+                    )
+
+        # Execute deletes in reverse topological order (leaves first)
+        root_count = 0
+        deleted_tables = set()
+        try:
+            for table_name in reversed(tables):
+                ft = diagram._restricted_table(table_name)
+                count = ft.delete_quick(get_count=True)
+                if count > 0:
+                    deleted_tables.add(table_name)
+                logger.info("Deleting {count} rows from {table}".format(count=count, table=table_name))
+                if table_name == tables[0]:
+                    root_count = count
+        except IntegrityError as error:
+            if transaction:
+                conn.cancel_transaction()
+            match = conn.adapter.parse_foreign_key_error(error.args[0])
+            if match:
+                raise DataJointError(
+                    "Delete blocked by table {child} in an unloaded "
+                    "schema. Activate all dependent schemas before "
+                    "deleting.".format(child=match["child"])
+                ) from None
+            raise DataJointError("Delete blocked by FK in unloaded/inaccessible schema.") from None
+        except:
+            if transaction:
+                conn.cancel_transaction()
+            raise
+
+        # Post-check part_integrity="enforce": roll back if a part table
+        # had rows deleted without its master also having rows deleted.
+        if part_integrity == "enforce" and deleted_tables:
+            for table_name in deleted_tables:
+                master = extract_master(table_name)
+                if master and master not in deleted_tables:
+                    if transaction:
+                        conn.cancel_transaction()
+                    raise DataJointError(
+                        f"Attempt to delete part table {table_name} before "
+                        f"its master {master}. Delete from the master first, "
+                        f"or use part_integrity='ignore' or 'cascade'."
+                    )
+
+        # Confirm and commit
+        if root_count == 0:
+            if prompt:
+                logger.warning("Nothing to delete.")
+            if transaction:
+                conn.cancel_transaction()
+        elif not transaction:
+            logger.info("Delete completed")
+        else:
+            if not prompt or user_choice("Commit deletes?", default="no") == "yes":
+                if transaction:
+                    conn.commit_transaction()
+                if prompt:
+                    logger.info("Delete committed.")
+            else:
+                if transaction:
+                    conn.cancel_transaction()
+                if prompt:
+                    logger.warning("Delete cancelled")
+                root_count = 0
+        return root_count
 
     def drop_quick(self):
         """
@@ -1077,7 +1172,38 @@ class Table(QueryExpression):
         from .diagram import Diagram
 
         diagram = Diagram._from_table(self)
-        return diagram.drop(prompt=prompt, part_integrity=part_integrity, dry_run=dry_run)
+        conn = self.connection
+        prompt = conn._config["safemode"] if prompt is None else prompt
+
+        tables = [t for t in topo_sort(diagram) if not t.isdigit() and t in diagram.nodes_to_show]
+
+        if part_integrity == "enforce":
+            for part in tables:
+                master = extract_master(part)
+                if master and master not in tables:
+                    raise DataJointError(
+                        "Attempt to drop part table {part} before its " "master {master}. Drop the master first.".format(
+                            part=part, master=master
+                        )
+                    )
+
+        if dry_run:
+            result = {}
+            for t in tables:
+                count = len(FreeTable(conn, t))
+                result[t] = count
+                logger.info("{table} ({count} tuples)".format(table=t, count=count))
+            return result
+
+        do_drop = True
+        if prompt:
+            for t in tables:
+                logger.info("{table} ({count} tuples)".format(table=t, count=len(FreeTable(conn, t))))
+            do_drop = user_choice("Proceed?", default="no") == "yes"
+        if do_drop:
+            for t in reversed(tables):
+                FreeTable(conn, t).drop_quick()
+            logger.info("Tables dropped. Restart kernel.")
 
     def describe(self, context=None, printout=False):
         """
