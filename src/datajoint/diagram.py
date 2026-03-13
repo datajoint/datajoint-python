@@ -621,14 +621,36 @@ class Diagram(nx.DiGraph):  # noqa: C901
             raise DataJointError("No restrictions applied. " "Call cascade() or restrict() first.")
 
         result = {}
-        for node in topo_sort(self):
-            if node.isdigit() or node not in restrictions:
-                continue
-            result[node] = len(self._restricted_table(node))
-
-        for t, count in result.items():
-            logger.info("{table} ({count} tuples)".format(table=t, count=count))
+        for ft in self:
+            if ft.full_table_name in restrictions:
+                count = len(ft)
+                result[ft.full_table_name] = count
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=count))
         return result
+
+    def __iter__(self):
+        """
+        Iterate over non-alias nodes in topological order (parents first).
+
+        Yields restricted ``FreeTable`` objects when cascade or restrict
+        conditions have been applied, unrestricted ``FreeTable`` otherwise.
+
+        Alias nodes (used internally for multi-FK edges) are skipped.
+        """
+        for node in topo_sort(self):
+            if not node.isdigit() and node in self.nodes_to_show:
+                yield self._restricted_table(node)
+
+    def __reversed__(self):
+        """
+        Iterate in reverse topological order (leaves first).
+
+        Same as ``__iter__`` but reversed — useful for cascading
+        deletes and drops.
+        """
+        for node in reversed(topo_sort(self)):
+            if not node.isdigit() and node in self.nodes_to_show:
+                yield self._restricted_table(node)
 
     def prune(self):
         """

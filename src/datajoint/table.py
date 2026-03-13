@@ -14,7 +14,7 @@ import pandas
 
 from .condition import make_condition
 from .declare import alter, declare
-from .dependencies import extract_master, topo_sort
+from .dependencies import extract_master
 from .errors import (
     AccessError,
     DataJointError,
@@ -1019,15 +1019,10 @@ class Table(QueryExpression):
         conn = self.connection
         prompt = conn._config["safemode"] if prompt is None else prompt
 
-        # Get non-alias nodes in topological order (graph is already trimmed by cascade())
-        all_sorted = topo_sort(diagram)
-        tables = [t for t in all_sorted if not t.isdigit()]
-
         # Preview
         if prompt:
-            for t in tables:
-                ft = diagram._restricted_table(t)
-                logger.info("{table} ({count} tuples)".format(table=t, count=len(ft)))
+            for ft in diagram:
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=len(ft)))
 
         # Start transaction
         if transaction:
@@ -1047,13 +1042,12 @@ class Table(QueryExpression):
         root_count = 0
         deleted_tables = set()
         try:
-            for table_name in reversed(tables):
-                ft = diagram._restricted_table(table_name)
+            for ft in reversed(diagram):
                 count = ft.delete_quick(get_count=True)
                 if count > 0:
-                    deleted_tables.add(table_name)
-                logger.info("Deleting {count} rows from {table}".format(count=count, table=table_name))
-                if table_name == tables[0]:
+                    deleted_tables.add(ft.full_table_name)
+                logger.info("Deleting {count} rows from {table}".format(count=count, table=ft.full_table_name))
+                if ft.full_table_name == self.full_table_name:
                     root_count = count
         except IntegrityError as error:
             if transaction:
@@ -1175,34 +1169,34 @@ class Table(QueryExpression):
         conn = self.connection
         prompt = conn._config["safemode"] if prompt is None else prompt
 
-        tables = [t for t in topo_sort(diagram) if not t.isdigit() and t in diagram.nodes_to_show]
+        table_names = [ft.full_table_name for ft in diagram]
 
         if part_integrity == "enforce":
-            for part in tables:
-                master = extract_master(part)
-                if master and master not in tables:
+            for name in table_names:
+                master = extract_master(name)
+                if master and master not in table_names:
                     raise DataJointError(
                         "Attempt to drop part table {part} before its " "master {master}. Drop the master first.".format(
-                            part=part, master=master
+                            part=name, master=master
                         )
                     )
 
         if dry_run:
             result = {}
-            for t in tables:
-                count = len(FreeTable(conn, t))
-                result[t] = count
-                logger.info("{table} ({count} tuples)".format(table=t, count=count))
+            for ft in diagram:
+                count = len(ft)
+                result[ft.full_table_name] = count
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=count))
             return result
 
         do_drop = True
         if prompt:
-            for t in tables:
-                logger.info("{table} ({count} tuples)".format(table=t, count=len(FreeTable(conn, t))))
+            for ft in diagram:
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=len(ft)))
             do_drop = user_choice("Proceed?", default="no") == "yes"
         if do_drop:
-            for t in reversed(tables):
-                FreeTable(conn, t).drop_quick()
+            for ft in reversed(diagram):
+                ft.drop_quick()
             logger.info("Tables dropped. Restart kernel.")
 
     def describe(self, context=None, printout=False):
