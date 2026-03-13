@@ -110,10 +110,10 @@ def test_prune_after_restrict(schema_simp_pop):
     """Prune after restrict removes tables with zero matching rows."""
     diag = dj.Diagram(schema_simp_pop, context=LOCALS_SIMPLE)
     restricted = diag.restrict(A & "id_a=0")
-    counts = restricted.preview()
+    counts = restricted.counts()
 
     pruned = restricted.prune()
-    pruned_counts = pruned.preview()
+    pruned_counts = pruned.counts()
 
     # Every table in pruned preview should have > 0 rows
     assert all(c > 0 for c in pruned_counts.values()), "pruned diagram should have no zero-count tables"
@@ -128,10 +128,10 @@ def test_prune_after_cascade(schema_simp_pop):
     """Prune after cascade removes tables with zero matching rows."""
     diag = dj.Diagram(schema_simp_pop, context=LOCALS_SIMPLE)
     cascaded = diag.cascade(A & "id_a=0")
-    counts = cascaded.preview()
+    counts = cascaded.counts()
 
     pruned = cascaded.prune()
-    pruned_counts = pruned.preview()
+    pruned_counts = pruned.counts()
 
     assert all(c > 0 for c in pruned_counts.values())
 
@@ -159,9 +159,9 @@ def test_prune_then_restrict(schema_simp_pop):
     further = pruned.restrict(A & "id_a=0")
 
     # Should not raise; further restriction should narrow results
-    counts = further.preview()
+    counts = further.counts()
     assert all(c >= 0 for c in counts.values())
     # Tighter restriction should produce fewer or equal rows
-    pruned_counts = pruned.preview()
+    pruned_counts = pruned.counts()
     for table in counts:
         assert counts[table] <= pruned_counts.get(table, 0)

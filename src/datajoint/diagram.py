@@ -4,7 +4,7 @@ Diagram for DataJoint schemas.
 This module provides the Diagram class for constructing derived views of the
 dependency graph. Diagram supports set operators (+, -, *) for selecting subsets
 of tables, restriction propagation (cascade, restrict) for selecting subsets of
-data, and inspection (preview, prune) for viewing those selections.
+data, and inspection (counts, prune) for viewing those selections.
 
 Mutation operations (delete, drop) live in Table, which uses Diagram internally
 for graph computation.
@@ -607,9 +607,9 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         self._restriction_attrs.setdefault(child_node, set()).update(child_attrs)
 
-    def preview(self):
+    def counts(self):
         """
-        Show affected tables and row counts without modifying data.
+        Return affected row counts per table without modifying data.
 
         Returns
         -------

@@ -1014,7 +1014,7 @@ class Table(QueryExpression):
         diagram = diagram.cascade(self, part_integrity=part_integrity)
 
         if dry_run:
-            return diagram.preview()
+            return diagram.counts()
 
         conn = self.connection
         prompt = conn._config["safemode"] if prompt is None else prompt
