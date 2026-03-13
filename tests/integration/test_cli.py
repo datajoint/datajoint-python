@@ -3,6 +3,7 @@ Collection of test cases to test the dj cli
 """
 
 import subprocess
+import sys
 
 import pytest
 
@@ -31,7 +32,7 @@ def test_cli_help(capsys):
 
 def test_cli_config():
     process = subprocess.Popen(
-        ["dj"],
+        [sys.executable, "-m", "datajoint.cli"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -50,7 +51,7 @@ def test_cli_config():
 
 def test_cli_args():
     process = subprocess.Popen(
-        ["dj", "-u", "test_user", "-p", "test_pass", "--host", "test_host"],
+        [sys.executable, "-m", "datajoint.cli", "-u", "test_user", "-p", "test_pass", "--host", "test_host"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -82,7 +83,9 @@ def test_cli_schemas(prefix, connection_root, db_creds_root):
     # Pass credentials via CLI args to avoid prompting for username
     process = subprocess.Popen(
         [
-            "dj",
+            sys.executable,
+            "-m",
+            "datajoint.cli",
             "-u",
             db_creds_root["user"],
             "-p",

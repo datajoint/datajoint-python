@@ -14,6 +14,7 @@ import pandas
 
 from .condition import make_condition
 from .declare import alter, declare
+from .dependencies import extract_master
 from .errors import (
     AccessError,
     DataJointError,
@@ -24,7 +25,7 @@ from .errors import (
 from .expression import QueryExpression
 from .heading import Heading
 from .staged_insert import staged_insert1 as _staged_insert1
-from .utils import get_master, is_camel_case, user_choice
+from .utils import is_camel_case, user_choice
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -974,9 +975,14 @@ class Table(QueryExpression):
         transaction: bool = True,
         prompt: bool | None = None,
         part_integrity: str = "enforce",
-    ) -> int:
+        dry_run: bool = False,
+    ) -> int | dict[str, int]:
         """
         Deletes the contents of the table and its dependent tables, recursively.
+
+        Uses graph-driven cascade: builds a dependency diagram, propagates
+        restrictions to all descendants, then deletes in reverse topological
+        order (leaves first).
 
         Args:
             transaction: If `True`, use of the entire delete becomes an atomic transaction.
@@ -988,187 +994,112 @@ class Table(QueryExpression):
                 - ``"enforce"`` (default): Error if parts would be deleted without masters.
                 - ``"ignore"``: Allow deleting parts without masters (breaks integrity).
                 - ``"cascade"``: Also delete masters when parts are deleted (maintains integrity).
+            dry_run: If `True`, return a dict mapping full table names to affected
+                row counts without deleting any data. Default False.
 
         Returns:
-            Number of deleted rows (excluding those from dependent tables).
+            Number of deleted rows (excluding those from dependent tables), or
+            (if ``dry_run``) a dict mapping full table name to affected row count.
 
         Raises:
-            DataJointError: Delete exceeds maximum number of delete attempts.
             DataJointError: When deleting within an existing transaction.
             DataJointError: Deleting a part table before its master (when part_integrity="enforce").
             ValueError: Invalid part_integrity value.
         """
         if part_integrity not in ("enforce", "ignore", "cascade"):
-            raise ValueError(f"part_integrity must be 'enforce', 'ignore', or 'cascade', got {part_integrity!r}")
-        deleted = set()
-        visited_masters = set()
+            raise ValueError(f"part_integrity must be 'enforce', 'ignore', or 'cascade', " f"got {part_integrity!r}")
+        from .diagram import Diagram
 
-        def cascade(table):
-            """service function to perform cascading deletes recursively."""
-            max_attempts = 50
-            for _ in range(max_attempts):
-                # Set savepoint before delete attempt (for PostgreSQL transaction handling)
-                savepoint_name = f"cascade_delete_{id(table)}"
-                if transaction:
-                    table.connection.query(f"SAVEPOINT {savepoint_name}")
+        diagram = Diagram._from_table(self)
+        diagram = diagram.cascade(self, part_integrity=part_integrity)
 
-                try:
-                    delete_count = table.delete_quick(get_count=True)
-                except IntegrityError as error:
-                    # Rollback to savepoint so we can continue querying (PostgreSQL requirement)
-                    if transaction:
-                        table.connection.query(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
-                    # Use adapter to parse FK error message
-                    match = table.connection.adapter.parse_foreign_key_error(error.args[0])
-                    if match is None:
-                        raise DataJointError(
-                            "Cascading deletes failed because the error message is missing foreign key information. "
-                            "Make sure you have REFERENCES privilege to all dependent tables."
-                        ) from None
+        if dry_run:
+            return diagram.counts()
 
-                    # Strip quotes from parsed values for backend-agnostic processing
-                    quote_chars = ("`", '"')
+        conn = self.connection
+        prompt = conn._config["safemode"] if prompt is None else prompt
 
-                    def strip_quotes(s):
-                        if s and any(s.startswith(q) for q in quote_chars):
-                            return s.strip('`"')
-                        return s
-
-                    # Extract schema and table name from child (work with unquoted names)
-                    child_table_raw = strip_quotes(match["child"])
-                    if "." in child_table_raw:
-                        child_parts = child_table_raw.split(".")
-                        child_schema = strip_quotes(child_parts[0])
-                        child_table_name = strip_quotes(child_parts[1])
-                    else:
-                        # Add schema from current table
-                        schema_parts = table.full_table_name.split(".")
-                        child_schema = strip_quotes(schema_parts[0])
-                        child_table_name = child_table_raw
-
-                    # If FK/PK attributes not in error message, query information_schema
-                    if match["fk_attrs"] is None or match["pk_attrs"] is None:
-                        constraint_query = table.connection.adapter.get_constraint_info_sql(
-                            strip_quotes(match["name"]),
-                            child_schema,
-                            child_table_name,
-                        )
-
-                        results = table.connection.query(
-                            constraint_query,
-                            args=(strip_quotes(match["name"]), child_schema, child_table_name),
-                        ).fetchall()
-                        if results:
-                            match["fk_attrs"], match["parent"], match["pk_attrs"] = list(map(list, zip(*results)))
-                            match["parent"] = match["parent"][0]  # All rows have same parent
-
-                    # Build properly quoted full table name for FreeTable
-                    child_full_name = (
-                        f"{table.connection.adapter.quote_identifier(child_schema)}."
-                        f"{table.connection.adapter.quote_identifier(child_table_name)}"
-                    )
-
-                    # Restrict child by table if
-                    #   1. if table's restriction attributes are not in child's primary key
-                    #   2. if child renames any attributes
-                    # Otherwise restrict child by table's restriction.
-                    child = FreeTable(table.connection, child_full_name)
-                    if set(table.restriction_attributes) <= set(child.primary_key) and match["fk_attrs"] == match["pk_attrs"]:
-                        child._restriction = table._restriction
-                        child._restriction_attributes = table.restriction_attributes
-                    elif match["fk_attrs"] != match["pk_attrs"]:
-                        child &= table.proj(**dict(zip(match["fk_attrs"], match["pk_attrs"])))
-                    else:
-                        child &= table.proj()
-
-                    master_name = get_master(child.full_table_name, table.connection.adapter)
-                    if (
-                        part_integrity == "cascade"
-                        and master_name
-                        and master_name != table.full_table_name
-                        and master_name not in visited_masters
-                    ):
-                        master = FreeTable(table.connection, master_name)
-                        master._restriction_attributes = set()
-                        master._restriction = [
-                            make_condition(  # &= may cause in target tables in subquery
-                                master,
-                                (master.proj() & child.proj()).to_arrays(),
-                                master._restriction_attributes,
-                            )
-                        ]
-                        visited_masters.add(master_name)
-                        cascade(master)
-                    else:
-                        cascade(child)
-                else:
-                    # Successful delete - release savepoint
-                    if transaction:
-                        table.connection.query(f"RELEASE SAVEPOINT {savepoint_name}")
-                    deleted.add(table.full_table_name)
-                    logger.info("Deleting {count} rows from {table}".format(count=delete_count, table=table.full_table_name))
-                    break
-            else:
-                raise DataJointError("Exceeded maximum number of delete attempts.")
-            return delete_count
-
-        prompt = self.connection._config["safemode"] if prompt is None else prompt
+        # Preview
+        if prompt:
+            for ft in diagram:
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=len(ft)))
 
         # Start transaction
         if transaction:
-            if not self.connection.in_transaction:
-                self.connection.start_transaction()
+            if not conn.in_transaction:
+                conn.start_transaction()
             else:
                 if not prompt:
                     transaction = False
                 else:
                     raise DataJointError(
-                        "Delete cannot use a transaction within an ongoing transaction. Set transaction=False or prompt=False."
+                        "Delete cannot use a transaction within an "
+                        "ongoing transaction. Set transaction=False "
+                        "or prompt=False."
                     )
 
-        # Cascading delete
+        # Execute deletes in reverse topological order (leaves first)
+        root_count = 0
+        deleted_tables = set()
         try:
-            delete_count = cascade(self)
+            for ft in reversed(diagram):
+                count = ft.delete_quick(get_count=True)
+                if count > 0:
+                    deleted_tables.add(ft.full_table_name)
+                logger.info("Deleting {count} rows from {table}".format(count=count, table=ft.full_table_name))
+                if ft.full_table_name == self.full_table_name:
+                    root_count = count
+        except IntegrityError as error:
+            if transaction:
+                conn.cancel_transaction()
+            match = conn.adapter.parse_foreign_key_error(error.args[0])
+            if match:
+                raise DataJointError(
+                    "Delete blocked by table {child} in an unloaded "
+                    "schema. Activate all dependent schemas before "
+                    "deleting.".format(child=match["child"])
+                ) from None
+            raise DataJointError("Delete blocked by FK in unloaded/inaccessible schema.") from None
         except:
             if transaction:
-                self.connection.cancel_transaction()
+                conn.cancel_transaction()
             raise
 
-        if part_integrity == "enforce":
-            # Avoid deleting from part before master (See issue #151)
-            for part in deleted:
-                master = get_master(part, self.connection.adapter)
-                if master and master not in deleted:
+        # Post-check part_integrity="enforce": roll back if a part table
+        # had rows deleted without its master also having rows deleted.
+        if part_integrity == "enforce" and deleted_tables:
+            for table_name in deleted_tables:
+                master = extract_master(table_name)
+                if master and master not in deleted_tables:
                     if transaction:
-                        self.connection.cancel_transaction()
+                        conn.cancel_transaction()
                     raise DataJointError(
-                        "Attempt to delete part table {part} before deleting from its master {master} first. "
-                        "Use part_integrity='ignore' to allow, or part_integrity='cascade' to also delete master.".format(
-                            part=part, master=master
-                        )
+                        f"Attempt to delete part table {table_name} before "
+                        f"its master {master}. Delete from the master first, "
+                        f"or use part_integrity='ignore' or 'cascade'."
                     )
 
         # Confirm and commit
-        if delete_count == 0:
+        if root_count == 0:
             if prompt:
                 logger.warning("Nothing to delete.")
             if transaction:
-                self.connection.cancel_transaction()
+                conn.cancel_transaction()
         elif not transaction:
             logger.info("Delete completed")
         else:
             if not prompt or user_choice("Commit deletes?", default="no") == "yes":
                 if transaction:
-                    self.connection.commit_transaction()
+                    conn.commit_transaction()
                 if prompt:
                     logger.info("Delete committed.")
             else:
                 if transaction:
-                    self.connection.cancel_transaction()
+                    conn.cancel_transaction()
                 if prompt:
                     logger.warning("Delete cancelled")
-                delete_count = 0  # Reset count when delete is cancelled
-        return delete_count
+                root_count = 0
+        return root_count
 
     def drop_quick(self):
         """
@@ -1208,41 +1139,64 @@ class Table(QueryExpression):
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
-    def drop(self, prompt: bool | None = None):
+    def drop(self, prompt: bool | None = None, part_integrity: str = "enforce", dry_run: bool = False):
         """
         Drop the table and all tables that reference it, recursively.
+
+        Uses graph-driven traversal: builds a dependency diagram and drops
+        in reverse topological order (leaves first).
 
         Args:
             prompt: If `True`, show what will be dropped and ask for confirmation.
                 If `False`, drop without confirmation. Default is `dj.config['safemode']`.
+            part_integrity: Policy for master-part integrity. One of:
+                - ``"enforce"`` (default): Error if parts would be dropped without masters.
+                - ``"ignore"``: Allow dropping parts without masters.
+            dry_run: If `True`, return a dict mapping full table names to row
+                counts without dropping any tables. Default False.
+
+        Returns:
+            dict[str, int] or None: If ``dry_run``, mapping of full table name
+            to row count. Otherwise None.
         """
         if self.restriction:
             raise DataJointError(
-                "A table with an applied restriction cannot be dropped. Call drop() on the unrestricted Table."
+                "A table with an applied restriction cannot be dropped. " "Call drop() on the unrestricted Table."
             )
-        prompt = self.connection._config["safemode"] if prompt is None else prompt
+        from .diagram import Diagram
 
-        self.connection.dependencies.load()
-        do_drop = True
-        tables = [table for table in self.connection.dependencies.descendants(self.full_table_name) if not table.isdigit()]
+        diagram = Diagram._from_table(self)
+        conn = self.connection
+        prompt = conn._config["safemode"] if prompt is None else prompt
 
-        # avoid dropping part tables without their masters: See issue #374
-        for part in tables:
-            master = get_master(part, self.connection.adapter)
-            if master and master not in tables:
-                raise DataJointError(
-                    "Attempt to drop part table {part} before dropping its master. Drop {master} first.".format(
-                        part=part, master=master
+        table_names = [ft.full_table_name for ft in diagram]
+
+        if part_integrity == "enforce":
+            for name in table_names:
+                master = extract_master(name)
+                if master and master not in table_names:
+                    raise DataJointError(
+                        "Attempt to drop part table {part} before its " "master {master}. Drop the master first.".format(
+                            part=name, master=master
+                        )
                     )
-                )
 
+        if dry_run:
+            result = {}
+            for ft in diagram:
+                count = len(ft)
+                result[ft.full_table_name] = count
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=count))
+            return result
+
+        do_drop = True
         if prompt:
-            for table in tables:
-                logger.info(table + " (%d tuples)" % len(FreeTable(self.connection, table)))
+            for ft in diagram:
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=len(ft)))
             do_drop = user_choice("Proceed?", default="no") == "yes"
         if do_drop:
-            for table in reversed(tables):
-                FreeTable(self.connection, table).drop_quick()
+            for ft in reversed(diagram):
+                ft.drop_quick()
             logger.info("Tables dropped. Restart kernel.")
 
     def describe(self, context=None, printout=False):
