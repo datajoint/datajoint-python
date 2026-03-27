@@ -745,7 +745,13 @@ class Table(QueryExpression):
         replace : bool, optional
             If True, replaces the existing tuple.
         skip_duplicates : bool, optional
-            If True, silently skip duplicate inserts.
+            If True, silently skip rows with duplicate primary key values.
+            On **PostgreSQL**, secondary unique constraint violations still
+            raise an error even when ``skip_duplicates=True``, because the
+            generated ``ON CONFLICT (pk) DO NOTHING`` clause targets only
+            the primary key. On **MySQL**, ``ON DUPLICATE KEY UPDATE``
+            catches all unique-key conflicts, so secondary unique violations
+            are also silently skipped.
         ignore_extra_fields : bool, optional
             If False (default), fields that are not in the heading raise error.
         allow_direct_insert : bool, optional
