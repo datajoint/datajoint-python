@@ -493,6 +493,8 @@ class AutoPopulate:
 
             # Fetch pending jobs ordered by priority (use CURRENT_TIMESTAMP(3) for datetime(3) precision)
             pending_query = self.jobs.pending & "scheduled_time <= CURRENT_TIMESTAMP(3)"
+            if restrictions:
+                pending_query = pending_query & self._jobs_to_do(restrictions)
             if priority is not None:
                 pending_query = pending_query & f"priority <= {priority}"
 
