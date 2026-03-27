@@ -744,8 +744,11 @@ class Table(QueryExpression):
             directory with a CSV file, the contents of which will be inserted.
         replace : bool, optional
             If True, replaces the existing tuple.
-        skip_duplicates : bool, optional
-            If True, silently skip duplicate inserts.
+        skip_duplicates : bool or str, optional
+            If True, silently skip rows whose primary key already exists.
+            If ``'match'``, skip only if the primary key exists AND all secondary
+            unique index values also match; raise DuplicateError if the primary
+            key exists but unique index values differ.
         ignore_extra_fields : bool, optional
             If False (default), fields that are not in the heading raise error.
         allow_direct_insert : bool, optional
@@ -808,6 +811,8 @@ class Table(QueryExpression):
             quoted_fields = ",".join(self.adapter.quote_identifier(f) for f in fields)
 
             # Duplicate handling (backend-agnostic)
+            if skip_duplicates == "match":
+                raise DataJointError("skip_duplicates='match' is not supported for QueryExpression inserts.")
             if skip_duplicates:
                 duplicate = self.adapter.skip_duplicates_clause(self.full_table_name, self.primary_key)
             else:
@@ -831,6 +836,69 @@ class Table(QueryExpression):
         # Single batch insert (original behavior)
         self._insert_rows(rows, replace, skip_duplicates, ignore_extra_fields)
 
+    def _filter_match_duplicates(self, rows):
+        """
+        Filter rows for skip_duplicates='match'.
+
+        For each row: if a row with the same primary key already exists and all
+        secondary unique index values also match, skip the row silently.
+        If the primary key exists but unique index values differ, raise DuplicateError.
+
+        Parameters
+        ----------
+        rows : list
+            Raw rows (dicts, numpy records, or sequences) before encoding.
+
+        Returns
+        -------
+        list
+            Rows that should be inserted.
+        """
+        unique_col_sets = [list(cols) for cols, info in self.heading.indexes.items() if info["unique"]]
+
+        result = []
+        for row in rows:
+            # Normalize row to dict
+            if isinstance(row, np.void):
+                row_dict = {name: row[name] for name in row.dtype.fields}
+            elif isinstance(row, collections.abc.Mapping):
+                row_dict = dict(row)
+            else:
+                row_dict = dict(zip(self.heading.names, row))
+
+            # Build PK restriction
+            pk_dict = {pk: row_dict[pk] for pk in self.primary_key if pk in row_dict}
+            if len(pk_dict) < len(self.primary_key):
+                result.append(row)
+                continue
+
+            existing = (self & pk_dict).fetch(limit=1, as_dict=True)
+            if not existing:
+                result.append(row)
+                continue
+
+            existing_row = existing[0]
+
+            # Check all unique index columns for a match
+            all_match = True
+            for cols in unique_col_sets:
+                for col in cols:
+                    if col in row_dict and col in existing_row:
+                        if row_dict[col] != existing_row[col]:
+                            all_match = False
+                            break
+                if not all_match:
+                    break
+
+            if not all_match:
+                raise DuplicateError(
+                    f"Unique index conflict in {self.table_name}: "
+                    f"a row with the same primary key exists but unique index values differ."
+                )
+            # else: silently skip — existing row is an exact match
+
+        return result
+
     def _insert_rows(self, rows, replace, skip_duplicates, ignore_extra_fields):
         """
         Internal helper to insert a batch of rows.
@@ -846,6 +914,10 @@ class Table(QueryExpression):
         ignore_extra_fields : bool
             If True, ignore unknown fields.
         """
+        if skip_duplicates == "match":
+            rows = self._filter_match_duplicates(list(rows))
+            skip_duplicates = False
+
         # collects the field list from first row (passed by reference)
         field_list = []
         rows = list(self.__make_row_to_insert(row, field_list, ignore_extra_fields) for row in rows)
