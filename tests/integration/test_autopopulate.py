@@ -352,3 +352,46 @@ def test_make_kwargs_tripartite(prefix, connection_test):
     row = (TripartiteComputed & "source_id = 2").fetch1()
     assert row["scale"] == 5
     assert row["result"] == 1000  # 200 * 5
+
+
+def test_populate_reserve_jobs_respects_restrictions(clean_autopopulate, subject, experiment):
+    """Regression test for #1413: populate() with reserve_jobs=True must honour restrictions.
+
+    Previously _populate_distributed() refreshed the job queue with the
+    restriction but then fetched *all* pending jobs, ignoring the restriction
+    and processing every pending key.
+    """
+    assert subject, "subject table is empty"
+    assert not experiment, "experiment table already has rows"
+
+    # Clear any stale jobs from previous tests (success/error entries would
+    # prevent refresh() from re-adding them as pending).
+    experiment.jobs.delete_quick()
+
+    # Refresh the full job queue (no restriction) so that all subjects have
+    # pending jobs — this simulates the real-world scenario where workers share
+    # a single job queue but each worker restricts to its own subset.
+    experiment.jobs.refresh(delay=-1)
+    total_pending = len(experiment.jobs.pending)
+    assert total_pending > 0, "job refresh produced no pending entries"
+
+    # Pick one subject to use as the restriction.
+    first_subject_id = subject.keys(order_by="subject_id ASC", limit=1)[0]["subject_id"]
+    restriction = {"subject_id": first_subject_id}
+
+    # Populate only for the restricted subject.  refresh=False so we use the
+    # existing queue populated above.  The bug was that this call would process
+    # ALL pending jobs instead of only those matching the restriction.
+    experiment.populate(restriction, reserve_jobs=True, refresh=False)
+
+    # Only rows for the restricted subject should exist.
+    assert len(experiment) > 0, "no rows were populated"
+    assert len(experiment - restriction) == 0, (
+        "populate(reserve_jobs=True) processed keys outside the restriction "
+        f"({len(experiment - restriction)} extra rows found)"
+    )
+
+    # Rows for all other subjects must still be absent.
+    other_subjects = subject - restriction
+    if other_subjects:
+        assert len(experiment & other_subjects.proj()) == 0, "rows for unrestricted subjects were incorrectly populated"
