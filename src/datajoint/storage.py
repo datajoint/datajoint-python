@@ -571,9 +571,29 @@ class StorageBackend:
         logger.debug(f"exists: {self.protocol}:{full_path}")
 
         if self.protocol == "file":
-            return Path(full_path).is_file()
+            return Path(full_path).exists()
         else:
             return self.fs.exists(full_path)
+
+    def isdir(self, remote_path: str | PurePosixPath) -> bool:
+        """
+        Check if a path refers to a directory in storage.
+
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
+
+        Returns
+        -------
+        bool
+            True if the path is a directory.
+        """
+        full_path = self._full_path(remote_path)
+        if self.protocol == "file":
+            return Path(full_path).is_dir()
+        else:
+            return self.fs.isdir(full_path)
 
     def remove(self, remote_path: str | PurePosixPath) -> None:
         """

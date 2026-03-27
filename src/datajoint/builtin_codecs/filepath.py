@@ -145,17 +145,22 @@ class FilepathCodec(Codec):
         if not backend.exists(path):
             raise FileNotFoundError(f"File not found in store '{store_name or 'default'}': {path}")
 
-        # Get file info
-        try:
-            size = backend.size(path)
-        except Exception:
-            size = None
+        # Detect whether the path is a directory or a file
+        is_dir = backend.isdir(path)
+
+        # Get file size (not applicable for directories)
+        size = None
+        if not is_dir:
+            try:
+                size = backend.size(path)
+            except Exception:
+                pass
 
         return {
             "path": path,
             "store": store_name,
             "size": size,
-            "is_dir": False,
+            "is_dir": is_dir,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
