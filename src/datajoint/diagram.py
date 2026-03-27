@@ -140,7 +140,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                     database = source.schema.database
                 except AttributeError:
                     raise DataJointError("Cannot plot Diagram for %s" % repr(source))
-            for node in self:
+            for node in self.nodes():
                 # Handle both MySQL backticks and PostgreSQL double quotes
                 if node.startswith("`%s`" % database) or node.startswith('"%s"' % database):
                     self.nodes_to_show.add(node)
