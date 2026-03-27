@@ -840,9 +840,16 @@ class Table(QueryExpression):
         """
         Filter rows for skip_duplicates='match'.
 
-        For each row: if a row with the same primary key already exists and all
-        secondary unique index values also match, skip the row silently.
-        If the primary key exists but unique index values differ, raise DuplicateError.
+        For each row whose primary key already exists: skip silently if all
+        secondary unique index values also match the existing row; raise
+        DuplicateError if the primary key exists but any unique index value
+        differs.
+
+        Rows whose primary key is not yet in the table are kept for insert.
+        If a kept row subsequently violates a *non-PK* unique constraint at
+        insert time (e.g. a different row already owns that unique value, or a
+        concurrent insert created a conflict), the caller is responsible for
+        catching the resulting DuplicateError.
 
         Parameters
         ----------
@@ -852,50 +859,70 @@ class Table(QueryExpression):
         Returns
         -------
         list
-            Rows that should be inserted.
+            Rows that should be inserted (PK-duplicate matches removed).
         """
         unique_col_sets = [list(cols) for cols, info in self.heading.indexes.items() if info["unique"]]
 
-        result = []
+        # --- normalise every row to a dict so we can inspect values ---
+        row_dicts = []
         for row in rows:
-            # Normalize row to dict
             if isinstance(row, np.void):
-                row_dict = {name: row[name] for name in row.dtype.fields}
+                row_dicts.append({name: row[name] for name in row.dtype.fields})
             elif isinstance(row, collections.abc.Mapping):
-                row_dict = dict(row)
+                row_dicts.append(dict(row))
             else:
-                row_dict = dict(zip(self.heading.names, row))
+                row_dicts.append(dict(zip(self.heading.names, row)))
 
-            # Build PK restriction
-            pk_dict = {pk: row_dict[pk] for pk in self.primary_key if pk in row_dict}
-            if len(pk_dict) < len(self.primary_key):
+        # --- batch-fetch existing rows whose PK matches any incoming row ---
+        pk_lookups = []
+        for rd in row_dicts:
+            pk = {k: rd[k] for k in self.primary_key if k in rd}
+            if len(pk) == len(self.primary_key):
+                pk_lookups.append(pk)
+
+        existing_by_pk: dict[tuple, dict] = {}
+        if pk_lookups:
+            existing_rows = (self & pk_lookups).fetch(as_dict=True)
+            for er in existing_rows:
+                pk_tuple = tuple(er[k] for k in self.primary_key)
+                existing_by_pk[pk_tuple] = er
+
+        # --- decide per row: insert, skip, or raise ---
+        result = []
+        for row, rd in zip(rows, row_dicts):
+            pk = {k: rd[k] for k in self.primary_key if k in rd}
+            if len(pk) < len(self.primary_key):
+                # incomplete PK — let the DB raise the real error
                 result.append(row)
                 continue
 
-            existing = (self & pk_dict).fetch(limit=1, as_dict=True)
-            if not existing:
+            pk_tuple = tuple(pk[k] for k in self.primary_key)
+            existing_row = existing_by_pk.get(pk_tuple)
+            if existing_row is None:
+                # PK not yet in table — include for insert.
+                # If this row collides on a secondary unique index with a
+                # *different* existing row, the DB will raise at insert time.
                 result.append(row)
                 continue
 
-            existing_row = existing[0]
-
-            # Check all unique index columns for a match
-            all_match = True
+            # PK exists — check every secondary unique index
             for cols in unique_col_sets:
                 for col in cols:
-                    if col in row_dict and col in existing_row:
-                        if row_dict[col] != existing_row[col]:
-                            all_match = False
-                            break
-                if not all_match:
-                    break
+                    if col not in rd:
+                        # Column not supplied by the caller; the DB will use
+                        # its default.  We cannot compare, so skip this column.
+                        continue
+                    new_val = rd[col]
+                    old_val = existing_row.get(col)
+                    if new_val != old_val:
+                        raise DuplicateError(
+                            f"Unique index conflict in {self.table_name}: "
+                            f"primary key {pk} exists but unique index "
+                            f"({', '.join(cols)}) differs — "
+                            f"existing {col}={old_val!r}, new {col}={new_val!r}."
+                        )
 
-            if not all_match:
-                raise DuplicateError(
-                    f"Unique index conflict in {self.table_name}: "
-                    f"a row with the same primary key exists but unique index values differ."
-                )
-            # else: silently skip — existing row is an exact match
+            # All unique index values match (or there are none) — skip row.
 
         return result
 
@@ -914,7 +941,8 @@ class Table(QueryExpression):
         ignore_extra_fields : bool
             If True, ignore unknown fields.
         """
-        if skip_duplicates == "match":
+        match_mode = skip_duplicates == "match"
+        if match_mode:
             rows = self._filter_match_duplicates(list(rows))
             skip_duplicates = False
 
@@ -945,6 +973,13 @@ class Table(QueryExpression):
             except UnknownAttributeError as err:
                 raise err.suggest("To ignore extra fields in insert, set ignore_extra_fields=True")
             except DuplicateError as err:
+                if match_mode:
+                    raise DuplicateError(
+                        f"Duplicate entry during skip_duplicates='match' insert into "
+                        f"{self.table_name}. A row with a new primary key may conflict on "
+                        f"a secondary unique index with an existing row, or a concurrent "
+                        f"insert created a conflict. Original error: {err}"
+                    )
                 raise err.suggest("To ignore duplicate entries in insert, set skip_duplicates=True")
 
     def insert_dataframe(self, df, index_as_pk=None, **insert_kwargs):
