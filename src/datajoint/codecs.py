@@ -557,7 +557,7 @@ def decode_attribute(attr, data, squeeze: bool = False, connection=None):
             # psycopg2 auto-deserializes JSON to dict/list; only parse strings
             if isinstance(data, str):
                 data = json.loads(data)
-        elif final_dtype.lower() in ("longblob", "blob", "mediumblob", "tinyblob", "bytes", "binary"):
+        elif final_dtype.lower() in ("longblob", "blob", "mediumblob", "tinyblob"):
             pass  # Blob data is already bytes
         elif final_dtype.lower() == "binary(16)":
             data = uuid_module.UUID(bytes=data)

@@ -916,7 +916,7 @@ def compile_attribute(
     # Check for invalid default values on blob types (after type substitution)
     # Note: blob → longblob, so check for NATIVE_BLOB or longblob result
     final_type = match["type"].lower()
-    if ("blob" in final_type or final_type == "binary") and match["default"] not in {"DEFAULT NULL", "NOT NULL"}:
+    if ("blob" in final_type) and match["default"] not in {"DEFAULT NULL", "NOT NULL"}:
         raise DataJointError("The default value for blob attributes can only be NULL in:\n{line}".format(line=line))
 
     # Use adapter to format column definition
