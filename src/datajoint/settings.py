@@ -190,7 +190,7 @@ class DatabaseSettings(BaseSettings):
     host: str = Field(default="localhost", validation_alias="DJ_HOST")
     user: str | None = Field(default=None, validation_alias="DJ_USER")
     password: SecretStr | None = Field(default=None, validation_alias="DJ_PASS")
-    backend: Literal["mysql", "postgresql"] = Field(
+    backend: Literal["mysql", "postgresql", "databricks"] = Field(
         default="mysql",
         validation_alias="DJ_BACKEND",
         description="Database backend: 'mysql' or 'postgresql'",

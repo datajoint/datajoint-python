@@ -457,7 +457,7 @@ class Table(QueryExpression):
             True if the table is declared in the schema.
         """
         query = self.connection.adapter.get_table_info_sql(self.database, self.table_name)
-        return self.connection.query(query).rowcount > 0
+        return self.connection.query(query).fetchone() is not None
 
     @property
     def full_table_name(self):
@@ -474,7 +474,7 @@ class Table(QueryExpression):
                 f"Class {self.__class__.__name__} is not associated with a schema. "
                 "Apply a schema decorator or use schema() to bind it."
             )
-        return f"{self.adapter.quote_identifier(self.database)}.{self.adapter.quote_identifier(self.table_name)}"
+        return self.adapter.make_full_table_name(self.database, self.table_name)
 
     @property
     def adapter(self):

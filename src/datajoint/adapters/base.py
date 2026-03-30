@@ -238,6 +238,39 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    def make_full_table_name(self, database: str, table_name: str) -> str:
+        """
+        Construct a fully-qualified table name for this backend.
+
+        Default implementation produces a two-part name (``schema.table``).
+        Backends that require additional namespace levels (e.g., Databricks
+        ``catalog.schema.table``) should override this method.
+
+        Parameters
+        ----------
+        database : str
+            Schema/database name.
+        table_name : str
+            Table name (including tier prefix).
+
+        Returns
+        -------
+        str
+            Fully-qualified, quoted table name.
+        """
+        return f"{self.quote_identifier(database)}.{self.quote_identifier(table_name)}"
+
+    @property
+    def foreign_key_action_clause(self) -> str:
+        """
+        Referential action clause appended to FOREIGN KEY declarations.
+
+        Default: ``ON UPDATE CASCADE ON DELETE RESTRICT`` (MySQL/PostgreSQL).
+        Backends that don't support referential actions (e.g., Databricks)
+        should override to return ``""``.
+        """
+        return " ON UPDATE CASCADE ON DELETE RESTRICT"
+
     # =========================================================================
     # Type Mapping
     # =========================================================================

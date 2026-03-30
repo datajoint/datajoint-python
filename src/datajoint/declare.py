@@ -296,10 +296,10 @@ def compile_foreign_key(
     parent_full_name = ref.support[0]
     # Parse as database.table using the adapter's quoting convention
     parts = adapter.split_full_table_name(parent_full_name)
-    ref_table_name = f"{adapter.quote_identifier(parts[0])}.{adapter.quote_identifier(parts[1])}"
+    ref_table_name = adapter.make_full_table_name(parts[0], parts[1])
 
     foreign_key_sql.append(
-        f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
+        f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}){adapter.foreign_key_action_clause}"
     )
 
     # declare unique index
@@ -432,16 +432,8 @@ def declare(
     DataJointError
         If table name exceeds max length or has no primary key.
     """
-    # Parse table name without assuming quote character
-    # Extract schema.table from quoted name using adapter
-    quote_char = adapter.quote_identifier("x")[0]  # Get quote char from adapter
-    parts = full_table_name.split(".")
-    if len(parts) == 2:
-        schema_name = parts[0].strip(quote_char)
-        table_name = parts[1].strip(quote_char)
-    else:
-        schema_name = None
-        table_name = parts[0].strip(quote_char)
+    # Parse table name using adapter (handles 2-part and 3-part names)
+    schema_name, table_name = adapter.split_full_table_name(full_table_name)
 
     if len(table_name) > MAX_TABLE_NAME_LENGTH:
         raise DataJointError(
@@ -924,7 +916,7 @@ def compile_attribute(
     # Check for invalid default values on blob types (after type substitution)
     # Note: blob → longblob, so check for NATIVE_BLOB or longblob result
     final_type = match["type"].lower()
-    if ("blob" in final_type) and match["default"] not in {"DEFAULT NULL", "NOT NULL"}:
+    if ("blob" in final_type or final_type == "binary") and match["default"] not in {"DEFAULT NULL", "NOT NULL"}:
         raise DataJointError("The default value for blob attributes can only be NULL in:\n{line}".format(line=line))
 
     # Use adapter to format column definition
