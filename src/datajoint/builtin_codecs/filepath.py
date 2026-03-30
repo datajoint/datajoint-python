@@ -153,7 +153,7 @@ class FilepathCodec(Codec):
         if not is_dir:
             try:
                 size = backend.size(path)
-            except Exception:
+            except (FileNotFoundError, OSError):
                 pass
 
         return {
