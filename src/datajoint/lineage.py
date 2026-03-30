@@ -79,14 +79,12 @@ def lineage_table_exists(connection, database):
     bool
         True if the table exists, False otherwise.
     """
-    result = connection.query(
-        """
-        SELECT COUNT(*) FROM information_schema.tables
-        WHERE table_schema = %s AND table_name = '~lineage'
-        """,
-        args=(database,),
-    ).fetchone()
-    return result[0] > 0
+    try:
+        result = connection.query(connection.adapter.get_table_info_sql(database, "~lineage")).fetchone()
+        return result is not None
+    except Exception:
+        # Schema or catalog query may fail on some backends
+        return False
 
 
 def get_lineage(connection, database, table_name, attribute_name):
