@@ -52,7 +52,7 @@ CORE_TYPE_PATTERNS = {name: re.compile(pattern, re.I) for name, (pattern, _) in 
 # Get SQL mapping for core types
 CORE_TYPE_SQL = {name: sql_type for name, (_, sql_type) in CORE_TYPES.items()}
 
-MAX_TABLE_NAME_LENGTH = 64
+MAX_TABLE_NAME_LENGTH = 63  # PostgreSQL NAMEDATALEN-1; MySQL allows 64 but 63 is safe for both
 CONSTANT_LITERALS = {
     "CURRENT_TIMESTAMP",
     "NULL",
