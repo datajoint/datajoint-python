@@ -422,7 +422,7 @@ class _Schema:
         """
         if self.database is None:
             raise DataJointError("Schema must be activated first.")
-        return self.connection.query(self.connection.adapter.schema_exists_sql(self.database)).fetchone() is not None
+        return bool(self.connection.query(self.connection.adapter.schema_exists_sql(self.database)).rowcount)
 
     @property
     def lineage_table_exists(self) -> bool:
