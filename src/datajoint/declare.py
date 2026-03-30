@@ -299,7 +299,7 @@ def compile_foreign_key(
     ref_table_name = adapter.make_full_table_name(parts[0], parts[1])
 
     foreign_key_sql.append(
-        f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}){adapter.foreign_key_action_clause}"
+        f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
     )
 
     # declare unique index

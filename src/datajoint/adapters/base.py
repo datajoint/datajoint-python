@@ -259,17 +259,6 @@ class DatabaseAdapter(ABC):
         """
         return f"{self.quote_identifier(database)}.{self.quote_identifier(table_name)}"
 
-    @property
-    def foreign_key_action_clause(self) -> str:
-        """
-        Referential action clause appended to FOREIGN KEY declarations.
-
-        Default: ``ON UPDATE CASCADE ON DELETE RESTRICT`` (MySQL/PostgreSQL).
-        Backends that don't support referential actions can override to
-        return ``""``.
-        """
-        return " ON UPDATE CASCADE ON DELETE RESTRICT"
-
     # =========================================================================
     # Type Mapping
     # =========================================================================
