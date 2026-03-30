@@ -457,7 +457,7 @@ class Table(QueryExpression):
             True if the table is declared in the schema.
         """
         query = self.connection.adapter.get_table_info_sql(self.database, self.table_name)
-        return self.connection.query(query).rowcount > 0
+        return self.connection.query(query).fetchone() is not None
 
     @property
     def full_table_name(self):
