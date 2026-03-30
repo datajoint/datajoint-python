@@ -341,10 +341,16 @@ class _Schema:
                 frame = inspect.currentframe().f_back
                 into = frame.f_locals
                 del frame
+        adapter = self.connection.adapter
         tables = [
             row[0]
-            for row in self.connection.query(self.connection.adapter.list_tables_sql(self.database))
-            if lookup_class_name("`{db}`.`{tab}`".format(db=self.database, tab=row[0]), into, 0) is None
+            for row in self.connection.query(adapter.list_tables_sql(self.database))
+            if lookup_class_name(
+                f"{adapter.quote_identifier(self.database)}.{adapter.quote_identifier(row[0])}",
+                into,
+                0,
+            )
+            is None
         ]
         master_classes = (Lookup, Manual, Imported, Computed)
         part_tables = []
