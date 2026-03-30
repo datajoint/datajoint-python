@@ -259,6 +259,18 @@ class DatabaseAdapter(ABC):
         """
         return f"{self.quote_identifier(database)}.{self.quote_identifier(table_name)}"
 
+    @property
+    def max_table_name_length(self) -> int:
+        """
+        Maximum length of a table name for this backend.
+
+        Returns
+        -------
+        int
+            Maximum allowed characters in a table identifier.
+        """
+        return 64  # safe default (MySQL limit)
+
     # =========================================================================
     # Type Mapping
     # =========================================================================

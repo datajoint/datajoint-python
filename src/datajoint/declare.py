@@ -52,7 +52,6 @@ CORE_TYPE_PATTERNS = {name: re.compile(pattern, re.I) for name, (pattern, _) in 
 # Get SQL mapping for core types
 CORE_TYPE_SQL = {name: sql_type for name, (_, sql_type) in CORE_TYPES.items()}
 
-MAX_TABLE_NAME_LENGTH = 63  # PostgreSQL NAMEDATALEN-1; MySQL allows 64 but 63 is safe for both
 CONSTANT_LITERALS = {
     "CURRENT_TIMESTAMP",
     "NULL",
@@ -435,10 +434,10 @@ def declare(
     # Parse table name using adapter (handles backend-specific quoting)
     schema_name, table_name = adapter.split_full_table_name(full_table_name)
 
-    if len(table_name) > MAX_TABLE_NAME_LENGTH:
+    if len(table_name) > adapter.max_table_name_length:
         raise DataJointError(
             "Table name `{name}` exceeds the max length of {max_length}".format(
-                name=table_name, max_length=MAX_TABLE_NAME_LENGTH
+                name=table_name, max_length=adapter.max_table_name_length
             )
         )
 
