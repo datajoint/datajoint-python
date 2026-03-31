@@ -190,8 +190,8 @@ def test_cascade_delete_with_renamed_attrs(schema_by_backend):
     assert remaining_obs[0]["measurement"] == 15.3
 
 
-def test_delete_dry_run(schema_by_backend):
-    """dry_run=True returns affected row counts without deleting data."""
+def test_delete_preview_with_counts(schema_by_backend):
+    """Diagram.cascade().counts() previews affected rows without deleting."""
 
     @schema_by_backend
     class Parent(dj.Manual):
@@ -216,8 +216,9 @@ def test_delete_dry_run(schema_by_backend):
     Child.insert1((1, 2, "C1-2"))
     Child.insert1((2, 1, "C2-1"))
 
-    # dry_run on restricted delete
-    counts = (Parent & {"parent_id": 1}).delete(dry_run=True)
+    # Preview restricted cascade via Diagram
+    diag = dj.Diagram._from_table(Parent & {"parent_id": 1})
+    counts = diag.cascade(Parent & {"parent_id": 1}).counts()
 
     assert isinstance(counts, dict)
     assert counts[Parent.full_table_name] == 1
@@ -226,81 +227,3 @@ def test_delete_dry_run(schema_by_backend):
     # Data must still be intact
     assert len(Parent()) == 2
     assert len(Child()) == 3
-
-    # dry_run on unrestricted delete
-    counts_all = Parent.delete(dry_run=True)
-    assert counts_all[Parent.full_table_name] == 2
-    assert counts_all[Child.full_table_name] == 3
-
-    # Still intact
-    assert len(Parent()) == 2
-    assert len(Child()) == 3
-
-
-def test_drop_dry_run(schema_by_backend):
-    """dry_run=True returns row counts without dropping tables."""
-
-    @schema_by_backend
-    class Parent(dj.Manual):
-        definition = """
-        parent_id : int
-        ---
-        name : varchar(255)
-        """
-
-    @schema_by_backend
-    class Child(dj.Manual):
-        definition = """
-        -> Parent
-        child_id : int
-        ---
-        data : varchar(255)
-        """
-
-    Parent.insert1((1, "P1"))
-    Child.insert1((1, 1, "C1"))
-
-    counts = Parent.drop(dry_run=True)
-
-    assert isinstance(counts, dict)
-    assert counts[Parent.full_table_name] == 1
-    assert counts[Child.full_table_name] == 1
-
-    # Tables must still exist and have data
-    assert Parent.is_declared
-    assert Child.is_declared
-    assert len(Parent()) == 1
-    assert len(Child()) == 1
-
-
-def test_part_delete_dry_run(schema_by_backend):
-    """dry_run=True on Part.delete() returns affected row counts without deleting."""
-
-    @schema_by_backend
-    class Master(dj.Manual):
-        definition = """
-        master_id : int
-        ---
-        name : varchar(255)
-        """
-
-        class Detail(dj.Part):
-            definition = """
-            -> master
-            detail_id : int
-            ---
-            data : varchar(255)
-            """
-
-    Master.insert1((1, "M1"))
-    Master.Detail.insert([(1, 1, "D1"), (1, 2, "D2")])
-
-    # dry_run with part_integrity="ignore" should return counts without deleting
-    counts = (Master.Detail & {"master_id": 1}).delete(part_integrity="ignore", dry_run=True)
-
-    assert isinstance(counts, dict)
-    assert counts[Master.Detail.full_table_name] == 2
-
-    # Data must still be intact
-    assert len(Master()) == 1
-    assert len(Master.Detail()) == 2

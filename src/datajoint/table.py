@@ -981,14 +981,23 @@ class Table(QueryExpression):
         transaction: bool = True,
         prompt: bool | None = None,
         part_integrity: str = "enforce",
-        dry_run: bool = False,
-    ) -> int | dict[str, int]:
+    ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
         Uses graph-driven cascade: builds a dependency diagram, propagates
         restrictions to all descendants, then deletes in reverse topological
         order (leaves first).
+
+        With ``safemode=True`` (the default), delete previews all affected
+        tables and row counts, executes within a transaction, and asks for
+        confirmation before committing. Declining rolls back all changes —
+        effectively a built-in dry run.
+
+        To preview cascade impact without executing, use ``Diagram``::
+
+            diag = dj.Diagram(schema)
+            diag.cascade(MyTable & restriction).counts()
 
         Args:
             transaction: If `True`, use of the entire delete becomes an atomic transaction.
@@ -1000,12 +1009,9 @@ class Table(QueryExpression):
                 - ``"enforce"`` (default): Error if parts would be deleted without masters.
                 - ``"ignore"``: Allow deleting parts without masters (breaks integrity).
                 - ``"cascade"``: Also delete masters when parts are deleted (maintains integrity).
-            dry_run: If `True`, return a dict mapping full table names to affected
-                row counts without deleting any data. Default False.
 
         Returns:
-            Number of deleted rows (excluding those from dependent tables), or
-            (if ``dry_run``) a dict mapping full table name to affected row count.
+            Number of deleted rows (excluding those from dependent tables).
 
         Raises:
             DataJointError: When deleting within an existing transaction.
@@ -1018,9 +1024,6 @@ class Table(QueryExpression):
 
         diagram = Diagram._from_table(self)
         diagram = diagram.cascade(self, part_integrity=part_integrity)
-
-        if dry_run:
-            return diagram.counts()
 
         conn = self.connection
         prompt = conn._config["safemode"] if prompt is None else prompt
@@ -1145,12 +1148,15 @@ class Table(QueryExpression):
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
-    def drop(self, prompt: bool | None = None, part_integrity: str = "enforce", dry_run: bool = False):
+    def drop(self, prompt: bool | None = None, part_integrity: str = "enforce"):
         """
         Drop the table and all tables that reference it, recursively.
 
         Uses graph-driven traversal: builds a dependency diagram and drops
         in reverse topological order (leaves first).
+
+        With ``safemode=True`` (the default), drop previews all affected
+        tables and row counts and asks for confirmation before proceeding.
 
         Args:
             prompt: If `True`, show what will be dropped and ask for confirmation.
@@ -1158,12 +1164,6 @@ class Table(QueryExpression):
             part_integrity: Policy for master-part integrity. One of:
                 - ``"enforce"`` (default): Error if parts would be dropped without masters.
                 - ``"ignore"``: Allow dropping parts without masters.
-            dry_run: If `True`, return a dict mapping full table names to row
-                counts without dropping any tables. Default False.
-
-        Returns:
-            dict[str, int] or None: If ``dry_run``, mapping of full table name
-            to row count. Otherwise None.
         """
         if self.restriction:
             raise DataJointError(
@@ -1186,14 +1186,6 @@ class Table(QueryExpression):
                             part=name, master=master
                         )
                     )
-
-        if dry_run:
-            result = {}
-            for ft in diagram:
-                count = len(ft)
-                result[ft.full_table_name] = count
-                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=count))
-            return result
 
         do_drop = True
         if prompt:

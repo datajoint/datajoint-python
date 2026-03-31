@@ -224,7 +224,7 @@ class Part(UserTable, metaclass=PartMeta):
                 - ``"ignore"``: Allow direct deletion (breaks master-part integrity).
                 - ``"cascade"``: Delete parts AND cascade up to delete master.
             **kwargs: Additional arguments passed to Table.delete()
-                      (transaction, prompt, dry_run)
+                      (transaction, prompt)
 
         Raises:
             DataJointError: If part_integrity="enforce" (direct Part deletes prohibited)
@@ -237,7 +237,7 @@ class Part(UserTable, metaclass=PartMeta):
             )
         return super().delete(part_integrity=part_integrity, **kwargs)
 
-    def drop(self, part_integrity: str = "enforce", dry_run: bool = False):
+    def drop(self, part_integrity: str = "enforce"):
         """
         Drop a Part table.
 
@@ -246,13 +246,12 @@ class Part(UserTable, metaclass=PartMeta):
                 - ``"enforce"`` (default): Error - drop master instead.
                 - ``"ignore"``: Allow direct drop (breaks master-part structure).
                 Note: ``"cascade"`` is not supported for drop (too destructive).
-            dry_run: If `True`, return row counts without dropping. Default False.
 
         Raises:
             DataJointError: If part_integrity="enforce" (direct Part drops prohibited)
         """
         if part_integrity == "ignore":
-            return super().drop(part_integrity="ignore", dry_run=dry_run)
+            return super().drop(part_integrity="ignore")
         elif part_integrity == "enforce":
             raise DataJointError("Cannot drop a Part directly. Drop master instead, or use part_integrity='ignore' to force.")
         else:
