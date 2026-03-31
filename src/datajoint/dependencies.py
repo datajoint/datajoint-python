@@ -235,6 +235,13 @@ class Dependencies(nx.DiGraph):
         found. This ensures that cascade delete and drop reach all
         dependent tables, even those in schemas that haven't been
         explicitly activated.
+
+        Called automatically by ``Diagram.cascade()`` and ``Table.drop()``.
+        Call manually before constructing a ``Diagram`` to include
+        cross-schema dependencies in visualization::
+
+            conn.dependencies.load_all_downstream()
+            dj.Diagram(schema)  # now includes all downstream schemas
         """
         adapter = self._conn.adapter
         known_schemas = set(self._conn.schemas)

@@ -80,7 +80,14 @@ class Diagram(nx.DiGraph):  # noqa: C901
     Notes
     -----
     ``diagram + 1 - 1`` may differ from ``diagram - 1 + 1``.
-    Only tables loaded in the connection are displayed.
+    Only tables in activated schemas are displayed. To include tables in
+    downstream schemas that depend on the current schema but haven't been
+    explicitly activated::
+
+        conn.dependencies.load_all_downstream()
+        dj.Diagram(schema)  # now includes all downstream schemas
+
+    ``Diagram.cascade()`` calls ``load_all_downstream()`` automatically.
 
     Layout direction is controlled via ``dj.config.display.diagram_direction``
     (default ``"TB"``). Use ``dj.config.override()`` to change temporarily::
