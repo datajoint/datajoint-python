@@ -493,6 +493,11 @@ class AutoPopulate:
 
             # Fetch pending jobs ordered by priority (use CURRENT_TIMESTAMP(3) for datetime(3) precision)
             pending_query = self.jobs.pending & "scheduled_time <= CURRENT_TIMESTAMP(3)"
+            if restrictions:
+                # Restrict to jobs whose keys match the caller's restrictions.
+                # semantic_check=False is required because the jobs table PK has
+                # different lineage than key_source (see jobs.py refresh()).
+                pending_query = pending_query.restrict(self._jobs_to_do(restrictions), semantic_check=False)
             if priority is not None:
                 pending_query = pending_query & f"priority <= {priority}"
 

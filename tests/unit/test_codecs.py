@@ -548,6 +548,7 @@ class TestFilepathCodec:
             with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
                 mock_backend = MagicMock()
                 mock_backend.exists.return_value = True
+                mock_backend.isdir.return_value = False
                 mock_backend.size.return_value = 1024
                 mock_get_backend.return_value = mock_backend
 
@@ -636,6 +637,7 @@ class TestFilepathCodec:
             with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
                 mock_backend = MagicMock()
                 mock_backend.exists.return_value = True
+                mock_backend.isdir.return_value = False
                 mock_backend.size.return_value = 3072
                 mock_get_backend.return_value = mock_backend
 
