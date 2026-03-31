@@ -1559,8 +1559,7 @@ class FreeTable(Table):
     """
 
     def __init__(self, conn, full_table_name):
-        # Backend-agnostic quote stripping (MySQL uses `, PostgreSQL uses ")
-        self.database, self._table_name = (s.strip('`"') for s in full_table_name.split("."))
+        self.database, self._table_name = conn.adapter.split_full_table_name(full_table_name)
         self._connection = conn
         self._support = [full_table_name]
         self._heading = Heading(

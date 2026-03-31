@@ -208,10 +208,12 @@ class Diagram(nx.DiGraph):  # noqa: C901
             New diagram with part tables included.
         """
 
+        split = self._connection.adapter.split_full_table_name
+
         def is_part(part, master):
-            part = [s.strip('`"') for s in part.split(".")]
-            master = [s.strip('`"') for s in master.split(".")]
-            return master[0] == part[0] and master[1] + "__" == part[1][: len(master[1]) + 2]
+            p_schema, p_table = split(part)
+            m_schema, m_table = split(master)
+            return m_schema == p_schema and m_table + "__" == p_table[: len(m_table) + 2]
 
         self = Diagram(self)  # copy
         self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
