@@ -47,17 +47,6 @@ except ImportError:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def _split_full_name(full_name: str) -> tuple[str, str]:
-    """Split a quoted full table name into (schema, table) regardless of quote style."""
-    parts = full_name.strip('`"').split("`.`") if "`" in full_name else full_name.strip('"').split('"."')
-    if len(parts) == 2:
-        return parts[0], parts[1]
-    # Fallback: strip all quotes and split on dot
-    stripped = full_name.replace("`", "").replace('"', "")
-    schema, _, table = stripped.partition(".")
-    return schema, table
-
-
 class Diagram(nx.DiGraph):  # noqa: C901
     """
     Schema diagram as a directed acyclic graph (DAG).
@@ -782,7 +771,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         for class_name in nodes_to_collapse:
             full_name = class_to_full.get(class_name)
             if full_name:
-                schema_name, _ = _split_full_name(full_name)
+                schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
                 if schema_name:
                     if schema_name not in collapsed_by_schema:
                         collapsed_by_schema[schema_name] = []
@@ -806,7 +795,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         for node in graph.nodes():
             full_name = class_to_full.get(node)
             if full_name:
-                db_schema, _ = _split_full_name(full_name)
+                db_schema, _ = self._connection.adapter.split_full_table_name(full_name)
                 if db_schema:
                     cls = self._resolve_class(node)
                     if cls is not None and hasattr(cls, "__module__"):
@@ -850,7 +839,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         for node in graph.nodes():
             full_name = class_to_full.get(node)
             if full_name:
-                schema_name, _ = _split_full_name(full_name)
+                schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
                 if schema_name and node in nodes_to_collapse:
                     node_mapping[node] = collapsed_labels[schema_name]
                 else:
@@ -864,7 +853,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                     neighbor = next(iter(neighbors))
                     full_name = class_to_full.get(neighbor)
                     if full_name:
-                        schema_name, _ = _split_full_name(full_name)
+                        schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
                         if schema_name:
                             node_mapping[node] = collapsed_labels[schema_name]
                             continue
@@ -990,7 +979,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         schema_modules = {}  # schema_name -> set of module names
 
         for full_name in self.nodes_to_show:
-            schema_name, _ = _split_full_name(full_name)
+            schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
             if schema_name:
                 class_name = lookup_class_name(full_name, self.context) or full_name
                 schema_map[class_name] = schema_name
@@ -1255,7 +1244,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         schema_modules = {}  # schema_name -> set of module names
 
         for full_name in self.nodes_to_show:
-            schema_name, _ = _split_full_name(full_name)
+            schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
             if schema_name:
                 class_name = lookup_class_name(full_name, self.context) or full_name
                 schema_map[class_name] = schema_name
