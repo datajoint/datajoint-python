@@ -99,7 +99,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self._cascade_restrictions = copy_module.deepcopy(source._cascade_restrictions)
             self._restrict_conditions = copy_module.deepcopy(source._restrict_conditions)
             self._restriction_attrs = copy_module.deepcopy(source._restriction_attrs)
-            self._part_integrity = source._part_integrity
             super().__init__(source)
             return
 
@@ -127,7 +126,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
         self._cascade_restrictions = {}
         self._restrict_conditions = {}
         self._restriction_attrs = {}
-        self._part_integrity = "enforce"
 
         # Enumerate nodes from all the items in the list
         self.nodes_to_show = set()
@@ -357,7 +355,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         result._cascade_restrictions = {}
         result._restrict_conditions = {}
         result._restriction_attrs = {}
-        result._part_integrity = part_integrity
+
         # Include seed + all descendants
         descendants = set(nx.descendants(result, node)) | {node}
         result.nodes_to_show = descendants

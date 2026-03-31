@@ -242,8 +242,10 @@ class Dependencies(nx.DiGraph):
             self.load()
             return
 
-        max_iterations = 50
-        for _ in range(max_iterations):
+        # Safety limit: cross-schema FK chains are typically 3-5 deep.
+        # Unlike the DAG within a schema, cross-schema references could
+        # theoretically form cycles, so we cap iterations.
+        for _ in range(50):
             schemas_list = ", ".join(adapter.quote_string(s) for s in known_schemas)
             result = self._conn.query(adapter.find_downstream_schemas_sql(schemas_list))
             new_schemas = {row[0] for row in result} - known_schemas
