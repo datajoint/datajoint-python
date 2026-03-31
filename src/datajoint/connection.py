@@ -486,25 +486,19 @@ class Connection:
         """
         if self.in_transaction:
             raise errors.DataJointError("Nested connections are not supported.")
-        sql = self.adapter.start_transaction_sql()
-        if sql:
-            self.query(sql)
+        self.query(self.adapter.start_transaction_sql())
         self._in_transaction = True
         logger.debug("Transaction started")
 
     def cancel_transaction(self) -> None:
         """Cancel the current transaction and roll back all changes."""
-        sql = self.adapter.rollback_sql()
-        if sql:
-            self.query(sql)
+        self.query(self.adapter.rollback_sql())
         self._in_transaction = False
         logger.debug("Transaction cancelled. Rolling back ...")
 
     def commit_transaction(self) -> None:
         """Commit all changes and close the transaction."""
-        sql = self.adapter.commit_sql()
-        if sql:
-            self.query(sql)
+        self.query(self.adapter.commit_sql())
         self._in_transaction = False
         logger.debug("Transaction committed and closed.")
 
