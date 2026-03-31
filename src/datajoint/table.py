@@ -1170,6 +1170,7 @@ class Table(QueryExpression):
         import networkx as nx
         from .diagram import Diagram
 
+        self.connection.dependencies.load_all_downstream()
         diagram = Diagram(self)
         # Expand to include all descendants (cross-schema)
         descendants = set(nx.descendants(diagram, self.full_table_name)) | {self.full_table_name}

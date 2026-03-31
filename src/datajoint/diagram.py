@@ -347,7 +347,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         >>> dj.Diagram.cascade(Session & 'subject_id=1')
         """
         conn = table_expr.connection
-        conn.dependencies.load()
+        conn.dependencies.load_all_downstream()
         node = table_expr.full_table_name
 
         result = cls.__new__(cls)

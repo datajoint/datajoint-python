@@ -830,6 +830,26 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    def find_downstream_schemas_sql(self, schemas_list: str) -> str:
+        """
+        Generate query to find schemas with FK references to the given schemas.
+
+        Used to discover unloaded schemas that depend on loaded ones.
+
+        Parameters
+        ----------
+        schemas_list : str
+            Comma-separated, quoted schema names for an IN clause.
+
+        Returns
+        -------
+        str
+            SQL query returning rows with a single column ``schema_name``
+            containing distinct schema names that reference the given schemas.
+        """
+        raise NotImplementedError
+        ...
+
     @abstractmethod
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
         """

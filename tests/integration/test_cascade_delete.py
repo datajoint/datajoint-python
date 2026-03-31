@@ -226,3 +226,69 @@ def test_delete_preview_with_counts(schema_by_backend):
     # Data must still be intact
     assert len(Parent()) == 2
     assert len(Child()) == 3
+
+
+def test_cascade_discovers_downstream_schema(connection_by_backend, db_creds_by_backend):
+    """Cascade delete discovers and includes tables in unloaded downstream schemas."""
+    import time
+
+    backend = db_creds_by_backend["backend"]
+    test_id = str(int(time.time() * 1000))[-8:]
+
+    upstream_name = f"djtest_upstream_{backend}_{test_id}"[:64]
+    downstream_name = f"djtest_downstream_{backend}_{test_id}"[:64]
+
+    qi = connection_by_backend.adapter.quote_identifier
+
+    # Clean up any previous runs
+    for name in (downstream_name, upstream_name):
+        try:
+            connection_by_backend.query(f"DROP DATABASE IF EXISTS {qi(name)}")
+        except Exception:
+            pass
+
+    # Create upstream schema and table
+    upstream = dj.Schema(upstream_name, connection=connection_by_backend)
+
+    @upstream
+    class Parent(dj.Manual):
+        definition = """
+        parent_id : int
+        ---
+        name : varchar(100)
+        """
+
+    # Create downstream schema with FK to upstream — separate schema object
+    downstream = dj.Schema(downstream_name, connection=connection_by_backend)
+
+    @downstream
+    class Child(dj.Manual):
+        definition = """
+        -> Parent
+        child_id : int
+        ---
+        data : varchar(100)
+        """
+
+    # Insert data
+    Parent.insert1(dict(parent_id=1, name="Alice"))
+    Child.insert1(dict(parent_id=1, child_id=1, data="row1"))
+    Child.insert1(dict(parent_id=1, child_id=2, data="row2"))
+
+    # Verify cascade preview discovers the downstream schema
+    counts = dj.Diagram.cascade(Parent & "parent_id=1").counts()
+    assert Parent.full_table_name in counts
+    assert Child.full_table_name in counts
+    assert counts[Child.full_table_name] == 2
+
+    # Verify actual delete cascades across schemas
+    (Parent & "parent_id=1").delete()
+    assert len(Parent()) == 0
+    assert len(Child()) == 0
+
+    # Clean up
+    for name in (downstream_name, upstream_name):
+        try:
+            connection_by_backend.query(f"DROP DATABASE IF EXISTS {qi(name)}")
+        except Exception:
+            pass
