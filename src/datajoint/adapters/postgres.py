@@ -249,6 +249,11 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """
         return f'"{name}"'
 
+    @property
+    def max_table_name_length(self) -> int:
+        """PostgreSQL NAMEDATALEN-1 = 63."""
+        return 63
+
     def split_full_table_name(self, full_table_name: str) -> tuple[str, str]:
         """Split ``"schema"."table"`` into ``('schema', 'table')``."""
         schema, table = full_table_name.replace('"', "").split(".")
