@@ -308,17 +308,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
         self.nodes_to_show.intersection_update(arg.nodes_to_show)
         return self
 
-    def topo_sort(self) -> list[str]:
-        """
-        Return nodes in topological order.
-
-        Returns
-        -------
-        list[str]
-            Node names in topological order.
-        """
-        return topo_sort(self)
-
     @classmethod
     def cascade(cls, table_expr, part_integrity="enforce"):
         """
