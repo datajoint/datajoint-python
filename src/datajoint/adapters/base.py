@@ -647,7 +647,7 @@ class DatabaseAdapter(ABC):
         # Generate index name from table and columns if not provided
         if index_name is None:
             # Extract table name from full_table_name for index naming
-            table_part = full_table_name.split(".")[-1].strip('`"')
+            _, table_part = self.split_full_table_name(full_table_name)
             col_part = "_".join(columns)[:30]  # Truncate for long column lists
             index_name = f"idx_{table_part}_{col_part}"
         unique_clause = "UNIQUE " if unique else ""
