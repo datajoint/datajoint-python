@@ -783,7 +783,7 @@ class AutoPopulate:
         pk_condition = make_condition(self, key, set())
         self.connection.query(
             f"UPDATE {self.full_table_name} SET "
-            "`_job_start_time`=%s, `_job_duration`=%s, `_job_version`=%s "
+            "_job_start_time=%s, _job_duration=%s, _job_version=%s "
             f"WHERE {pk_condition}",
             args=(start_time, duration, version[:64] if version else ""),
         )
