@@ -555,7 +555,7 @@ class StorageBackend:
 
     def exists(self, remote_path: str | PurePosixPath) -> bool:
         """
-        Check if a file exists in storage.
+        Check if a path (file or directory) exists in storage.
 
         Parameters
         ----------
@@ -565,15 +565,28 @@ class StorageBackend:
         Returns
         -------
         bool
-            True if file exists.
+            True if the path exists.
         """
         full_path = self._full_path(remote_path)
         logger.debug(f"exists: {self.protocol}:{full_path}")
+        return self.fs.exists(full_path)
 
-        if self.protocol == "file":
-            return Path(full_path).is_file()
-        else:
-            return self.fs.exists(full_path)
+    def isdir(self, remote_path: str | PurePosixPath) -> bool:
+        """
+        Check if a path refers to a directory in storage.
+
+        Parameters
+        ----------
+        remote_path : str or PurePosixPath
+            Path in storage.
+
+        Returns
+        -------
+        bool
+            True if the path is a directory.
+        """
+        full_path = self._full_path(remote_path)
+        return self.fs.isdir(full_path)
 
     def remove(self, remote_path: str | PurePosixPath) -> None:
         """

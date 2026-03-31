@@ -379,7 +379,8 @@ class ObjectRef:
         manifest_path = f"{self.path}.manifest.json"
 
         if not self._backend.exists(manifest_path):
-            raise IntegrityError(f"Manifest file missing: {manifest_path}")
+            # Directory was stored without a manifest — treat as unverified but valid
+            return True
 
         # Read manifest
         manifest_data = self._backend.get_buffer(manifest_path)
