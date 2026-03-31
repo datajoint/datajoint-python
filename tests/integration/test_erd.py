@@ -124,19 +124,11 @@ def test_prune_after_restrict(schema_simp_pop):
             assert table not in pruned._restrict_conditions, f"{table} had 0 rows but was not pruned"
 
 
-def test_prune_after_cascade(schema_simp_pop):
-    """Prune after cascade removes tables with zero matching rows."""
+def test_prune_raises_on_cascade(schema_simp_pop):
+    """prune() raises on a cascade Diagram — cascade must retain all tables for safe deletion."""
     cascaded = dj.Diagram.cascade(A & "id_a=0")
-    counts = cascaded.counts()
-
-    pruned = cascaded.prune()
-    pruned_counts = pruned.counts()
-
-    assert all(c > 0 for c in pruned_counts.values())
-
-    for table, count in counts.items():
-        if count == 0:
-            assert table not in pruned._cascade_restrictions, f"{table} had 0 rows but was not pruned"
+    with _pytest.raises(dj.DataJointError, match="prune.*cannot be used.*cascade"):
+        cascaded.prune()
 
 
 def test_prune_idempotent(schema_simp_pop):

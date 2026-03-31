@@ -648,8 +648,10 @@ class Diagram(nx.DiGraph):  # noqa: C901
         Remove tables with zero matching rows from the diagram.
 
         Without prior restrictions, removes physically empty tables.
-        With restrictions (``cascade()`` or ``restrict()``), removes
-        tables where the restricted query yields zero rows.
+        After ``restrict()``, removes tables where the restricted query
+        yields zero rows. Cannot be used on a cascade Diagram (cascade
+        is for delete, where zero-count tables must remain in the graph
+        to handle concurrent inserts safely).
 
         Returns
         -------
@@ -658,16 +660,20 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
         from .table import FreeTable
 
-        result = Diagram(self)
-        restrictions = result._cascade_restrictions or result._restrict_conditions
+        if self._cascade_restrictions:
+            raise DataJointError(
+                "prune() cannot be used on a Diagram produced by Diagram.cascade(). "
+                "Cascade diagrams must retain all descendant tables for safe deletion."
+            )
 
-        if restrictions:
-            # Restricted: check row counts under restriction
-            for node in list(restrictions):
+        result = Diagram(self)
+
+        if result._restrict_conditions:
+            for node in list(result._restrict_conditions):
                 if node.isdigit():
                     continue
                 if len(result._restricted_table(node)) == 0:
-                    restrictions.pop(node)
+                    result._restrict_conditions.pop(node)
                     result._restriction_attrs.pop(node, None)
                     result.nodes_to_show.discard(node)
         else:
