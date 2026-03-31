@@ -996,8 +996,7 @@ class Table(QueryExpression):
 
         To preview cascade impact without executing, use ``Diagram``::
 
-            diag = dj.Diagram(schema)
-            diag.cascade(MyTable & restriction).counts()
+            dj.Diagram.cascade(MyTable & restriction).counts()
 
         Args:
             transaction: If `True`, use of the entire delete becomes an atomic transaction.
@@ -1022,8 +1021,7 @@ class Table(QueryExpression):
             raise ValueError(f"part_integrity must be 'enforce', 'ignore', or 'cascade', " f"got {part_integrity!r}")
         from .diagram import Diagram
 
-        diagram = Diagram._from_table(self)
-        diagram = diagram.cascade(self, part_integrity=part_integrity)
+        diagram = Diagram.cascade(self, part_integrity=part_integrity)
 
         conn = self.connection
         prompt = conn._config["safemode"] if prompt is None else prompt
@@ -1169,9 +1167,14 @@ class Table(QueryExpression):
             raise DataJointError(
                 "A table with an applied restriction cannot be dropped. " "Call drop() on the unrestricted Table."
             )
+        import networkx as nx
         from .diagram import Diagram
 
-        diagram = Diagram._from_table(self)
+        diagram = Diagram(self)
+        # Expand to include all descendants (cross-schema)
+        descendants = set(nx.descendants(diagram, self.full_table_name)) | {self.full_table_name}
+        diagram.nodes_to_show = descendants
+        diagram._expanded_nodes = set(descendants)
         conn = self.connection
         prompt = conn._config["safemode"] if prompt is None else prompt
 

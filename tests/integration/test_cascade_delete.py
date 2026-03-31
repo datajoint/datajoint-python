@@ -217,8 +217,7 @@ def test_delete_preview_with_counts(schema_by_backend):
     Child.insert1((2, 1, "C2-1"))
 
     # Preview restricted cascade via Diagram
-    diag = dj.Diagram._from_table(Parent & {"parent_id": 1})
-    counts = diag.cascade(Parent & {"parent_id": 1}).counts()
+    counts = dj.Diagram.cascade(Parent & {"parent_id": 1}).counts()
 
     assert isinstance(counts, dict)
     assert counts[Parent.full_table_name] == 1

@@ -100,6 +100,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self._restrict_conditions = copy_module.deepcopy(source._restrict_conditions)
             self._restriction_attrs = copy_module.deepcopy(source._restriction_attrs)
             self._part_integrity = source._part_integrity
+            self._source = getattr(source, "_source", None)
             super().__init__(source)
             return
 
@@ -131,6 +132,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         # Enumerate nodes from all the items in the list
         self.nodes_to_show = set()
+        self._source = None
         try:
             self.nodes_to_show.add(source.full_table_name)
         except AttributeError:
@@ -164,39 +166,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             Union of diagrams: ``Diagram(arg1) + ... + Diagram(argn)``.
         """
         return functools.reduce(lambda x, y: x + y, map(Diagram, sequence))
-
-    @classmethod
-    def _from_table(cls, table_expr) -> "Diagram":
-        """
-        Create a Diagram containing table_expr and all its descendants.
-
-        Internal factory for ``Table.delete()`` and ``Table.drop()``.
-        Bypasses the normal ``__init__`` which does caller-frame introspection
-        and source-type resolution.
-
-        Parameters
-        ----------
-        table_expr : Table
-            A table instance with ``connection`` and ``full_table_name``.
-
-        Returns
-        -------
-        Diagram
-        """
-        conn = table_expr.connection
-        conn.dependencies.load()
-        descendants = set(conn.dependencies.descendants(table_expr.full_table_name))
-        result = cls.__new__(cls)
-        nx.DiGraph.__init__(result, conn.dependencies)
-        result._connection = conn
-        result.context = {}
-        result.nodes_to_show = descendants
-        result._expanded_nodes = set(descendants)
-        result._cascade_restrictions = {}
-        result._restrict_conditions = {}
-        result._restriction_attrs = {}
-        result._part_integrity = "enforce"
-        return result
 
     def add_parts(self) -> "Diagram":
         """
@@ -347,20 +316,20 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
         return topo_sort(self)
 
-    def cascade(self, table_expr, part_integrity="enforce"):
+    @classmethod
+    def cascade(cls, table_expr, part_integrity="enforce"):
         """
-        Apply cascade restriction and propagate downstream.
+        Create a cascade diagram for a table expression.
 
-        OR at convergence — a child row is affected if *any* restricted
-        ancestor taints it. Used for delete.
-
-        Can only be called once on an unrestricted Diagram. Cannot be
-        mixed with ``restrict()``.
+        Builds a Diagram from the table's dependency graph, includes all
+        descendants (across all loaded schemas), and propagates the
+        restriction downstream using OR convergence — a child row is
+        affected if *any* restricted ancestor taints it.
 
         Parameters
         ----------
         table_expr : QueryExpression
-            A restricted table expression
+            A (possibly restricted) table expression
             (e.g., ``Session & 'subject_id=1'``).
         part_integrity : str, optional
             ``"enforce"`` (default), ``"ignore"``, or ``"cascade"``.
@@ -368,24 +337,44 @@ class Diagram(nx.DiGraph):  # noqa: C901
         Returns
         -------
         Diagram
-            New Diagram with cascade restrictions applied.
+            New Diagram with cascade restrictions applied, trimmed to
+            the seed table and its affected descendants.
+
+        Examples
+        --------
+        >>> # Preview cascade impact across all downstream schemas
+        >>> dj.Diagram.cascade(Session & 'subject_id=1').counts()
+
+        >>> # Inspect the cascade subgraph
+        >>> dj.Diagram.cascade(Session & 'subject_id=1')
         """
-        if self._cascade_restrictions or self._restrict_conditions:
-            raise DataJointError(
-                "cascade() can only be called once on an unrestricted Diagram. "
-                "cascade and restrict modes are mutually exclusive."
-            )
-        result = Diagram(self)
-        result._part_integrity = part_integrity
+        conn = table_expr.connection
+        conn.dependencies.load()
         node = table_expr.full_table_name
-        if node not in result.nodes():
-            raise DataJointError(f"Table {node} is not in the diagram.")
+
+        result = cls.__new__(cls)
+        nx.DiGraph.__init__(result, conn.dependencies)
+        result._connection = conn
+        result.context = {}
+        result._cascade_restrictions = {}
+        result._restrict_conditions = {}
+        result._restriction_attrs = {}
+        result._part_integrity = part_integrity
+        result._source = table_expr
+
+        # Include seed + all descendants
+        descendants = set(nx.descendants(result, node)) | {node}
+        result.nodes_to_show = descendants
+        result._expanded_nodes = set(descendants)
+
         # Seed restriction
         restriction = AndList(table_expr.restriction)
         result._cascade_restrictions[node] = [restriction] if restriction else []
         result._restriction_attrs[node] = set(table_expr.restriction_attributes)
+
         # Propagate downstream
         result._propagate_restrictions(node, mode="cascade", part_integrity=part_integrity)
+
         # Trim graph to cascade subgraph: only restricted tables
         # (seed + descendants) plus alias nodes connecting them.
         keep = set(result._cascade_restrictions)

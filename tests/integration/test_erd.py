@@ -126,8 +126,7 @@ def test_prune_after_restrict(schema_simp_pop):
 
 def test_prune_after_cascade(schema_simp_pop):
     """Prune after cascade removes tables with zero matching rows."""
-    diag = dj.Diagram(schema_simp_pop, context=LOCALS_SIMPLE)
-    cascaded = diag.cascade(A & "id_a=0")
+    cascaded = dj.Diagram.cascade(A & "id_a=0")
     counts = cascaded.counts()
 
     pruned = cascaded.prune()
