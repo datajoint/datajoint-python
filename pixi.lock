@@ -2092,8 +2092,8 @@ packages:
   requires_python: '>=3.8'
 - pypi: ./
   name: datajoint
-  version: 2.1.1
-  sha256: 267defaa9ea7f22a8497568e8a14679be178f78cd3b34a4132609a57f0f71227
+  version: 2.2.0.dev0
+  sha256: 48335cedf96fa3b5efd3ddf880bd5065813f2baea43cad01a2fddbba94e561ec
   requires_dist:
   - deepdiff
   - fsspec>=2023.1.0

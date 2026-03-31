@@ -140,9 +140,9 @@ class Dependencies(nx.DiGraph):
         self._node_alias_count = itertools.count()  # reset alias IDs for consistency
         super().clear()
 
-    def load(self, force: bool = True) -> None:
+    def load(self, force: bool = True, schema_names: set[str] | None = None) -> None:
         """
-        Load dependencies for all loaded schemas.
+        Load dependencies for the given schemas.
 
         Called before operations requiring dependencies: delete, drop,
         populate, progress.
@@ -151,6 +151,8 @@ class Dependencies(nx.DiGraph):
         ----------
         force : bool, optional
             If True (default), reload even if already loaded.
+        schema_names : set[str], optional
+            Schema names to load. If None, uses all activated schemas.
         """
         # reload from scratch to prevent duplication of renamed edges
         if self._loaded and not force:
@@ -162,7 +164,11 @@ class Dependencies(nx.DiGraph):
         adapter = self._conn.adapter
 
         # Build schema list for IN clause
-        schemas_list = ", ".join(adapter.quote_string(s) for s in self._conn.schemas)
+        names = schema_names if schema_names is not None else set(self._conn.schemas)
+        if not names:
+            self._loaded = True
+            return
+        schemas_list = ", ".join(adapter.quote_string(s) for s in names)
 
         # Load primary keys and foreign keys via adapter methods
         # Note: Both PyMySQL and psycopg use %s placeholders, so escape % as %%
@@ -219,6 +225,39 @@ class Dependencies(nx.DiGraph):
         if not nx.is_directed_acyclic_graph(self):
             raise DataJointError("DataJoint can only work with acyclic dependencies")
         self._loaded = True
+
+    def load_all_downstream(self) -> None:
+        """
+        Load dependencies including all downstream schemas reachable via FK chains.
+
+        Iteratively discovers schemas that reference the currently loaded
+        schemas, expanding the dependency graph until no new schemas are
+        found. This ensures that cascade delete and drop reach all
+        dependent tables, even those in schemas that haven't been
+        explicitly activated.
+
+        Called automatically by ``Diagram.cascade()`` and ``Table.drop()``.
+        Call manually before constructing a ``Diagram`` to include
+        cross-schema dependencies in visualization::
+
+            conn.dependencies.load_all_downstream()
+            dj.Diagram(schema)  # now includes all downstream schemas
+        """
+        adapter = self._conn.adapter
+        known_schemas = set(self._conn.schemas)
+        if not known_schemas:
+            self.load()
+            return
+
+        while True:
+            schemas_list = ", ".join(adapter.quote_string(s) for s in known_schemas)
+            result = self._conn.query(adapter.find_downstream_schemas_sql(schemas_list))
+            new_schemas = {row[0] for row in result} - known_schemas
+            if not new_schemas:
+                break
+            known_schemas |= new_schemas
+
+        self.load(force=True, schema_names=known_schemas)
 
     def topo_sort(self) -> list[str]:
         """

@@ -235,7 +235,7 @@ class Part(UserTable, metaclass=PartMeta):
                 "or use part_integrity='ignore' to break integrity, "
                 "or part_integrity='cascade' to also delete master."
             )
-        super().delete(part_integrity=part_integrity, **kwargs)
+        return super().delete(part_integrity=part_integrity, **kwargs)
 
     def drop(self, part_integrity: str = "enforce"):
         """
@@ -251,7 +251,7 @@ class Part(UserTable, metaclass=PartMeta):
             DataJointError: If part_integrity="enforce" (direct Part drops prohibited)
         """
         if part_integrity == "ignore":
-            super().drop()
+            return super().drop(part_integrity="ignore")
         elif part_integrity == "enforce":
             raise DataJointError("Cannot drop a Part directly. Drop master instead, or use part_integrity='ignore' to force.")
         else:

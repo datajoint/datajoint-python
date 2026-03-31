@@ -847,6 +847,20 @@ class PostgreSQLAdapter(DatabaseAdapter):
             f"ORDER BY c.conname, cols.ord"
         )
 
+    def find_downstream_schemas_sql(self, schemas_list: str) -> str:
+        """Find schemas with FK references to the given schemas."""
+        return (
+            f"SELECT DISTINCT ns1.nspname as schema_name "
+            f"FROM pg_constraint c "
+            f"JOIN pg_class cl1 ON c.conrelid = cl1.oid "
+            f"JOIN pg_namespace ns1 ON cl1.relnamespace = ns1.oid "
+            f"JOIN pg_class cl2 ON c.confrelid = cl2.oid "
+            f"JOIN pg_namespace ns2 ON cl2.relnamespace = ns2.oid "
+            f"WHERE c.contype = 'f' "
+            f"AND ns2.nspname IN ({schemas_list}) "
+            f"AND ns1.nspname NOT IN ({schemas_list})"
+        )
+
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
         """
         Query to get FK constraint details from information_schema.

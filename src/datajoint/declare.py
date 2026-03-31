@@ -369,8 +369,8 @@ def prepare_declare(
                 adapter,
                 fk_attribute_map,
             )
-        elif re.match(r"^(unique\s+)?index\s*\(.*\)$", line, re.I):  # index
-            compile_index(line, index_sql, adapter)
+        elif re.match(r"^(unique\s+)?index\s*\(.*\)\s*(#.*)?$", line, re.I):  # index
+            compile_index(re.sub(r"\s*#.*$", "", line), index_sql, adapter)
         else:
             name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
             if store:

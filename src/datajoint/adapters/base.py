@@ -647,7 +647,7 @@ class DatabaseAdapter(ABC):
         # Generate index name from table and columns if not provided
         if index_name is None:
             # Extract table name from full_table_name for index naming
-            table_part = full_table_name.split(".")[-1].strip('`"')
+            _, table_part = self.split_full_table_name(full_table_name)
             col_part = "_".join(columns)[:30]  # Truncate for long column lists
             index_name = f"idx_{table_part}_{col_part}"
         unique_clause = "UNIQUE " if unique else ""
@@ -828,6 +828,26 @@ class DatabaseAdapter(ABC):
             - column_name: FK column in child table
             - referenced_column_name: referenced column in parent table
         """
+        ...
+
+    def find_downstream_schemas_sql(self, schemas_list: str) -> str:
+        """
+        Generate query to find schemas with FK references to the given schemas.
+
+        Used to discover unloaded schemas that depend on loaded ones.
+
+        Parameters
+        ----------
+        schemas_list : str
+            Comma-separated, quoted schema names for an IN clause.
+
+        Returns
+        -------
+        str
+            SQL query returning rows with a single column ``schema_name``
+            containing distinct schema names that reference the given schemas.
+        """
+        raise NotImplementedError
         ...
 
     @abstractmethod
