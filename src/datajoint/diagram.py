@@ -47,6 +47,17 @@ except ImportError:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
+def _split_full_name(full_name: str) -> tuple[str, str]:
+    """Split a quoted full table name into (schema, table) regardless of quote style."""
+    parts = full_name.strip('`"').split("`.`") if "`" in full_name else full_name.strip('"').split('"."')
+    if len(parts) == 2:
+        return parts[0], parts[1]
+    # Fallback: strip all quotes and split on dot
+    stripped = full_name.replace("`", "").replace('"', "")
+    schema, _, table = stripped.partition(".")
+    return schema, table
+
+
 class Diagram(nx.DiGraph):  # noqa: C901
     """
     Schema diagram as a directed acyclic graph (DAG).
@@ -99,7 +110,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self._cascade_restrictions = copy_module.deepcopy(source._cascade_restrictions)
             self._restrict_conditions = copy_module.deepcopy(source._restrict_conditions)
             self._restriction_attrs = copy_module.deepcopy(source._restriction_attrs)
-            self._part_integrity = getattr(source, "_part_integrity", "enforce")
+            self._part_integrity = source._part_integrity
             super().__init__(source)
             return
 
@@ -118,7 +129,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
             try:
                 connection = source.schema.connection
             except AttributeError:
-                raise DataJointError("Could not find database connection in %s" % repr(source[0]))
+                raise DataJointError("Could not find database connection in %s" % repr(source))
 
         # initialize graph from dependencies
         connection.dependencies.load()
@@ -127,6 +138,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         self._cascade_restrictions = {}
         self._restrict_conditions = {}
         self._restriction_attrs = {}
+        self._part_integrity = "enforce"
 
         # Enumerate nodes from all the items in the list
         self.nodes_to_show = set()
@@ -194,6 +206,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         result._cascade_restrictions = {}
         result._restrict_conditions = {}
         result._restriction_attrs = {}
+        result._part_integrity = "enforce"
         return result
 
     def add_parts(self) -> "Diagram":
@@ -207,8 +220,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
 
         def is_part(part, master):
-            part = [s.strip("`") for s in part.split(".")]
-            master = [s.strip("`") for s in master.split(".")]
+            part = [s.strip('`"') for s in part.split(".")]
+            master = [s.strip('`"') for s in master.split(".")]
             return master[0] == part[0] and master[1] + "__" == part[1][: len(master[1]) + 2]
 
         self = Diagram(self)  # copy
@@ -769,9 +782,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         for class_name in nodes_to_collapse:
             full_name = class_to_full.get(class_name)
             if full_name:
-                parts = full_name.replace('"', "`").split("`")
-                if len(parts) >= 2:
-                    schema_name = parts[1]
+                schema_name, _ = _split_full_name(full_name)
+                if schema_name:
                     if schema_name not in collapsed_by_schema:
                         collapsed_by_schema[schema_name] = []
                     collapsed_by_schema[schema_name].append(class_name)
@@ -794,9 +806,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         for node in graph.nodes():
             full_name = class_to_full.get(node)
             if full_name:
-                parts = full_name.replace('"', "`").split("`")
-                if len(parts) >= 2:
-                    db_schema = parts[1]
+                db_schema, _ = _split_full_name(full_name)
+                if db_schema:
                     cls = self._resolve_class(node)
                     if cls is not None and hasattr(cls, "__module__"):
                         module_name = cls.__module__.split(".")[-1]
@@ -839,9 +850,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         for node in graph.nodes():
             full_name = class_to_full.get(node)
             if full_name:
-                parts = full_name.replace('"', "`").split("`")
-                if len(parts) >= 2 and node in nodes_to_collapse:
-                    schema_name = parts[1]
+                schema_name, _ = _split_full_name(full_name)
+                if schema_name and node in nodes_to_collapse:
                     node_mapping[node] = collapsed_labels[schema_name]
                 else:
                     node_mapping[node] = node
@@ -854,9 +864,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
                     neighbor = next(iter(neighbors))
                     full_name = class_to_full.get(neighbor)
                     if full_name:
-                        parts = full_name.replace('"', "`").split("`")
-                        if len(parts) >= 2:
-                            schema_name = parts[1]
+                        schema_name, _ = _split_full_name(full_name)
+                        if schema_name:
                             node_mapping[node] = collapsed_labels[schema_name]
                             continue
                 node_mapping[node] = node
@@ -981,10 +990,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         schema_modules = {}  # schema_name -> set of module names
 
         for full_name in self.nodes_to_show:
-            # Extract schema from full table name like `schema`.`table` or "schema"."table"
-            parts = full_name.replace('"', "`").split("`")
-            if len(parts) >= 2:
-                schema_name = parts[1]  # schema is between first pair of backticks
+            schema_name, _ = _split_full_name(full_name)
+            if schema_name:
                 class_name = lookup_class_name(full_name, self.context) or full_name
                 schema_map[class_name] = schema_name
 
@@ -1248,9 +1255,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         schema_modules = {}  # schema_name -> set of module names
 
         for full_name in self.nodes_to_show:
-            parts = full_name.replace('"', "`").split("`")
-            if len(parts) >= 2:
-                schema_name = parts[1]
+            schema_name, _ = _split_full_name(full_name)
+            if schema_name:
                 class_name = lookup_class_name(full_name, self.context) or full_name
                 schema_map[class_name] = schema_name
 
