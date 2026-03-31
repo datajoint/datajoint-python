@@ -459,9 +459,12 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         restrictions = self._cascade_restrictions if mode == "cascade" else self._restrict_conditions
 
-        # Multiple passes to handle part_integrity="cascade" upward propagation
-        max_passes = 10
-        for _ in range(max_passes):
+        # Multiple passes to handle part_integrity="cascade" upward propagation.
+        # When a part table triggers its master to join the cascade, the master's
+        # other descendants need processing in a subsequent pass. The loop
+        # terminates when no new nodes are added — guaranteed in a DAG.
+        any_new = True
+        while any_new:
             any_new = False
 
             for node in sorted_nodes:
@@ -538,9 +541,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
                                 allowed_nodes.add(master_name)
                                 allowed_nodes.update(nx.descendants(self, master_name))
                                 any_new = True
-
-            if not any_new:
-                break
 
     def _apply_propagation_rule(
         self,

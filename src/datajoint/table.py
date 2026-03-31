@@ -1067,7 +1067,7 @@ class Table(QueryExpression):
                     "deleting.".format(child=match["child"])
                 ) from None
             raise DataJointError("Delete blocked by FK in unloaded/inaccessible schema.") from None
-        except:
+        except Exception:
             if transaction:
                 conn.cancel_transaction()
             raise
