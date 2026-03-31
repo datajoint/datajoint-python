@@ -341,10 +341,11 @@ class _Schema:
                 frame = inspect.currentframe().f_back
                 into = frame.f_locals
                 del frame
+        adapter = self.connection.adapter
         tables = [
             row[0]
-            for row in self.connection.query(self.connection.adapter.list_tables_sql(self.database))
-            if lookup_class_name("`{db}`.`{tab}`".format(db=self.database, tab=row[0]), into, 0) is None
+            for row in self.connection.query(adapter.list_tables_sql(self.database))
+            if lookup_class_name(adapter.make_full_table_name(self.database, row[0]), into, 0) is None
         ]
         master_classes = (Lookup, Manual, Imported, Computed)
         part_tables = []
@@ -502,7 +503,7 @@ class _Schema:
         # Iterate over auto-populated tables and check if their job table exists
         for table_name in self.list_tables():
             adapter = self.connection.adapter
-            full_name = f"{adapter.quote_identifier(self.database)}." f"{adapter.quote_identifier(table_name)}"
+            full_name = adapter.make_full_table_name(self.database, table_name)
             table = FreeTable(self.connection, full_name)
             tier = _get_tier(table.full_table_name)
             if tier in (Computed, Imported):
@@ -602,8 +603,7 @@ class _Schema:
         if table_name is None:
             raise DataJointError(f"Table `{name}` does not exist in schema `{self.database}`.")
 
-        adapter = self.connection.adapter
-        full_name = f"{adapter.quote_identifier(self.database)}.{adapter.quote_identifier(table_name)}"
+        full_name = self.connection.adapter.make_full_table_name(self.database, table_name)
         return FreeTable(self.connection, full_name)
 
     def __getitem__(self, name: str) -> FreeTable:

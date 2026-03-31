@@ -52,7 +52,6 @@ CORE_TYPE_PATTERNS = {name: re.compile(pattern, re.I) for name, (pattern, _) in 
 # Get SQL mapping for core types
 CORE_TYPE_SQL = {name: sql_type for name, (_, sql_type) in CORE_TYPES.items()}
 
-MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {
     "CURRENT_TIMESTAMP",
     "NULL",
@@ -296,7 +295,7 @@ def compile_foreign_key(
     parent_full_name = ref.support[0]
     # Parse as database.table using the adapter's quoting convention
     parts = adapter.split_full_table_name(parent_full_name)
-    ref_table_name = f"{adapter.quote_identifier(parts[0])}.{adapter.quote_identifier(parts[1])}"
+    ref_table_name = adapter.make_full_table_name(parts[0], parts[1])
 
     foreign_key_sql.append(
         f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
@@ -432,21 +431,13 @@ def declare(
     DataJointError
         If table name exceeds max length or has no primary key.
     """
-    # Parse table name without assuming quote character
-    # Extract schema.table from quoted name using adapter
-    quote_char = adapter.quote_identifier("x")[0]  # Get quote char from adapter
-    parts = full_table_name.split(".")
-    if len(parts) == 2:
-        schema_name = parts[0].strip(quote_char)
-        table_name = parts[1].strip(quote_char)
-    else:
-        schema_name = None
-        table_name = parts[0].strip(quote_char)
+    # Parse table name using adapter (handles backend-specific quoting)
+    schema_name, table_name = adapter.split_full_table_name(full_table_name)
 
-    if len(table_name) > MAX_TABLE_NAME_LENGTH:
+    if len(table_name) > adapter.max_table_name_length:
         raise DataJointError(
             "Table name `{name}` exceeds the max length of {max_length}".format(
-                name=table_name, max_length=MAX_TABLE_NAME_LENGTH
+                name=table_name, max_length=adapter.max_table_name_length
             )
         )
 

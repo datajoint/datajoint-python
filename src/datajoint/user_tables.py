@@ -106,8 +106,7 @@ class TableMeta(type):
         """The fully qualified table name (quoted per backend)."""
         if cls.database is None:
             return None
-        adapter = cls._connection.adapter
-        return f"{adapter.quote_identifier(cls.database)}.{adapter.quote_identifier(cls.table_name)}"
+        return cls._connection.adapter.make_full_table_name(cls.database, cls.table_name)
 
 
 class UserTable(Table, metaclass=TableMeta):
@@ -186,8 +185,7 @@ class PartMeta(TableMeta):
         """The fully qualified table name (quoted per backend)."""
         if cls.database is None or cls.table_name is None:
             return None
-        adapter = cls._connection.adapter
-        return f"{adapter.quote_identifier(cls.database)}.{adapter.quote_identifier(cls.table_name)}"
+        return cls._connection.adapter.make_full_table_name(cls.database, cls.table_name)
 
     @property
     def master(cls):
