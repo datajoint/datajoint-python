@@ -238,6 +238,39 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    def make_full_table_name(self, database: str, table_name: str) -> str:
+        """
+        Construct a fully-qualified table name for this backend.
+
+        Default implementation produces a two-part name (``schema.table``).
+        Backends that require additional namespace levels can override.
+
+        Parameters
+        ----------
+        database : str
+            Schema/database name.
+        table_name : str
+            Table name (including tier prefix).
+
+        Returns
+        -------
+        str
+            Fully-qualified, quoted table name.
+        """
+        return f"{self.quote_identifier(database)}.{self.quote_identifier(table_name)}"
+
+    @property
+    def max_table_name_length(self) -> int:
+        """
+        Maximum length of a table name for this backend.
+
+        Returns
+        -------
+        int
+            Maximum allowed characters in a table identifier.
+        """
+        return 64  # safe default (MySQL limit)
+
     # =========================================================================
     # Type Mapping
     # =========================================================================
