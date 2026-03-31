@@ -100,7 +100,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self._restrict_conditions = copy_module.deepcopy(source._restrict_conditions)
             self._restriction_attrs = copy_module.deepcopy(source._restriction_attrs)
             self._part_integrity = source._part_integrity
-            self._source = getattr(source, "_source", None)
             super().__init__(source)
             return
 
@@ -132,7 +131,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         # Enumerate nodes from all the items in the list
         self.nodes_to_show = set()
-        self._source = None
         try:
             self.nodes_to_show.add(source.full_table_name)
         except AttributeError:
@@ -360,8 +358,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
         result._restrict_conditions = {}
         result._restriction_attrs = {}
         result._part_integrity = part_integrity
-        result._source = table_expr
-
         # Include seed + all descendants
         descendants = set(nx.descendants(result, node)) | {node}
         result.nodes_to_show = descendants
@@ -417,7 +413,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         AND at convergence — a child row is included only if it satisfies
         *all* restricted ancestors. Used for export. Can be chained.
 
-        Cannot be called on a cascade-restricted Diagram.
+        Cannot be called on a Diagram produced by ``Diagram.cascade()``.
 
         Parameters
         ----------
@@ -431,8 +427,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
         if self._cascade_restrictions:
             raise DataJointError(
-                "Cannot apply restrict() on a cascade-restricted Diagram. "
-                "cascade and restrict modes are mutually exclusive."
+                "Cannot apply restrict() on a Diagram produced by Diagram.cascade(). "
+                "cascade and restrict are mutually exclusive modes."
             )
         result = Diagram(self)
         node = table_expr.full_table_name
@@ -611,7 +607,9 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
         restrictions = self._cascade_restrictions or self._restrict_conditions
         if not restrictions:
-            raise DataJointError("No restrictions applied. " "Call cascade() or restrict() first.")
+            raise DataJointError(
+                "No restrictions applied. " "Use Diagram.cascade(table_expr) or diag.restrict(table_expr) first."
+            )
 
         result = {}
         for ft in self:
