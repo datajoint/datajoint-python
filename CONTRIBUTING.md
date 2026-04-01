@@ -36,13 +36,17 @@ pytest tests/
 
 ## Running Tests
 
-Tests use [testcontainers](https://testcontainers.com/) to automatically manage MySQL and MinIO containers. No manual `docker-compose up` required.
+Tests use [testcontainers](https://testcontainers.com/) to automatically manage MySQL, PostgreSQL, and MinIO containers. No manual `docker-compose up` required.
+
+Integration tests are **backend-parameterized** — tests using the `backend` fixture run automatically against both MySQL and PostgreSQL.
 
 ```bash
-pixi run test                                    # All tests
+pixi run test                                    # All tests (both backends)
 pixi run test-cov                                # With coverage
 pixi run -e test pytest tests/unit/              # Unit tests only
 pixi run -e test pytest tests/integration/test_blob.py -v  # Specific file
+pixi run -e test pytest -m mysql                 # MySQL tests only
+pixi run -e test pytest -m postgresql            # PostgreSQL tests only
 ```
 
 **macOS Docker Desktop users:** If tests fail to connect:
@@ -50,10 +54,26 @@ pixi run -e test pytest tests/integration/test_blob.py -v  # Specific file
 export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock
 ```
 
+### PostgreSQL Backend
+
+DataJoint supports PostgreSQL 15+ as an alternative to MySQL 8+. To install the PostgreSQL driver:
+
+```bash
+pip install -e ".[postgres]"    # Installs psycopg2-binary
+```
+
+Tests automatically spin up both MySQL and PostgreSQL containers via testcontainers. Backend-parameterized tests (those using the `backend` fixture in `tests/conftest.py`) run against both backends to ensure feature parity.
+
 ### External Containers (for debugging)
 
 ```bash
+# MySQL + MinIO
 docker compose up -d db minio
+DJ_USE_EXTERNAL_CONTAINERS=1 pixi run test
+docker compose down
+
+# MySQL + PostgreSQL + MinIO
+docker compose up -d db postgres minio
 DJ_USE_EXTERNAL_CONTAINERS=1 pixi run test
 docker compose down
 ```
@@ -91,12 +111,28 @@ Hooks include: **ruff** (lint/format), **codespell**, YAML/JSON/TOML validation.
 
 For `DJ_USE_EXTERNAL_CONTAINERS=1`:
 
+### MySQL
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DJ_HOST` | `localhost` | MySQL hostname |
 | `DJ_PORT` | `3306` | MySQL port |
 | `DJ_USER` | `root` | MySQL username |
 | `DJ_PASS` | `password` | MySQL password |
+
+### PostgreSQL
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DJ_PG_HOST` | `localhost` | PostgreSQL hostname |
+| `DJ_PG_PORT` | `5432` | PostgreSQL port |
+| `DJ_PG_USER` | `postgres` | PostgreSQL username |
+| `DJ_PG_PASS` | `password` | PostgreSQL password |
+
+### Object Storage
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `S3_ENDPOINT` | `localhost:9000` | MinIO endpoint |
 
 ---
