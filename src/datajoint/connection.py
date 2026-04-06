@@ -180,7 +180,8 @@ class Connection:
             port = int(port)
         elif port is None:
             port = self._config["database.port"]
-        self.conn_info = dict(host=host, port=port, user=user, passwd=password)
+        dbname = self._config.get("database.dbname")
+        self.conn_info = dict(host=host, port=port, user=user, passwd=password, dbname=dbname)
         if use_tls is not False:
             # use_tls can be: None (auto-detect), True (enable), False (disable), or dict (custom config)
             if isinstance(use_tls, dict):
@@ -224,7 +225,7 @@ class Connection:
             warnings.filterwarnings("ignore", ".*deprecated.*")
             try:
                 # Use adapter to create connection
-                self._conn = self.adapter.connect(
+                connect_kwargs = dict(
                     host=self.conn_info["host"],
                     port=self.conn_info["port"],
                     user=self.conn_info["user"],
@@ -232,6 +233,9 @@ class Connection:
                     charset=self._config["connection.charset"],
                     use_tls=self.conn_info.get("ssl"),
                 )
+                if self.conn_info.get("dbname"):
+                    connect_kwargs["dbname"] = self.conn_info["dbname"]
+                self._conn = self.adapter.connect(**connect_kwargs)
             except Exception as ssl_error:
                 # If SSL fails, retry without SSL (if it was auto-detected)
                 if self.conn_info.get("ssl_input") is None:
@@ -240,7 +244,7 @@ class Connection:
                         "To require SSL, set use_tls=True explicitly.",
                         ssl_error,
                     )
-                    self._conn = self.adapter.connect(
+                    connect_kwargs = dict(
                         host=self.conn_info["host"],
                         port=self.conn_info["port"],
                         user=self.conn_info["user"],
@@ -248,6 +252,9 @@ class Connection:
                         charset=self._config["connection.charset"],
                         use_tls=False,  # Explicitly disable SSL for fallback
                     )
+                    if self.conn_info.get("dbname"):
+                        connect_kwargs["dbname"] = self.conn_info["dbname"]
+                    self._conn = self.adapter.connect(**connect_kwargs)
                 else:
                     raise
         self._is_closed = False  # Mark as connected after successful connection

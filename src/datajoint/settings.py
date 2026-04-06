@@ -196,6 +196,12 @@ class DatabaseSettings(BaseSettings):
         description="Database backend: 'mysql' or 'postgresql'",
     )
     port: int | None = Field(default=None, validation_alias="DJ_PORT")
+    dbname: str | None = Field(
+        default=None,
+        validation_alias="DJ_DBNAME",
+        description="Database name for PostgreSQL connections. "
+        "Defaults to 'postgres' if not set.",
+    )
     reconnect: bool = True
     use_tls: bool | None = Field(default=None, validation_alias="DJ_USE_TLS")
     database_prefix: str = Field(
