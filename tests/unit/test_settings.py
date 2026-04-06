@@ -775,9 +775,7 @@ class TestDbnameConfiguration:
         from datajoint.settings import Config
 
         config_file = tmp_path / "test_config.json"
-        config_file.write_text(json.dumps({
-            "database": {"dbname": "custom_db", "host": "localhost"}
-        }))
+        config_file.write_text(json.dumps({"database": {"dbname": "custom_db", "host": "localhost"}}))
 
         monkeypatch.delenv("DJ_DBNAME", raising=False)
         monkeypatch.delenv("DJ_HOST", raising=False)

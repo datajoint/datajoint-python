@@ -249,9 +249,7 @@ class Connection:
                         "To require SSL, set use_tls=True explicitly.",
                         ssl_error,
                     )
-                    self._conn = self.adapter.connect(
-                        **self._build_connect_kwargs(use_tls=False)
-                    )
+                    self._conn = self.adapter.connect(**self._build_connect_kwargs(use_tls=False))
                 else:
                     raise
         self._is_closed = False  # Mark as connected after successful connection
