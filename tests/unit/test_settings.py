@@ -750,6 +750,59 @@ class TestStorePrefixes:
             dj.config.stores.update(original_stores)
 
 
+class TestDbnameConfiguration:
+    """Test database.dbname configuration."""
+
+    def test_dbname_default_is_none(self):
+        """Dbname defaults to None when not configured."""
+        from datajoint.settings import DatabaseSettings
+
+        s = DatabaseSettings()
+        assert s.dbname is None
+
+    def test_dbname_env_var(self, monkeypatch):
+        """DJ_DBNAME environment variable sets dbname."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_DBNAME", "my_database")
+        s = DatabaseSettings()
+        assert s.dbname == "my_database"
+
+    def test_dbname_from_config_file(self, tmp_path, monkeypatch):
+        """Load dbname from config file."""
+        import json
+
+        from datajoint.settings import Config
+
+        config_file = tmp_path / "test_config.json"
+        config_file.write_text(json.dumps({
+            "database": {"dbname": "custom_db", "host": "localhost"}
+        }))
+
+        monkeypatch.delenv("DJ_DBNAME", raising=False)
+        monkeypatch.delenv("DJ_HOST", raising=False)
+
+        cfg = Config()
+        cfg.load(config_file)
+        assert cfg.database.dbname == "custom_db"
+
+    def test_dbname_dict_access(self):
+        """Dict-style access reads and writes dbname."""
+        original = dj.config.database.dbname
+        try:
+            dj.config.database.dbname = "test_db"
+            assert dj.config["database.dbname"] == "test_db"
+        finally:
+            dj.config.database.dbname = original
+
+    def test_dbname_override_context_manager(self):
+        """Override context manager temporarily sets dbname."""
+        original = dj.config.database.dbname
+        with dj.config.override(database__dbname="override_db"):
+            assert dj.config.database.dbname == "override_db"
+        assert dj.config.database.dbname == original
+
+
 class TestBackendConfiguration:
     """Test database backend configuration and port auto-detection."""
 

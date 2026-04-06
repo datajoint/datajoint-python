@@ -168,6 +168,7 @@ class Connection:
         port: int | None = None,
         use_tls: bool | dict | None = None,
         *,
+        dbname: str | None = None,
         backend: str | None = None,
         config_override: "Config | None" = None,
     ) -> None:
@@ -180,7 +181,8 @@ class Connection:
             port = int(port)
         elif port is None:
             port = self._config["database.port"]
-        dbname = self._config.get("database.dbname")
+        if dbname is None:
+            dbname = self._config.get("database.dbname")
         self.conn_info = dict(host=host, port=port, user=user, passwd=password, dbname=dbname)
         if use_tls is not False:
             # use_tls can be: None (auto-detect), True (enable), False (disable), or dict (custom config)
@@ -219,23 +221,26 @@ class Connection:
         connected = "connected" if self.is_connected else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(connected=connected, **self.conn_info)
 
+    def _build_connect_kwargs(self, use_tls=None):
+        """Build kwargs dict for adapter.connect()."""
+        kwargs = dict(
+            host=self.conn_info["host"],
+            port=self.conn_info["port"],
+            user=self.conn_info["user"],
+            password=self.conn_info["passwd"],
+            charset=self._config["connection.charset"],
+            use_tls=use_tls if use_tls is not None else self.conn_info.get("ssl"),
+        )
+        if self.conn_info.get("dbname"):
+            kwargs["dbname"] = self.conn_info["dbname"]
+        return kwargs
+
     def connect(self) -> None:
         """Establish or re-establish connection to the database server."""
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", ".*deprecated.*")
             try:
-                # Use adapter to create connection
-                connect_kwargs = dict(
-                    host=self.conn_info["host"],
-                    port=self.conn_info["port"],
-                    user=self.conn_info["user"],
-                    password=self.conn_info["passwd"],
-                    charset=self._config["connection.charset"],
-                    use_tls=self.conn_info.get("ssl"),
-                )
-                if self.conn_info.get("dbname"):
-                    connect_kwargs["dbname"] = self.conn_info["dbname"]
-                self._conn = self.adapter.connect(**connect_kwargs)
+                self._conn = self.adapter.connect(**self._build_connect_kwargs())
             except Exception as ssl_error:
                 # If SSL fails, retry without SSL (if it was auto-detected)
                 if self.conn_info.get("ssl_input") is None:
@@ -244,17 +249,9 @@ class Connection:
                         "To require SSL, set use_tls=True explicitly.",
                         ssl_error,
                     )
-                    connect_kwargs = dict(
-                        host=self.conn_info["host"],
-                        port=self.conn_info["port"],
-                        user=self.conn_info["user"],
-                        password=self.conn_info["passwd"],
-                        charset=self._config["connection.charset"],
-                        use_tls=False,  # Explicitly disable SSL for fallback
+                    self._conn = self.adapter.connect(
+                        **self._build_connect_kwargs(use_tls=False)
                     )
-                    if self.conn_info.get("dbname"):
-                        connect_kwargs["dbname"] = self.conn_info["dbname"]
-                    self._conn = self.adapter.connect(**connect_kwargs)
                 else:
                     raise
         self._is_closed = False  # Mark as connected after successful connection
