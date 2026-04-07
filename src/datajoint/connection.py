@@ -234,9 +234,12 @@ class Connection:
 
     def __repr__(self):
         connected = "connected" if self.is_connected else "disconnected"
+        user = self.conn_info["user"]
+        host = self.conn_info["host"]
+        port = self.conn_info["port"]
         db = self.conn_info.get("database_name")
         db_str = f"/{db}" if db else ""
-        return f"DataJoint connection ({connected}) {self.conn_info['user']}@{self.conn_info['host']}:{self.conn_info['port']}{db_str}"
+        return f"DataJoint connection ({connected}) {user}@{host}:{port}{db_str}"
 
     def _build_connect_kwargs(self, use_tls=None):
         """Build kwargs dict for adapter.connect()."""
