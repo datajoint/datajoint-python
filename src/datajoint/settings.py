@@ -65,6 +65,7 @@ ENV_VAR_MAPPING = {
     "database.password": "DJ_PASS",
     "database.backend": "DJ_BACKEND",
     "database.port": "DJ_PORT",
+    "database.name": "DJ_DATABASE_NAME",
     "database.database_prefix": "DJ_DATABASE_PREFIX",
     "database.create_tables": "DJ_CREATE_TABLES",
     "loglevel": "DJ_LOG_LEVEL",
@@ -196,9 +197,9 @@ class DatabaseSettings(BaseSettings):
         description="Database backend: 'mysql' or 'postgresql'",
     )
     port: int | None = Field(default=None, validation_alias="DJ_PORT")
-    dbname: str | None = Field(
+    name: str | None = Field(
         default=None,
-        validation_alias="DJ_DBNAME",
+        validation_alias="DJ_DATABASE_NAME",
         description="Database name for PostgreSQL connections. Defaults to 'postgres' if not set.",
     )
     reconnect: bool = True
@@ -206,8 +207,7 @@ class DatabaseSettings(BaseSettings):
     database_prefix: str = Field(
         default="",
         validation_alias="DJ_DATABASE_PREFIX",
-        description="Prefix for database/schema names. "
-        "Not automatically applied; use dj.config.database.database_prefix when creating schemas.",
+        description="Deprecated. Use database.name instead.",
     )
     create_tables: bool = Field(
         default=True,
@@ -221,6 +221,20 @@ class DatabaseSettings(BaseSettings):
         """Set default port based on backend if not explicitly provided."""
         if self.port is None:
             self.port = 5432 if self.backend == "postgresql" else 3306
+        return self
+
+    @model_validator(mode="after")
+    def warn_database_prefix_deprecated(self) -> "DatabaseSettings":
+        """Emit deprecation warning when database_prefix is set."""
+        if self.database_prefix:
+            import warnings
+
+            warnings.warn(
+                "database_prefix is deprecated and will be removed in DataJoint 2.3. "
+                "Use database.name to select a PostgreSQL database instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         return self
 
 
