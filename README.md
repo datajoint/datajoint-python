@@ -85,4 +85,4 @@ conda install -c conda-forge datajoint
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+See [CONTRIBUTING.md](https://github.com/datajoint/datajoint-python/blob/master/CONTRIBUTING.md) for development setup and guidelines.
