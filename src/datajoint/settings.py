@@ -223,19 +223,6 @@ class DatabaseSettings(BaseSettings):
             self.port = 5432 if self.backend == "postgresql" else 3306
         return self
 
-    @model_validator(mode="after")
-    def warn_database_prefix_deprecated(self) -> "DatabaseSettings":
-        """Emit deprecation warning when database_prefix is set."""
-        if self.database_prefix:
-            import warnings
-
-            warnings.warn(
-                "database_prefix is deprecated and will be removed in DataJoint 2.3. "
-                "Use database.name to select a PostgreSQL database instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        return self
 
 
 class ConnectionSettings(BaseSettings):

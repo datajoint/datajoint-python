@@ -800,23 +800,8 @@ class TestDatabaseNameConfiguration:
             assert dj.config.database.name == "override_db"
         assert dj.config.database.name == original
 
-    def test_database_prefix_deprecation_warning(self, monkeypatch):
-        """Non-empty database_prefix emits DeprecationWarning."""
-        import warnings
-
-        from datajoint.settings import DatabaseSettings
-
-        monkeypatch.setenv("DJ_DATABASE_PREFIX", "test_")
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            DatabaseSettings()
-            deprecation_warnings = [
-                x for x in w if issubclass(x.category, DeprecationWarning) and "database_prefix" in str(x.message)
-            ]
-            assert len(deprecation_warnings) >= 1
-
     def test_database_prefix_empty_no_warning(self):
-        """Empty database_prefix does not emit DeprecationWarning."""
+        """Empty database_prefix does not emit DeprecationWarning at config load."""
         import warnings
 
         from datajoint.settings import DatabaseSettings
