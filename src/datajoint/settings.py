@@ -224,7 +224,6 @@ class DatabaseSettings(BaseSettings):
         return self
 
 
-
 class ConnectionSettings(BaseSettings):
     """Connection behavior settings."""
 
