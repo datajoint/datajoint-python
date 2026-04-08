@@ -168,6 +168,7 @@ class Connection:
         port: int | None = None,
         use_tls: bool | dict | None = None,
         *,
+        database_name: str | None = None,
         backend: str | None = None,
         config_override: "Config | None" = None,
     ) -> None:
@@ -180,7 +181,9 @@ class Connection:
             port = int(port)
         elif port is None:
             port = self._config["database.port"]
-        self.conn_info = dict(host=host, port=port, user=user, passwd=password)
+        if database_name is None:
+            database_name = self._config.get("database.name")
+        self.conn_info = dict(host=host, port=port, user=user, passwd=password, database_name=database_name)
         if use_tls is not False:
             # use_tls can be: None (auto-detect), True (enable), False (disable), or dict (custom config)
             if isinstance(use_tls, dict):
@@ -201,12 +204,27 @@ class Connection:
             backend = self._config["database.backend"]
         self.adapter = get_adapter(backend)
 
+        if database_name and self.adapter.backend == "mysql":
+            warnings.warn(
+                "database.name is set but the MySQL backend does not support database selection. "
+                "This setting only applies to PostgreSQL connections.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         self.connect()
         if self.is_connected:
-            logger.info("DataJoint {version} connected to {user}@{host}:{port}".format(version=__version__, **self.conn_info))
+            db = self.conn_info.get("database_name")
+            db_str = f"/{db}" if db else ""
+            logger.info(
+                f"DataJoint {__version__} connected to "
+                f"{self.conn_info['user']}@{self.conn_info['host']}:{self.conn_info['port']}{db_str}"
+            )
             self.connection_id = self.adapter.get_connection_id(self._conn)
         else:
-            raise errors.LostConnectionError("Connection failed {user}@{host}:{port}".format(**self.conn_info))
+            raise errors.LostConnectionError(
+                f"Connection failed {self.conn_info['user']}@{self.conn_info['host']}:{self.conn_info['port']}"
+            )
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
@@ -216,22 +234,33 @@ class Connection:
 
     def __repr__(self):
         connected = "connected" if self.is_connected else "disconnected"
-        return "DataJoint connection ({connected}) {user}@{host}:{port}".format(connected=connected, **self.conn_info)
+        user = self.conn_info["user"]
+        host = self.conn_info["host"]
+        port = self.conn_info["port"]
+        db = self.conn_info.get("database_name")
+        db_str = f"/{db}" if db else ""
+        return f"DataJoint connection ({connected}) {user}@{host}:{port}{db_str}"
+
+    def _build_connect_kwargs(self, use_tls=None):
+        """Build kwargs dict for adapter.connect()."""
+        kwargs = dict(
+            host=self.conn_info["host"],
+            port=self.conn_info["port"],
+            user=self.conn_info["user"],
+            password=self.conn_info["passwd"],
+            charset=self._config["connection.charset"],
+            use_tls=use_tls if use_tls is not None else self.conn_info.get("ssl"),
+        )
+        if self.conn_info.get("database_name"):
+            kwargs["dbname"] = self.conn_info["database_name"]
+        return kwargs
 
     def connect(self) -> None:
         """Establish or re-establish connection to the database server."""
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", ".*deprecated.*")
             try:
-                # Use adapter to create connection
-                self._conn = self.adapter.connect(
-                    host=self.conn_info["host"],
-                    port=self.conn_info["port"],
-                    user=self.conn_info["user"],
-                    password=self.conn_info["passwd"],
-                    charset=self._config["connection.charset"],
-                    use_tls=self.conn_info.get("ssl"),
-                )
+                self._conn = self.adapter.connect(**self._build_connect_kwargs())
             except Exception as ssl_error:
                 # If SSL fails, retry without SSL (if it was auto-detected)
                 if self.conn_info.get("ssl_input") is None:
@@ -240,14 +269,7 @@ class Connection:
                         "To require SSL, set use_tls=True explicitly.",
                         ssl_error,
                     )
-                    self._conn = self.adapter.connect(
-                        host=self.conn_info["host"],
-                        port=self.conn_info["port"],
-                        user=self.conn_info["user"],
-                        password=self.conn_info["passwd"],
-                        charset=self._config["connection.charset"],
-                        use_tls=False,  # Explicitly disable SSL for fallback
-                    )
+                    self._conn = self.adapter.connect(**self._build_connect_kwargs(use_tls=False))
                 else:
                     raise
         self._is_closed = False  # Mark as connected after successful connection

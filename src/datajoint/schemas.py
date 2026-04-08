@@ -172,6 +172,13 @@ class _Schema:
             self.connection = connection
         if self.connection is None:
             self.connection = _get_singleton_connection()
+        if self.connection._config.get("database.database_prefix"):
+            warnings.warn(
+                "database_prefix is deprecated and will be removed in DataJoint 2.3. "
+                "Use database.name to select a PostgreSQL database instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.database = schema_name
         if create_schema is not None:
             self.create_schema = create_schema

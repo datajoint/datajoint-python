@@ -750,6 +750,71 @@ class TestStorePrefixes:
             dj.config.stores.update(original_stores)
 
 
+class TestDatabaseNameConfiguration:
+    """Test database.name configuration."""
+
+    def test_database_name_default_is_none(self):
+        """Database name defaults to None when not configured."""
+        from datajoint.settings import DatabaseSettings
+
+        s = DatabaseSettings()
+        assert s.name is None
+
+    def test_database_name_env_var(self, monkeypatch):
+        """DJ_DATABASE_NAME environment variable sets database name."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_DATABASE_NAME", "my_database")
+        s = DatabaseSettings()
+        assert s.name == "my_database"
+
+    def test_database_name_from_config_file(self, tmp_path, monkeypatch):
+        """Load database name from config file."""
+        import json
+
+        from datajoint.settings import Config
+
+        config_file = tmp_path / "test_config.json"
+        config_file.write_text(json.dumps({"database": {"name": "custom_db", "host": "localhost"}}))
+
+        monkeypatch.delenv("DJ_DATABASE_NAME", raising=False)
+        monkeypatch.delenv("DJ_HOST", raising=False)
+
+        cfg = Config()
+        cfg.load(config_file)
+        assert cfg.database.name == "custom_db"
+
+    def test_database_name_dict_access(self):
+        """Dict-style access reads and writes database name."""
+        original = dj.config.database.name
+        try:
+            dj.config.database.name = "test_db"
+            assert dj.config["database.name"] == "test_db"
+        finally:
+            dj.config.database.name = original
+
+    def test_database_name_override_context_manager(self):
+        """Override context manager temporarily sets database name."""
+        original = dj.config.database.name
+        with dj.config.override(database__name="override_db"):
+            assert dj.config.database.name == "override_db"
+        assert dj.config.database.name == original
+
+    def test_database_prefix_empty_no_warning(self):
+        """Empty database_prefix does not emit DeprecationWarning at config load."""
+        import warnings
+
+        from datajoint.settings import DatabaseSettings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            DatabaseSettings()
+            deprecation_warnings = [
+                x for x in w if issubclass(x.category, DeprecationWarning) and "database_prefix" in str(x.message)
+            ]
+            assert len(deprecation_warnings) == 0
+
+
 class TestBackendConfiguration:
     """Test database backend configuration and port auto-detection."""
 
