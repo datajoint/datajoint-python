@@ -30,6 +30,8 @@ __all__ = [
     "list_schemas",
     "Table",
     "FreeTable",
+    "AutoPopulate",
+    "Job",
     "Manual",
     "Lookup",
     "Imported",
@@ -81,6 +83,8 @@ from .instance import Instance, _ConfigProxy, _get_singleton_connection, _global
 from .logging import logger
 from .objectref import ObjectRef
 from .schemas import _Schema, VirtualModule, list_schemas, virtual_schema
+from .autopopulate import AutoPopulate
+from .jobs import Job
 from .table import FreeTable as _FreeTable, Table, ValidationResult
 from .user_tables import Computed, Imported, Lookup, Manual, Part
 from .version import __version__
