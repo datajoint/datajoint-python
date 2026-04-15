@@ -41,15 +41,11 @@ class StorageAdapter(ABC):
         """Validate protocol-specific config fields."""
         missing = [k for k in self.required_keys if k not in spec]
         if missing:
-            raise errors.DataJointError(
-                f'{self.protocol} store is missing: {", ".join(missing)}'
-            )
+            raise errors.DataJointError(f'{self.protocol} store is missing: {", ".join(missing)}')
         all_allowed = set(self.allowed_keys) | _COMMON_STORE_KEYS
         invalid = [k for k in spec if k not in all_allowed]
         if invalid:
-            raise errors.DataJointError(
-                f'Invalid key(s) for {self.protocol}: {", ".join(invalid)}'
-            )
+            raise errors.DataJointError(f'Invalid key(s) for {self.protocol}: {", ".join(invalid)}')
 
     def full_path(self, spec: dict[str, Any], relpath: str) -> str:
         """Construct storage path from a relative path."""
@@ -61,17 +57,19 @@ class StorageAdapter(ABC):
         return f"{self.protocol}://{path}"
 
 
-_COMMON_STORE_KEYS = frozenset({
-    "protocol",
-    "location",
-    "subfolding",
-    "partition_pattern",
-    "token_length",
-    "hash_prefix",
-    "schema_prefix",
-    "filepath_prefix",
-    "stage",
-})
+_COMMON_STORE_KEYS = frozenset(
+    {
+        "protocol",
+        "location",
+        "subfolding",
+        "partition_pattern",
+        "token_length",
+        "hash_prefix",
+        "schema_prefix",
+        "filepath_prefix",
+        "stage",
+    }
+)
 
 _adapter_registry: dict[str, StorageAdapter] = {}
 _adapters_loaded: bool = False

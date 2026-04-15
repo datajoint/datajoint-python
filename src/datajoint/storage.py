@@ -372,9 +372,7 @@ class StorageBackend:
 
             adapter = get_storage_adapter(self.protocol)
             if adapter is None:
-                raise errors.DataJointError(
-                    f"Unsupported storage protocol: {self.protocol}"
-                )
+                raise errors.DataJointError(f"Unsupported storage protocol: {self.protocol}")
             return adapter.create_filesystem(self.spec)
 
     def _full_path(self, path: str | PurePosixPath) -> str:

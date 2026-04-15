@@ -2,7 +2,9 @@
 
 import pytest
 
+import datajoint as dj
 from datajoint.errors import DataJointError
+from datajoint.storage import StorageBackend
 from datajoint.storage_adapter import (
     StorageAdapter,
     _adapter_registry,
@@ -105,11 +107,9 @@ class TestStorageAdapterGetUrl:
         assert self.adapter.get_url({}, "data/file.dat") == "dummy://data/file.dat"
 
 
-from datajoint.storage import StorageBackend
-
-
 class _FakeFS:
     """Minimal fake fsspec filesystem for testing."""
+
     protocol = "dummy"
 
 
@@ -176,9 +176,6 @@ class TestStorageBackendPluginDelegation:
         backend._fs = None
         with pytest.raises(DataJointError, match="Unsupported storage protocol"):
             backend._create_filesystem()
-
-
-import datajoint as dj
 
 
 class TestGetStoreSpecPluginDelegation:
