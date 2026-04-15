@@ -103,3 +103,43 @@ class TestStorageAdapterGetUrl:
 
     def test_default_url_format(self):
         assert self.adapter.get_url({}, "data/file.dat") == "dummy://data/file.dat"
+
+
+import datajoint as dj
+
+
+class TestGetStoreSpecPluginDelegation:
+    """Tests for plugin protocol handling in Config.get_store_spec()."""
+
+    def setup_method(self):
+        import datajoint.storage_adapter as sa_mod
+
+        sa_mod._adapter_registry["dummy"] = _DummyAdapter()
+        self._original_stores = dj.config.stores.copy()
+
+    def teardown_method(self):
+        import datajoint.storage_adapter as sa_mod
+
+        sa_mod._adapter_registry.pop("dummy", None)
+        dj.config.stores = self._original_stores
+
+    def test_plugin_protocol_accepted(self):
+        """Plugin protocol passes validation via adapter."""
+        dj.config.stores["test_store"] = {
+            "protocol": "dummy",
+            "endpoint": "https://example.com",
+            "location": "",
+            "hash_prefix": "_hash",
+            "schema_prefix": "_schema",
+        }
+        spec = dj.config.get_store_spec("test_store")
+        assert spec["protocol"] == "dummy"
+
+    def test_unknown_protocol_error_message(self):
+        """Unknown protocol gives clear error mentioning plugin installation."""
+        dj.config.stores["bad_store"] = {
+            "protocol": "nonexistent_xyz",
+            "location": "",
+        }
+        with pytest.raises(DataJointError, match="Install a plugin"):
+            dj.config.get_store_spec("bad_store")
