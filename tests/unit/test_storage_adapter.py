@@ -105,6 +105,79 @@ class TestStorageAdapterGetUrl:
         assert self.adapter.get_url({}, "data/file.dat") == "dummy://data/file.dat"
 
 
+from datajoint.storage import StorageBackend
+
+
+class _FakeFS:
+    """Minimal fake fsspec filesystem for testing."""
+    protocol = "dummy"
+
+
+class _FSAdapter(StorageAdapter):
+    """Adapter that returns a fake filesystem."""
+
+    protocol = "testfs"
+    required_keys = ("protocol",)
+    allowed_keys = ("protocol",)
+
+    def create_filesystem(self, spec):
+        return _FakeFS()
+
+    def get_url(self, spec, path):
+        return f"https://test.example.com/{path}"
+
+
+class TestStorageBackendPluginDelegation:
+    """Tests for plugin delegation in StorageBackend methods."""
+
+    def setup_method(self):
+        import datajoint.storage_adapter as sa_mod
+
+        sa_mod._adapter_registry["testfs"] = _FSAdapter()
+
+    def teardown_method(self):
+        import datajoint.storage_adapter as sa_mod
+
+        sa_mod._adapter_registry.pop("testfs", None)
+
+    def test_create_filesystem_delegates_to_adapter(self):
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "testfs"}
+        backend.protocol = "testfs"
+        backend._fs = None
+        fs = backend._create_filesystem()
+        assert isinstance(fs, _FakeFS)
+
+    def test_full_path_delegates_to_adapter(self):
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "testfs", "location": "data"}
+        backend.protocol = "testfs"
+        result = backend._full_path("schema/ab/cd/hash123")
+        assert result == "data/schema/ab/cd/hash123"
+
+    def test_full_path_empty_location(self):
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "testfs", "location": ""}
+        backend.protocol = "testfs"
+        result = backend._full_path("schema/ab/cd/hash123")
+        assert result == "schema/ab/cd/hash123"
+
+    def test_get_url_delegates_to_adapter(self):
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "testfs", "location": ""}
+        backend.protocol = "testfs"
+        result = backend.get_url("schema/file.dat")
+        assert result == "https://test.example.com/schema/file.dat"
+
+    def test_unsupported_protocol_error(self):
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "totally_unknown_xyz"}
+        backend.protocol = "totally_unknown_xyz"
+        backend._fs = None
+        with pytest.raises(DataJointError, match="Unsupported storage protocol"):
+            backend._create_filesystem()
+
+
 import datajoint as dj
 
 
