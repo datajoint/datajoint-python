@@ -434,10 +434,31 @@ class Config(BaseSettings):
         protocol = spec.get("protocol", "").lower()
         supported_protocols = ("file", "s3", "gcs", "azure")
         if protocol not in supported_protocols:
-            raise DataJointError(
-                f'Missing or invalid protocol in config.stores["{store}"]. '
-                f"Supported protocols: {', '.join(supported_protocols)}"
+            from .storage_adapter import get_storage_adapter
+
+            adapter = get_storage_adapter(protocol)
+            if adapter is None:
+                raise DataJointError(
+                    f'Unknown protocol "{protocol}" in config.stores["{store}"]. '
+                    f"Built-in: {', '.join(supported_protocols)}. "
+                    f"Install a plugin package for additional protocols."
+                )
+            # Apply common defaults for plugin protocols
+            spec.setdefault("subfolding", None)
+            spec.setdefault("partition_pattern", None)
+            spec.setdefault("token_length", 8)
+            spec.setdefault("hash_prefix", "_hash")
+            spec.setdefault("schema_prefix", "_schema")
+            spec.setdefault("filepath_prefix", None)
+            spec.setdefault("location", "")
+            adapter.validate_spec(spec)
+            self._validate_prefix_separation(
+                store_name=store,
+                hash_prefix=spec.get("hash_prefix"),
+                schema_prefix=spec.get("schema_prefix"),
+                filepath_prefix=spec.get("filepath_prefix"),
             )
+            return spec
 
         # Set protocol-specific defaults
         if protocol == "s3":
