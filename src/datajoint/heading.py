@@ -551,10 +551,22 @@ class Heading:
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
-        for item in conn.query(
-            adapter.get_indexes_sql(database, table_name),
-            as_dict=True,
-        ):
+        try:
+            index_rows = conn.query(
+                adapter.get_indexes_sql(database, table_name),
+                as_dict=True,
+            )
+        except Exception:
+            # Fall back for MySQL < 8.0.13 / MariaDB (no EXPRESSION column)
+            index_rows = (
+                conn.query(
+                    adapter.get_indexes_sql_fallback(database, table_name),
+                    as_dict=True,
+                )
+                if hasattr(adapter, "get_indexes_sql_fallback")
+                else []
+            )
+        for item in index_rows:
             # Note: adapter.get_indexes_sql() already filters out PRIMARY key
             # MySQL/PostgreSQL adapters return: index_name, column_name, non_unique
             index_name = item.get("index_name") or item.get("Key_name")
