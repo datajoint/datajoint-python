@@ -108,6 +108,18 @@ def conn(
     return conn.connection
 
 
+def _warn_if_mariadb(version_str: str) -> None:
+    """Emit a UserWarning if `version_str` looks like MariaDB. No-op for MySQL."""
+    if "MariaDB" in version_str:
+        warnings.warn(
+            f"MariaDB is not officially supported by DataJoint 2.x "
+            f"(server reports {version_str}). Compatibility is best-effort "
+            f"and may break in future releases.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+
 class EmulatedCursor:
     """acts like a cursor"""
 
@@ -221,6 +233,8 @@ class Connection:
                 f"{self.conn_info['user']}@{self.conn_info['host']}:{self.conn_info['port']}{db_str}"
             )
             self.connection_id = self.adapter.get_connection_id(self._conn)
+            if self.adapter.backend == "mysql":
+                _warn_if_mariadb(self.query("SELECT @@version").fetchone()[0])
         else:
             raise errors.LostConnectionError(
                 f"Connection failed {self.conn_info['user']}@{self.conn_info['host']}:{self.conn_info['port']}"
