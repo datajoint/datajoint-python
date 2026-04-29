@@ -551,30 +551,13 @@ class Heading:
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
-        try:
-            index_rows = conn.query(
-                adapter.get_indexes_sql(database, table_name),
-                as_dict=True,
-            )
-        except Exception:
-            # Fall back for MySQL < 8.0.13 / MariaDB (no EXPRESSION column)
-            index_rows = (
-                conn.query(
-                    adapter.get_indexes_sql_fallback(database, table_name),
-                    as_dict=True,
-                )
-                if hasattr(adapter, "get_indexes_sql_fallback")
-                else []
-            )
-        for item in index_rows:
-            # Note: adapter.get_indexes_sql() already filters out PRIMARY key
-            # MySQL/PostgreSQL adapters return: index_name, column_name, non_unique
+        for item in conn.query(
+            adapter.get_indexes_sql(database, table_name),
+            as_dict=True,
+        ):
             index_name = item.get("index_name") or item.get("Key_name")
             seq = item.get("seq_in_index") or item.get("Seq_in_index") or len(keys[index_name]) + 1
             column = item.get("column_name") or item.get("Column_name")
-            # MySQL EXPRESSION column stores escaped single quotes - unescape them
-            if column:
-                column = column.replace("\\'", "'")
             non_unique = item.get("non_unique") or item.get("Non_unique")
             nullable = item.get("nullable") or (item.get("Null", "NO").lower() == "yes")
 

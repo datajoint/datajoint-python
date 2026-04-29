@@ -423,7 +423,7 @@ class MySQLAdapter(DatabaseAdapter):
             fk_cols = ", ".join(self.quote_identifier(col) for col in fk["columns"])
             ref_cols = ", ".join(self.quote_identifier(col) for col in fk["ref_columns"])
             lines.append(
-                f"FOREIGN KEY ({fk_cols}) REFERENCES {fk['ref_table']} ({ref_cols}) " f"ON UPDATE CASCADE ON DELETE RESTRICT"
+                f"FOREIGN KEY ({fk_cols}) REFERENCES {fk['ref_table']} ({ref_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
             )
 
         # Indexes
@@ -735,26 +735,7 @@ class MySQLAdapter(DatabaseAdapter):
         return result
 
     def get_indexes_sql(self, schema_name: str, table_name: str) -> str:
-        """Query to get index definitions.
-
-        Note: For MySQL 8.0.13+, EXPRESSION column contains the expression for
-        functional indexes. COLUMN_NAME is NULL for such indexes.
-        On MySQL < 8.0.13 and MariaDB, the EXPRESSION column does not exist;
-        heading.py falls back to get_indexes_sql_fallback() in that case.
-        """
-        return (
-            f"SELECT INDEX_NAME as index_name, "
-            f"COALESCE(COLUMN_NAME, CONCAT('(', EXPRESSION, ')')) as column_name, "
-            f"NON_UNIQUE as non_unique, SEQ_IN_INDEX as seq_in_index "
-            f"FROM information_schema.statistics "
-            f"WHERE table_schema = {self.quote_string(schema_name)} "
-            f"AND table_name = {self.quote_string(table_name)} "
-            f"AND index_name != 'PRIMARY' "
-            f"ORDER BY index_name, seq_in_index"
-        )
-
-    def get_indexes_sql_fallback(self, schema_name: str, table_name: str) -> str:
-        """Fallback index query for MySQL < 8.0.13 and MariaDB (no EXPRESSION column)."""
+        """Query to get index definitions. Functional indexes (NULL COLUMN_NAME) are skipped downstream."""
         return (
             f"SELECT INDEX_NAME as index_name, "
             f"COLUMN_NAME as column_name, "
