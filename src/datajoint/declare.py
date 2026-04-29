@@ -147,7 +147,7 @@ def build_attribute_parser() -> pp.ParserElement:
     """
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[_a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
+    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
         ^ pp.QuotedString("<", end_quote_char=">", unquote_results=False)
@@ -855,6 +855,14 @@ def compile_attribute(
     DataJointError
         If syntax is invalid, primary key is nullable, or blob has invalid default.
     """
+    if line.lstrip().startswith("_"):
+        raise DataJointError(
+            f'Attribute name in line "{line}" starts with an underscore. '
+            "Names with leading underscore are reserved for platform-managed "
+            "columns (e.g. _job_start_time, _singleton). Use a regular "
+            "attribute name; if you need to control visibility at the call "
+            "site, use proj()."
+        )
     try:
         match = attribute_parser.parse_string(line + "#", parse_all=True)
     except pp.ParseException as err:

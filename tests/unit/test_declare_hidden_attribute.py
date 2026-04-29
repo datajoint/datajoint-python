@@ -1,13 +1,19 @@
-"""Unit tests for hidden attribute names (leading underscore) in table declarations.
+"""Unit tests for the leading-underscore guard in attribute declarations.
 
-Regression coverage for issue #1433: the declaration parser previously rejected
-attribute names starting with ``_``, even though hidden-attribute semantics
-(``is_hidden = name.startswith("_")``) were already implemented in ``Heading``.
+Regression coverage for issue #1433: declarations like ``_hidden: bool``
+previously failed with a cryptic ``pyparsing.ParseException``. The framework
+intentionally does not support user-defined hidden attributes — those names
+are reserved for platform-managed columns (e.g. ``_job_start_time``,
+``_singleton``) which DataJoint injects programmatically after parsing.
+
+This test ensures the user gets a clear ``DataJointError`` pointing to the
+right alternative, not a parser-internals error.
 """
 
 import pytest
 
-from datajoint.declare import attribute_parser
+from datajoint.declare import attribute_parser, compile_attribute
+from datajoint.errors import DataJointError
 
 
 @pytest.mark.parametrize(
@@ -15,13 +21,21 @@ from datajoint.declare import attribute_parser
     [
         "_hidden: bool",
         "_params_hash: varchar(32)",
-        "_job_start_time=null: datetime(3)",
-        "_a: int",
+        "  _leading_whitespace: int32",
     ],
 )
-def test_parser_accepts_leading_underscore(line):
-    match = attribute_parser.parse_string(line + "#", parse_all=True)
-    assert match["name"].startswith("_")
+def test_compile_attribute_rejects_leading_underscore(line):
+    """The leading-underscore guard fires before the parser, so adapter is unused."""
+    with pytest.raises(DataJointError, match="reserved for platform-managed"):
+        compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=None)
+
+
+def test_parser_still_rejects_leading_underscore():
+    """Parser regex itself remains strict; the helpful error fires before the parser."""
+    import pyparsing as pp
+
+    with pytest.raises(pp.ParseException):
+        attribute_parser.parse_string("_hidden: bool#", parse_all=True)
 
 
 def test_parser_still_accepts_plain_names():
@@ -34,11 +48,4 @@ def test_parser_rejects_digit_start():
     import pyparsing as pp
 
     with pytest.raises(pp.ParseException):
-        attribute_parser.parse_string("1bad: int#", parse_all=True)
-
-
-def test_parser_extracts_hidden_name_for_is_hidden_dispatch():
-    """The parsed name is what Heading uses to set is_hidden via name.startswith('_')."""
-    match = attribute_parser.parse_string("_secret: int#", parse_all=True)
-    name = match["name"]
-    assert name.startswith("_")
+        attribute_parser.parse_string("1bad: int32#", parse_all=True)
