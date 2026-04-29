@@ -508,8 +508,16 @@ class Heading:
                 if category == "UUID":
                     attr["uuid"] = True
                 elif category in CORE_TYPE_NAMES:
-                    # Core type alias - already resolved in DB
-                    pass
+                    # Core type alias - already resolved in DB.
+                    # MariaDB-specific recovery: MariaDB stores `json` columns
+                    # as `longtext` and reports them back that way through
+                    # information_schema, so the DB-type-based detection above
+                    # leaves attr["json"] False. The :json: comment marker
+                    # survives this aliasing, so we recover the json flag here
+                    # from the original declared type. No-op on MySQL/PostgreSQL
+                    # (attr["json"] is already True from the regex match above).
+                    if category == "JSON":
+                        attr["json"] = True
 
             # Check primary key constraints
             if attr["in_key"] and (attr["is_blob"] or attr["json"]):
