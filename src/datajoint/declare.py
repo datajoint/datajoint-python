@@ -855,6 +855,14 @@ def compile_attribute(
     DataJointError
         If syntax is invalid, primary key is nullable, or blob has invalid default.
     """
+    if line.lstrip().startswith("_"):
+        raise DataJointError(
+            f'Attribute name in line "{line}" starts with an underscore. '
+            "Names with leading underscore are reserved for platform-managed "
+            "columns (e.g. _job_start_time, _singleton). Use a regular "
+            "attribute name; if you need to control visibility at the call "
+            "site, use proj()."
+        )
     try:
         match = attribute_parser.parse_string(line + "#", parse_all=True)
     except pp.ParseException as err:
