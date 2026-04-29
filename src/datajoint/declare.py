@@ -147,7 +147,7 @@ def build_attribute_parser() -> pp.ParserElement:
     """
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
+    attribute_name = pp.Word(pp.srange("[_a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
         ^ pp.QuotedString("<", end_quote_char=">", unquote_results=False)
