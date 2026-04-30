@@ -330,6 +330,15 @@ class StorageBackend:
             self._fs = self._create_filesystem()
         return self._fs
 
+    def _require_adapter(self):
+        """Look up a registered storage adapter, raising if none is registered."""
+        from .storage_adapter import get_storage_adapter
+
+        adapter = get_storage_adapter(self.protocol)
+        if adapter is None:
+            raise errors.DataJointError(f"Unsupported storage protocol: {self.protocol}")
+        return adapter
+
     def _create_filesystem(self) -> fsspec.AbstractFileSystem:
         """Create fsspec filesystem based on protocol."""
         if self.protocol == "file":
@@ -368,7 +377,7 @@ class StorageBackend:
             )
 
         else:
-            raise errors.DataJointError(f"Unsupported storage protocol: {self.protocol}")
+            return self._require_adapter().create_filesystem(self.spec)
 
     def _full_path(self, path: str | PurePosixPath) -> str:
         """
@@ -397,12 +406,13 @@ class StorageBackend:
             if location:
                 return f"{bucket}/{location}/{path}"
             return f"{bucket}/{path}"
-        else:
-            # Local filesystem - prepend location if specified
+        elif self.protocol == "file":
             location = self.spec.get("location", "")
             if location:
                 return str(Path(location) / path)
             return path
+        else:
+            return self._require_adapter().full_path(self.spec, path)
 
     def get_url(self, path: str | PurePosixPath) -> str:
         """
@@ -448,8 +458,7 @@ class StorageBackend:
         elif self.protocol == "azure":
             return f"az://{full_path}"
         else:
-            # Fallback: use protocol prefix
-            return f"{self.protocol}://{full_path}"
+            return self._require_adapter().get_url(self.spec, full_path)
 
     def put_file(self, local_path: str | Path, remote_path: str | PurePosixPath, metadata: dict | None = None) -> None:
         """
