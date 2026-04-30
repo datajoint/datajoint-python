@@ -420,15 +420,7 @@ class Config(BaseSettings):
 
         spec = dict(self.stores[store])
 
-        # Set defaults for optional fields (common to all protocols)
-        spec.setdefault("subfolding", None)  # No subfolding by default
-        spec.setdefault("partition_pattern", None)  # No partitioning by default
-        spec.setdefault("token_length", 8)  # Default token length
-
-        # Set defaults for storage section prefixes
-        spec.setdefault("hash_prefix", "_hash")  # Hash-addressed storage section
-        spec.setdefault("schema_prefix", "_schema")  # Schema-addressed storage section
-        spec.setdefault("filepath_prefix", None)  # Filepath storage (unrestricted by default)
+        self._apply_common_store_defaults(spec)
 
         # Validate protocol
         protocol = spec.get("protocol", "").lower()
@@ -443,14 +435,6 @@ class Config(BaseSettings):
                     f"Built-in: {', '.join(supported_protocols)}. "
                     f"Install a plugin package for additional protocols."
                 )
-            # Apply common defaults for plugin protocols
-            spec.setdefault("subfolding", None)
-            spec.setdefault("partition_pattern", None)
-            spec.setdefault("token_length", 8)
-            spec.setdefault("hash_prefix", "_hash")
-            spec.setdefault("schema_prefix", "_schema")
-            spec.setdefault("filepath_prefix", None)
-            spec.setdefault("location", "")
             adapter.validate_spec(spec)
             self._validate_prefix_separation(
                 store_name=store,
@@ -602,6 +586,16 @@ class Config(BaseSettings):
                         f'{name2}="{prefixes[j][1]}" overlap. '
                         f"Storage section prefixes must be mutually exclusive."
                     )
+
+    @staticmethod
+    def _apply_common_store_defaults(spec: dict[str, Any]) -> None:
+        """Apply defaults shared by every store protocol (built-in and plugin)."""
+        spec.setdefault("subfolding", None)
+        spec.setdefault("partition_pattern", None)
+        spec.setdefault("token_length", 8)
+        spec.setdefault("hash_prefix", "_hash")
+        spec.setdefault("schema_prefix", "_schema")
+        spec.setdefault("filepath_prefix", None)
 
     def load(self, filename: str | Path) -> None:
         """

@@ -177,6 +177,22 @@ class TestStorageBackendPluginDelegation:
         with pytest.raises(DataJointError, match="Unsupported storage protocol"):
             backend._create_filesystem()
 
+    def test_unsupported_protocol_full_path_raises(self):
+        """`_full_path` raises uniformly when no adapter is registered."""
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "totally_unknown_xyz"}
+        backend.protocol = "totally_unknown_xyz"
+        with pytest.raises(DataJointError, match="Unsupported storage protocol"):
+            backend._full_path("schema/file.dat")
+
+    def test_unsupported_protocol_get_url_raises(self):
+        """`get_url` raises uniformly when no adapter is registered."""
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "totally_unknown_xyz"}
+        backend.protocol = "totally_unknown_xyz"
+        with pytest.raises(DataJointError, match="Unsupported storage protocol"):
+            backend.get_url("schema/file.dat")
+
 
 class TestGetStoreSpecPluginDelegation:
     """Tests for plugin protocol handling in Config.get_store_spec()."""
@@ -213,3 +229,85 @@ class TestGetStoreSpecPluginDelegation:
         }
         with pytest.raises(DataJointError, match="Install a plugin"):
             dj.config.get_store_spec("bad_store")
+
+
+class TestEntryPointDiscovery:
+    """Drive `_discover_adapters()` directly via a fake `entry_points` callable."""
+
+    def setup_method(self):
+        import datajoint.storage_adapter as sa_mod
+
+        self._saved_registry = dict(sa_mod._adapter_registry)
+        self._saved_loaded = sa_mod._adapters_loaded
+        sa_mod._adapter_registry.clear()
+        sa_mod._adapters_loaded = False
+
+    def teardown_method(self):
+        import datajoint.storage_adapter as sa_mod
+
+        sa_mod._adapter_registry.clear()
+        sa_mod._adapter_registry.update(self._saved_registry)
+        sa_mod._adapters_loaded = self._saved_loaded
+
+    def test_discovery_loads_adapter_from_entry_point(self, monkeypatch):
+        """A plugin advertised via `datajoint.storage` entry points is discovered and registered."""
+        import datajoint.storage_adapter as sa_mod
+
+        class _DiscoveredAdapter(StorageAdapter):
+            protocol = "discovered"
+            required_keys = ("protocol",)
+            allowed_keys = ("protocol",)
+
+            def create_filesystem(self, spec):
+                return None
+
+        class _FakeEP:
+            name = "discovered"
+
+            def load(self):
+                return _DiscoveredAdapter
+
+        def _fake_entry_points(*, group=None):
+            return [_FakeEP()] if group == "datajoint.storage" else []
+
+        monkeypatch.setattr("importlib.metadata.entry_points", _fake_entry_points)
+
+        adapter = sa_mod.get_storage_adapter("discovered")
+        assert adapter is not None
+        assert adapter.protocol == "discovered"
+        assert sa_mod._adapters_loaded is True
+
+    def test_discovery_skips_failing_entry_point(self, monkeypatch, caplog):
+        """An entry point whose `.load()` raises is logged-and-skipped, not propagated."""
+        import datajoint.storage_adapter as sa_mod
+
+        class _GoodAdapter(StorageAdapter):
+            protocol = "good"
+            required_keys = ("protocol",)
+            allowed_keys = ("protocol",)
+
+            def create_filesystem(self, spec):
+                return None
+
+        class _BadEP:
+            name = "bad"
+
+            def load(self):
+                raise RuntimeError("boom")
+
+        class _GoodEP:
+            name = "good"
+
+            def load(self):
+                return _GoodAdapter
+
+        def _fake_entry_points(*, group=None):
+            return [_BadEP(), _GoodEP()] if group == "datajoint.storage" else []
+
+        monkeypatch.setattr("importlib.metadata.entry_points", _fake_entry_points)
+
+        with caplog.at_level("WARNING"):
+            adapter = sa_mod.get_storage_adapter("good")
+        assert adapter is not None
+        assert sa_mod.get_storage_adapter("bad") is None
+        assert any("bad" in rec.message and "boom" in rec.message for rec in caplog.records)
