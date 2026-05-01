@@ -275,6 +275,9 @@ _lazy_modules = {
     "diagram": (".diagram", None),  # Return the module itself
     # cli imports click
     "cli": (".cli", "cli"),
+    # gc — exposed lazily so `dj.gc.scan(...)` works as documented in gc.py
+    # and in the user docs (how-to/garbage-collection.md).
+    "gc": (".gc", None),  # Return the module itself
 }
 
 

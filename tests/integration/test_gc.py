@@ -4,10 +4,41 @@ Tests for garbage collection (gc.py).
 
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
+import datajoint as dj
 from datajoint import gc
 from datajoint.errors import DataJointError
+
+
+# Tables used by TestScanWithLiveData. Defined at module scope so dj.Schema's
+# context resolution can find them by class name; bound to a schema inside
+# each fixture (see schema(...) calls below).
+
+
+class GcBlobTest(dj.Manual):
+    definition = """
+    rid : int
+    ---
+    payload : <blob@local>
+    """
+
+
+class GcNpyTest(dj.Manual):
+    definition = """
+    rid : int
+    ---
+    waveform : <npy@local>
+    """
+
+
+class GcObjectTest(dj.Manual):
+    definition = """
+    rid : int
+    ---
+    results : <object@local>
+    """
 
 
 class TestUsesHashStorage:
@@ -347,3 +378,90 @@ class TestFormatStats:
         assert "Schema paths: 1" in result
         assert "2.00 MB" in result
         assert "Errors:      2" in result
+
+
+class TestScanWithLiveData:
+    """End-to-end tests for gc.scan() against real schemas with external storage.
+
+    Exercises the full production path:
+        scan_*_references → table.proj(attr).cursor() → raw JSON metadata.
+
+    These are the regression tests that would have caught issue #1442
+    (silent type mismatch when scan helpers iterated decoded codec outputs
+    instead of raw stored metadata).
+    """
+
+    @pytest.fixture
+    def schema_blob(self, connection_test, prefix, mock_stores):
+        schema_name = f"{prefix}_test_gc_e2e_blob"
+        schema = dj.Schema(
+            schema_name,
+            context={"GcBlobTest": GcBlobTest},
+            connection=connection_test,
+        )
+        schema(GcBlobTest)
+        yield schema
+        schema.drop()
+
+    @pytest.fixture
+    def schema_npy(self, connection_test, prefix, mock_stores):
+        schema_name = f"{prefix}_test_gc_e2e_npy"
+        schema = dj.Schema(
+            schema_name,
+            context={"GcNpyTest": GcNpyTest},
+            connection=connection_test,
+        )
+        schema(GcNpyTest)
+        yield schema
+        schema.drop()
+
+    @pytest.fixture
+    def schema_object(self, connection_test, prefix, mock_stores):
+        schema_name = f"{prefix}_test_gc_e2e_object"
+        schema = dj.Schema(
+            schema_name,
+            context={"GcObjectTest": GcObjectTest},
+            connection=connection_test,
+        )
+        schema(GcObjectTest)
+        yield schema
+        schema.drop()
+
+    def test_scan_finds_active_blob_reference(self, schema_blob):
+        """scan() must report hash_referenced >= 1 for a populated <blob@> column.
+
+        Decoded value type returned by BlobCodec.decode is numpy.ndarray, which
+        does not satisfy `_extract_hash_refs`'s dict/JSON-string check — this
+        test fails before the cursor-based fix in scan_hash_references.
+        """
+        GcBlobTest.insert1({"rid": 1, "payload": np.arange(64, dtype="uint8")})
+
+        stats = gc.scan(schema_blob, store_name="local")
+
+        assert stats["hash_referenced"] >= 1, f"scan should find the active <blob@> reference; got {stats}"
+
+    def test_scan_finds_active_npy_reference(self, schema_npy):
+        """scan() must report schema_paths_referenced >= 1 for a populated <npy@> column.
+
+        Decoded value type returned by NpyCodec.decode is NpyRef (lazy handle),
+        which does not satisfy `_extract_schema_refs`'s dict check — this test
+        fails before the cursor-based fix in scan_schema_references.
+        """
+        GcNpyTest.insert1({"rid": 1, "waveform": np.arange(64, dtype="float32")})
+
+        stats = gc.scan(schema_npy, store_name="local")
+
+        assert stats["schema_paths_referenced"] >= 1, f"scan should find the active <npy@> reference; got {stats}"
+
+    def test_scan_finds_active_object_reference(self, schema_object):
+        """scan() must report schema_paths_referenced >= 1 for a populated <object@> column.
+
+        Decoded value type returned by ObjectCodec.decode is ObjectRef (lazy
+        handle), which does not satisfy `_extract_schema_refs`'s dict check —
+        this test fails before the cursor-based fix in scan_schema_references.
+        """
+        GcObjectTest.insert1({"rid": 1, "results": b"hello-gc-test"})
+
+        stats = gc.scan(schema_object, store_name="local")
+
+        assert stats["schema_paths_referenced"] >= 1, f"scan should find the active <object@> reference; got {stats}"

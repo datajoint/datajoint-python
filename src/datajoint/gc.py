@@ -229,11 +229,14 @@ def scan_hash_references(
                     if verbose:
                         logger.info(f"  Scanning {table_name}.{attr_name}")
 
-                    # Fetch all values for this attribute
+                    # Read raw JSON metadata via cursor — bypasses decode_attribute
+                    # so we get the stored dict (PostgreSQL/JSONB) or JSON string
+                    # (MySQL), not the decoded codec output. _extract_hash_refs
+                    # handles both shapes.
                     try:
-                        values = table.to_arrays(attr_name)
-                        for value in values:
-                            for path, ref_store in _extract_hash_refs(value):
+                        cursor = table.proj(attr_name).cursor(as_dict=True)
+                        for row in cursor:
+                            for path, ref_store in _extract_hash_refs(row[attr_name]):
                                 # Filter by store if specified
                                 if store_name is None or ref_store == store_name:
                                     referenced.add(path)
@@ -291,11 +294,14 @@ def scan_schema_references(
                     if verbose:
                         logger.info(f"  Scanning {table_name}.{attr_name}")
 
-                    # Fetch all values for this attribute
+                    # Read raw JSON metadata via cursor — bypasses decode_attribute
+                    # so we get the stored dict (PostgreSQL/JSONB) or JSON string
+                    # (MySQL), not the decoded codec output. _extract_schema_refs
+                    # handles both shapes.
                     try:
-                        values = table.to_arrays(attr_name)
-                        for value in values:
-                            for path, ref_store in _extract_schema_refs(value):
+                        cursor = table.proj(attr_name).cursor(as_dict=True)
+                        for row in cursor:
+                            for path, ref_store in _extract_schema_refs(row[attr_name]):
                                 # Filter by store if specified
                                 if store_name is None or ref_store == store_name:
                                     referenced.add(path)
