@@ -8,6 +8,10 @@
     </marker>
   </defs>
 
+  <!-- Opaque white background — keeps the whole illustration legible
+       on any page theme (e.g. GitHub dark-mode README rendering). -->
+  <rect width="100%" height="100%" fill="white"/>
+
   <!-- ============ LEFT PANEL: Pipeline diagram ============ -->
 
   <!-- Edges -->
@@ -90,7 +94,7 @@
   </g>
 
   <!-- ============ Annotations ============ -->
-  <g font-style="italic" fill="#5a5a5a" font-size="17">
+  <g font-style="italic" fill="#5a5a5a" font-size="19">
     <text x="1260" y="112">database link</text>
     <line x1="1255" y1="107" x2="690" y2="107"
           stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
