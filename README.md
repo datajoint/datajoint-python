@@ -69,7 +69,7 @@ conda install -c conda-forge datajoint
 
 ## Example Pipeline
 
-![pipeline](https://raw.githubusercontent.com/datajoint/datajoint-python/master/images/pipeline.png)
+![pipeline](images/pipeline.png)
 
 **Cite DataJoint:** [Yatsenko et al., 2026](https://arxiv.org/abs/2602.16585) — RRID: [SCR_014543](https://scicrunch.org/resolver/SCR_014543)
 
