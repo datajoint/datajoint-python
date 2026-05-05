@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 540"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+     font-size="22">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- ============ LEFT PANEL: Pipeline diagram ============ -->
+
+  <!-- Edges -->
+  <g stroke="#666" stroke-width="1.6" fill="none">
+    <line x1="200" y1="90"  x2="200" y2="118" marker-end="url(#arrow)"/>
+    <line x1="200" y1="160" x2="200" y2="188" marker-end="url(#arrow)"/>
+    <line x1="200" y1="230" x2="200" y2="259" marker-end="url(#arrow)"/>
+    <line x1="215" y1="316" x2="232" y2="352" marker-end="url(#arrow)"/>
+    <line x1="320" y1="310" x2="294" y2="358" marker-end="url(#arrow)"/>
+    <line x1="250" y1="410" x2="250" y2="441" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- Manual: Subject -->
+  <rect x="135" y="50" width="130" height="40" rx="3"
+        fill="#7eca9c" stroke="none"/>
+  <text x="200" y="78" text-anchor="middle" fill="#1a1a1a" font-weight="500">Subject</text>
+
+  <!-- Manual: Session -->
+  <rect x="135" y="120" width="130" height="40" rx="3"
+        fill="#7eca9c" stroke="none"/>
+  <text x="200" y="148" text-anchor="middle" fill="#1a1a1a" font-weight="500">Session</text>
+
+  <!-- Manual: Scan -->
+  <rect x="135" y="190" width="130" height="40" rx="3"
+        fill="#7eca9c" stroke="none"/>
+  <text x="200" y="218" text-anchor="middle" fill="#1a1a1a" font-weight="500">Scan</text>
+
+  <!-- Imported: AverageFrame -->
+  <ellipse cx="200" cy="290" rx="90" ry="28"
+           fill="#7eb6ca" stroke="none"/>
+  <text x="200" y="298" text-anchor="middle" fill="#1a1a1a" font-weight="500">AverageFrame</text>
+
+  <!-- Lookup: SegmentationParams -->
+  <rect x="320" y="270" width="220" height="40" rx="3"
+        fill="#e8e8e8" stroke="none"/>
+  <text x="430" y="298" text-anchor="middle" fill="#1a1a1a" font-weight="500">SegmentationParams</text>
+
+  <!-- Computed: Segmentation (highlighted — origin of zoom callout) -->
+  <ellipse cx="250" cy="380" rx="100" ry="30"
+           fill="#ca7e7e" stroke="none"/>
+  <text x="250" y="388" text-anchor="middle" fill="#1a1a1a" font-weight="600">Segmentation</text>
+
+  <!-- Computed: Activity -->
+  <ellipse cx="250" cy="470" rx="74" ry="26"
+           fill="#ca7e7e" stroke="none"/>
+  <text x="250" y="478" text-anchor="middle" fill="#1a1a1a" font-weight="500">Activity</text>
+
+  <!-- ============ Zoom-in callout ============ -->
+  <g stroke="#999" stroke-width="1" stroke-dasharray="5,4" fill="none">
+    <line x1="340" y1="358" x2="580" y2="80"/>
+    <line x1="340" y1="402" x2="580" y2="470"/>
+  </g>
+
+  <!-- ============ RIGHT PANEL: Code snippet ============ -->
+  <!-- Indentation handled via per-line x offsets:
+       level 0 (no indent): x = 600
+       level 1 (4 spaces):  x = 643
+       level 2 (8 spaces):  x = 686
+       Char width @ 18px monospace ≈ 10.8 -->
+
+  <rect x="580" y="80" width="660" height="390" rx="4"
+        fill="white" stroke="#d0d0d0" stroke-width="1"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+     font-size="18" fill="#24292e">
+    <text x="600" y="112"><tspan fill="#005cc5">@schema</tspan></text>
+    <text x="600" y="136"><tspan fill="#005cc5">class</tspan> <tspan fill="#6f42c1" font-weight="600">Segmentation</tspan>(dj.Computed):</text>
+    <text x="643" y="160">definition = <tspan fill="#22863a">"""</tspan></text>
+    <text x="643" y="184" fill="#22863a">-&gt; AverageFrame</text>
+    <text x="643" y="208" fill="#22863a">-&gt; SegmentationParams</text>
+    <text x="643" y="232" fill="#22863a">---</text>
+    <text x="643" y="256" fill="#22863a">num_cells<tspan dx="11">: int32</tspan></text>
+    <text x="643" y="280" fill="#22863a">cell_masks : &lt;blob@&gt;</text>
+    <text x="643" y="304" fill="#22863a">"""</text>
+    <text x="643" y="352"><tspan fill="#005cc5">def</tspan> <tspan fill="#6f42c1" font-weight="600">make</tspan>(self, key):</text>
+    <text x="686" y="376">frame = (AverageFrame &amp; key).fetch1(<tspan fill="#22863a">'frame'</tspan>)</text>
+    <text x="686" y="400">params = (SegmentationParams &amp; key).fetch1()</text>
+    <text x="686" y="424">masks, n = segment(frame, **params)</text>
+    <text x="686" y="448">self.insert1(dict(key, num_cells=n, cell_masks=masks))</text>
+  </g>
+
+  <!-- ============ Annotations ============ -->
+  <g font-style="italic" fill="#5a5a5a" font-size="17">
+    <text x="1260" y="112">database link</text>
+    <line x1="1255" y1="107" x2="690" y2="107"
+          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+
+    <text x="1260" y="136">table name</text>
+    <line x1="1255" y1="131" x2="855" y2="131"
+          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+
+    <text x="1260" y="208">dependency</text>
+    <line x1="1255" y1="203" x2="850" y2="203"
+          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+
+    <text x="1260" y="280">object-store attribute</text>
+    <line x1="1255" y1="275" x2="900" y2="275"
+          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+
+    <text x="1260" y="400">computation</text>
+    <line x1="1255" y1="395" x2="970" y2="395"
+          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+  </g>
+</svg>
