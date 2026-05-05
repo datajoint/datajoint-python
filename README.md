@@ -71,7 +71,7 @@ conda install -c conda-forge datajoint
 
 ![pipeline](https://raw.githubusercontent.com/datajoint/datajoint-python/master/images/pipeline.png)
 
-[Yatsenko et al., bioRxiv 2021](https://doi.org/10.1101/2021.03.30.437358)
+**Cite DataJoint:** [Yatsenko et al., 2026](https://arxiv.org/abs/2602.16585) — RRID: [SCR_014543](https://scicrunch.org/resolver/SCR_014543)
 
 ## Resources
 
