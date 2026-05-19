@@ -691,26 +691,27 @@ class Config(BaseSettings):
             self.database.password = db_password
             logger.debug(f"Loaded database.password from {secrets_dir}")
 
-        # Load per-store secrets (stores.<name>.access_key, stores.<name>.secret_key)
-        # Iterate through all files in secrets directory
+        # Load per-store secrets from any stores.<name>.<attr> file.
+        # The attr name is recorded as-is on stores.<name>; this lets
+        # plugin-registered adapters define their own secret fields
+        # (e.g. a Bearer ``token`` for HTTP-based protocols) without
+        # forcing AWS-style ``access_key`` / ``secret_key`` naming.
         if secrets_dir.is_dir():
             for secret_file in secrets_dir.iterdir():
                 if not secret_file.is_file() or secret_file.name.startswith("."):
                     continue
 
                 parts = secret_file.name.split(".")
-                # Check for stores.<name>.access_key or stores.<name>.secret_key pattern
                 if len(parts) == 3 and parts[0] == "stores":
                     store_name, attr = parts[1], parts[2]
-                    if attr in ("access_key", "secret_key"):
-                        value = secret_file.read_text().strip()
-                        # Initialize store dict if needed
-                        if store_name not in self.stores:
-                            self.stores[store_name] = {}
-                        # Only set if not already present
-                        if attr not in self.stores[store_name]:
-                            self.stores[store_name][attr] = value
-                            logger.debug(f"Loaded stores.{store_name}.{attr} from {secrets_dir}")
+                    value = secret_file.read_text().strip()
+                    # Initialize store dict if needed
+                    if store_name not in self.stores:
+                        self.stores[store_name] = {}
+                    # Only set if not already present (config / env vars win)
+                    if attr not in self.stores[store_name]:
+                        self.stores[store_name][attr] = value
+                        logger.debug(f"Loaded stores.{store_name}.{attr} from {secrets_dir}")
 
     @contextmanager
     def override(self, **kwargs: Any) -> Iterator["Config"]:

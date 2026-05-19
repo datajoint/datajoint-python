@@ -487,6 +487,24 @@ class TestStoreSecrets:
         finally:
             cfg.stores = original_stores
 
+    def test_load_store_arbitrary_attr(self, tmp_path):
+        """Plugin-registered adapters can use arbitrary secret-field names."""
+        # e.g. an HTTP-based protocol that authenticates with a Bearer token
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "stores.bearer_store.token").write_text("dapibdfXXXX")
+        (secrets_dir / "stores.bearer_store.api_key").write_text("ak_yyy")
+
+        cfg = settings.Config()
+        original_stores = cfg.stores.copy()
+        try:
+            cfg._load_secrets(secrets_dir)
+
+            assert cfg.stores["bearer_store"]["token"] == "dapibdfXXXX"
+            assert cfg.stores["bearer_store"]["api_key"] == "ak_yyy"
+        finally:
+            cfg.stores = original_stores
+
 
 class TestDisplaySettings:
     """Test display-related settings."""
