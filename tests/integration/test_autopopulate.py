@@ -236,6 +236,64 @@ def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
         test_schema.drop(prompt=False)
 
 
+def test_populate_antijoin_fk_inherited_pk(prefix, connection_test):
+    """Regression test: populate antijoin on a table whose PK is fully FK-inherited.
+
+    Reproduces the lineage-mismatch failure that hits ``Imported`` or
+    ``Computed`` tables whose primary key consists entirely of attributes
+    inherited via a foreign key, with no own-table PK attributes.
+
+    Without the ``semantic_check=False`` on the populate antijoin, the
+    subtraction ``key_source - self.proj()`` raises::
+
+        DataJointError: Cannot join on attribute 'spec_id': different lineages
+        (schema.spec.spec_id vs None). Use .proj() to rename one of the attributes.
+
+    The set-difference doesn't actually need lineage matching — it just
+    asks which key_source rows aren't yet in ``self``.
+    """
+    test_schema = dj.Schema(f"{prefix}_antijoin_fk_pk", connection=connection_test)
+
+    @test_schema
+    class Spec(dj.Manual):
+        definition = """
+        spec_id : int32
+        ---
+        label : varchar(30)
+        """
+
+    @test_schema
+    class Item(dj.Imported):
+        definition = """
+        -> Spec
+        ---
+        payload : varchar(60)
+        """
+
+        def make(self, key):
+            label = (Spec & key).fetch1("label")
+            self.insert1(dict(key, payload=f"made:{label}"))
+
+    try:
+        Spec.insert([(1, "alpha"), (2, "beta"), (3, "gamma")])
+
+        # Before the fix this raised DataJointError on the antijoin.
+        Item.populate(max_calls=2)
+        assert len(Item) == 2
+
+        remaining, total = Item.progress()
+        assert total == 3
+        assert remaining == 1
+
+        Item.populate()
+        assert len(Item) == 3
+        remaining, total = Item.progress()
+        assert remaining == 0
+        assert total == 3
+    finally:
+        test_schema.drop(prompt=False)
+
+
 def test_load_dependencies(prefix, connection_test):
     schema = dj.Schema(f"{prefix}_load_dependencies_populate", connection=connection_test)
 

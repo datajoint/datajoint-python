@@ -11,6 +11,7 @@ import signal
 import traceback
 from typing import TYPE_CHECKING, Any, Generator
 
+from .condition import Not
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
 
@@ -401,7 +402,12 @@ class AutoPopulate:
         """
         from tqdm import tqdm
 
-        keys = (self._jobs_to_do(restrictions) - self.proj()).keys()
+        # Disable semantic_check on the antijoin: when self has FK-inherited
+        # PK attributes, self.proj() may carry attribute lineages that don't
+        # match key_source's (same attribute, different source-table tag).
+        # The set-difference itself doesn't care about lineage — we just want
+        # rows in key_source that aren't yet in self.
+        keys = self._jobs_to_do(restrictions).restrict(Not(self.proj()), semantic_check=False).keys()
 
         logger.debug("Found %d keys to populate" % len(keys))
 
@@ -702,7 +708,8 @@ class AutoPopulate:
         if not common_attrs:
             # No common attributes - fall back to two-query method
             total = len(todo)
-            remaining = len(todo - self.proj())
+            # Same lineage caveat as in _populate_direct — disable semantic_check.
+            remaining = len(todo.restrict(Not(self.proj()), semantic_check=False))
         else:
             # Build a single query that computes both total and remaining
             # Using LEFT JOIN with COUNT(DISTINCT) to handle 1:many relationships
