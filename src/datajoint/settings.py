@@ -335,16 +335,31 @@ class Config(BaseSettings):
     jobs: JobsSettings = Field(default_factory=JobsSettings)
 
     # Unified stores configuration (replaces external and object_storage)
+    # ``validation_alias`` redirects pydantic-settings' env source away from the
+    # natural ``DJ_STORES`` so it doesn't auto-parse on Config() construction.
+    # ``DJ_STORES`` is handled by ``_apply_stores_env`` after the config file
+    # load so env-var precedence is honored. *New in 2.3.*
     stores: dict[str, Any] = Field(
         default_factory=dict,
+        validation_alias="_DJ_STORES_PYDANTIC_DISABLED",
         description="Unified object storage configuration. "
         "Use stores.default to designate default store. "
-        "Configure named stores as stores.<name>.protocol, stores.<name>.location, etc.",
+        "Configure named stores as stores.<name>.protocol, stores.<name>.location, etc. "
+        "Set via DJ_STORES (JSON object) or in datajoint.json. *New in 2.3* for "
+        "DJ_STORES env-var support.",
     )
 
     # Top-level settings
     loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO", validation_alias="DJ_LOG_LEVEL")
     safemode: bool = True
+
+    ignore_config_file: bool = Field(
+        default=False,
+        validation_alias="DJ_IGNORE_CONFIG_FILE",
+        description="If True, skip loading datajoint.json and the secrets directory. "
+        "Intended for env-var-only deployments (e.g. the DataJoint platform). "
+        "*New in 2.3.*",
+    )
 
     # Cache path for query results
     query_cache: Path | None = None
@@ -713,6 +728,29 @@ class Config(BaseSettings):
                         self.stores[store_name][attr] = value
                         logger.debug(f"Loaded stores.{store_name}.{attr} from {secrets_dir}")
 
+    def _apply_stores_env(self) -> None:
+        """Replace ``self.stores`` from the ``DJ_STORES`` env var if set.
+
+        ``DJ_STORES`` holds a JSON object in the same shape as the ``stores``
+        block of ``datajoint.json``. This lets env-var-only deployments
+        configure plugin-registered storage adapters with arbitrary attr
+        names (e.g. a Bearer ``token`` field) without negotiating an env-var
+        naming scheme per attr.
+
+        *New in 2.3.*
+        """
+        raw = os.environ.get("DJ_STORES")
+        if not raw:
+            return
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"DJ_STORES contains invalid JSON: {e}") from e
+        if not isinstance(data, dict):
+            raise ValueError(f"DJ_STORES must be a JSON object, got {type(data).__name__}")
+        self.stores = data
+        logger.debug("Loaded stores from DJ_STORES env var")
+
     @contextmanager
     def override(self, **kwargs: Any) -> Iterator["Config"]:
         """
@@ -786,8 +824,12 @@ class Config(BaseSettings):
 
         Credentials should NOT be stored in datajoint.json. Instead, use either:
 
-        - Environment variables (``DJ_USER``, ``DJ_PASS``, ``DJ_HOST``, etc.)
+        - Environment variables (``DJ_USER``, ``DJ_PASS``, ``DJ_HOST``,
+          ``DJ_STORES`` for JSON-encoded store configs, etc.)
         - The ``.secrets/`` directory (created alongside datajoint.json)
+
+        Set ``DJ_IGNORE_CONFIG_FILE=true`` to skip both ``datajoint.json`` and
+        the secrets directory entirely (env-var-only configuration).
 
         Parameters
         ----------
@@ -963,25 +1005,29 @@ def _create_config() -> Config:
     """Create and initialize the global config instance."""
     cfg = Config()
 
-    # Find config file (recursive parent search)
-    config_path = find_config_file()
+    config_path: Path | None = None
+    if not cfg.ignore_config_file:
+        config_path = find_config_file()
+        if config_path is not None:
+            try:
+                cfg.load(config_path)
+            except Exception as e:
+                warnings.warn(f"Failed to load config from {config_path}: {e}")
+        else:
+            warnings.warn(
+                f"No {CONFIG_FILENAME} found. Using defaults and environment variables. "
+                f"Run `dj.config.save_template()` to create a template configuration.",
+                stacklevel=2,
+            )
 
-    if config_path is not None:
-        try:
-            cfg.load(config_path)
-        except Exception as e:
-            warnings.warn(f"Failed to load config from {config_path}: {e}")
-    else:
-        warnings.warn(
-            f"No {CONFIG_FILENAME} found. Using defaults and environment variables. "
-            f"Run `dj.config.save_template()` to create a template configuration.",
-            stacklevel=2,
-        )
+    # DJ_STORES (if set) overrides the stores dict from the config file
+    cfg._apply_stores_env()
 
-    # Find and load secrets
-    secrets_dir = find_secrets_dir(config_path)
-    if secrets_dir is not None:
-        cfg._load_secrets(secrets_dir)
+    # Secrets fill missing attrs in whatever ended up in self.stores
+    if not cfg.ignore_config_file:
+        secrets_dir = find_secrets_dir(config_path)
+        if secrets_dir is not None:
+            cfg._load_secrets(secrets_dir)
 
     # Set initial log level
     logger.setLevel(cfg.loglevel)

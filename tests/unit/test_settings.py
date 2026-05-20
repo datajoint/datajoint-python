@@ -506,6 +506,107 @@ class TestStoreSecrets:
             cfg.stores = original_stores
 
 
+class TestStoreEnv:
+    """Test DJ_STORES env var and DJ_IGNORE_CONFIG_FILE flag."""
+
+    def _isolate_filesystem(self, monkeypatch, tmp_path):
+        """chdir into a tmp_path with a .git sentinel so find_config_file stops there."""
+        (tmp_path / ".git").mkdir()
+        monkeypatch.chdir(tmp_path)
+        # Defend against a /run/secrets/datajoint/ on the host
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", tmp_path / "nonexistent-system-secrets")
+
+    def test_dj_stores_sets_stores_dict(self, monkeypatch, tmp_path):
+        self._isolate_filesystem(monkeypatch, tmp_path)
+        monkeypatch.setenv(
+            "DJ_STORES",
+            '{"uc":{"protocol":"http","token":"dapibd","workspace_url":"https://x"}}',
+        )
+
+        with pytest.warns(UserWarning):  # "No datajoint.json found"
+            cfg = settings._create_config()
+
+        assert cfg.stores["uc"]["protocol"] == "http"
+        assert cfg.stores["uc"]["token"] == "dapibd"
+        assert cfg.stores["uc"]["workspace_url"] == "https://x"
+
+    def test_dj_stores_overrides_config_file(self, monkeypatch, tmp_path):
+        self._isolate_filesystem(monkeypatch, tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text('{"stores": {"main": {"protocol": "s3", "location": "from-file"}}}')
+        monkeypatch.setenv(
+            "DJ_STORES",
+            '{"main": {"protocol": "http", "location": "from-env"}}',
+        )
+
+        cfg = settings._create_config()
+
+        assert cfg.stores["main"]["protocol"] == "http"
+        assert cfg.stores["main"]["location"] == "from-env"
+
+    def test_dj_stores_invalid_json_raises(self, monkeypatch, tmp_path):
+        self._isolate_filesystem(monkeypatch, tmp_path)
+        monkeypatch.setenv("DJ_STORES", "{not json")
+        with pytest.raises(ValueError, match="DJ_STORES.*invalid JSON"):
+            settings._create_config()
+
+    def test_dj_stores_non_object_raises(self, monkeypatch, tmp_path):
+        self._isolate_filesystem(monkeypatch, tmp_path)
+        monkeypatch.setenv("DJ_STORES", '["a", "b"]')
+        with pytest.raises(ValueError, match="DJ_STORES must be a JSON object"):
+            settings._create_config()
+
+    def test_dj_stores_plus_secrets_dir(self, monkeypatch, tmp_path):
+        """Secrets dir fills attrs that DJ_STORES omits."""
+        self._isolate_filesystem(monkeypatch, tmp_path)
+        # config file lets find_secrets_dir locate .secrets/ next to it
+        (tmp_path / CONFIG_FILENAME).write_text("{}")
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "stores.uc.token").write_text("from-secrets")
+        monkeypatch.setenv("DJ_STORES", '{"uc": {"protocol": "http"}}')
+
+        cfg = settings._create_config()
+
+        assert cfg.stores["uc"]["protocol"] == "http"
+        assert cfg.stores["uc"]["token"] == "from-secrets"
+
+    def test_ignore_config_file_skips_json(self, monkeypatch, tmp_path):
+        self._isolate_filesystem(monkeypatch, tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text('{"database": {"host": "should-not-load"}}')
+        monkeypatch.setenv("DJ_IGNORE_CONFIG_FILE", "true")
+
+        cfg = settings._create_config()
+
+        assert cfg.database.host == "localhost"
+
+    def test_ignore_config_file_skips_secrets(self, monkeypatch, tmp_path):
+        self._isolate_filesystem(monkeypatch, tmp_path)
+        # Place secrets where find_secrets_dir would find them if not ignored
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", tmp_path / SECRETS_DIRNAME)
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "database.password").write_text("should-not-load")
+        monkeypatch.setenv("DJ_IGNORE_CONFIG_FILE", "true")
+
+        cfg = settings._create_config()
+
+        assert cfg.database.password is None
+
+    def test_ignore_config_file_default_loads_both(self, monkeypatch, tmp_path):
+        """Default (env unset) preserves today's behavior."""
+        self._isolate_filesystem(monkeypatch, tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text('{"database": {"host": "from-file"}}')
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "database.user").write_text("dbuser")
+        monkeypatch.delenv("DJ_IGNORE_CONFIG_FILE", raising=False)
+
+        cfg = settings._create_config()
+
+        assert cfg.database.host == "from-file"
+        assert cfg.database.user == "dbuser"
+
+
 class TestDisplaySettings:
     """Test display-related settings."""
 
