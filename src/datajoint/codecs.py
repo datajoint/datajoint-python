@@ -8,29 +8,32 @@ semantics for complex Python objects.
 Codecs auto-register when subclassed - no decorator needed (Python 3.10+).
 
 Example:
-    class GraphCodec(dj.Codec):
-        name = "graph"
 
-        def get_dtype(self, is_store: bool) -> str:
-            return "<blob>"
+```python
+class GraphCodec(dj.Codec):
+    name = "graph"
 
-        def encode(self, graph, *, key=None, store_name=None):
-            return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
+    def get_dtype(self, is_store: bool) -> str:
+        return "<blob>"
 
-        def decode(self, stored, *, key=None):
-            import networkx as nx
-            G = nx.Graph()
-            G.add_nodes_from(stored['nodes'])
-            G.add_edges_from(stored['edges'])
-            return G
+    def encode(self, graph, *, key=None, store_name=None):
+        return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
 
-    # Then use in table definitions:
-    class MyTable(dj.Manual):
-        definition = '''
-        id : uint16
-        ---
-        data : <graph>
-        '''
+    def decode(self, stored, *, key=None):
+        import networkx as nx
+        G = nx.Graph()
+        G.add_nodes_from(stored['nodes'])
+        G.add_edges_from(stored['edges'])
+        return G
+
+# Then use in table definitions:
+class MyTable(dj.Manual):
+    definition = '''
+    id : uint16
+    ---
+    data : <graph>
+    '''
+```
 """
 
 from __future__ import annotations
@@ -85,20 +88,24 @@ class Codec(ABC):
     ...         G.add_edges_from(stored['edges'])
     ...         return G
 
-    Use in table definitions::
+    Use in table definitions:
 
-        class Connectivity(dj.Manual):
-            definition = '''
-            id : uint16
-            ---
-            graph_data : <graph>
-            '''
+    ```python
+    class Connectivity(dj.Manual):
+        definition = '''
+        id : uint16
+        ---
+        graph_data : <graph>
+        '''
+    ```
 
-    Skip auto-registration for abstract base classes::
+    Skip auto-registration for abstract base classes:
 
-        class ExternalOnlyCodec(dj.Codec, register=False):
-            '''Abstract base - not registered.'''
-            ...
+    ```python
+    class ExternalOnlyCodec(dj.Codec, register=False):
+        '''Abstract base - not registered.'''
+        ...
+    ```
     """
 
     name: str | None = None  # Must be set by concrete subclasses
@@ -520,18 +527,26 @@ def decode_attribute(attr, data, squeeze: bool = False, connection=None):
     Decode raw database value using attribute's codec or native type handling.
 
     This is the central decode function used by all fetch methods. It handles:
-    - Codec chains (e.g., <blob@store> → <hash> → bytes)
+
+    - Codec chains (e.g., ``<blob@store>`` → ``<hash>`` → ``bytes``)
     - Native type conversions (JSON, UUID)
-    - Object storage downloads (via config["download_path"])
+    - Object storage downloads (via ``config["download_path"]``)
 
-    Args:
-        attr: Attribute from the table's heading.
-        data: Raw value fetched from the database.
-        squeeze: If True, remove singleton dimensions from numpy arrays.
-        connection: Connection instance for config access. If provided,
-            ``connection._config`` is passed to codecs via the key dict.
+    Parameters
+    ----------
+    attr : Attribute
+        Attribute from the table's heading.
+    data : any
+        Raw value fetched from the database.
+    squeeze : bool, optional
+        If True, remove singleton dimensions from numpy arrays.
+    connection : Connection, optional
+        Connection instance for config access. If provided,
+        ``connection._config`` is passed to codecs via the key dict.
 
-    Returns:
+    Returns
+    -------
+    any
         Decoded Python value.
     """
     import json
