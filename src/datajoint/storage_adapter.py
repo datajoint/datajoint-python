@@ -86,16 +86,9 @@ def get_storage_adapter(protocol: str) -> StorageAdapter | None:
 
 def _discover_adapters() -> None:
     """Load storage adapters from datajoint.storage entry points."""
-    try:
-        from importlib.metadata import entry_points
-    except ImportError:
-        logger.debug("importlib.metadata not available, skipping adapter discovery")
-        return
+    from importlib.metadata import entry_points
 
-    try:
-        eps = entry_points(group="datajoint.storage")
-    except TypeError:
-        eps = entry_points().get("datajoint.storage", [])
+    eps = entry_points(group="datajoint.storage")
 
     for ep in eps:
         if ep.name in _adapter_registry:
