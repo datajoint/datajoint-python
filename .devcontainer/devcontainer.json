@@ -1,6 +1,0 @@
-{
-  "dockerComposeFile": ["../docker-compose.yaml", "docker-compose.yml"],
-  "service": "app",
-  "workspaceFolder": "/src",
-  "postCreateCommand": "curl -fsSL https://pixi.sh/install.sh | bash && echo 'export PATH=\"$HOME/.pixi/bin:$PATH\"' >> ~/.bashrc"
-}
