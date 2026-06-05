@@ -338,14 +338,14 @@ class Config(BaseSettings):
     # ``validation_alias`` redirects pydantic-settings' env source away from the
     # natural ``DJ_STORES`` so it doesn't auto-parse on Config() construction.
     # ``DJ_STORES`` is handled by ``_apply_stores_env`` after the config file
-    # load so env-var precedence is honored. *New in 2.3.*
+    # load so env-var precedence is honored. *New in 2.2.3.*
     stores: dict[str, Any] = Field(
         default_factory=dict,
         validation_alias="_DJ_STORES_PYDANTIC_DISABLED",
         description="Unified object storage configuration. "
         "Use stores.default to designate default store. "
         "Configure named stores as stores.<name>.protocol, stores.<name>.location, etc. "
-        "Set via DJ_STORES (JSON object) or in datajoint.json. *New in 2.3* for "
+        "Set via DJ_STORES (JSON object) or in datajoint.json. *New in 2.2.3* for "
         "DJ_STORES env-var support.",
     )
 
@@ -358,7 +358,7 @@ class Config(BaseSettings):
         validation_alias="DJ_IGNORE_CONFIG_FILE",
         description="If True, skip loading datajoint.json and the secrets directory. "
         "Intended for env-var-only deployments (e.g. the DataJoint platform). "
-        "*New in 2.3.*",
+        "*New in 2.2.3.*",
     )
 
     # Cache path for query results
@@ -737,7 +737,7 @@ class Config(BaseSettings):
         names (e.g. a Bearer ``token`` field) without negotiating an env-var
         naming scheme per attr.
 
-        *New in 2.3.*
+        *New in 2.2.3.*
         """
         raw = os.environ.get("DJ_STORES")
         if not raw:
