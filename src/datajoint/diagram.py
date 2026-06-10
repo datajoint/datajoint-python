@@ -471,7 +471,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
             seed_master = extract_master(start_node)
             if seed_master and seed_master in self.nodes() and seed_master not in visited_masters:
                 visited_masters.add(seed_master)
-                if self._propagate_part_to_master(start_node, seed_master, mode, restrictions, propagated_edges):
+                if self._propagate_part_to_master(start_node, seed_master, mode, restrictions):
                     allowed_nodes.add(seed_master)
                     allowed_nodes.update(nx.descendants(self, seed_master))
 
@@ -542,9 +542,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                             master_name = extract_master(target)
                             if master_name and master_name in self.nodes() and master_name not in visited_masters:
                                 visited_masters.add(master_name)
-                                propagated = self._propagate_part_to_master(
-                                    target, master_name, mode, restrictions, propagated_edges
-                                )
+                                propagated = self._propagate_part_to_master(target, master_name, mode, restrictions)
                                 if propagated:
                                     allowed_nodes.add(master_name)
                                     allowed_nodes.update(nx.descendants(self, master_name))
@@ -660,7 +658,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         self._restriction_attrs.setdefault(parent_node, set()).update(parent_attrs)
 
-    def _propagate_part_to_master(self, part_node, master_name, mode, restrictions, propagated_edges):
+    def _propagate_part_to_master(self, part_node, master_name, mode, restrictions):
         """
         Walk the FK graph from `part_node` up to `master_name`, applying
         `_apply_propagation_rule_upward` at each real edge along the path.
@@ -681,6 +679,23 @@ class Diagram(nx.DiGraph):  # noqa: C901
         Materializing converts the restriction into a static value set, so
         the forward cascade generates ``WHERE ... IN (literal-list)`` rather
         than ``WHERE ... IN (SELECT ... FROM <part>)``.
+
+        Limitations
+        -----------
+        - **Single FK path**: ``nx.shortest_path`` returns *one* path from
+          ``master_name`` to ``part_node``. If a Part is reachable from its
+          Master through multiple distinct FK chains (e.g. references two
+          different intermediate Parts), restrictions through the
+          non-shortest paths are not applied. This pattern is unusual; if a
+          schema hits it, the user is responsible for restricting the
+          additional paths explicitly via ``part_integrity="ignore"`` plus
+          manual ``delete()`` calls.
+        - **Memory cost of materialization**: ``master_ft.proj().to_arrays()``
+          pulls the matching master primary keys into Python memory. Cost is
+          bounded by the count of *distinct* master rows referenced by the
+          matching parts — typically small for surgical cascades, but can
+          grow with bulk cascades on tables with many master rows. Cascade
+          *preview* (``Diagram.cascade(...).counts()``) pays the same cost.
         """
         try:
             path = nx.shortest_path(self, master_name, part_node)

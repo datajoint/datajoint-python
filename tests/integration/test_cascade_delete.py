@@ -392,6 +392,57 @@ def test_cascade_part_of_part_renamed_fk(schema_by_backend):
     assert counts.get(Master.PartB.full_table_name, 0) == 1
 
 
+def test_cascade_three_level_part_chain(schema_by_backend):
+    """
+    Three-hop chain (#1429 follow-up review): PartC → PartB → PartA → Master.
+    Verify intermediate Parts (PartA, PartB) are restricted at every hop, not
+    just the first, and the master cascades back down to all siblings.
+    """
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+        class PartA(dj.Part):
+            definition = """
+            -> master
+            part_a_id : int32
+            """
+
+        class PartB(dj.Part):
+            definition = """
+            -> Master.PartA
+            part_b_id : int32
+            """
+
+        class PartC(dj.Part):
+            definition = """
+            -> Master.PartB
+            part_c_id : int32
+            """
+
+    Master.insert([(1,), (2,)])
+    Master.PartA.insert([(1, 10), (1, 11), (2, 20)])
+    Master.PartB.insert([(1, 10, 100), (1, 11, 110), (2, 20, 200)])
+    Master.PartC.insert([(1, 10, 100, 1000), (1, 11, 110, 1100), (2, 20, 200, 2000)])
+
+    counts = dj.Diagram.cascade(
+        Master.PartC & {"master_id": 1, "part_a_id": 10, "part_b_id": 100, "part_c_id": 1000},
+        part_integrity="cascade",
+    ).counts()
+
+    # Master pulled in via the 3-hop upward walk
+    assert counts.get(Master.full_table_name, 0) == 1, (
+        "Master restriction lost across 3-hop chain — the per-edge upward walk " "did not reach Master through PartA + PartB."
+    )
+    # Master forward-cascades back down to all rows under master_id=1
+    assert counts.get(Master.PartA.full_table_name, 0) == 2  # both PartA rows under master 1
+    assert counts.get(Master.PartB.full_table_name, 0) == 2  # both PartB rows under master 1
+    assert counts.get(Master.PartC.full_table_name, 0) == 2  # both PartC rows under master 1
+
+
 def test_cascade_part_of_part_actual_delete(schema_by_backend):
     """
     End-to-end: actually run delete() with part_integrity="cascade" through
