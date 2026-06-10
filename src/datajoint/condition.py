@@ -268,6 +268,20 @@ def assert_join_compatibility(
             lineage2 = expr2.heading[name].lineage
             # Semantic match requires both lineages to be non-None and equal
             if lineage1 is None or lineage2 is None or lineage1 != lineage2:
+                if lineage1 is None or lineage2 is None:
+                    # Missing lineage usually means stale ~lineage rows that survived
+                    # an upgrade or a partial declare. Decoration in 2.3+ refreshes
+                    # lineage automatically, so this typically indicates a schema
+                    # that has not been re-decorated since the upgrade.
+                    raise DataJointError(
+                        f"Cannot join on attribute `{name}`: lineage missing on "
+                        f"one side ({lineage1} vs {lineage2}). This usually "
+                        f"indicates a stale `~lineage` entry from an older "
+                        f"DataJoint version or an incomplete declare. Run "
+                        f"`schema.rebuild_lineage()` to recompute lineage from "
+                        f"current FK definitions. If the lineages are genuinely "
+                        f"different, use `.proj()` to rename one of the attributes."
+                    )
                 raise DataJointError(
                     f"Cannot join on attribute `{name}`: "
                     f"different lineages ({lineage1} vs {lineage2}). "
