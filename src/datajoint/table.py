@@ -262,6 +262,43 @@ class Table(QueryExpression):
         if entries:
             insert_lineages(self.connection, self.database, entries)
 
+    def _refresh_lineage(self, context=None):
+        """
+        Re-derive ``~lineage`` rows from the current definition and overwrite them.
+
+        Called by ``@schema`` decoration on every pass — including when the table
+        is already declared — so that stale rows from earlier DataJoint versions
+        or partial declares do not survive a redeclare. The actual deletion +
+        re-insertion happens in ``_populate_lineage``; this method just parses
+        the definition to obtain ``primary_key`` and ``fk_attribute_map`` without
+        executing any DDL.
+
+        Errors during refresh (e.g. missing write permission on ``~lineage``) are
+        logged and swallowed; a stale row is preferable to a failed import.
+        """
+        try:
+            (
+                _,
+                _,
+                primary_key,
+                fk_attribute_map,
+                _,
+                _,
+            ) = declare(
+                self.full_table_name,
+                self.definition,
+                context,
+                self.connection.adapter,
+                config=self.connection._config,
+            )
+            self._populate_lineage(primary_key, fk_attribute_map)
+        except Exception as exc:  # noqa: BLE001 — defensive; see docstring
+            logger.warning(
+                f"Could not refresh lineage for {self.full_table_name}: {exc}. "
+                "If you encounter `different lineages` errors, run "
+                "`schema.rebuild_lineage()` to rebuild from current FK definitions."
+            )
+
     def alter(self, prompt=True, context=None):
         """
         Alter the table definition from self.definition

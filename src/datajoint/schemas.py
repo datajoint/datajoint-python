@@ -303,6 +303,23 @@ class _Schema:
         if not is_declared and not assert_declared and create_tables:
             instance.declare(context)
             self.connection.dependencies.clear()
+        elif is_declared and create_tables:
+            # Table already exists — declare() didn't run, so _populate_lineage
+            # didn't either. Scan the already-loaded heading for the symptom
+            # of stale/missing lineage rows (#1454): any PK attribute with
+            # lineage=None indicates the ~lineage table is missing rows for
+            # this table. Only then trigger a refresh — no extra DB queries
+            # on healthy schemas, automatic repair when the bug is present.
+            #
+            # Note: stale-but-non-None rows (DJ version skew that wrote a
+            # different string format) are not auto-detected here; users hit
+            # the tailored "rebuild_lineage" error message on first join.
+            try:
+                pk_lineages = [instance.heading[attr].lineage for attr in instance.primary_key]
+            except Exception:
+                pk_lineages = []
+            if pk_lineages and any(lineage is None for lineage in pk_lineages):
+                instance._refresh_lineage(context)
         is_declared = is_declared or instance.is_declared
 
         # add table definition to the doc string
