@@ -758,3 +758,101 @@ class TestStagedInsert:
             with table.staged_insert1 as staged:
                 # Don't set primary key
                 staged.store("data_file", ".dat")
+
+    def test_staged_insert_metadata_shape_matches_encode(self, schema_obj, mock_object_storage, tmpdir_factory):
+        """
+        Spec contract: the metadata dict produced by a staged insert is structurally
+        equal to what ObjectCodec.encode would produce for equivalent content.
+
+        Per the Staged Insert Specification, both paths converge on the shape
+        {path, store, size, ext, is_dir, item_count, timestamp}.
+        """
+        from datajoint.builtin_codecs.object import ObjectCodec
+
+        # ---- Single-file case ----
+        captured = {}
+        table = ObjectFile()
+        original_insert1 = table.insert1
+
+        def capture_file(row, **kwargs):
+            captured["file"] = dict(row)
+            return original_insert1(row, **kwargs)
+
+        table.insert1 = capture_file
+        with table.staged_insert1 as staged:
+            staged.rec["file_id"] = 800
+            with staged.open("data_file", ".dat") as f:
+                f.write(b"staged content")
+
+        staged_file_meta = captured["file"]["data_file"]
+
+        ref_path = Path(str(tmpdir_factory.mktemp("encode_ref_file"))) / "ref.dat"
+        ref_path.write_bytes(b"reference content")
+        codec = ObjectCodec()
+        encode_file_meta = codec.encode(
+            ref_path,
+            key={
+                "_schema": table.database,
+                "_table": table.class_name,
+                "_field": "data_file",
+                "_config": table.connection._config,
+                "file_id": 801,
+            },
+            store_name="local",
+        )
+
+        assert set(staged_file_meta.keys()) == set(encode_file_meta.keys()), (
+            f"file metadata keys mismatch: " f"staged={sorted(staged_file_meta)}, encode={sorted(encode_file_meta)}"
+        )
+        for key in ("store", "ext", "is_dir", "item_count"):
+            assert staged_file_meta[key] == encode_file_meta[key], (
+                f"file {key} mismatch: " f"staged={staged_file_meta[key]!r}, encode={encode_file_meta[key]!r}"
+            )
+
+        table.delete()
+
+        # ---- Directory case ----
+        captured.clear()
+        table_folder = ObjectFolder()
+        original_folder_insert1 = table_folder.insert1
+
+        def capture_folder(row, **kwargs):
+            captured["folder"] = dict(row)
+            return original_folder_insert1(row, **kwargs)
+
+        table_folder.insert1 = capture_folder
+        with table_folder.staged_insert1 as staged:
+            staged.rec["folder_id"] = 802
+            fsmap = staged.store("data_folder")
+            fsmap["a.bin"] = b"aaa"
+            fsmap["b.bin"] = b"bbbb"
+
+        staged_dir_meta = captured["folder"]["data_folder"]
+
+        ref_dir = Path(str(tmpdir_factory.mktemp("encode_ref_dir")))
+        (ref_dir / "x.bin").write_bytes(b"x")
+        (ref_dir / "y.bin").write_bytes(b"yy")
+        encode_dir_meta = codec.encode(
+            ref_dir,
+            key={
+                "_schema": table_folder.database,
+                "_table": table_folder.class_name,
+                "_field": "data_folder",
+                "_config": table_folder.connection._config,
+                "folder_id": 803,
+            },
+            store_name="local",
+        )
+
+        assert set(staged_dir_meta.keys()) == set(encode_dir_meta.keys()), (
+            f"directory metadata keys mismatch: " f"staged={sorted(staged_dir_meta)}, encode={sorted(encode_dir_meta)}"
+        )
+        for key in ("store", "ext", "is_dir"):
+            assert staged_dir_meta[key] == encode_dir_meta[key], (
+                f"directory {key} mismatch: " f"staged={staged_dir_meta[key]!r}, encode={encode_dir_meta[key]!r}"
+            )
+        # item_count must be a non-negative integer for directories on both paths
+        assert isinstance(staged_dir_meta["item_count"], int) and staged_dir_meta["item_count"] >= 0
+        assert isinstance(encode_dir_meta["item_count"], int) and encode_dir_meta["item_count"] >= 0
+
+        table_folder.delete()
