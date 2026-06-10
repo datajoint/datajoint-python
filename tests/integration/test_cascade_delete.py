@@ -292,3 +292,139 @@ def test_cascade_discovers_downstream_schema(connection_by_backend, db_creds_by_
             connection_by_backend.query(f"DROP DATABASE IF EXISTS {qi(name)}")
         except Exception:
             pass
+
+
+# =========================================================================
+# Issue #1429: cascade with part_integrity="cascade" must traverse the FK
+# chain through intermediate Parts (and renamed FKs), not assume that the
+# Part shares PK attribute names with its Master.
+# =========================================================================
+
+
+def test_cascade_part_of_part_no_master_reference(schema_by_backend):
+    """
+    Case 2 from #1429: PartB references PartA directly (no -> Master).
+    Restricting PartB with part_integrity="cascade" must restrict both
+    PartA and Master (PartA via the direct FK, Master via the master-part
+    FK chained through PartA).
+    """
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+        class PartA(dj.Part):
+            definition = """
+            -> master
+            part_a_id : int32
+            """
+
+        class PartB(dj.Part):
+            definition = """
+            -> Master.PartA
+            part_b_id : int32
+            """
+
+    Master.insert([(1,), (2,)])
+    Master.PartA.insert([(1, 10), (1, 11), (2, 20)])
+    Master.PartB.insert([(1, 10, 100), (1, 10, 101), (1, 11, 110), (2, 20, 200)])
+
+    # Cascade preview: deleting one PartB row must propagate up to PartA and Master.
+    counts = dj.Diagram.cascade(
+        Master.PartB & {"master_id": 1, "part_a_id": 10, "part_b_id": 100},
+        part_integrity="cascade",
+    ).counts()
+
+    # Master row (1,) is the originating Part's master — must appear with count 1
+    assert counts.get(Master.full_table_name, 0) == 1, (
+        f"Master restricted by 1 row; got {counts.get(Master.full_table_name)}. "
+        "Indicates the Part→Master upward propagation did not reach the Master "
+        "through the intermediate PartA."
+    )
+    # Master cascades back down to ALL of master_id=1's Parts
+    assert counts.get(Master.PartA.full_table_name, 0) == 2  # rows 10, 11
+    assert counts.get(Master.PartB.full_table_name, 0) == 3  # rows under master_id=1
+
+
+def test_cascade_part_of_part_renamed_fk(schema_by_backend):
+    """
+    Case 1 from #1429: PartB references PartA via a renamed FK (`.proj()`).
+    PartB has no attribute named `master_id` (renamed to `src_master`). The
+    upward propagation must use the FK metadata, not assume shared attribute
+    names.
+    """
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+        class PartA(dj.Part):
+            definition = """
+            -> master
+            part_a_id : int32
+            """
+
+        class PartB(dj.Part):
+            definition = """
+            -> Master.PartA.proj(src_master='master_id', src_part='part_a_id')
+            part_b_id : int32
+            """
+
+    Master.insert([(1,), (2,)])
+    Master.PartA.insert([(1, 10), (2, 20)])
+    Master.PartB.insert([(1, 10, 100), (2, 20, 200)])
+
+    # PartB has columns: src_master, src_part, part_b_id — NOT master_id.
+    counts = dj.Diagram.cascade(
+        Master.PartB & {"src_master": 1, "src_part": 10, "part_b_id": 100},
+        part_integrity="cascade",
+    ).counts()
+
+    assert counts.get(Master.full_table_name, 0) == 1, (
+        f"Master restricted by 1 row; got {counts.get(Master.full_table_name)}. "
+        "Renamed FK was not reversed when propagating up to Master."
+    )
+    assert counts.get(Master.PartA.full_table_name, 0) == 1
+    assert counts.get(Master.PartB.full_table_name, 0) == 1
+
+
+def test_cascade_part_of_part_actual_delete(schema_by_backend):
+    """
+    End-to-end: actually run delete() with part_integrity="cascade" through
+    a Part-of-Part chain. Verifies the upward propagation produces SQL that
+    executes (no MySQL 1093 self-reference; correct row removal).
+    """
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+        class PartA(dj.Part):
+            definition = """
+            -> master
+            part_a_id : int32
+            """
+
+        class PartB(dj.Part):
+            definition = """
+            -> Master.PartA
+            part_b_id : int32
+            """
+
+    Master.insert([(1,), (2,)])
+    Master.PartA.insert([(1, 10), (2, 20)])
+    Master.PartB.insert([(1, 10, 100), (2, 20, 200)])
+
+    (Master.PartB & {"master_id": 1}).delete(part_integrity="cascade")
+
+    # master_id=1 chain is entirely gone; master_id=2 chain intact.
+    assert len(Master()) == 1
+    assert Master().fetch1("master_id") == 2
+    assert len(Master.PartA()) == 1
+    assert len(Master.PartB()) == 1
