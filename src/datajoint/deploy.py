@@ -20,12 +20,22 @@ without accumulating side effects.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 from .errors import DataJointError
 
+if TYPE_CHECKING:
+    from .schemas import _Schema
+    from .table import Table
 
-def set_replica_identity(target: Any, mode: str = "full", dry_run: bool = True) -> dict:
+    TargetType = Union["_Schema", type["Table"], "Table"]
+
+
+def set_replica_identity(
+    target: "TargetType",
+    mode: Literal["default", "full"] = "full",
+    dry_run: bool = True,
+) -> dict:
     """
     Apply ``ALTER TABLE ... REPLICA IDENTITY <mode>`` to a schema or table on PostgreSQL.
 
@@ -52,12 +62,24 @@ def set_replica_identity(target: Any, mode: str = "full", dry_run: bool = True) 
 
     Cost
     ----
-    The ALTER itself is metadata-only and instant. The cost is in WAL volume
-    after the change: UPDATE/DELETE on tables with FULL log the entire old row,
-    which can be sizable on tables with TOASTed bytea columns. For DataJoint's
-    typical insert-append workload, this cost is negligible. The notable
-    scenario is bulk ``delete()`` on tables with ``<blob>`` columns — a
-    transient WAL burst proportional to the deleted-row payload size.
+    The ALTER itself is metadata-only and instant, but requires a brief
+    ``AccessExclusiveLock`` on each table — it will block behind in-flight
+    writes/reads on a busy table. Run during a quiet window on actively-
+    ingested tables.
+
+    The ongoing cost is in WAL volume after the change: UPDATE/DELETE on
+    tables with FULL log the entire old row, which can be sizable on tables
+    with TOASTed bytea columns. For DataJoint's typical insert-append
+    workload, this cost is negligible. The notable scenario is bulk
+    ``delete()`` on tables with ``<blob>`` columns — a transient WAL burst
+    proportional to the deleted-row payload size.
+
+    Partial-failure semantics
+    -------------------------
+    If ``connection.query(ddl)`` raises on table N of M, the first N-1
+    tables are already modified at the storage layer but the exception
+    propagates without returning the partial summary. The operation is
+    idempotent, so re-running brings the remaining tables into compliance.
 
     Compliance considerations
     -------------------------
@@ -112,27 +134,33 @@ def set_replica_identity(target: Any, mode: str = "full", dry_run: bool = True) 
     Databricks: `Lakehouse Sync
     <https://docs.databricks.com/aws/en/oltp/projects/lakehouse-sync>`_.
     """
-    if mode not in ("default", "full"):
+    mode_normalized = mode.lower() if isinstance(mode, str) else mode
+    if mode_normalized not in ("default", "full"):
         raise DataJointError(f"mode must be 'default' or 'full'; got {mode!r}")
+    mode = mode_normalized  # type: ignore[assignment]
 
     from .schemas import _Schema
     from .table import Table
 
     if isinstance(target, _Schema):
         connection = target.connection
-        assert connection is not None, "Schema has no active connection"
+        if connection is None:
+            raise DataJointError("Schema has no active connection.")
         adapter = connection.adapter
-        assert target.database is not None, "Schema is not activated"
+        if target.database is None:
+            raise DataJointError("Schema is not activated. Call schema.activate(...) before set_replica_identity().")
         tables = [adapter.make_full_table_name(target.database, t) for t in target.list_tables()]
     elif isinstance(target, type) and issubclass(target, Table):
         instance = target()
         connection = instance.connection
-        assert connection is not None, "Table has no active connection"
+        if connection is None:
+            raise DataJointError(f"Table {target.__name__} has no active connection.")
         adapter = connection.adapter
         tables = [instance.full_table_name]
     elif isinstance(target, Table):
         connection = target.connection
-        assert connection is not None, "Table has no active connection"
+        if connection is None:
+            raise DataJointError(f"Table {type(target).__name__} has no active connection.")
         adapter = connection.adapter
         tables = [target.full_table_name]
     else:
@@ -140,7 +168,7 @@ def set_replica_identity(target: Any, mode: str = "full", dry_run: bool = True) 
 
     if not hasattr(adapter, "replica_identity_ddl"):
         raise DataJointError(
-            f"set_replica_identity is PostgreSQL-only; the {adapter.backend} adapter " "does not support REPLICA IDENTITY."
+            f"set_replica_identity is PostgreSQL-only; the {adapter.backend} adapter does not support REPLICA IDENTITY."
         )
 
     result: dict[str, Any] = {
