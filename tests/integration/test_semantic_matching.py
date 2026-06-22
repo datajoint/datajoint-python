@@ -340,3 +340,153 @@ class TestRebuildLineageUtility:
         # Check that lineages were populated for Student table
         lineages = get_table_lineages(schema_semantic.connection, schema_semantic.database, "student")
         assert "student_id" in lineages
+
+
+class TestLineageRefreshOnDecoration:
+    """Tests for #1454: @schema decoration auto-heals missing ~lineage entries.
+
+    Contract: when an already-declared table's heading reports any PK attribute
+    with lineage=None, decoration triggers a refresh. The check is in-memory
+    against the heading's already-loaded lineage values — no extra DB queries
+    on healthy schemas. Stale-but-non-None entries (e.g. DJ version skew) are
+    NOT auto-healed and require manual rebuild_lineage().
+    """
+
+    def test_redecorate_restores_missing_lineage(self, schema_semantic):
+        """
+        Delete a table's ~lineage rows entirely, then re-decorate — rows are
+        recreated. Primary auto-heal path: PK lineage=None triggers refresh.
+        """
+        from datajoint.lineage import get_lineage, delete_table_lineages
+        from datajoint.heading import Heading
+
+        delete_table_lineages(schema_semantic.connection, schema_semantic.database, "trial")
+        # Force heading reload so the deleted state is reflected in memory
+        old_heading = Trial._heading
+        Trial._heading = Heading(table_info=old_heading.table_info)
+        assert get_lineage(schema_semantic.connection, schema_semantic.database, "trial", "session_id") is None
+
+        schema_semantic(Trial)
+
+        refreshed = get_lineage(schema_semantic.connection, schema_semantic.database, "trial", "session_id")
+        assert refreshed is not None and "session" in refreshed.lower()
+
+    def test_redecorate_heals_partial_lineage(self, schema_semantic):
+        """
+        Mixed state: one row stale (non-None bogus), another missing. The in-memory
+        check fires on the missing row and the refresh fixes both.
+        """
+        from datajoint.lineage import get_lineage, delete_table_lineages, insert_lineages
+        from datajoint.heading import Heading
+
+        correct_student = get_lineage(schema_semantic.connection, schema_semantic.database, "enrollment", "student_id")
+        assert correct_student is not None
+
+        # Wipe both rows, then re-insert ONLY student_id with a stale value.
+        # course_id is now missing → triggers auto-heal of all enrollment rows.
+        delete_table_lineages(schema_semantic.connection, schema_semantic.database, "enrollment")
+        insert_lineages(
+            schema_semantic.connection,
+            schema_semantic.database,
+            [("enrollment", "student_id", "stale_schema.stale_table.stale_attr")],
+        )
+        old_heading = Enrollment._heading
+        Enrollment._heading = Heading(table_info=old_heading.table_info)
+
+        schema_semantic(Enrollment)
+
+        assert get_lineage(schema_semantic.connection, schema_semantic.database, "enrollment", "student_id") == correct_student
+        course_lineage = get_lineage(schema_semantic.connection, schema_semantic.database, "enrollment", "course_id")
+        assert course_lineage is not None and "course" in course_lineage.lower()
+
+    def test_redecorate_skips_when_lineage_healthy(self, schema_semantic):
+        """
+        Healthy schema: re-decoration must issue no DELETE/INSERT against ~lineage.
+        Verifies the zero-cost path — the in-memory check skips the refresh.
+        """
+        from datajoint.lineage import get_table_lineages
+
+        # Pre-condition: healthy lineage state
+        assert get_table_lineages(schema_semantic.connection, schema_semantic.database, "trial")
+
+        # Intercept any ~lineage write
+        connection = schema_semantic.connection
+        original_query = connection.query
+        write_calls = []
+
+        def counting_query(sql, *args, **kwargs):
+            if "lineage" in sql.lower() and any(tok in sql.lower() for tok in ("delete", "insert")):
+                write_calls.append(sql)
+            return original_query(sql, *args, **kwargs)
+
+        connection.query = counting_query
+        try:
+            schema_semantic(Trial)
+        finally:
+            connection.query = original_query
+
+        assert not write_calls, (
+            f"Healthy schema decoration must not write to ~lineage; " f"observed {len(write_calls)} write(s): {write_calls}"
+        )
+
+    def test_stale_non_none_lineage_not_auto_refreshed(self, schema_semantic):
+        """
+        Stale-but-non-None lineage values are NOT auto-healed. Users with this
+        case must call dj.migrate.rebuild_lineage(schema) or schema.rebuild_lineage().
+        Documents the limitation explicitly.
+        """
+        from datajoint.lineage import (
+            get_lineage,
+            delete_table_lineages,
+            insert_lineages,
+            get_table_lineages,
+        )
+        from datajoint.heading import Heading
+
+        # Replace ALL trial rows with non-None stale values — no None state.
+        original = get_table_lineages(schema_semantic.connection, schema_semantic.database, "trial")
+        delete_table_lineages(schema_semantic.connection, schema_semantic.database, "trial")
+        stale_entries = [("trial", attr, f"stale_schema.stale.{attr}") for attr in original]
+        insert_lineages(schema_semantic.connection, schema_semantic.database, stale_entries)
+        old_heading = Trial._heading
+        Trial._heading = Heading(table_info=old_heading.table_info)
+
+        try:
+            schema_semantic(Trial)
+            still_stale = get_lineage(schema_semantic.connection, schema_semantic.database, "trial", "session_id")
+            assert still_stale == "stale_schema.stale.session_id", (
+                f"Expected stale value to persist (no auto-heal for non-None stale); " f"got {still_stale!r}"
+            )
+
+            # Manual rebuild fixes it
+            schema_semantic.rebuild_lineage()
+            fixed = get_lineage(schema_semantic.connection, schema_semantic.database, "trial", "session_id")
+            assert fixed is not None and fixed != "stale_schema.stale.session_id"
+        finally:
+            schema_semantic.rebuild_lineage()
+            Trial._heading = Heading(table_info=old_heading.table_info)
+
+    def test_missing_lineage_error_points_to_rebuild(self, schema_semantic):
+        """
+        When a join fails because one side has None lineage, the error must
+        point the user at `schema.rebuild_lineage()`.
+        """
+        from datajoint.lineage import delete_table_lineages
+        from datajoint.heading import Heading
+
+        # Wipe enrollment.student_id lineage by deleting the row, then force the
+        # class-level heading to reload from DB so it reflects the missing row.
+        delete_table_lineages(schema_semantic.connection, schema_semantic.database, "enrollment")
+        old_heading = Enrollment._heading
+        Enrollment._heading = Heading(table_info=old_heading.table_info)
+        try:
+            assert Enrollment().heading["student_id"].lineage is None
+
+            with pytest.raises(DataJointError) as exc_info:
+                Student() * Enrollment()
+            assert "rebuild_lineage" in str(exc_info.value), f"Error must mention rebuild_lineage(); got: {exc_info.value}"
+            assert "stale" in str(exc_info.value).lower() or "missing" in str(exc_info.value).lower()
+        finally:
+            # Restore lineage so subsequent tests see clean state
+            schema_semantic.rebuild_lineage()
+            Enrollment._heading = Heading(table_info=old_heading.table_info)
