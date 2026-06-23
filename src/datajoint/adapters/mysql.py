@@ -696,6 +696,16 @@ class MySQLAdapter(DatabaseAdapter):
             f"AND table_schema NOT IN ({schemas_list})"
         )
 
+    def find_upstream_schemas_sql(self, schemas_list: str) -> str:
+        """Find schemas that the given schemas reference via FK."""
+        return (
+            f"SELECT DISTINCT referenced_table_schema as schema_name "
+            f"FROM information_schema.key_column_usage "
+            f"WHERE table_schema IN ({schemas_list}) "
+            f"AND referenced_table_schema IS NOT NULL "
+            f"AND referenced_table_schema NOT IN ({schemas_list})"
+        )
+
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
         """Query to get FK constraint details from information_schema."""
         return (

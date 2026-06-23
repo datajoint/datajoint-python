@@ -259,6 +259,35 @@ class Dependencies(nx.DiGraph):
 
         self.load(force=True, schema_names=known_schemas)
 
+    def load_all_upstream(self) -> None:
+        """
+        Load dependencies including all upstream schemas referenced via FK chains.
+
+        Iteratively discovers schemas that the currently loaded schemas
+        reference, expanding the dependency graph until no new schemas
+        are found. This ensures that upstream restriction propagation
+        (``Diagram.trace()``) reaches all ancestor tables, including
+        those in schemas the user has not explicitly activated.
+
+        Called automatically by ``Diagram.trace()``. Symmetric to
+        :meth:`load_all_downstream`.
+        """
+        adapter = self._conn.adapter
+        known_schemas = set(self._conn.schemas)
+        if not known_schemas:
+            self.load()
+            return
+
+        while True:
+            schemas_list = ", ".join(adapter.quote_string(s) for s in known_schemas)
+            result = self._conn.query(adapter.find_upstream_schemas_sql(schemas_list))
+            new_schemas = {row[0] for row in result} - known_schemas
+            if not new_schemas:
+                break
+            known_schemas |= new_schemas
+
+        self.load(force=True, schema_names=known_schemas)
+
     def topo_sort(self) -> list[str]:
         """
         Return table names in topological order.
