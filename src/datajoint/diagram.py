@@ -551,6 +551,10 @@ class Diagram(nx.DiGraph):  # noqa: C901
         Return a pre-restricted query expression (or FreeTable) for an
         ancestor table in this trace.
 
+        Only meaningful for trace diagrams (constructed via
+        :meth:`Diagram.trace`). For ordinary diagrams, defers to
+        :class:`networkx.DiGraph`'s adjacency-dict lookup.
+
         Parameters
         ----------
         key : type or str
@@ -577,6 +581,12 @@ class Diagram(nx.DiGraph):  # noqa: C901
         >>> trace[Session].fetch1("session_date")     # class index
         >>> trace["my_schema.Session"].to_dicts()     # string index → FreeTable
         """
+        # Non-trace diagrams: defer to networkx adjacency lookup so existing
+        # `diagram[node_name]` patterns (used in diagram algebra, ERD tests)
+        # keep working.
+        if getattr(self, "_mode", None) != "trace":
+            return super().__getitem__(key)
+
         from .table import Table
 
         # Resolve `key` to a full table name
