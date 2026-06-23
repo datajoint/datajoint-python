@@ -1242,6 +1242,12 @@ class QueryExpression:
         cursor
             Database query cursor.
         """
+        # Strict-provenance read gate. No-op outside make() or when the
+        # config flag is off. See src/datajoint/provenance.py.
+        from .provenance import assert_read_allowed
+
+        assert_read_allowed(self)
+
         sql = self.make_sql()
         logger.debug(sql)
         return self.connection.query(sql, as_dict=as_dict)

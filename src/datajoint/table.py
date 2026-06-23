@@ -797,6 +797,12 @@ class Table(QueryExpression):
                 " To override, set keyword argument allow_direct_insert=True."
             )
 
+        # Strict-provenance write gate. No-op outside make() or when the
+        # config flag is off. See src/datajoint/provenance.py.
+        from .provenance import assert_write_allowed
+
+        assert_write_allowed(self, rows)
+
         if inspect.isclass(rows) and issubclass(rows, QueryExpression):
             rows = rows()  # instantiate if a class
         if isinstance(rows, QueryExpression):
