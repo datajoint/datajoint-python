@@ -4,7 +4,7 @@
 
 | Branch | Purpose | Version |
 |--------|---------|---------|
-| `master` | Main development | 2.1.x |
+| `master` | Main development | 2.3.x |
 | `maint/2.0` | Maintenance releases | 2.0.x |
 
 For 2.0.x bugfixes:
