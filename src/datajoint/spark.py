@@ -1,8 +1,8 @@
 """
-Renderable Codec Protocol.
+SparkAdapter Codec Protocol.
 
-Opt-in contract for codecs that can render their decoded values to
-Spark-native types — primitives, lists, dicts, and nested combinations.
+Opt-in contract for codecs that adapt their decoded values to Spark-native
+types — primitives, lists, dicts, and nested combinations.
 
 Codecs implement this method when they want their column eligible for
 downstream typed-query systems (Spark SQL, Delta Sharing, BI tools).
@@ -16,9 +16,9 @@ on :class:`datajoint.Codec`:
 - Generic codecs need no acknowledgement (no ``NotImplementedError`` stubs).
 - Existing plugin codecs continue to work unchanged.
 - Codec authors opt in by adding the method on their own release cadence.
-- Consumers detect support structurally via ``isinstance(codec, Renderable)``.
+- Consumers detect support structurally via ``isinstance(codec, SparkAdapter)``.
 
-See ``datajoint-docs/src/reference/specs/renderable.md`` for the
+See ``datajoint-docs/src/reference/specs/spark-adapter.md`` for the
 normative specification (signature, return-value shape constraints,
 worked codec examples).
 """
@@ -29,9 +29,9 @@ from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
-class Renderable(Protocol):
+class SparkAdapter(Protocol):
     """
-    A codec that can render its decoded values to Spark-native types.
+    A codec that adapts its decoded values to Spark-native types.
 
     Opt-in. Codecs implementing this method declare that their decoded
     values can be expressed as primitives, lists, or dicts of the same —
@@ -39,7 +39,7 @@ class Renderable(Protocol):
     ``ArrayType`` / ``MapType``.
 
     Consumers (e.g., a Databricks silver-layer publish pipeline) check
-    ``isinstance(codec, Renderable)`` per column to determine eligibility.
+    ``isinstance(codec, SparkAdapter)`` per column to determine eligibility.
 
     Allowed return-value shapes:
 
@@ -62,18 +62,18 @@ class Renderable(Protocol):
             def encode(self, value, *, key=None, store_name=None): ...
             def decode(self, stored, *, key=None) -> np.ndarray: ...
 
-            def render_spark(self, decoded: np.ndarray, *, key=None) -> list[float]:
+            def to_spark(self, decoded: np.ndarray, *, key=None) -> list[float]:
                 return decoded.tolist()  # → Spark ARRAY<DOUBLE>
 
     Eligibility check::
 
-        from datajoint import Renderable
-        isinstance(FloatArrayCodec(), Renderable)  # True
+        from datajoint import SparkAdapter
+        isinstance(FloatArrayCodec(), SparkAdapter)  # True
     """
 
-    def render_spark(self, decoded: Any, *, key: dict | None = None) -> Any:
+    def to_spark(self, decoded: Any, *, key: dict | None = None) -> Any:
         """
-        Render a decoded codec value to a Spark-native shape.
+        Adapt a decoded codec value to a Spark-native shape.
 
         Parameters
         ----------
