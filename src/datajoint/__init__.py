@@ -51,12 +51,15 @@ __all__ = [
     "get_codec",
     "ObjectRef",
     "NpyRef",
+    # SparkAdapter Codec Protocol
+    "SparkAdapter",
     # Storage Adapter API
     "StorageAdapter",
     "get_storage_adapter",
     # Other
     "errors",
     "migrate",
+    "deploy",
     "DataJointError",
     "ThreadSafetyError",
     "logger",
@@ -69,6 +72,7 @@ __all__ = [
 # =============================================================================
 from . import errors
 from . import migrate
+from . import deploy
 from .codecs import (
     Codec,
     get_codec,
@@ -85,6 +89,7 @@ from .expression import AndList, Not, Top, U
 from .instance import Instance, _ConfigProxy, _get_singleton_connection, _global_config, _check_thread_safe
 from .logging import logger
 from .objectref import ObjectRef
+from .spark import SparkAdapter
 from .storage_adapter import StorageAdapter, get_storage_adapter
 from .schemas import _Schema, VirtualModule, list_schemas, virtual_schema
 from .autopopulate import AutoPopulate
