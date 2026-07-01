@@ -532,6 +532,23 @@ class TestPostgreSQLDDLMethods:
         result = postgres_adapter.enum_type_ddl("status_type", ["active", "inactive"])
         assert result == "CREATE TYPE \"status_type\" AS ENUM ('active', 'inactive')"
 
+    def test_replica_identity_ddl_full(self, postgres_adapter):
+        """Test PostgreSQL replica identity DDL for 'full' mode."""
+        result = postgres_adapter.replica_identity_ddl('"schema"."table"', "full")
+        assert result == 'ALTER TABLE "schema"."table" REPLICA IDENTITY FULL'
+
+    def test_replica_identity_ddl_default(self, postgres_adapter):
+        """Test PostgreSQL replica identity DDL for 'default' mode."""
+        result = postgres_adapter.replica_identity_ddl('"schema"."table"', "default")
+        assert result == 'ALTER TABLE "schema"."table" REPLICA IDENTITY DEFAULT'
+
+    def test_replica_identity_ddl_invalid_mode(self, postgres_adapter):
+        """Invalid mode raises DataJointError."""
+        from datajoint.errors import DataJointError
+
+        with pytest.raises(DataJointError, match="Unsupported replica_identity mode"):
+            postgres_adapter.replica_identity_ddl('"schema"."table"', "nothing")
+
     def test_job_metadata_columns_postgres(self, postgres_adapter):
         """Test PostgreSQL job metadata columns."""
         result = postgres_adapter.job_metadata_columns()
