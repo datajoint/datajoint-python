@@ -57,6 +57,7 @@ __all__ = [
     # Other
     "errors",
     "migrate",
+    "deploy",
     "DataJointError",
     "ThreadSafetyError",
     "logger",
@@ -69,6 +70,7 @@ __all__ = [
 # =============================================================================
 from . import errors
 from . import migrate
+from . import deploy
 from .codecs import (
     Codec,
     get_codec,
