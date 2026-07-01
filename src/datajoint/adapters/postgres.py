@@ -1280,6 +1280,31 @@ class PostgreSQLAdapter(DatabaseAdapter):
         quoted_values = ", ".join(f"'{v}'" for v in values)
         return f"CREATE TYPE {self.quote_identifier(type_name)} AS ENUM ({quoted_values})"
 
+    def replica_identity_ddl(self, full_table_name: str, mode: str) -> str:
+        """
+        Generate ALTER TABLE ... REPLICA IDENTITY statement.
+
+        Controls how much of the old row PostgreSQL writes to WAL on UPDATE/DELETE.
+        ``"default"`` logs only primary-key columns; ``"full"`` logs the entire row.
+        Required by some CDC tools (e.g. Databricks Lakehouse Sync) that need the
+        full pre-image to drive Slowly-Changing-Dimension history.
+
+        The ALTER is metadata-only, instant, and idempotent — re-applying the same
+        mode is a no-op at the storage layer.
+
+        Examples
+        --------
+        >>> adapter.replica_identity_ddl('"schema"."table"', 'full')
+        'ALTER TABLE "schema"."table" REPLICA IDENTITY FULL'
+        >>> adapter.replica_identity_ddl('"schema"."table"', 'default')
+        'ALTER TABLE "schema"."table" REPLICA IDENTITY DEFAULT'
+        """
+        if mode not in ("default", "full"):
+            from ..errors import DataJointError
+
+            raise DataJointError(f"Unsupported replica_identity mode: {mode!r}. Expected 'default' or 'full'.")
+        return f"ALTER TABLE {full_table_name} REPLICA IDENTITY {mode.upper()}"
+
     def get_pending_enum_ddl(self, schema_name: str) -> list[str]:
         """
         Get DDL statements for pending enum types and clear the pending list.
