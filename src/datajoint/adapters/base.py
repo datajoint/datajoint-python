@@ -850,6 +850,29 @@ class DatabaseAdapter(ABC):
         raise NotImplementedError
         ...
 
+    def find_upstream_schemas_sql(self, schemas_list: str) -> str:
+        """
+        Generate query to find schemas that the given schemas reference via FK.
+
+        Used to discover unloaded schemas that the loaded ones depend on
+        (the upstream / ancestor direction). Symmetric to
+        :meth:`find_downstream_schemas_sql`.
+
+        Parameters
+        ----------
+        schemas_list : str
+            Comma-separated, quoted schema names for an IN clause.
+
+        Returns
+        -------
+        str
+            SQL query returning rows with a single column ``schema_name``
+            containing distinct schema names that are referenced by the
+            given schemas.
+        """
+        raise NotImplementedError
+        ...
+
     @abstractmethod
     def get_constraint_info_sql(self, constraint_name: str, schema_name: str, table_name: str) -> str:
         """
