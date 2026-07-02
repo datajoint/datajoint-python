@@ -419,16 +419,25 @@ def test_upstream_rejects_non_ancestor(prefix, connection_test):
         """
 
         def make(self, key):
+            # class-form lookup (Diagram.__getitem__ class branch)
             try:
                 self.upstream[Unrelated]
             except DataJointError as exc:
-                captured_errors.append(exc)
+                captured_errors.append(("class", exc))
+            # string-form lookup (the separate FreeTable/string branch)
+            try:
+                self.upstream[Unrelated.full_table_name]
+            except DataJointError as exc:
+                captured_errors.append(("string", exc))
             # Insert anyway so populate doesn't fail
             self.insert1({**key, "ok": 1})
 
     Bad.populate()
-    assert len(captured_errors) == 1
-    assert "not in this trace" in str(captured_errors[0]).lower()
+    # Both the class-form and string-form lookups must reject the non-ancestor.
+    forms = {form for form, _ in captured_errors}
+    assert forms == {"class", "string"}, f"expected both branches to raise, got {forms}"
+    class_err = next(exc for form, exc in captured_errors if form == "class")
+    assert "not in this trace" in str(class_err).lower()
 
 
 def test_upstream_unset_outside_make(prefix, connection_test):
@@ -458,7 +467,10 @@ def test_upstream_unset_outside_make(prefix, connection_test):
 
 
 def test_upstream_cleared_after_make(prefix, connection_test):
-    """After a make() call completes, self.upstream is reset (no stale state)."""
+    """After make() completes, the SAME instance that ran make() has its
+    self.upstream cleared. Capturing the populate instance is what gives this
+    test teeth: it would FAIL if the `finally: self._upstream = None` line were
+    removed (a fresh-instance probe would pass regardless)."""
     schema = dj.Schema(f"{prefix}_upstream_cleared", connection=connection_test)
 
     @schema
@@ -467,6 +479,8 @@ def test_upstream_cleared_after_make(prefix, connection_test):
         source_id : int32
         """
         contents = [(1,)]
+
+    captured = []
 
     @schema
     class Derived(dj.Computed):
@@ -477,19 +491,61 @@ def test_upstream_cleared_after_make(prefix, connection_test):
         """
 
         def make(self, key):
+            captured.append(self)  # the actual populate instance
+            assert self._upstream is not None  # set for the duration of make()
             self.insert1({**key, "val": 0})
 
     Derived.populate()
-    # The class attribute defaults to None; the per-instance _upstream
-    # set during make() must have been cleared by the finally block.
-    # Probe via the public property — should raise the "outside make" error.
+    assert captured, "make() did not run"
+    inst = captured[0]
+    # The finally block must have cleared _upstream on this very instance.
+    assert inst._upstream is None
     with pytest.raises(DataJointError, match="only available inside make"):
-        Derived().upstream
+        inst.upstream
+
+
+def test_upstream_cleared_after_make_raises(prefix, connection_test):
+    """The reset lives in `finally` specifically so it survives an exception in
+    make(). Force make() to raise and assert the populate instance's
+    self.upstream is still cleared."""
+    schema = dj.Schema(f"{prefix}_upstream_exc", connection=connection_test)
+
+    @schema
+    class Source(dj.Lookup):
+        definition = """
+        source_id : int32
+        """
+        contents = [(1,)]
+
+    captured = []
+
+    @schema
+    class Boom(dj.Computed):
+        definition = """
+        -> Source
+        ---
+        val : int32
+        """
+
+        def make(self, key):
+            captured.append(self)
+            assert self._upstream is not None
+            raise RuntimeError("make failed on purpose")
+
+    with pytest.raises(RuntimeError, match="make failed on purpose"):
+        Boom.populate(suppress_errors=False)
+    assert captured, "make() did not run"
+    inst = captured[0]
+    # Cleared by the finally block even though make() raised.
+    assert inst._upstream is None
+    with pytest.raises(DataJointError, match="only available inside make"):
+        inst.upstream
 
 
 def test_upstream_seen_across_tripartite_make(prefix, connection_test):
-    """The tripartite make() invocation pattern sees the same self.upstream
-    across all three phases (fetch / compute / insert)."""
+    """The tripartite make() sees the SAME self.upstream object across all three
+    phases (fetch / compute / insert) for a given key — constructed once,
+    shared. Asserted via object identity, not just a correct result."""
     schema = dj.Schema(f"{prefix}_upstream_tripartite", connection=connection_test)
 
     @schema
@@ -501,6 +557,8 @@ def test_upstream_seen_across_tripartite_make(prefix, connection_test):
         """
         contents = [(1, 100), (2, 200)]
 
+    seen = []  # (source_id, phase, id(self._upstream))
+
     @schema
     class TriComputed(dj.Computed):
         definition = """
@@ -510,17 +568,29 @@ def test_upstream_seen_across_tripartite_make(prefix, connection_test):
         """
 
         def make_fetch(self, key):
+            seen.append((key["source_id"], "fetch", id(self._upstream)))
             return (self.upstream[Source].fetch1("value"),)
 
         def make_compute(self, key, value):
+            seen.append((key["source_id"], "compute", id(self._upstream)))
             return (value * 2,)
 
         def make_insert(self, key, doubled):
+            seen.append((key["source_id"], "insert", id(self._upstream)))
             self.insert1({**key, "result": doubled})
 
     TriComputed.populate()
     assert (TriComputed & {"source_id": 1}).fetch1("result") == 200
     assert (TriComputed & {"source_id": 2}).fetch1("result") == 400
+
+    # Every phase that ran for a given key must have observed one and the same
+    # self.upstream object (not None, not rebuilt per phase).
+    ids_by_key = {}
+    for sid, _phase, uid in seen:
+        ids_by_key.setdefault(sid, set()).add(uid)
+    assert ids_by_key, "tripartite make did not run"
+    for sid, ids in ids_by_key.items():
+        assert len(ids) == 1, f"source_id={sid}: self.upstream differed across phases: {ids}"
 
 
 def test_populate_reserve_jobs_respects_restrictions(clean_autopopulate, subject, experiment):
