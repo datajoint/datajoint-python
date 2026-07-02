@@ -28,7 +28,7 @@ categories:
   - title: '📝 Documentation'
     label: 'documentation'
 change-template: '- $TITLE(#$NUMBER)@$AUTHOR'
-change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
+change-title-escapes: '\<*_&@#' # escape @ and # so decorator/issue refs in PR titles (e.g. `@schema`) don't render as spurious mentions/links in release notes.
 template: |
   $CHANGES
 
