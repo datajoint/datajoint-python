@@ -658,6 +658,34 @@ class AutoPopulate:
 
         self._upstream = Diagram.trace(self & dict(key))
 
+        # If strict_provenance is on, push the active-make context so the
+        # runtime gates in expression.cursor / table.insert can check this
+        # make()'s reads and writes. The context is popped in the finally
+        # block below.
+        strict_token = None
+        if self.connection._config.get("strict_provenance", False):
+            from .provenance import push_strict_make_context
+            from .user_tables import Part
+
+            allowed_tables = set(self._upstream._cascade_restrictions.keys()) | {self.full_table_name}
+            # Add Part tables of self to the allowed set. Use class __dict__
+            # (not dir/getattr) to avoid triggering descriptors like the
+            # _JobsDescriptor that lazy-declares the ~~ job table.
+            for cls in type(self).__mro__:
+                for attr_name, attr in cls.__dict__.items():
+                    if attr_name.startswith("_"):
+                        continue
+                    if isinstance(attr, type) and issubclass(attr, Part):
+                        # Instantiate to get full_table_name resolved against
+                        # this schema. The Part class is already attached via
+                        # @schema decoration of the master.
+                        try:
+                            part_ftn = attr().full_table_name
+                            allowed_tables.add(part_ftn)
+                        except Exception:
+                            pass
+            strict_token = push_strict_make_context(self, frozenset(allowed_tables), dict(key))
+
         try:
             if not is_generator:
                 make(dict(key), **(make_kwargs or {}))
@@ -719,6 +747,11 @@ class AutoPopulate:
             # access raises a clear error rather than silently using a
             # stale trace from the previous make() call.
             self._upstream = None
+            # Pop the strict-make context, if any.
+            if strict_token is not None:
+                from .provenance import pop_strict_make_context
+
+                pop_strict_make_context(strict_token)
 
     def progress(self, *restrictions: Any, display: bool = False) -> tuple[int, int]:
         """

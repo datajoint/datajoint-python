@@ -834,10 +834,23 @@ class Table(QueryExpression):
                 " To override, set keyword argument allow_direct_insert=True."
             )
 
+        # Strict-provenance write gate (target check only). No-op outside make()
+        # or when the config flag is off. Deliberately does NOT touch `rows` —
+        # the per-row key-consistency check happens in `_insert_rows` as rows are
+        # materialized, so a one-shot iterable (generator) is not consumed here.
+        # See src/datajoint/provenance.py.
+        from .provenance import assert_write_allowed
+
+        assert_write_allowed(self)
+
         if inspect.isclass(rows) and issubclass(rows, QueryExpression):
             rows = rows()  # instantiate if a class
         if isinstance(rows, QueryExpression):
-            # insert from select - chunk_size not applicable
+            # insert from select - chunk_size not applicable.
+            # Note: this INSERT ... SELECT runs entirely server-side, so under
+            # strict_provenance the per-row key-consistency check does not apply
+            # (row values are never materialized client-side). The target check
+            # in assert_write_allowed above still governs which table is written.
             if chunk_size is not None:
                 raise DataJointError("chunk_size is not supported for QueryExpression inserts")
             if not ignore_extra_fields:
@@ -892,7 +905,17 @@ class Table(QueryExpression):
         """
         # collects the field list from first row (passed by reference)
         field_list = []
-        rows = list(self.__make_row_to_insert(row, field_list, ignore_extra_fields) for row in rows)
+        # Strict-provenance per-row key check runs here, as each row is
+        # materialized — no-op outside make()/when the flag is off. Placing it in
+        # this single materialization point (reached by both the chunked and
+        # single-batch paths) avoids consuming the caller's `rows` iterable early.
+        from .provenance import assert_row_key_allowed
+
+        def _make_row(row):
+            assert_row_key_allowed(row)
+            return self.__make_row_to_insert(row, field_list, ignore_extra_fields)
+
+        rows = list(_make_row(row) for row in rows)
         if rows:
             try:
                 # Handle empty field_list (all-defaults insert)
