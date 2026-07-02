@@ -274,6 +274,104 @@ def test_trace_counts(schema_by_backend):
     assert counts[Child.full_table_name] == 2
 
 
+def test_trace_multi_hop_diamond_or_convergence(schema_by_backend):
+    """Diamond: an ancestor reached via two MULTI-HOP paths → OR-union across
+    both arms. Unlike test_trace_or_convergence_two_paths (adjacent two-edge
+    case), this forces the reverse-topo walk to accumulate a contributor for the
+    same ancestor across separate multi-pass arms. A regression that dropped an
+    OR arm would yield a subset here."""
+
+    @schema_by_backend
+    class Root(dj.Manual):
+        definition = """
+        root_id : int32
+        """
+
+    @schema_by_backend
+    class Left(dj.Manual):
+        definition = """
+        -> Root
+        left_id : int32
+        """
+
+    @schema_by_backend
+    class Right(dj.Manual):
+        # renamed FK avoids the root_id name collision when Leaf reconverges
+        definition = """
+        -> Root.proj(root_id2='root_id')
+        right_id : int32
+        """
+
+    @schema_by_backend
+    class Leaf(dj.Manual):
+        definition = """
+        -> Left
+        -> Right
+        leaf_id : int32
+        """
+
+    Root.insert([(1,), (2,), (3,)])
+    Left.insert([(1, 10)])  # Left row → Root 1
+    Right.insert([(2, 20)])  # Right row (root_id2=2) → Root 2
+    # Leaf PK order: root_id, left_id, root_id2, right_id, leaf_id
+    Leaf.insert([(1, 10, 2, 20, 100)])
+
+    trace = dj.Diagram.trace(Leaf & {"leaf_id": 100})
+
+    # Root reached via Leaf→Left→Root (root_id=1) OR Leaf→Right→Root
+    # (root_id2=2 reversed to root_id=2). Union = {1, 2}; Root 3 excluded.
+    contributing = set(trace[Root].fetch("root_id"))
+    assert contributing == {1, 2}
+
+
+def test_trace_cross_schema_ancestor(schema_by_backend, connection_by_backend):
+    """Ancestor in a DIFFERENT schema than the seed → load_all_upstream must
+    discover the unloaded ancestor schema via reverse FK-schema lookup."""
+    import time
+
+    backend = connection_by_backend.adapter
+    other_name = f"djtest_trace_other_{str(int(time.time() * 1000))[-8:]}"[:64]
+    if connection_by_backend.is_connected:
+        try:
+            connection_by_backend.query(f"DROP DATABASE IF EXISTS {backend.quote_identifier(other_name)}")
+        except Exception:
+            pass
+    other = dj.Schema(other_name, connection=connection_by_backend)
+
+    try:
+
+        @schema_by_backend
+        class Upstream(dj.Manual):
+            definition = """
+            up_id : int32
+            ---
+            label : varchar(32)
+            """
+
+        @other
+        class Downstream(dj.Manual):
+            # cross-schema FK: Downstream lives in `other`, Upstream in schema_by_backend
+            definition = """
+            -> Upstream
+            down_id : int32
+            """
+
+        Upstream.insert([(1, "a"), (2, "b")])
+        Downstream.insert([(1, 10), (2, 20)])
+
+        trace = dj.Diagram.trace(Downstream & {"up_id": 1, "down_id": 10})
+
+        assert len(trace[Upstream]) == 1
+        assert trace[Upstream].fetch1("up_id") == 1
+        assert trace[Upstream].fetch1("label") == "a"
+    finally:
+        if connection_by_backend.is_connected:
+            try:
+                connection_by_backend.query(f"DROP DATABASE IF EXISTS {backend.quote_identifier(other_name)}")
+            except Exception:
+                pass
+
+
 def test_trace_seed_with_no_ancestors(schema_by_backend):
     """Tracing from a table with no FK parents → trace contains only the seed."""
 

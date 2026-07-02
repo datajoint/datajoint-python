@@ -863,7 +863,9 @@ class Diagram(nx.DiGraph):  # noqa: C901
            ``child.proj(**{parent: child for child, parent in attr_map.items()})``
            — reverses the renaming so the result has parent's column names.
         3. Non-aliased AND child restriction attrs ⊄ parent PK:
-           ``child.proj()`` — project child to parent's PK columns.
+           ``child.proj(*attr_map.keys())`` — project child onto its FK columns
+           (which, being non-aliased, share names with parent's PK columns) so
+           the subsequent restriction on the parent joins on the right columns.
         """
         parent_pk = self.nodes[parent_node].get("primary_key", set())
 
