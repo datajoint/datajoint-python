@@ -89,6 +89,46 @@ class AutoPopulate:
     _key_source = None
     _allow_insert = False
     _jobs = None
+    _upstream = None  # set per-make() by _populate_one; see `upstream` property below
+
+    @property
+    def upstream(self):
+        """
+        Pre-restricted ancestor view for the current ``make(self, key)`` call.
+
+        Inside ``make()``, ``self.upstream`` is a ``Diagram`` constructed via
+        :meth:`Diagram.trace(self & key) <datajoint.Diagram.trace>`. Use
+        ``self.upstream[T]`` to obtain a pre-restricted ``QueryExpression``
+        (or ``FreeTable``, when indexed by a string) for any ancestor of
+        ``self``.
+
+        Reading via ``self.upstream`` is the provenance-safe pattern: the
+        framework guarantees the restriction matches the current ``key``,
+        and indexing a non-ancestor table raises ``DataJointError``. See
+        :doc:`reference/specs/provenance` for the contract.
+
+        Raises
+        ------
+        DataJointError
+            If accessed outside ``make()`` execution. To construct a trace
+            explicitly, use ``dj.Diagram.trace(self & key)``.
+
+        Examples
+        --------
+        ::
+
+            def make(self, key):
+                date = self.upstream[Session].fetch1("session_date")
+                traces = self.upstream[ExtractTraces].to_arrays("trace")
+                self.insert1({**key, "summary": compute(traces, date)})
+        """
+        if self._upstream is None:
+            raise DataJointError(
+                "self.upstream is only available inside make(). "
+                "Outside make(), construct a trace explicitly: "
+                "dj.Diagram.trace(self & key)."
+            )
+        return self._upstream
 
     class _JobsDescriptor:
         """Descriptor allowing jobs access on both class and instance."""
@@ -611,6 +651,13 @@ class AutoPopulate:
         logger.jobs(f"Making {key} -> {self.full_table_name}")
         self.__class__._allow_insert = True
 
+        # Pre-construct the upstream view for this make() call. Lazy — only
+        # `dj.Diagram.trace(self & key)` runs here (graph copy); the
+        # expensive SQL fetch fires when the user accesses self.upstream[T].
+        from .diagram import Diagram
+
+        self._upstream = Diagram.trace(self & dict(key))
+
         try:
             if not is_generator:
                 make(dict(key), **(make_kwargs or {}))
@@ -668,6 +715,10 @@ class AutoPopulate:
             return True
         finally:
             self.__class__._allow_insert = False
+            # Clear the per-make() upstream view so subsequent attribute
+            # access raises a clear error rather than silently using a
+            # stale trace from the previous make() call.
+            self._upstream = None
 
     def progress(self, *restrictions: Any, display: bool = False) -> tuple[int, int]:
         """
