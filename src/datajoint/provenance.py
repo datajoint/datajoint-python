@@ -4,8 +4,11 @@ Runtime gates for ``dj.config["strict_provenance"]``.
 When the flag is enabled, this module's context (set by ``AutoPopulate._populate_one``)
 tracks which tables and primary key the currently-executing ``make()`` is
 allowed to read and write. The read gate in :func:`assert_read_allowed`
-fires inside ``QueryExpression.cursor``; the write gate in
-:func:`assert_write_allowed` fires inside ``Table.insert``.
+fires inside ``QueryExpression.cursor``. The write gate has two parts: the
+target check in :func:`assert_write_allowed` fires inside ``Table.insert``
+(before rows are materialized), and the per-row key-consistency check in
+:func:`assert_row_key_allowed` fires inside ``Table._insert_rows`` as each row
+is materialized — so the gate never consumes the caller's ``rows`` iterable.
 
 The contract is documented in
 ``datajoint-docs/src/reference/specs/provenance.md`` §3.
@@ -122,29 +125,30 @@ def assert_read_allowed(query_expression) -> None:
         )
 
 
-def assert_write_allowed(target_table, rows) -> None:
+def assert_write_allowed(target_table) -> None:
     """
-    Verify an insert is allowed under the active strict-make context.
+    Verify the *target* of an insert is allowed under the active strict-make context.
 
-    Called from ``Table.insert`` after the existing ``_allow_insert`` check.
-    No-op when no strict-make context is active.
+    Called from ``Table.insert`` after the existing ``_allow_insert`` check and
+    before any rows are materialized. No-op when no strict-make context is active.
 
-    Allowed writes:
+    Allowed targets:
 
-    - Target is the current ``make()`` target (``self``) or one of its Part
-      tables.
-    - Every row's primary-key columns that overlap with the current ``key``
-      must equal ``key``'s values.
+    - The current ``make()`` target (``self``) or one of its Part tables.
 
-    Anything else raises ``DataJointError``.
+    Per-row key consistency is checked separately by :func:`assert_row_key_allowed`
+    as rows are materialized, so this gate never consumes the caller's ``rows``
+    iterable — a one-shot generator must survive to reach ``insert``.
+
+    Raises ``DataJointError`` if the target is not permitted.
     """
     ctx = _active_strict_make.get()
     if ctx is None:
         return
 
-    make_target, _allowed_tables, key = ctx
+    make_target, _allowed_tables, _key = ctx
 
-    # 1. Target must be `make_target` (self) or one of its Parts.
+    # Target must be `make_target` (self) or one of its Parts.
     target_name = getattr(target_table, "full_table_name", None)
     target_set = {make_target.full_table_name}
     # Collect Part tables of make_target via class __dict__ (not dir/getattr,
@@ -169,17 +173,26 @@ def assert_write_allowed(target_table, rows) -> None:
             f"table and its Part tables may be written."
         )
 
-    # 2. Each row's key columns that overlap with the current key must match.
-    if isinstance(rows, dict):
-        _check_row_key(rows, key)
-    else:
-        try:
-            for row in rows:
-                if isinstance(row, dict):
-                    _check_row_key(row, key)
-                # Non-dict rows (tuples, etc.) bypass — older API; can't check.
-        except TypeError:
-            pass  # not iterable; let downstream code handle
+
+def assert_row_key_allowed(row) -> None:
+    """
+    Verify a single insert row's key columns match the active ``make()`` key.
+
+    Called per row from ``Table._insert_rows`` as rows are materialized, so the
+    check sees a concrete row without the write gate having to consume the
+    caller's ``rows`` iterable. No-op when no strict-make context is active or
+    when ``row`` is not a dict (numpy records / bare sequences carry no field
+    names to check by — same as the previous behavior).
+
+    Raises ``DataJointError`` on a mismatch.
+    """
+    ctx = _active_strict_make.get()
+    if ctx is None:
+        return
+    if not isinstance(row, dict):
+        return
+    _make_target, _allowed_tables, key = ctx
+    _check_row_key(row, key)
 
 
 def _check_row_key(row: dict, current_key: dict) -> None:

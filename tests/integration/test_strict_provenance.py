@@ -212,6 +212,84 @@ def test_strict_writes_to_part_table_pass(prefix, connection_test, strict_mode):
     assert len(Master.Bin & {"subject_id": 1}) == 3
 
 
+def test_strict_generator_insert_not_dropped(prefix, connection_test, strict_mode):
+    """Regression (#1474 bug 1): a one-shot generator of compliant rows must not
+    be consumed by the write gate. Before the fix, assert_write_allowed iterated
+    `rows` for its key check, exhausting the generator so insert saw zero rows and
+    silently wrote nothing."""
+    schema = dj.Schema(f"{prefix}_strict_generator", connection=connection_test)
+
+    @schema
+    class Subject(dj.Lookup):
+        definition = """
+        subject_id : int32
+        """
+        contents = [(1,), (2,)]
+
+    @schema
+    class Spectrum(dj.Computed):
+        definition = """
+        -> Subject
+        ---
+        n : int32
+        """
+
+        class Bin(dj.Part):
+            definition = """
+            -> master
+            bin_id : int32
+            ---
+            energy : float64
+            """
+
+        def make(self, key):
+            n = 5
+            self.insert1({**key, "n": n})
+            # one-shot generator (not a list) — must survive the write gate
+            self.Bin.insert({**key, "bin_id": i, "energy": float(i)} for i in range(n))
+
+    Spectrum.populate()
+    for sid in (1, 2):
+        assert (Spectrum & {"subject_id": sid}).fetch1("n") == 5
+        # The core assertion: all 5 generated rows landed, none silently dropped.
+        assert len(Spectrum.Bin & {"subject_id": sid}) == 5
+
+
+def test_strict_generator_insert_mismatched_key_still_caught(prefix, connection_test, strict_mode):
+    """The per-row key check still fires when rows come from a generator — a row
+    whose key disagrees with the current make() key raises, not silently passes."""
+    schema = dj.Schema(f"{prefix}_strict_gen_mismatch", connection=connection_test)
+
+    @schema
+    class Subject(dj.Lookup):
+        definition = """
+        subject_id : int32
+        """
+        contents = [(1,)]
+
+    @schema
+    class Derived(dj.Computed):
+        definition = """
+        -> Subject
+        ---
+        val : int32
+        """
+
+        class Bin(dj.Part):
+            definition = """
+            -> master
+            bin_id : int32
+            """
+
+        def make(self, key):
+            self.insert1({**key, "val": 0})
+            # generator whose 3rd row carries a bogus subject_id
+            self.Bin.insert({**({**key, "subject_id": 999} if i == 2 else key), "bin_id": i} for i in range(4))
+
+    with pytest.raises(DataJointError, match="does not match the current make"):
+        Derived.populate()
+
+
 def test_strict_off_by_default_no_change(prefix, connection_test):
     """With strict_provenance unset (default False), existing patterns work unchanged."""
     schema = dj.Schema(f"{prefix}_strict_default_off", connection=connection_test)
