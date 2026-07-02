@@ -108,8 +108,12 @@ def _uses_schema_storage(attr) -> bool:
     if not attr.codec:
         return False
 
-    codec_name = getattr(attr.codec, "name", "")
-    return codec_name in ("object", "npy")
+    # Recognize schema-addressed storage by type, not by a hardcoded codec name,
+    # so custom SchemaCodec subclasses (e.g. a user's NetCDF codec) are seen by
+    # GC and their live files are not misclassified as orphans (#1469).
+    from .builtin_codecs.schema import SchemaCodec
+
+    return isinstance(attr.codec, SchemaCodec)
 
 
 def _extract_hash_refs(value: Any) -> list[tuple[str, str | None]]:
@@ -231,12 +235,13 @@ def scan_hash_references(
 
                     # Read raw JSON metadata via cursor — bypasses decode_attribute
                     # so we get the stored dict (PostgreSQL/JSONB) or JSON string
-                    # (MySQL), not the decoded codec output. _extract_hash_refs
-                    # handles both shapes.
+                    # (MySQL), not the decoded codec output. The codec's own
+                    # referenced_paths() extracts the referenced paths and handles
+                    # both shapes (codec-driven discovery, #1469).
                     try:
                         cursor = table.proj(attr_name).cursor(as_dict=True)
                         for row in cursor:
-                            for path, ref_store in _extract_hash_refs(row[attr_name]):
+                            for path, ref_store in attr.codec.referenced_paths(row[attr_name]):
                                 # Filter by store if specified
                                 if store_name is None or ref_store == store_name:
                                     referenced.add(path)
@@ -296,12 +301,13 @@ def scan_schema_references(
 
                     # Read raw JSON metadata via cursor — bypasses decode_attribute
                     # so we get the stored dict (PostgreSQL/JSONB) or JSON string
-                    # (MySQL), not the decoded codec output. _extract_schema_refs
-                    # handles both shapes.
+                    # (MySQL), not the decoded codec output. The codec's own
+                    # referenced_paths() extracts the referenced paths and handles
+                    # both shapes (codec-driven discovery, #1469).
                     try:
                         cursor = table.proj(attr_name).cursor(as_dict=True)
                         for row in cursor:
-                            for path, ref_store in _extract_schema_refs(row[attr_name]):
+                            for path, ref_store in attr.codec.referenced_paths(row[attr_name]):
                                 # Filter by store if specified
                                 if store_name is None or ref_store == store_name:
                                     referenced.add(path)
@@ -379,10 +385,14 @@ def list_stored_hashes(store_name: str | None = None, config=None) -> dict[str, 
 
 def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, int]:
     """
-    List all schema-addressed items in storage.
+    List all schema-addressed object files in storage.
 
-    Scans for directories matching the schema-addressed storage pattern:
-    ``{schema}/{table}/{pk}/{field}/``
+    Enumerates the individual object **files** written by schema-addressed
+    codecs, whose paths follow ``{schema}/{table}/{pk}/{field}_{token}[.ext]``.
+    Returning file paths (rather than the enclosing directory) is what lets
+    them match the file paths recorded in each row's stored metadata — the two
+    must be comparable for orphan detection, and per-token granularity lets
+    superseded versions be reclaimed while the current token is retained.
 
     Parameters
     ----------
@@ -394,13 +404,13 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
     Returns
     -------
     dict[str, int]
-        Dict mapping storage path to size in bytes.
+        Dict mapping each object file's relative path to its size in bytes.
     """
     backend = get_store_backend(store_name, config=config)
     stored: dict[str, int] = {}
 
     try:
-        # Walk the storage looking for schema-addressed paths
+        # Walk the storage collecting schema-addressed object files
         full_prefix = backend._full_path("")
 
         for root, dirs, files in backend.fs.walk(full_prefix):
@@ -408,26 +418,22 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
             if "_hash" in root:
                 continue
 
-            # Look for schema-addressed pattern (has files, not in _hash)
-            # Schema-addressed paths: {schema}/{table}/{pk}/{field}/
-            relative_path = root.replace(full_prefix, "").lstrip("/")
+            for filename in files:
+                # Skip manifest sidecars (mirrors list_stored_hashes)
+                if filename.endswith(".manifest.json"):
+                    continue
 
-            # Skip empty paths and root-level directories
-            if not relative_path or relative_path.count("/") < 2:
-                continue
+                file_path = f"{root}/{filename}"
+                relative_path = file_path.replace(full_prefix, "").lstrip("/")
 
-            # Calculate total size of this directory
-            total_size = 0
-            for file in files:
+                # Schema-addressed files live at least at {schema}/{table}/.../{file}
+                if relative_path.count("/") < 2:
+                    continue
+
                 try:
-                    file_path = f"{root}/{file}"
-                    total_size += backend.fs.size(file_path)
+                    stored[relative_path] = backend.fs.size(file_path)
                 except Exception:
-                    pass
-
-            # Only count directories with files (actual objects)
-            if total_size > 0 or files:
-                stored[relative_path] = total_size
+                    stored[relative_path] = 0
 
     except FileNotFoundError:
         pass
@@ -439,12 +445,17 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
 
 def delete_schema_path(path: str, store_name: str | None = None, config=None) -> bool:
     """
-    Delete a schema-addressed directory from storage.
+    Delete a schema-addressed object file from storage.
+
+    ``path`` is an individual object file (as enumerated by
+    :func:`list_schema_paths`), not a directory — so only the orphaned token
+    file is removed, leaving other versions/fields under the same primary-key
+    directory intact. Empty parent directories are pruned best-effort.
 
     Parameters
     ----------
     path : str
-        Storage path (relative to store root).
+        Object file path (relative to store root).
     store_name : str, optional
         Store name (None = default store).
     config : Config, optional
@@ -460,12 +471,25 @@ def delete_schema_path(path: str, store_name: str | None = None, config=None) ->
     try:
         full_path = backend._full_path(path)
         if backend.fs.exists(full_path):
-            # Remove entire directory tree
-            backend.fs.rm(full_path, recursive=True)
-            logger.debug(f"Deleted schema path: {path}")
+            # Remove just this object file (not the whole PK directory)
+            backend.fs.rm(full_path)
+            logger.debug(f"Deleted schema object: {path}")
+
+            # Best-effort: prune now-empty parent directories up to the store root.
+            root = backend._full_path("").rstrip("/")
+            parent = full_path.rsplit("/", 1)[0]
+            while parent and parent != root and parent.startswith(root):
+                try:
+                    if backend.fs.ls(parent):
+                        break  # not empty
+                    backend.fs.rmdir(parent)
+                except Exception:
+                    break
+                parent = parent.rsplit("/", 1)[0]
+
             return True
     except Exception as e:
-        logger.warning(f"Error deleting schema path {path}: {e}")
+        logger.warning(f"Error deleting schema object {path}: {e}")
 
     return False
 

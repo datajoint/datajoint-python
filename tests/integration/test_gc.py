@@ -9,7 +9,19 @@ import pytest
 
 import datajoint as dj
 from datajoint import gc
+from datajoint.builtin_codecs.object import ObjectCodec
+from datajoint.codecs import get_codec
 from datajoint.errors import DataJointError
+
+
+class GcCustomObjectCodec(ObjectCodec):
+    """A custom schema-addressed codec — a ``SchemaCodec`` subclass with a
+    non-built-in name, mirroring the user's NetCDF codec in #1469. Registered
+    at import via ``Codec.__init_subclass__``. GC must recognize it by type
+    (not by hardcoded name) and treat its files as referenced, not orphaned.
+    """
+
+    name = "gc_custom_object"
 
 
 # Tables used by TestScanWithLiveData. Defined at module scope so dj.Schema's
@@ -38,6 +50,14 @@ class GcObjectTest(dj.Manual):
     rid : int
     ---
     results : <object@local>
+    """
+
+
+class GcCustomCodecTest(dj.Manual):
+    definition = """
+    rid : int
+    ---
+    payload : <gc_custom_object@local>
     """
 
 
@@ -133,24 +153,30 @@ class TestUsesSchemaStorage:
     def test_returns_true_for_object_type(self):
         """Test that True is returned for <object@> type."""
         attr = MagicMock()
-        attr.codec = MagicMock()
-        attr.codec.name = "object"
+        attr.codec = get_codec("object")
 
         assert gc._uses_schema_storage(attr) is True
 
     def test_returns_true_for_npy_type(self):
         """Test that True is returned for <npy@> type."""
         attr = MagicMock()
-        attr.codec = MagicMock()
-        attr.codec.name = "npy"
+        attr.codec = get_codec("npy")
+
+        assert gc._uses_schema_storage(attr) is True
+
+    def test_returns_true_for_custom_schema_subclass(self):
+        """Recognition is by type, not name: a custom SchemaCodec subclass
+        (here, a subclass of ObjectCodec) must be seen as schema-addressed so
+        GC does not misclassify its live files as orphans (#1469)."""
+        attr = MagicMock()
+        attr.codec = get_codec("gc_custom_object")
 
         assert gc._uses_schema_storage(attr) is True
 
     def test_returns_false_for_other_types(self):
         """Test that False is returned for non-schema-addressed types."""
         attr = MagicMock()
-        attr.codec = MagicMock()
-        attr.codec.name = "blob"
+        attr.codec = get_codec("blob")
 
         assert gc._uses_schema_storage(attr) is False
 
@@ -465,3 +491,57 @@ class TestScanWithLiveData:
         stats = gc.scan(schema_object, store_name="local")
 
         assert stats["schema_paths_referenced"] >= 1, f"scan should find the active <object@> reference; got {stats}"
+
+    @pytest.fixture
+    def schema_custom(self, connection_test, prefix, mock_stores):
+        schema_name = f"{prefix}_test_gc_e2e_custom"
+        schema = dj.Schema(
+            schema_name,
+            context={"GcCustomCodecTest": GcCustomCodecTest},
+            connection=connection_test,
+        )
+        schema(GcCustomCodecTest)
+        yield schema
+        schema.drop()
+
+    def test_custom_codec_reference_not_orphaned(self, schema_custom):
+        """#1469: a live custom SchemaCodec value must be recognized as
+        referenced and its file path must NOT be flagged as an orphan. Before
+        the fix, _uses_schema_storage keyed on the hardcoded names object/npy,
+        so this codec was never scanned and its live file was reported orphaned.
+
+        Asserts on the specific live path (not global counts) so it is robust to
+        other tests sharing the same ``local`` store.
+        """
+        GcCustomCodecTest.insert1({"rid": 1, "payload": b"live-payload"})
+
+        refs = gc.scan_schema_references(schema_custom, store_name="local")
+        assert refs, "custom codec's live reference must be discovered (#1469)"
+        live_path = next(iter(refs))
+
+        stats = gc.scan(schema_custom, store_name="local")
+        assert live_path not in stats["orphaned_paths"], f"live custom-codec file wrongly flagged orphan: {live_path}"
+
+    def test_custom_codec_survives_collect(self, schema_custom):
+        """#1469 end-to-end data-loss guard: collect() must delete only the
+        deleted row's file and keep the surviving row's file (checked by exact
+        path, robust to a shared store)."""
+        GcCustomCodecTest.insert1({"rid": 1, "payload": b"row-one"})
+        GcCustomCodecTest.insert1({"rid": 2, "payload": b"row-two"})
+
+        refs_all = gc.scan_schema_references(schema_custom, store_name="local")
+        assert len(refs_all) == 2, f"both live rows should be referenced; got {refs_all}"
+
+        # Delete one row — its file becomes a genuine orphan (delete-then-GC).
+        (GcCustomCodecTest & {"rid": 1}).delete(prompt=False)
+
+        refs_live = gc.scan_schema_references(schema_custom, store_name="local")
+        assert len(refs_live) == 1, f"one live row should remain referenced; got {refs_live}"
+        live_path = next(iter(refs_live))
+        deleted_paths = refs_all - refs_live
+
+        gc.collect(schema_custom, store_name="local", dry_run=False)
+
+        stored_after = set(gc.list_schema_paths("local", config=schema_custom.connection._config))
+        assert live_path in stored_after, f"collect() deleted the live custom-codec file {live_path} (#1469)"
+        assert not (deleted_paths & stored_after), f"deleted row's orphan not reclaimed: {deleted_paths & stored_after}"
