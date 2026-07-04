@@ -320,3 +320,154 @@ def test_strict_off_by_default_no_change(prefix, connection_test):
     # No strict_mode fixture — default-off
     DerivedLegacy.populate()
     assert (DerivedLegacy & {"subject_id": 1}).fetch1("val") == 0
+
+
+def test_strict_blocks_update1_on_other_table(prefix, connection_test, strict_mode):
+    """update1 is a write: under strict mode, updating a table that is not
+    self or one of its Parts raises, and the target row is left unmodified.
+    Regression for the ungated-update1 hole found in the 2.3 post-release audit."""
+    schema = dj.Schema(f"{prefix}_strict_update1_other", connection=connection_test)
+
+    @schema
+    class Subject(dj.Lookup):
+        definition = """
+        subject_id : int32
+        """
+        contents = [(1,)]
+
+    @schema
+    class SideResult(dj.Manual):
+        definition = """
+        side_id : int32
+        ---
+        val : int32
+        """
+
+    SideResult.insert1({"side_id": 1, "val": 100})
+
+    captured: list[Exception] = []
+
+    @schema
+    class Derived(dj.Computed):
+        definition = """
+        -> Subject
+        ---
+        val : int32
+        """
+
+        def make(self, key):
+            try:
+                SideResult.update1({"side_id": 1, "val": 999})
+            except DataJointError as e:
+                captured.append(e)
+            self.insert1({**key, "val": 1})
+
+    Derived.populate()
+    assert len(captured) == 1
+    assert "update1 on" in str(captured[0])
+    assert "not permitted" in str(captured[0])
+    # The side table must be untouched.
+    assert (SideResult & {"side_id": 1}).fetch1("val") == 100
+
+
+def test_strict_blocks_update1_with_mismatched_key(prefix, connection_test, strict_mode):
+    """update1 on self with key columns that disagree with the current make()
+    key raises the key-consistency error (before any existence check)."""
+    schema = dj.Schema(f"{prefix}_strict_update1_key", connection=connection_test)
+
+    @schema
+    class Subject(dj.Lookup):
+        definition = """
+        subject_id : int32
+        """
+        contents = [(1,)]
+
+    captured: list[Exception] = []
+
+    @schema
+    class Derived(dj.Computed):
+        definition = """
+        -> Subject
+        ---
+        val : int32
+        """
+
+        def make(self, key):
+            self.insert1({**key, "val": 1})
+            try:
+                # bogus key — must be rejected by the provenance key check,
+                # not by the "one existing entry" check
+                self.update1({"subject_id": 999, "val": 2})
+            except DataJointError as e:
+                captured.append(e)
+
+    Derived.populate()
+    assert len(captured) == 1
+    assert "updated row's" in str(captured[0])
+    assert "does not match the current make() key" in str(captured[0])
+
+
+def test_strict_update1_on_self_with_matching_key_allowed(prefix, connection_test, strict_mode):
+    """update1 on self with a key-consistent row is permitted under strict mode
+    (corrective update within the provenance boundary)."""
+    schema = dj.Schema(f"{prefix}_strict_update1_self", connection=connection_test)
+
+    @schema
+    class Subject(dj.Lookup):
+        definition = """
+        subject_id : int32
+        """
+        contents = [(1,)]
+
+    @schema
+    class Derived(dj.Computed):
+        definition = """
+        -> Subject
+        ---
+        val : int32
+        """
+
+        def make(self, key):
+            self.insert1({**key, "val": 1})
+            self.update1({**key, "val": 2})
+
+    Derived.populate()
+    assert (Derived & {"subject_id": 1}).fetch1("val") == 2
+
+
+def test_update1_unchanged_without_strict(prefix, connection_test):
+    """With strict_provenance off (default), update1 from inside make() behaves
+    as before — no gate fires."""
+    schema = dj.Schema(f"{prefix}_update1_default_off", connection=connection_test)
+
+    @schema
+    class Subject(dj.Lookup):
+        definition = """
+        subject_id : int32
+        """
+        contents = [(1,)]
+
+    @schema
+    class SideResult(dj.Manual):
+        definition = """
+        side_id : int32
+        ---
+        val : int32
+        """
+
+    SideResult.insert1({"side_id": 1, "val": 100})
+
+    @schema
+    class DerivedLegacy(dj.Computed):
+        definition = """
+        -> Subject
+        ---
+        val : int32
+        """
+
+        def make(self, key):
+            SideResult.update1({"side_id": 1, "val": 200})
+            self.insert1({**key, "val": 0})
+
+    DerivedLegacy.populate()
+    assert (SideResult & {"side_id": 1}).fetch1("val") == 200

@@ -125,12 +125,13 @@ def assert_read_allowed(query_expression) -> None:
         )
 
 
-def assert_write_allowed(target_table) -> None:
+def assert_write_allowed(target_table, verb: str = "insert into") -> None:
     """
-    Verify the *target* of an insert is allowed under the active strict-make context.
+    Verify the *target* of a write is allowed under the active strict-make context.
 
-    Called from ``Table.insert`` after the existing ``_allow_insert`` check and
-    before any rows are materialized. No-op when no strict-make context is active.
+    Called from ``Table.insert`` (after the existing ``_allow_insert`` check and
+    before any rows are materialized) and from ``Table.update1`` (before the
+    UPDATE is issued). No-op when no strict-make context is active.
 
     Allowed targets:
 
@@ -139,6 +140,14 @@ def assert_write_allowed(target_table) -> None:
     Per-row key consistency is checked separately by :func:`assert_row_key_allowed`
     as rows are materialized, so this gate never consumes the caller's ``rows``
     iterable — a one-shot generator must survive to reach ``insert``.
+
+    Parameters
+    ----------
+    target_table : Table
+        The table being written to.
+    verb : str
+        Phrase naming the write operation in the error message
+        (``"insert into"`` or ``"update1 on"``).
 
     Raises ``DataJointError`` if the target is not permitted.
     """
@@ -168,21 +177,29 @@ def assert_write_allowed(target_table) -> None:
 
     if target_name not in target_set:
         raise DataJointError(
-            f"strict_provenance=True: insert into {target_name!r} is not permitted "
+            f"strict_provenance=True: {verb} {target_name!r} is not permitted "
             f"inside make() for {make_target.full_table_name!r}. Only the target "
             f"table and its Part tables may be written."
         )
 
 
-def assert_row_key_allowed(row) -> None:
+def assert_row_key_allowed(row, action: str = "insert") -> None:
     """
-    Verify a single insert row's key columns match the active ``make()`` key.
+    Verify a single written row's key columns match the active ``make()`` key.
 
-    Called per row from ``Table._insert_rows`` as rows are materialized, so the
+    Called per row from ``Table._insert_rows`` as rows are materialized (so the
     check sees a concrete row without the write gate having to consume the
-    caller's ``rows`` iterable. No-op when no strict-make context is active or
-    when ``row`` is not a dict (numpy records / bare sequences carry no field
-    names to check by — same as the previous behavior).
+    caller's ``rows`` iterable), and from ``Table.update1`` with the update row.
+    No-op when no strict-make context is active or when ``row`` is not a dict
+    (numpy records / bare sequences carry no field names to check by — same as
+    the previous behavior).
+
+    Parameters
+    ----------
+    row : dict
+        The row being written.
+    action : str
+        ``"insert"`` or ``"update"`` — selects the error-message wording.
 
     Raises ``DataJointError`` on a mismatch.
     """
@@ -192,15 +209,16 @@ def assert_row_key_allowed(row) -> None:
     if not isinstance(row, dict):
         return
     _make_target, _allowed_tables, key = ctx
-    _check_row_key(row, key)
+    _check_row_key(row, key, action)
 
 
-def _check_row_key(row: dict, current_key: dict) -> None:
+def _check_row_key(row: dict, current_key: dict, action: str = "insert") -> None:
     """Raise if any row attribute overlapping with the current key has a different value."""
+    past, plural = {"insert": ("inserted", "Inserts"), "update": ("updated", "Updates")}[action]
     for k, v in current_key.items():
         if k in row and row[k] != v:
             raise DataJointError(
-                f"strict_provenance=True: inserted row's {k!r}={row[k]!r} does not "
-                f"match the current make() key's {k!r}={v!r}. Inserts must be "
+                f"strict_provenance=True: {past} row's {k!r}={row[k]!r} does not "
+                f"match the current make() key's {k!r}={v!r}. {plural} must be "
                 f"consistent with the key being populated."
             )

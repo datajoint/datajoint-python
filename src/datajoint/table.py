@@ -551,6 +551,18 @@ class Table(QueryExpression):
             raise DataJointError("Attribute `%s` not found." % next(k for k in row if k not in self.heading.names))
         except StopIteration:
             pass  # ok
+
+        # Strict-provenance write gate. No-op outside make() or when the config
+        # flag is off. Same boundary as insert: the target must be the make()
+        # target or one of its Parts, and the row's key columns must match the
+        # current key. Placed before the existence check so a provenance
+        # violation raises as such rather than as "no matching entry".
+        # See src/datajoint/provenance.py.
+        from .provenance import assert_row_key_allowed, assert_write_allowed
+
+        assert_write_allowed(self, verb="update1 on")
+        assert_row_key_allowed(row, action="update")
+
         if len(self.restriction):
             raise DataJointError("Update cannot be applied to a restricted table.")
         key = {k: row[k] for k in self.primary_key}
