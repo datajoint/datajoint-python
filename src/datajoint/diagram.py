@@ -340,6 +340,10 @@ class Diagram(nx.DiGraph):  # noqa: C901
         >>> # Inspect the cascade subgraph
         >>> dj.Diagram.cascade(Session & 'subject_id=1')
         """
+        # Validate eagerly (mirrors Table.delete) — a typo like "casade" would
+        # otherwise silently degrade to enforce/ignore behavior.
+        if part_integrity not in ("enforce", "ignore", "cascade"):
+            raise ValueError(f"part_integrity must be 'enforce', 'ignore', or 'cascade', got {part_integrity!r}")
         conn = table_expr.connection
         conn.dependencies.load_all_downstream()
         node = table_expr.full_table_name
@@ -698,7 +702,14 @@ class Diagram(nx.DiGraph):  # noqa: C901
         # Only propagate through descendants of start_node
         allowed_nodes = {start_node} | set(nx.descendants(self, start_node))
         propagated_edges = set()
-        visited_masters = set()
+        # Dedup upward part→master walks by (part, master) PAIR, not by master
+        # alone: distinct Parts of the same master can be restricted via
+        # different FK paths from the seed, and each must contribute its own
+        # master rows. Keying by master alone under-restricted the master when
+        # a second Part was reached later (silent integrity violation in
+        # part_integrity="cascade" mode). The pair set is finite and global
+        # across passes, so the multi-pass loop still terminates.
+        visited_part_master_pairs = set()
 
         restrictions = self._cascade_restrictions if mode == "cascade" else self._restrict_conditions
 
@@ -708,8 +719,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         # Trigger the upward propagation explicitly for the seed. See #1429.
         if part_integrity == "cascade" and mode == "cascade":
             seed_master = extract_master(start_node)
-            if seed_master and seed_master in self.nodes() and seed_master not in visited_masters:
-                visited_masters.add(seed_master)
+            if seed_master and seed_master in self.nodes() and (start_node, seed_master) not in visited_part_master_pairs:
+                visited_part_master_pairs.add((start_node, seed_master))
                 if self._propagate_part_to_master(start_node, seed_master, mode, restrictions):
                     allowed_nodes.add(seed_master)
                     allowed_nodes.update(nx.descendants(self, seed_master))
@@ -777,10 +788,16 @@ class Diagram(nx.DiGraph):  # noqa: C901
                         # rules at each edge. Handles Part-of-Part chains and
                         # renamed FKs (via .proj()), unlike the prior implementation
                         # which assumed shared PK attribute names. See #1429.
+                        # Deduped per (part, master) pair — every restricted Part
+                        # of a master contributes its own master rows.
                         if part_integrity == "cascade" and mode == "cascade":
                             master_name = extract_master(target)
-                            if master_name and master_name in self.nodes() and master_name not in visited_masters:
-                                visited_masters.add(master_name)
+                            if (
+                                master_name
+                                and master_name in self.nodes()
+                                and (target, master_name) not in visited_part_master_pairs
+                            ):
+                                visited_part_master_pairs.add((target, master_name))
                                 propagated = self._propagate_part_to_master(target, master_name, mode, restrictions)
                                 if propagated:
                                     allowed_nodes.add(master_name)

@@ -1223,6 +1223,13 @@ class Table(QueryExpression):
                 - ``"enforce"`` (default): Error if parts would be dropped without masters.
                 - ``"ignore"``: Allow dropping parts without masters.
         """
+        # Validate eagerly: "cascade" is delete-only (re-deriving rows makes no
+        # sense for drop), and a typo would otherwise silently behave as "ignore".
+        if part_integrity not in ("enforce", "ignore"):
+            raise ValueError(
+                f"part_integrity must be 'enforce' or 'ignore' for drop "
+                f"('cascade' applies to delete only), got {part_integrity!r}"
+            )
         if self.restriction:
             raise DataJointError(
                 "A table with an applied restriction cannot be dropped. " "Call drop() on the unrestricted Table."
