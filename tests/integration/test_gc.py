@@ -179,7 +179,7 @@ class TestScan:
     @patch("datajoint.gc.scan_schema_references")
     @patch("datajoint.gc.list_schema_paths")
     @patch("datajoint.gc.scan_hash_references")
-    @patch("datajoint.gc.list_stored_hashes")
+    @patch("datajoint.gc.list_hash_paths")
     def test_returns_stats(self, mock_list_hashes, mock_scan_hash, mock_list_schemas, mock_scan_schema):
         """Test that scan returns proper statistics."""
         # Mock hash-addressed storage (now uses paths)
@@ -243,7 +243,7 @@ class TestCollect:
         assert stats["dry_run"] is True
 
     @patch("datajoint.gc.delete_path")
-    @patch("datajoint.gc.list_stored_hashes")
+    @patch("datajoint.gc.list_hash_paths")
     @patch("datajoint.gc.scan")
     def test_deletes_orphaned_hashes(self, mock_scan, mock_list_stored, mock_delete):
         """Test that orphaned hashes are deleted when dry_run=False."""
@@ -753,7 +753,7 @@ class TestPerSchemaScoping:
         b_blob.insert1({"rid": 1, "payload": np.arange(4, dtype="uint8")})
         b_obj.insert1({"rid": 1, "results": b"b-obj"})
 
-        a_hashes = set(gc.list_stored_hashes("local", config=cfg, schema_name=a.database))
+        a_hashes = set(gc.list_hash_paths("local", config=cfg, schema_name=a.database))
         a_paths = set(gc.list_schema_paths("local", config=cfg, schema_name=a.database))
         assert a_hashes and all(f"/{a.database}/" in h for h in a_hashes), a_hashes
         assert a_paths and all(p.split("/")[0] == a.database or f"/{a.database}/" in p for p in a_paths), a_paths
@@ -782,7 +782,7 @@ class TestPerSchemaScoping:
         a_orphan = next(iter(gc.scan_schema_references(a, store_name="local")))
         (GcObjectTest & {"rid": 1}).delete(prompt=False)
 
-        b_hashes_before = set(gc.list_stored_hashes("local", config=cfg, schema_name=b.database))
+        b_hashes_before = set(gc.list_hash_paths("local", config=cfg, schema_name=b.database))
         b_paths_before = set(gc.list_schema_paths("local", config=cfg, schema_name=b.database))
         assert b_hashes_before and b_paths_before
 
@@ -790,6 +790,6 @@ class TestPerSchemaScoping:
 
         # a's orphan reclaimed; b entirely intact
         assert a_orphan not in set(gc.list_schema_paths("local", config=cfg, schema_name=a.database))
-        assert set(gc.list_stored_hashes("local", config=cfg, schema_name=b.database)) == b_hashes_before
+        assert set(gc.list_hash_paths("local", config=cfg, schema_name=b.database)) == b_hashes_before
         assert set(gc.list_schema_paths("local", config=cfg, schema_name=b.database)) == b_paths_before
         assert len(b_obj()) == 1  # b's row (and its object) untouched

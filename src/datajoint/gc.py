@@ -194,7 +194,7 @@ def scan_schema_references(
     return referenced
 
 
-def list_stored_hashes(store_name: str | None = None, config=None, *, schema_name: str) -> dict[str, int]:
+def list_hash_paths(store_name: str | None = None, config=None, *, schema_name: str) -> dict[str, int]:
     """
     List a schema's hash-addressed items in storage.
 
@@ -508,7 +508,7 @@ def scan(
 
         # --- Hash-addressed storage (this schema's subtree) ---
         h_ref = scan_hash_references(schema, store_name=store_name, verbose=verbose)
-        h_stored = list_stored_hashes(store_name, config=_config, schema_name=db)
+        h_stored = list_hash_paths(store_name, config=_config, schema_name=db)
         orphaned_hashes |= set(h_stored.keys()) - h_ref
 
         # --- Schema-addressed storage (this schema's section) ---
@@ -609,7 +609,7 @@ def collect(
             # per-schema) and merged across the passed schemas.
             hash_stored: dict[str, int] = {}
             for schema in schemas:
-                hash_stored.update(list_stored_hashes(store_name, config=_config, schema_name=schema.database))
+                hash_stored.update(list_hash_paths(store_name, config=_config, schema_name=schema.database))
 
             for path in stats["orphaned_hashes"]:
                 try:
