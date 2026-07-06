@@ -48,14 +48,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-# Default section prefix for hash-addressed storage. The authoritative value
-# is the per-store `hash_prefix` setting (default "_hash", see
-# settings.get_store_spec and docs/how-to/configure-storage) — writers, GC,
-# and <filepath@> validation all consume the same setting so the layout can
-# be relocated per store without the components drifting apart.
-DEFAULT_HASH_PREFIX = "_hash"
-
-
 def compute_hash(data: bytes) -> str:
     """
     Compute Base32-encoded MD5 hash of content.
@@ -105,7 +97,8 @@ def build_hash_path(
     content_hash: str,
     schema_name: str,
     subfolding: tuple[int, ...] | None = None,
-    hash_prefix: str = DEFAULT_HASH_PREFIX,
+    *,
+    hash_prefix: str,
 ) -> str:
     """
     Build the storage path for hash-addressed storage.
@@ -126,9 +119,10 @@ def build_hash_path(
         Database/schema name for isolation.
     subfolding : tuple[int, ...], optional
         Subfolding pattern from store config. None means flat (no subfolding).
-    hash_prefix : str, optional
-        Section prefix from the store's ``hash_prefix`` setting
-        (default ``"_hash"``).
+    hash_prefix : str
+        Section prefix from the store's ``hash_prefix`` setting. There is no
+        fallback here by design: settings (``get_store_spec``) is the single
+        source of the ``"_hash"`` default, applied to every store spec.
 
     Returns
     -------
@@ -240,7 +234,7 @@ def put_hash(
         content_hash,
         schema_name,
         subfolding,
-        hash_prefix=spec.get("hash_prefix", DEFAULT_HASH_PREFIX),
+        hash_prefix=spec["hash_prefix"],  # always present: settings applies the default
     )
 
     backend = get_store_backend(store_name, config=config)

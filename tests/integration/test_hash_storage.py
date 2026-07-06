@@ -58,33 +58,33 @@ class TestBuildHashPath:
     def test_builds_flat_path(self):
         """Test that path is built as _hash/{schema}/{hash}."""
         test_hash = "abcdefghijklmnopqrstuvwxyz"[:26]  # 26 char base32
-        result = build_hash_path(test_hash, "my_schema")
+        result = build_hash_path(test_hash, "my_schema", hash_prefix="_hash")
 
         assert result == f"_hash/my_schema/{test_hash}"
 
     def test_builds_subfolded_path(self):
         """Test path with subfolding."""
         test_hash = "abcdefghijklmnopqrstuvwxyz"[:26]
-        result = build_hash_path(test_hash, "my_schema", subfolding=(2, 2))
+        result = build_hash_path(test_hash, "my_schema", subfolding=(2, 2), hash_prefix="_hash")
 
         assert result == f"_hash/my_schema/ab/cd/{test_hash}"
 
     def test_rejects_invalid_hash(self):
         """Test that invalid hash raises error."""
         with pytest.raises(DataJointError, match="Invalid content hash"):
-            build_hash_path("not-a-hash", "my_schema")
+            build_hash_path("not-a-hash", "my_schema", hash_prefix="_hash")
 
         with pytest.raises(DataJointError, match="Invalid content hash"):
-            build_hash_path("a" * 64, "my_schema")  # Too long
+            build_hash_path("a" * 64, "my_schema", hash_prefix="_hash")  # Too long
 
         with pytest.raises(DataJointError, match="Invalid content hash"):
-            build_hash_path("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[:26], "my_schema")  # Uppercase
+            build_hash_path("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[:26], "my_schema", hash_prefix="_hash")  # Uppercase
 
     def test_real_hash_path(self):
         """Test path building with a real computed hash."""
         data = b"test content"
         content_hash = compute_hash(data)
-        path = build_hash_path(content_hash, "test_schema")
+        path = build_hash_path(content_hash, "test_schema", hash_prefix="_hash")
 
         # Verify structure: _hash/{schema}/{hash}
         parts = path.split("/")

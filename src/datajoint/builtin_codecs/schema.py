@@ -150,7 +150,7 @@ class SchemaCodec(Codec, register=False):
         spec = config.get_store_spec(store_name)
         partition_pattern = spec.get("partition_pattern")
         token_length = spec.get("token_length", 8)
-        schema_prefix = spec.get("schema_prefix", "_schema")
+        schema_prefix = spec["schema_prefix"]  # always present: settings applies the default
 
         return build_object_path(
             schema=schema,

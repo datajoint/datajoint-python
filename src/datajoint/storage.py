@@ -188,12 +188,6 @@ def encode_pk_value(value: Any) -> str:
     return s
 
 
-# Default section prefix for schema-addressed storage. The authoritative value
-# is the per-store `schema_prefix` setting (default "_schema", see
-# settings.get_store_spec and docs/how-to/configure-storage).
-DEFAULT_SCHEMA_PREFIX = "_schema"
-
-
 def build_object_path(
     schema: str,
     table: str,
@@ -202,7 +196,8 @@ def build_object_path(
     ext: str | None,
     partition_pattern: str | None = None,
     token_length: int = 8,
-    schema_prefix: str = DEFAULT_SCHEMA_PREFIX,
+    *,
+    schema_prefix: str,
 ) -> tuple[str, str]:
     """
     Build the storage path for an object attribute.
@@ -223,9 +218,10 @@ def build_object_path(
         Partition pattern with ``{attr}`` placeholders.
     token_length : int, optional
         Length of random token suffix. Default 8.
-    schema_prefix : str, optional
-        Section prefix from the store's ``schema_prefix`` setting
-        (default ``"_schema"``).
+    schema_prefix : str
+        Section prefix from the store's ``schema_prefix`` setting. No fallback
+        by design: settings (``get_store_spec``) is the single source of the
+        ``"_schema"`` default, applied to every store spec.
 
     Returns
     -------

@@ -80,6 +80,7 @@ class TestStoragePathGeneration:
             field="data_file",
             primary_key={"id": 123},
             ext=".dat",
+            schema_prefix="_schema",
         )
         assert "myschema" in path
         assert "MyTable" in path
@@ -96,6 +97,7 @@ class TestStoragePathGeneration:
             field="data_folder",
             primary_key={"id": 456},
             ext=None,
+            schema_prefix="_schema",
         )
         assert not path.endswith(".")
         assert "data_folder_" in path
@@ -108,6 +110,7 @@ class TestStoragePathGeneration:
             field="raw_data",
             primary_key={"subject_id": 1, "session_id": 2},
             ext=".zarr",
+            schema_prefix="_schema",
         )
         assert "subject_id=1" in path
         assert "session_id=2" in path
@@ -121,6 +124,7 @@ class TestStoragePathGeneration:
             primary_key={"subject_id": 1, "session_id": 2},
             ext=".dat",
             partition_pattern="{subject_id}",
+            schema_prefix="_schema",
         )
         # subject_id should be at the beginning due to partition
         # section prefix first, then partition attrs (schema_prefix default "_schema")

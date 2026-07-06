@@ -41,7 +41,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .hash_registry import DEFAULT_HASH_PREFIX, delete_path, get_store_backend
+from .hash_registry import delete_path, get_store_backend
 from .errors import DataJointError
 
 if TYPE_CHECKING:
@@ -286,7 +286,7 @@ def list_stored_hashes(store_name: str | None = None, config=None) -> dict[str, 
     # value remain readable (their metadata stores full paths) but are not
     # candidates for reclamation until the setting is restored.
     _spec = config.get_store_spec(store_name)
-    hash_prefix = _spec.get("hash_prefix", DEFAULT_HASH_PREFIX).strip("/") + "/"
+    hash_prefix = _spec["hash_prefix"].strip("/") + "/"  # settings applies the "_hash" default
     # Base32 pattern: 26 lowercase alphanumeric chars
     base32_pattern = re.compile(r"^[a-z2-7]{26}$")
 
@@ -363,7 +363,7 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
     _spec = config.get_store_spec(store_name)
     _fp = _spec.get("filepath_prefix")
     filepath_prefix = (_fp.strip("/") + "/") if _fp else None
-    _hp = _spec.get("hash_prefix", DEFAULT_HASH_PREFIX).strip("/")
+    _hp = _spec["hash_prefix"].strip("/")  # settings applies the "_hash" default
     hash_section = _hp + "/" if _hp else None
 
     try:
