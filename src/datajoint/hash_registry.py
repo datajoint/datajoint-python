@@ -48,6 +48,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
+# Fixed layout prefix for hash-addressed storage within a store. This is a
+# storage-layout CONVENTION, not a configurable setting: the `hash_prefix`
+# store key accepted by settings currently serves only as a reserved-namespace
+# declaration for <filepath@> validation (see builtin_codecs/filepath.py) and
+# is NOT consumed here. GC imports this constant so the scanner can never
+# drift from the writer.
+HASH_STORAGE_PREFIX = "_hash"
+
+
 def compute_hash(data: bytes) -> str:
     """
     Compute Base32-encoded MD5 hash of content.
@@ -130,9 +139,9 @@ def build_hash_path(
     if subfolding:
         folds = _subfold(content_hash, subfolding)
         fold_path = "/".join(folds)
-        return f"_hash/{schema_name}/{fold_path}/{content_hash}"
+        return f"{HASH_STORAGE_PREFIX}/{schema_name}/{fold_path}/{content_hash}"
     else:
-        return f"_hash/{schema_name}/{content_hash}"
+        return f"{HASH_STORAGE_PREFIX}/{schema_name}/{content_hash}"
 
 
 def get_store_backend(store_name: str | None = None, config: Config | None = None) -> StorageBackend:

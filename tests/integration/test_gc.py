@@ -611,3 +611,54 @@ class TestDirectoryObjects:
         dead_files = {p for p in stored_after if p == dead_ref or p.startswith(dead_ref + "/")}
         assert not dead_files, f"orphaned folder object not reclaimed: {sorted(dead_files)}"
         assert f"{dead_ref}.manifest.json" not in stored_after, "orphaned object's manifest must be reclaimed"
+
+
+class GcProbeHash(dj.Manual):
+    """Table whose name (`gc_probe_hash`) contains the substring `_hash` —
+    regression guard for the schema-path walk's hash-subtree skip."""
+
+    definition = """
+    rid : int
+    ---
+    results : <object@local>
+    """
+
+
+class TestHashSubstringTableName:
+    """The hash-addressed subtree skip must match the first store-relative
+    path segment exactly (`_hash/...`), not any path containing the substring
+    `_hash` — otherwise tables like `gc_probe_hash` are silently excluded from
+    the schema-addressed listing and their orphans are never reclaimed."""
+
+    @pytest.fixture
+    def schema_probe(self, connection_test, prefix, mock_stores):
+        schema = dj.Schema(
+            f"{prefix}_test_gc_hashname",
+            context={"GcProbeHash": GcProbeHash},
+            connection=connection_test,
+        )
+        schema(GcProbeHash)
+        yield schema
+        schema.drop()
+
+    def test_hash_substring_table_listed_and_reclaimed(self, schema_probe):
+        GcProbeHash.insert1({"rid": 1, "results": b"keep"})
+        GcProbeHash.insert1({"rid": 2, "results": b"drop"})
+
+        refs = gc.scan_schema_references(schema_probe, store_name="local")
+        assert len(refs) == 2
+        stored = set(gc.list_schema_paths("local", config=schema_probe.connection._config))
+        missing = refs - stored
+        assert not missing, (
+            f"files of a table whose name contains '_hash' must be listed; missing {missing} "
+            "(substring-based skip would hide them from GC forever)"
+        )
+
+        (GcProbeHash & {"rid": 2}).delete(prompt=False)
+        refs_live = gc.scan_schema_references(schema_probe, store_name="local")
+        dead_ref = next(iter(refs - refs_live))
+
+        gc.collect(schema_probe, store_name="local", dry_run=False)
+        stored_after = set(gc.list_schema_paths("local", config=schema_probe.connection._config))
+        assert dead_ref not in stored_after, "orphan under a '_hash'-substring table name must be reclaimed"
+        assert next(iter(refs_live)) in stored_after, "live file must survive"

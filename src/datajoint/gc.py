@@ -39,7 +39,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .hash_registry import delete_path, get_store_backend
+from .hash_registry import HASH_STORAGE_PREFIX, delete_path, get_store_backend
 from .errors import DataJointError
 
 if TYPE_CHECKING:
@@ -274,7 +274,7 @@ def list_stored_hashes(store_name: str | None = None, config=None) -> dict[str, 
     stored: dict[str, int] = {}
 
     # Hash-addressed storage: _hash/{schema}/{subfolders...}/{hash}
-    hash_prefix = "_hash/"
+    hash_prefix = f"{HASH_STORAGE_PREFIX}/"
     # Base32 pattern: 26 lowercase alphanumeric chars
     base32_pattern = re.compile(r"^[a-z2-7]{26}$")
 
@@ -344,8 +344,12 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
         full_prefix = backend._full_path("")
 
         for root, dirs, files in backend.fs.walk(full_prefix):
-            # Skip _hash directory (hash-addressed storage)
-            if "_hash" in root:
+            # Skip the hash-addressed storage subtree. Match on the FIRST
+            # store-relative path segment only — a substring test would also
+            # exclude user tables/schemas whose names merely contain "_hash"
+            # (e.g. a table `probe_hash`), silently leaking their orphans.
+            rel_root = root.replace(full_prefix, "").lstrip("/")
+            if rel_root == HASH_STORAGE_PREFIX or rel_root.startswith(HASH_STORAGE_PREFIX + "/"):
                 continue
 
             for filename in files:
