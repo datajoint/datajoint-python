@@ -31,6 +31,12 @@ Usage::
     # Remove orphaned items (dry_run=False to actually delete)
     stats = dj.gc.collect(schema1, schema2, store_name='mystore', dry_run=True)
 
+Both sections embed the schema name in every path, so garbage collection is
+**per-schema**: each schema is scanned against its own subtree only. Orphan
+detection is therefore confined to the schemas you pass — any subset of the
+schemas sharing a store may be scanned/collected safely, and GC never touches
+another schema's objects or user-managed content elsewhere in the store.
+
 See Also
 --------
 datajoint.builtin_codecs : Codec implementations for object storage types.
@@ -255,22 +261,20 @@ def scan_schema_references(
     return referenced
 
 
-def list_stored_hashes(store_name: str | None = None, config=None, schema_name: str | None = None) -> dict[str, int]:
+def list_stored_hashes(store_name: str | None = None, config=None, *, schema_name: str) -> dict[str, int]:
     """
-    List hash-addressed items in storage.
+    List a schema's hash-addressed items in storage.
 
-    Scans the store's configured hash-addressed section — the ``hash_prefix``
-    setting, default ``_hash/`` — and returns the stored objects found. These
-    correspond to ``<hash@>``, ``<blob@>``, and ``<attach@>`` types. Only the
-    CURRENTLY configured prefix is walked: objects written under a former
-    prefix are not listed here (they remain readable via their metadata paths,
-    and :func:`scan` still protects them from deletion — see its note).
+    Walks exactly one schema's subtree of the configured hash-addressed
+    section — ``{hash_prefix}/{schema_name}/`` (``hash_prefix`` default
+    ``_hash``) — and returns the stored objects (``<hash@>``, ``<blob@>``,
+    ``<attach@>``). Every hash path embeds the schema and deduplication is
+    per-schema, so this listing is complete for that schema and independent of
+    every other schema on the store.
 
-    When ``schema_name`` is given, the walk is confined to that schema's
-    subtree (``{hash_prefix}/{schema}/``). Because every hash path embeds the
-    schema and deduplication is per-schema, this is complete for that schema —
-    which is what lets :func:`scan` operate on one schema without seeing (or
-    endangering) objects belonging to other schemas sharing the store.
+    Only the CURRENTLY configured prefix is walked: objects written under a
+    former prefix are not listed here (they remain readable via their metadata
+    paths). ``schema_name`` is required — GC is always per-schema.
 
     Parameters
     ----------
@@ -278,9 +282,8 @@ def list_stored_hashes(store_name: str | None = None, config=None, schema_name: 
         Store to scan (None = default store).
     config : Config, optional
         Config instance. If None, falls back to global settings.config.
-    schema_name : str, optional
-        Restrict the walk to this schema's subtree. None = the whole hash
-        section (all schemas).
+    schema_name : str
+        Schema whose hash subtree to list (required, keyword-only).
 
     Returns
     -------
@@ -299,14 +302,10 @@ def list_stored_hashes(store_name: str | None = None, config=None, schema_name: 
         config = _global_config
     # Hash-addressed storage: {hash_prefix}/{schema}/{subfolders...}/{hash}.
     # The prefix comes from the store's settings — the same value the writer
-    # uses — so scanner and writer cannot drift. NOTE: only the CURRENTLY
-    # configured prefix is scanned; objects written under a previous prefix
-    # value remain readable (their metadata stores full paths) but are not
-    # candidates for reclamation until the setting is restored.
+    # uses — so scanner and writer cannot drift.
     _spec = config.get_store_spec(store_name)
     hash_prefix = _spec["hash_prefix"].strip("/") + "/"  # settings applies the "_hash" default
-    # Confine the walk to one schema's subtree when requested.
-    section = f"{hash_prefix}{schema_name}/" if schema_name else hash_prefix
+    section = f"{hash_prefix}{schema_name}/"
     # Base32 pattern: 26 lowercase alphanumeric chars
     base32_pattern = re.compile(r"^[a-z2-7]{26}$")
 
@@ -343,35 +342,35 @@ def list_stored_hashes(store_name: str | None = None, config=None, schema_name: 
     return stored
 
 
-def list_schema_paths(store_name: str | None = None, config=None, schema_name: str | None = None) -> dict[str, int]:
+def list_schema_paths(store_name: str | None = None, config=None, *, schema_name: str) -> dict[str, int]:
     """
-    List schema-addressed object files in storage.
+    List a schema's schema-addressed object files in storage.
 
-    Enumerates the individual **files** written by schema-addressed codecs.
-    A single-file object is one file at
-    ``{schema_prefix}/{schema}/{table}/{pk}/{field}_{token}[.ext]``
-    (``schema_prefix`` defaults to ``_schema``); a directory-valued object
-    (e.g. a Zarr store) is many files under that path prefix, plus a
-    ``{path}.manifest.json`` sidecar beside it — all are listed. Orphan
-    detection matches these files against each row's referenced object path
-    via :func:`_is_covered` (exact, ancestor-prefix, or manifest-sidecar), so
-    superseded per-token versions are reclaimable while every file belonging
+    Walks exactly one schema's section — ``{schema_prefix}/{schema_name}/``
+    (``schema_prefix`` default ``_schema``) — and enumerates the individual
+    **files** written by schema-addressed codecs. A single-file object is one
+    file at ``{schema_prefix}/{schema}/{table}/{pk}/{field}_{token}[.ext]``; a
+    directory-valued object (e.g. a Zarr store) is many files under that path
+    prefix, plus a ``{path}.manifest.json`` sidecar beside it — all are listed.
+    Orphan detection matches these files against each row's referenced object
+    path via :func:`_is_covered` (exact, ancestor-prefix, or manifest-sidecar),
+    so superseded per-token versions are reclaimable while every file belonging
     to a live object — including its manifest — is kept.
 
-    Scope: with ``schema_name`` given, the walk is confined to that schema's
-    two possible locations — the ``{schema_prefix}/{schema}/`` section and the
-    legacy root-level ``{schema}/`` layout (DataJoint 2.3.0 and earlier). Both
-    begin with the schema name, so every schema-addressed object lives under
-    one of them and the per-schema walk is complete. With ``schema_name=None``
-    the walk covers the WHOLE store (minus the configured hash and filepath
-    sections) — every schema at once.
+    The walk is confined to the schema's own section, so it never enters the
+    hash section or the filepath section (mutually-exclusive top-level
+    prefixes, enforced by store validation) — GC's blast radius is exactly
+    ``{schema_prefix}/{schema}/``, and user-managed ``<filepath@>`` content and
+    other schemas' objects are structurally out of reach.
 
-    In both modes the hash section is skipped, but a hash object can still
-    surface here when it sits *outside* the current hash section (e.g. after
-    ``hash_prefix`` was changed on a populated store, or when ``hash_prefix``
-    is empty so hash and schema share the root). :func:`scan` distinguishes
-    such live objects from true orphans by checking coverage against BOTH the
-    schema and hash reference sets.
+    ``schema_name`` is required — GC is always per-schema.
+
+    Legacy layout: DataJoint 2.3.0 and earlier wrote schema-addressed objects
+    at root level ``{schema}/...`` (``schema_prefix`` was ignored — see
+    datajoint/datajoint-python#1487). Such a store should set
+    ``schema_prefix=""`` so both writes and this walk use the root-level
+    layout consistently; otherwise those objects remain readable (metadata
+    records full paths) but are outside the scanned section.
 
     Parameters
     ----------
@@ -379,8 +378,8 @@ def list_schema_paths(store_name: str | None = None, config=None, schema_name: s
         Store to scan (None = default store).
     config : Config, optional
         Config instance. If None, falls back to global settings.config.
-    schema_name : str, optional
-        Restrict the walk to this schema's subtree(s). None = whole store.
+    schema_name : str
+        Schema whose section to list (required, keyword-only).
 
     Returns
     -------
@@ -390,72 +389,32 @@ def list_schema_paths(store_name: str | None = None, config=None, schema_name: s
     backend = get_store_backend(store_name, config=config)
     stored: dict[str, int] = {}
 
-    # A store may declare a `filepath_prefix` — the namespace reserved for
-    # user-managed <filepath@> content. Files under it are NOT DataJoint-owned
-    # objects and must never be candidates for garbage collection. (Without a
-    # declared filepath_prefix, cohabiting filepath files are indistinguishable
-    # from orphans — see the fail-safe planned with the two-phase GC work.)
     if config is None:
         from .settings import config as _global_config
 
         config = _global_config
     _spec = config.get_store_spec(store_name)
-    _fp = _spec.get("filepath_prefix")
-    filepath_prefix = (_fp.strip("/") + "/") if _fp else None
-    _hp = _spec["hash_prefix"].strip("/")  # settings applies the "_hash" default
-    hash_section = _hp + "/" if _hp else None
     _sp = _spec["schema_prefix"].strip("/")  # settings applies the "_schema" default
-
+    rel = f"{_sp}/{schema_name}" if _sp else schema_name
     full_root = backend._full_path("")
 
-    # Determine which subtree(s) to walk. Per-schema scoping confines orphan
-    # detection to the requested schema's own folders — objects belonging to
-    # other schemas sharing the store are never seen, hence never at risk.
-    if schema_name:
-        rel_roots = [f"{_sp}/{schema_name}"] if _sp else []
-        rel_roots.append(schema_name)  # legacy root-level layout (no schema_prefix)
-    else:
-        rel_roots = [""]  # whole store
-
-    for rel in rel_roots:
-        try:
-            for root, dirs, files in backend.fs.walk(backend._full_path(rel)):
-                # Skip the hash-addressed storage subtree. Match on the FIRST
-                # store-relative path segment only — a substring test would also
-                # exclude user tables/schemas whose names merely contain "_hash"
-                # (e.g. a table `probe_hash`), silently leaking their orphans.
-                rel_root = root.replace(full_root, "").lstrip("/")
-                if hash_section and (rel_root + "/").startswith(hash_section):
-                    continue
-
-                # Skip the declared filepath namespace (user-managed files).
-                if filepath_prefix and (rel_root + "/").startswith(filepath_prefix):
-                    continue
-
-                for filename in files:
-                    # Manifest sidecars ({object}.manifest.json, written for
-                    # folder-valued objects) are deliberately INCLUDED: they are
-                    # owned by their object and must be reclaimed with it when the
-                    # object is orphaned. _is_covered() keeps a live object's
-                    # manifest out of the orphan set.
-                    file_path = f"{root}/{filename}"
-                    relative_path = file_path.replace(full_root, "").lstrip("/")
-
-                    # Floor guard: a real object is at least {schema}/{table}/.../{file}
-                    # (root-level legacy layout) or {schema_prefix}/{schema}/... —
-                    # both have >= 2 slashes. Drops stray shallow files.
-                    if relative_path.count("/") < 2:
-                        continue
-
-                    try:
-                        stored[relative_path] = backend.fs.size(file_path)
-                    except Exception:
-                        stored[relative_path] = 0
-
-        except FileNotFoundError:
-            continue  # this subtree does not exist (e.g. no legacy layout)
-        except Exception as e:
-            logger.warning(f"Error listing stored schemas: {e}")
+    try:
+        for root, dirs, files in backend.fs.walk(backend._full_path(rel)):
+            for filename in files:
+                # Manifest sidecars ({object}.manifest.json) are INCLUDED: they
+                # are owned by their object and must be reclaimed with it when
+                # the object is orphaned. _is_covered() keeps a live object's
+                # manifest out of the orphan set.
+                file_path = f"{root}/{filename}"
+                relative_path = file_path.replace(full_root, "").lstrip("/")
+                try:
+                    stored[relative_path] = backend.fs.size(file_path)
+                except Exception:
+                    stored[relative_path] = 0
+    except FileNotFoundError:
+        pass  # this schema's section does not exist yet
+    except Exception as e:
+        logger.warning(f"Error listing stored schemas: {e}")
 
     return stored
 
@@ -558,14 +517,13 @@ def scan(
     listed and never at risk. (This removes the former requirement to pass
     *every* schema on a store at once.)
 
-    A stored file is considered live if it is covered by EITHER reference set
-    (schema or hash) for its schema. This keeps a live hash object safe when it
-    sits outside the current hash section — e.g. after ``hash_prefix`` was
-    changed on a populated store, or when ``hash_prefix`` is empty so hash and
-    schema share the root: it is covered by the hash references (its metadata
-    path), so it is never misclassified as an orphan. The trade-off (documented,
-    not a bug): objects under a *former* prefix are not reclamation candidates
-    until the setting is restored.
+    Each schema's two sections are walked in isolation
+    (``{hash_prefix}/{schema}/`` and ``{schema_prefix}/{schema}/``), so GC's
+    blast radius is exactly those folders: user ``<filepath@>`` content and
+    other schemas' objects are structurally out of reach. Objects under a
+    *former* prefix (after a prefix change on a populated store) stay readable
+    via their metadata paths but are not reclamation candidates until the
+    setting is restored.
 
     Parameters
     ----------
@@ -620,17 +578,16 @@ def scan(
         h_stored = list_stored_hashes(store_name, config=_config, schema_name=db)
         orphaned_hashes |= set(h_stored.keys()) - h_ref
 
-        # --- Schema-addressed storage (this schema's subtree) ---
+        # --- Schema-addressed storage (this schema's section) ---
         s_ref = scan_schema_references(schema, store_name=store_name, verbose=verbose)
         s_stored = list_schema_paths(store_name, config=_config, schema_name=db)
         # Coverage, not exact set difference: a referenced path may be a
         # DIRECTORY-valued object (e.g. a Zarr store), whose stored form is
-        # many files under that prefix, plus a `.manifest.json` sidecar.
-        # A stored file is live if covered by EITHER of THIS schema's reference
-        # sets — the hash arm protects a live hash object that surfaces in the
-        # schema walk (empty hash_prefix, or a former prefix under this schema).
-        live = s_ref | h_ref
-        orphaned_paths |= {p for p in s_stored if not _is_covered(p, live)}
+        # many files under that prefix, plus a `.manifest.json` sidecar. The
+        # schema walk is confined to this schema's schema_prefix section, so it
+        # can only contain this schema's schema-addressed objects — coverage
+        # against s_ref alone is complete (no hash objects can appear here).
+        orphaned_paths |= {p for p in s_stored if not _is_covered(p, s_ref)}
 
         hash_referenced |= h_ref
         hash_stored.update(h_stored)
@@ -715,7 +672,11 @@ def collect(
     if not dry_run:
         # Delete orphaned hashes
         if stats["hash_orphaned"] > 0:
-            hash_stored = list_stored_hashes(store_name, config=_config)
+            # Size map for bytes_freed — built per schema (listers are
+            # per-schema) and merged across the passed schemas.
+            hash_stored: dict[str, int] = {}
+            for schema in schemas:
+                hash_stored.update(list_stored_hashes(store_name, config=_config, schema_name=schema.database))
 
             for path in stats["orphaned_hashes"]:
                 try:
@@ -731,7 +692,9 @@ def collect(
 
         # Delete orphaned schema paths
         if stats["schema_paths_orphaned"] > 0:
-            schema_paths_stored = list_schema_paths(store_name, config=_config)
+            schema_paths_stored: dict[str, int] = {}
+            for schema in schemas:
+                schema_paths_stored.update(list_schema_paths(store_name, config=_config, schema_name=schema.database))
 
             for path in stats["orphaned_paths"]:
                 try:

@@ -467,7 +467,9 @@ class TestScanWithLiveData:
 
         gc.collect(schema_custom, store_name="local", dry_run=False)
 
-        stored_after = set(gc.list_schema_paths("local", config=schema_custom.connection._config))
+        stored_after = set(
+            gc.list_schema_paths("local", config=schema_custom.connection._config, schema_name=schema_custom.database)
+        )
         assert live_path in stored_after, f"collect() deleted the live custom-codec file {live_path} (#1469)"
         assert not (deleted_paths & stored_after), f"deleted row's orphan not reclaimed: {deleted_paths & stored_after}"
 
@@ -509,7 +511,7 @@ class TestDirectoryObjects:
         assert len(refs) == 1
         ref = next(iter(refs))
 
-        stored = gc.list_schema_paths("local", config=schema_dirobj.connection._config)
+        stored = gc.list_schema_paths("local", config=schema_dirobj.connection._config, schema_name=schema_dirobj.database)
         chunk_files = [p for p in stored if p.startswith(ref + "/")]
         assert len(chunk_files) >= 4, f"expected the folder's files under {ref}; got {sorted(stored)}"
         assert f"{ref}.manifest.json" in stored, "manifest sidecar must be listed (it is reclaimable state)"
@@ -535,7 +537,9 @@ class TestDirectoryObjects:
 
         gc.collect(schema_dirobj, store_name="local", dry_run=False)
 
-        stored_after = set(gc.list_schema_paths("local", config=schema_dirobj.connection._config))
+        stored_after = set(
+            gc.list_schema_paths("local", config=schema_dirobj.connection._config, schema_name=schema_dirobj.database)
+        )
         live_files = {p for p in stored_after if p.startswith(live_ref + "/")}
         assert len(live_files) >= 4, f"live folder object lost files: {sorted(stored_after)}"
         assert f"{live_ref}.manifest.json" in stored_after, "live object's manifest must survive collect()"
@@ -557,10 +561,11 @@ class GcProbeHash(dj.Manual):
 
 
 class TestHashSubstringTableName:
-    """The hash-addressed subtree skip must match the first store-relative
-    path segment exactly (`_hash/...`), not any path containing the substring
-    `_hash` — otherwise tables like `gc_probe_hash` are silently excluded from
-    the schema-addressed listing and their orphans are never reclaimed."""
+    """A table whose name contains the substring `_hash` (e.g. `gc_probe_hash`)
+    is listed and reclaimed normally. Per-schema scoping walks only the
+    schema's own section (`{schema_prefix}/{schema}/`), so such a table's
+    objects are ordinary schema-addressed files — there is no store-wide
+    hash-subtree skip that a substring could trip over."""
 
     @pytest.fixture
     def schema_probe(self, connection_test, prefix, mock_stores):
@@ -579,7 +584,7 @@ class TestHashSubstringTableName:
 
         refs = gc.scan_schema_references(schema_probe, store_name="local")
         assert len(refs) == 2
-        stored = set(gc.list_schema_paths("local", config=schema_probe.connection._config))
+        stored = set(gc.list_schema_paths("local", config=schema_probe.connection._config, schema_name=schema_probe.database))
         missing = refs - stored
         assert not missing, (
             f"files of a table whose name contains '_hash' must be listed; missing {missing} "
@@ -591,21 +596,24 @@ class TestHashSubstringTableName:
         dead_ref = next(iter(refs - refs_live))
 
         gc.collect(schema_probe, store_name="local", dry_run=False)
-        stored_after = set(gc.list_schema_paths("local", config=schema_probe.connection._config))
+        stored_after = set(
+            gc.list_schema_paths("local", config=schema_probe.connection._config, schema_name=schema_probe.database)
+        )
         assert dead_ref not in stored_after, "orphan under a '_hash'-substring table name must be reclaimed"
         assert next(iter(refs_live)) in stored_after, "live file must survive"
 
 
-class TestFilepathPrefixProtection:
-    """A store's declared `filepath_prefix` is the user-managed <filepath@>
-    namespace: GC must never list (and therefore never collect) files under
-    it. Without a declaration, cohabiting user files remain indistinguishable
-    from orphans (documented hazard; fail-safe planned with two-phase GC)."""
+class TestUserFilesOutsideSchemaSectionUntouched:
+    """Per-schema scoping walks only `{schema_prefix}/{schema}/`, so any file
+    outside that section — including user-managed <filepath@> content anywhere
+    else in the store — is structurally never a GC candidate. The old
+    cohabitation hazard (user files misread as orphans) is gone by
+    construction, with or without a declared filepath_prefix."""
 
     @pytest.fixture
     def schema_fp(self, connection_test, prefix, mock_stores):
         schema = dj.Schema(
-            f"{prefix}_test_gc_fpprefix",
+            f"{prefix}_test_gc_userfiles",
             context={"GcObjectTest": GcObjectTest},
             connection=connection_test,
         )
@@ -613,7 +621,7 @@ class TestFilepathPrefixProtection:
         yield schema
         schema.drop()
 
-    def test_filepath_prefix_subtree_never_collected(self, schema_fp):
+    def test_user_file_outside_section_never_listed_or_collected(self, schema_fp):
         from pathlib import Path
 
         cfg = schema_fp.connection._config
@@ -624,20 +632,14 @@ class TestFilepathPrefixProtection:
 
         GcObjectTest.insert1({"rid": 1, "results": b"managed-object"})
 
-        # Without a declared prefix, the stray user file IS treated as an
-        # orphan candidate (the documented cohabitation hazard).
-        stored_undeclared = gc.list_schema_paths("local", config=cfg)
-        assert "userfiles/deep/important.bin" in stored_undeclared
+        # The user file lives outside {schema_prefix}/{schema}/, so the scoped
+        # walk never lists it — no filepath_prefix declaration needed.
+        stored = gc.list_schema_paths("local", config=cfg, schema_name=schema_fp.database)
+        assert "userfiles/deep/important.bin" not in stored
+        assert stored, "the schema's own managed object must still be listed"
 
-        cfg.stores["local"]["filepath_prefix"] = "userfiles"
-        try:
-            stored = gc.list_schema_paths("local", config=cfg)
-            assert "userfiles/deep/important.bin" not in stored, "declared filepath namespace must be excluded"
-
-            gc.collect(schema_fp, store_name="local", dry_run=False)
-            assert user_file.exists(), "collect() must never touch the declared filepath namespace"
-        finally:
-            cfg.stores["local"].pop("filepath_prefix", None)
+        gc.collect(schema_fp, store_name="local", dry_run=False)
+        assert user_file.exists(), "collect() must never touch files outside the schema section"
 
 
 class TestPrefixSettingsHonored:
@@ -684,7 +686,7 @@ class TestPrefixSettingsHonored:
         # And reclamation works within the configured sections
         (GcObjectTest & {"rid": 2}).delete(prompt=False)
         gc.collect(schema_prefixed, store_name="local", dry_run=False)
-        stored_after = set(gc.list_schema_paths("local", config=cfg))
+        stored_after = set(gc.list_schema_paths("local", config=cfg, schema_name=schema_prefixed.database))
         live = gc.scan_schema_references(schema_prefixed, store_name="local")
         assert live <= stored_after, "live object under custom section must survive"
         assert not ((obj_refs - live) & stored_after), "orphan under custom section must be reclaimed"
