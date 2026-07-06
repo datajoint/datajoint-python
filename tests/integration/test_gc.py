@@ -2,6 +2,7 @@
 Tests for garbage collection (gc.py).
 """
 
+from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -174,12 +175,12 @@ def _mock_collector(store="test_store"):
     cfg = MagicMock()
     cfg.get_store_spec.return_value = {"hash_prefix": "_hash", "schema_prefix": "_schema"}
     with patch("datajoint.gc.get_store_backend", return_value=MagicMock()):
-        return gc.GarbageCollector(store, config=cfg)
+        return gc.GarbageCollector(MagicMock(), store=store, config=cfg)
 
 
 def _gc(schema, store="local"):
     """One store-bound collector per live-data test (config from the schema)."""
-    return gc.GarbageCollector(store, config=schema.connection._config)
+    return gc.GarbageCollector(schema, store=store)
 
 
 class TestGarbageCollectorConstruction:
@@ -189,110 +190,69 @@ class TestGarbageCollectorConstruction:
         cfg = MagicMock()
         cfg.get_store_spec.return_value = {"hash_prefix": "_hash", "schema_prefix": "_schema"}
         with patch("datajoint.gc.get_store_backend", return_value="BACKEND") as mock_backend:
-            collector = gc.GarbageCollector("mystore", config=cfg)
+            collector = gc.GarbageCollector(MagicMock(), store="mystore", config=cfg)
         mock_backend.assert_called_once_with("mystore", config=cfg)  # eager
         assert collector.store == "mystore"
         assert collector.backend == "BACKEND"
         assert collector._hash_prefix == "_hash" and collector._schema_prefix == "_schema"
 
 
-class TestScan:
-    """Tests for GarbageCollector.scan."""
+class TestCollect:
+    """Tests for GarbageCollector.collect (dry_run=True is the read-only scan)."""
+
+    # Fixtures patched onto the four data-gathering methods so the orphan set is
+    # fixed: hashes path1,path2 referenced but path1,path3 stored → path3
+    # orphaned; schema pk1 referenced but pk1,pk2 stored → pk2 orphaned.
+    def _patch_data(self):
+        return [
+            patch.object(gc.GarbageCollector, "hash_references", return_value={"_hash/s/path1", "_hash/s/path2"}),
+            patch.object(gc.GarbageCollector, "schema_references", return_value={"s/t/pk1/f"}),
+            patch.object(gc.GarbageCollector, "list_hash_paths", return_value={"_hash/s/path1": 100, "_hash/s/path3": 200}),
+            patch.object(gc.GarbageCollector, "list_schema_paths", return_value={"s/t/pk1/f": 500, "s/t/pk2/f": 300}),
+        ]
 
     def test_requires_at_least_one_schema(self):
-        """At least one schema is required (checked before the store is even resolved)."""
+        """At least one schema is required, checked before the store is resolved."""
         with pytest.raises(DataJointError, match="At least one schema must be provided"):
-            _mock_collector().scan()
+            gc.GarbageCollector(store="test_store")
 
-    @patch.object(gc.GarbageCollector, "schema_references")
-    @patch.object(gc.GarbageCollector, "list_schema_paths")
-    @patch.object(gc.GarbageCollector, "hash_references")
-    @patch.object(gc.GarbageCollector, "list_hash_paths")
-    def test_returns_stats(self, mock_list_hashes, mock_hash_ref, mock_list_schemas, mock_schema_ref):
-        """scan aggregates per-section stats (no combined totals)."""
-        mock_hash_ref.return_value = {"_hash/schema/path1", "_hash/schema/path2"}
-        mock_list_hashes.return_value = {"_hash/schema/path1": 100, "_hash/schema/path3": 200}  # path3 orphaned
-        mock_schema_ref.return_value = {"schema/table/pk1/field"}
-        mock_list_schemas.return_value = {"schema/table/pk1/field": 500, "schema/table/pk2/field": 300}  # pk2 orphaned
+    def test_dry_run_reports_stats_and_deletes_nothing(self):
+        """dry_run=True (default) returns the full orphan report without deleting."""
+        with ExitStack() as es:
+            for p in self._patch_data():
+                es.enter_context(p)
+            mock_delete = es.enter_context(patch("datajoint.gc.delete_path"))
+            stats = _mock_collector().collect()  # dry_run defaults True
 
-        stats = _mock_collector().scan(MagicMock())
-
-        assert stats["hash_referenced"] == 2
-        assert stats["hash_stored"] == 2
-        assert stats["hash_orphaned"] == 1
-        assert "_hash/schema/path3" in stats["orphaned_hashes"]
+        assert stats["dry_run"] is True
+        assert stats["deleted"] == 0 and stats["bytes_freed"] == 0
+        mock_delete.assert_not_called()
+        # full report is present
+        assert stats["hash_orphaned"] == 1 and stats["orphaned_hashes"] == ["_hash/s/path3"]
         assert stats["hash_orphaned_bytes"] == 200
-
-        assert stats["schema_paths_referenced"] == 1
-        assert stats["schema_paths_stored"] == 2
-        assert stats["schema_paths_orphaned"] == 1
-        assert "schema/table/pk2/field" in stats["orphaned_paths"]
+        assert stats["schema_paths_orphaned"] == 1 and stats["orphaned_paths"] == ["s/t/pk2/f"]
         assert stats["schema_paths_orphaned_bytes"] == 300
-
-        # combined totals were removed
+        # no combined totals
         for k in ("referenced", "stored", "orphaned", "orphaned_bytes"):
             assert k not in stats
 
+    def test_delete_removes_orphans_via_bound_store(self):
+        """dry_run=False deletes each section's orphans, sized from the same scan."""
+        with ExitStack() as es:
+            for p in self._patch_data():
+                es.enter_context(p)
+            mock_delete_hash = es.enter_context(patch("datajoint.gc.delete_path", return_value=True))
+            mock_delete_schema = es.enter_context(patch.object(gc.GarbageCollector, "delete_schema_path", return_value=True))
+            collector = _mock_collector()
+            stats = collector.collect(dry_run=False)
 
-class TestCollect:
-    """Tests for GarbageCollector.collect."""
-
-    @patch.object(gc.GarbageCollector, "scan")
-    def test_dry_run_does_not_delete(self, mock_scan):
-        mock_scan.return_value = {
-            "orphaned_hashes": ["_hash/schema/orphan_path"],
-            "orphaned_paths": [],
-            "hash_orphaned": 1,
-            "schema_paths_orphaned": 0,
-        }
-        stats = _mock_collector().collect(MagicMock(), dry_run=True)
-        assert stats["deleted"] == 0
-        assert stats["bytes_freed"] == 0
-        assert stats["dry_run"] is True
-
-    @patch("datajoint.gc.delete_path")
-    @patch.object(gc.GarbageCollector, "list_hash_paths")
-    @patch.object(gc.GarbageCollector, "scan")
-    def test_deletes_orphaned_hashes(self, mock_scan, mock_list_hashes, mock_delete):
-        mock_scan.return_value = {
-            "orphaned_hashes": ["_hash/schema/orphan_path"],
-            "orphaned_paths": [],
-            "hash_orphaned": 1,
-            "schema_paths_orphaned": 0,
-        }
-        mock_list_hashes.return_value = {"_hash/schema/orphan_path": 100}
-        mock_delete.return_value = True
-
-        collector = _mock_collector()
-        stats = collector.collect(MagicMock(), dry_run=False)
-
-        assert stats["deleted"] == 1
-        assert stats["hash_deleted"] == 1
-        assert stats["bytes_freed"] == 100
+        assert stats["hash_deleted"] == 1 and stats["schema_paths_deleted"] == 1
+        assert stats["deleted"] == 2
+        assert stats["bytes_freed"] == 500  # 200 (hash path3) + 300 (schema pk2)
         assert stats["dry_run"] is False
-        # deleted via the collector's own store/config — not threaded params
-        mock_delete.assert_called_once_with("_hash/schema/orphan_path", collector.store, config=collector.config)
-
-    @patch.object(gc.GarbageCollector, "delete_schema_path")
-    @patch.object(gc.GarbageCollector, "list_schema_paths")
-    @patch.object(gc.GarbageCollector, "scan")
-    def test_deletes_orphaned_schemas(self, mock_scan, mock_list_schemas, mock_delete):
-        mock_scan.return_value = {
-            "orphaned_hashes": [],
-            "orphaned_paths": ["schema/table/pk/field"],
-            "hash_orphaned": 0,
-            "schema_paths_orphaned": 1,
-        }
-        mock_list_schemas.return_value = {"schema/table/pk/field": 500}
-        mock_delete.return_value = True
-
-        stats = _mock_collector().collect(MagicMock(), dry_run=False)
-
-        assert stats["deleted"] == 1
-        assert stats["schema_paths_deleted"] == 1
-        assert stats["bytes_freed"] == 500
-        assert stats["dry_run"] is False
-        mock_delete.assert_called_once_with("schema/table/pk/field")
+        # hash deleted via the collector's own store/config (not threaded params)
+        mock_delete_hash.assert_called_once_with("_hash/s/path3", collector.store, config=collector.config)
+        mock_delete_schema.assert_called_once_with("s/t/pk2/f")
 
 
 class TestScanWithLiveData:
@@ -352,7 +312,7 @@ class TestScanWithLiveData:
         GcBlobTest.insert1({"rid": 1, "payload": np.arange(64, dtype="uint8")})
 
         collector = _gc(schema_blob)
-        stats = collector.scan(schema_blob)
+        stats = collector.collect()
 
         assert stats["hash_referenced"] >= 1, f"scan should find the active <blob@> reference; got {stats}"
 
@@ -366,7 +326,7 @@ class TestScanWithLiveData:
         GcNpyTest.insert1({"rid": 1, "waveform": np.arange(64, dtype="float32")})
 
         collector = _gc(schema_npy)
-        stats = collector.scan(schema_npy)
+        stats = collector.collect()
 
         assert stats["schema_paths_referenced"] >= 1, f"scan should find the active <npy@> reference; got {stats}"
 
@@ -380,7 +340,7 @@ class TestScanWithLiveData:
         GcObjectTest.insert1({"rid": 1, "results": b"hello-gc-test"})
 
         collector = _gc(schema_object)
-        stats = collector.scan(schema_object)
+        stats = collector.collect()
 
         assert stats["schema_paths_referenced"] >= 1, f"scan should find the active <object@> reference; got {stats}"
 
@@ -409,11 +369,11 @@ class TestScanWithLiveData:
         GcCustomCodecTest.insert1({"rid": 1, "payload": b"live-payload"})
 
         collector = _gc(schema_custom)
-        refs = collector.schema_references(schema_custom)
+        refs = collector.schema_references()
         assert refs, "custom codec's live reference must be discovered (#1469)"
         live_path = next(iter(refs))
 
-        stats = collector.scan(schema_custom)
+        stats = collector.collect()
         assert live_path not in stats["orphaned_paths"], f"live custom-codec file wrongly flagged orphan: {live_path}"
 
     def test_custom_codec_survives_collect(self, schema_custom):
@@ -424,18 +384,18 @@ class TestScanWithLiveData:
         GcCustomCodecTest.insert1({"rid": 2, "payload": b"row-two"})
 
         collector = _gc(schema_custom)
-        refs_all = collector.schema_references(schema_custom)
+        refs_all = collector.schema_references()
         assert len(refs_all) == 2, f"both live rows should be referenced; got {refs_all}"
 
         # Delete one row — its file becomes a genuine orphan (delete-then-GC).
         (GcCustomCodecTest & {"rid": 1}).delete(prompt=False)
 
-        refs_live = collector.schema_references(schema_custom)
+        refs_live = collector.schema_references()
         assert len(refs_live) == 1, f"one live row should remain referenced; got {refs_live}"
         live_path = next(iter(refs_live))
         deleted_paths = refs_all - refs_live
 
-        collector.collect(schema_custom, dry_run=False)
+        collector.collect(dry_run=False)
 
         stored_after = set(collector.list_schema_paths(schema_custom.database))
         assert live_path in stored_after, f"collect() deleted the live custom-codec file {live_path} (#1469)"
@@ -476,7 +436,7 @@ class TestDirectoryObjects:
         GcObjectTest.insert1({"rid": 1, "results": str(self._make_store_dir(tmp_path, "live.zarr"))})
 
         collector = _gc(schema_dirobj)
-        refs = collector.schema_references(schema_dirobj)
+        refs = collector.schema_references()
         assert len(refs) == 1
         ref = next(iter(refs))
 
@@ -485,7 +445,7 @@ class TestDirectoryObjects:
         assert len(chunk_files) >= 4, f"expected the folder's files under {ref}; got {sorted(stored)}"
         assert f"{ref}.manifest.json" in stored, "manifest sidecar must be listed (it is reclaimable state)"
 
-        stats = collector.scan(schema_dirobj)
+        stats = collector.collect()
         flagged = [p for p in stats["orphaned_paths"] if p == ref or p.startswith(ref + "/") or p == f"{ref}.manifest.json"]
         assert not flagged, f"live directory object misclassified as orphaned: {flagged}"
 
@@ -496,16 +456,16 @@ class TestDirectoryObjects:
         GcObjectTest.insert1({"rid": 2, "results": str(self._make_store_dir(tmp_path, "kept.zarr"))})
 
         collector = _gc(schema_dirobj)
-        refs_all = collector.schema_references(schema_dirobj)
+        refs_all = collector.schema_references()
         assert len(refs_all) == 2
 
         (GcObjectTest & {"rid": 1}).delete(prompt=False)
-        refs_live = collector.schema_references(schema_dirobj)
+        refs_live = collector.schema_references()
         assert len(refs_live) == 1
         live_ref = next(iter(refs_live))
         dead_ref = next(iter(refs_all - refs_live))
 
-        collector.collect(schema_dirobj, dry_run=False)
+        collector.collect(dry_run=False)
 
         stored_after = set(collector.list_schema_paths(schema_dirobj.database))
         live_files = {p for p in stored_after if p.startswith(live_ref + "/")}
@@ -551,7 +511,7 @@ class TestHashSubstringTableName:
         GcProbeHash.insert1({"rid": 2, "results": b"drop"})
 
         collector = _gc(schema_probe)
-        refs = collector.schema_references(schema_probe)
+        refs = collector.schema_references()
         assert len(refs) == 2
         stored = set(collector.list_schema_paths(schema_probe.database))
         missing = refs - stored
@@ -561,10 +521,10 @@ class TestHashSubstringTableName:
         )
 
         (GcProbeHash & {"rid": 2}).delete(prompt=False)
-        refs_live = collector.schema_references(schema_probe)
+        refs_live = collector.schema_references()
         dead_ref = next(iter(refs - refs_live))
 
-        collector.collect(schema_probe, dry_run=False)
+        collector.collect(dry_run=False)
         stored_after = set(collector.list_schema_paths(schema_probe.database))
         assert dead_ref not in stored_after, "orphan under a '_hash'-substring table name must be reclaimed"
         assert next(iter(refs_live)) in stored_after, "live file must survive"
@@ -606,7 +566,7 @@ class TestUserFilesOutsideSchemaSectionUntouched:
         assert "userfiles/deep/important.bin" not in stored
         assert stored, "the schema's own managed object must still be listed"
 
-        collector.collect(schema_fp, dry_run=False)
+        collector.collect(dry_run=False)
         assert user_file.exists(), "collect() must never touch files outside the schema section"
 
 
@@ -640,22 +600,22 @@ class TestPrefixSettingsHonored:
 
         # Writers honored the configured sections (metadata records the real paths)
         collector = _gc(schema_prefixed)
-        hash_refs = collector.hash_references(schema_prefixed)
+        hash_refs = collector.hash_references()
         assert hash_refs and all(r.startswith("content/") for r in hash_refs), hash_refs
-        obj_refs = collector.schema_references(schema_prefixed)
+        obj_refs = collector.schema_references()
         assert len(obj_refs) == 2 and all(r.startswith("objects/") for r in obj_refs), obj_refs
 
         # GC scans the same sections: everything referenced, nothing falsely orphaned
-        stats = collector.scan(schema_prefixed)
+        stats = collector.collect()
         assert stats["hash_referenced"] >= 1
         assert not (hash_refs & set(stats["orphaned_hashes"]))
         assert not (obj_refs & set(stats["orphaned_paths"]))
 
         # And reclamation works within the configured sections
         (GcObjectTest & {"rid": 2}).delete(prompt=False)
-        collector.collect(schema_prefixed, dry_run=False)
+        collector.collect(dry_run=False)
         stored_after = set(collector.list_schema_paths(schema_prefixed.database))
-        live = collector.schema_references(schema_prefixed)
+        live = collector.schema_references()
         assert live <= stored_after, "live object under custom section must survive"
         assert not ((obj_refs - live) & stored_after), "orphan under custom section must be reclaimed"
 
@@ -693,20 +653,20 @@ class TestHashObjectsOutsideCurrentSection:
             # (content) prefix. The reference is the metadata path, recorded
             # when the object was written under _hash — unaffected by the flip.
             collector = _gc(schema_pfx)
-            hash_ref = next(iter(collector.hash_references(schema_pfx)))
+            hash_ref = next(iter(collector.hash_references()))
             assert hash_ref.startswith("_hash/")
 
             # Read still works via the metadata path.
             assert (GcBlobTest & {"rid": 1}).fetch1("payload") is not None
 
-            stats = collector.scan(schema_pfx)
+            stats = collector.collect()
             assert hash_ref not in set(
                 stats["orphaned_paths"]
             ), "live hash object outside the current hash section must not be a schema orphan"
             assert hash_ref not in set(stats["orphaned_hashes"])
 
             # End-to-end: collect must not destroy the live hash object.
-            collector.collect(schema_pfx, dry_run=False)
+            collector.collect(dry_run=False)
             from datajoint.hash_registry import get_store_backend
 
             backend = get_store_backend("local", config=cfg)
@@ -773,7 +733,7 @@ class TestPerSchemaScoping:
         b_blob.insert1({"rid": 1, "payload": np.arange(4, dtype="uint8")})
         b_obj.insert1({"rid": 1, "results": b"b-obj"})
 
-        stats = collector.scan(a)
+        stats = collector.collect()
         # b's live objects are outside a's subtree → not counted, not orphaned
         assert stats["hash_orphaned"] == 0 and stats["schema_paths_orphaned"] == 0
         assert not any(b.database in p for p in stats["orphaned_paths"] + stats["orphaned_hashes"])
@@ -786,14 +746,14 @@ class TestPerSchemaScoping:
         b_blob.insert1({"rid": 1, "payload": np.arange(4, dtype="uint8")})
         b_obj.insert1({"rid": 1, "results": b"b-live"})
 
-        a_orphan = next(iter(collector.schema_references(a)))
+        a_orphan = next(iter(collector.schema_references()))
         (GcObjectTest & {"rid": 1}).delete(prompt=False)
 
         b_hashes_before = set(collector.list_hash_paths(b.database))
         b_paths_before = set(collector.list_schema_paths(b.database))
         assert b_hashes_before and b_paths_before
 
-        collector.collect(a, dry_run=False)
+        collector.collect(dry_run=False)
 
         # a's orphan reclaimed; b entirely intact
         assert a_orphan not in set(collector.list_schema_paths(a.database))

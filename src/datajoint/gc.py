@@ -21,20 +21,20 @@ Schema-addressed storage
     Deletion: Requires garbage collection
 
 Garbage collection is **store-specific** and handles one store at a time. The
-:class:`GarbageCollector` is bound to a store (and the config that defines it)
-at construction; its store and config are not threaded through each call::
+:class:`GarbageCollector` is bound to its schemas and store at construction;
+neither is threaded through each call (the config defaults to the schemas')::
 
     import datajoint as dj
 
-    collector = dj.gc.GarbageCollector(store="mystore")
-    stats = collector.scan(schema1, schema2)              # read-only
-    stats = collector.collect(schema1, schema2, dry_run=False)
+    collector = dj.gc.GarbageCollector(schema1, schema2, store="mystore")
+    stats = collector.collect()              # read-only report (dry_run=True default)
+    stats = collector.collect(dry_run=False) # actually delete the orphans
 
 Both sections embed the schema name in every path, so garbage collection is
 **per-schema**: each schema is scanned against its own subtree only. Orphan
-detection is therefore confined to the schemas you pass — any subset of the
-schemas sharing a store may be scanned/collected safely, and GC never touches
-another schema's objects or user-managed content elsewhere in the store.
+detection is therefore confined to the collector's schemas — any subset of the
+schemas sharing a store may be collected safely, and GC never touches another
+schema's objects or user-managed content elsewhere in the store.
 
 See Also
 --------
@@ -87,65 +87,71 @@ def _is_covered(path: str, referenced: set[str]) -> bool:
 
 class GarbageCollector:
     """
-    Store-specific garbage collector — handles exactly one store.
+    Store-specific garbage collector — one store, a fixed set of schemas.
 
-    Bound to a store name and the config that defines it at construction, so
-    neither is threaded through individual operations. Storage-side work (the
-    stored-file listings, deletion) uses this store/config; database metadata
-    is read through each scanned schema's own connection.
+    The schemas to collect and the store are bound at construction, so neither
+    is threaded through individual operations. The store is resolved eagerly
+    (an unknown/misconfigured store raises immediately). Storage-side work (the
+    stored-file listings, deletion) uses this store; database metadata is read
+    through each schema's own connection.
 
     Parameters
     ----------
+    *schemas : Schema
+        The schemas to collect. At least one is required. Every managed path
+        embeds its schema, so collection is per-schema and confined to these
+        schemas: objects of any other schema sharing the store are never listed
+        and never at risk — pass any subset safely.
     store : str, optional
-        Store name (None = the default store). Resolved at construction — an
-        unknown/misconfigured store raises immediately.
+        Store name (None = the default store), keyword-only.
     config : Config, optional
-        Config that defines the store. If None, the global ``settings.config``
-        is used.
+        Config that defines the store. Defaults to the first schema's
+        connection config (``schemas[0].connection._config``).
     """
 
-    def __init__(self, store: str | None = None, *, config=None) -> None:
-        if config is None:
-            from .settings import config as _global_config
-
-            config = _global_config
+    def __init__(self, *schemas: "Schema", store: str | None = None, config=None) -> None:
+        if not schemas:
+            raise DataJointError("At least one schema must be provided")
+        self.schemas = schemas
         self.store = store
-        self.config = config
+        self.config = config if config is not None else schemas[0].connection._config
         # Resolve the store eagerly: validates it exists and pins the backend
         # and section prefixes for this collector's lifetime (one store only).
-        self.backend = get_store_backend(store, config=config)
-        spec = config.get_store_spec(store)
+        self.backend = get_store_backend(store, config=self.config)
+        spec = self.config.get_store_spec(store)
         self._hash_prefix = spec["hash_prefix"].strip("/")  # settings applies the "_hash" default
         self._schema_prefix = spec["schema_prefix"].strip("/")  # ... "_schema" default
 
     # ------------------------------------------------------------------ #
     # References — extracted from database metadata (per-schema connection)
     # ------------------------------------------------------------------ #
-    def hash_references(self, *schemas: "Schema", verbose: bool = False) -> set[str]:
+    def hash_references(self, verbose: bool = False) -> set[str]:
         """
-        Full relative store paths of hash-addressed objects referenced by live rows.
+        Full relative store paths of hash-addressed objects referenced by live
+        rows across this collector's schemas.
 
         Reads columns classified by ``Heading.hash_objects`` (``<hash@>``, and
         external ``<blob@>``/``<attach@>``). Paths are taken verbatim from each
         row's metadata (independent of the store's current prefixes) and
         filtered to this collector's store.
         """
-        return self._references("hash_objects", schemas, verbose)
+        return self._references("hash_objects", verbose)
 
-    def schema_references(self, *schemas: "Schema", verbose: bool = False) -> set[str]:
+    def schema_references(self, verbose: bool = False) -> set[str]:
         """
-        Full relative store paths of schema-addressed objects referenced by live rows.
+        Full relative store paths of schema-addressed objects referenced by live
+        rows across this collector's schemas.
 
         Reads columns classified by ``Heading.schema_objects`` — any
         ``SchemaCodec`` (``<object@>``, ``<npy@>``, custom subclasses,
         recognized by type per #1469). For a directory-valued object the
         recorded path is the directory prefix, not its individual files.
         """
-        return self._references("schema_objects", schemas, verbose)
+        return self._references("schema_objects", verbose)
 
-    def _references(self, heading_attr: str, schemas, verbose: bool) -> set[str]:
+    def _references(self, heading_attr: str, verbose: bool) -> set[str]:
         referenced: set[str] = set()
-        for schema in schemas:
+        for schema in self.schemas:
             if verbose:
                 logger.info(f"Scanning schema {schema.database} for {heading_attr}")
             for table_name in schema.list_tables():
@@ -294,18 +300,23 @@ class GarbageCollector:
     # ------------------------------------------------------------------ #
     # Orchestration
     # ------------------------------------------------------------------ #
-    def scan(self, *schemas: "Schema", verbose: bool = False) -> dict[str, Any]:
+    def collect(self, dry_run: bool = True, verbose: bool = False) -> dict[str, Any]:
         """
-        Scan for orphaned storage items without deleting.
+        Report — and, unless ``dry_run``, remove — orphaned storage.
 
-        Scans both hash-addressed and schema-addressed storage. Each schema is
-        scanned against ITS OWN subtree, so orphan detection is confined to the
-        schemas passed — objects of other schemas sharing the store are never
-        listed and never at risk; any subset may be passed safely. Objects
-        under a *former* prefix stay readable via their metadata paths but are
-        not reclamation candidates until the setting is restored.
+        ``dry_run=True`` (the default) is a **read-only scan**: it reports what
+        would be removed and deletes nothing. ``dry_run=False`` additionally
+        deletes the orphans. The report is the same either way, so the safe
+        default doubles as the inspection call.
 
-        Returns a dict with per-section statistics:
+        Every managed path embeds its schema, so a schema's stored files can
+        only match that schema's references — orphan detection is confined to
+        this collector's schemas; objects of any other schema on the store are
+        never listed, deleted, or at risk. Objects under a *former* prefix stay
+        readable via their metadata paths but are not reclamation candidates
+        until the setting is restored.
+
+        Returns a dict with per-section stats and the deletion outcome:
 
         - hash_referenced / hash_stored / hash_orphaned / hash_orphaned_bytes
         - orphaned_hashes: orphaned hash items as full relative store paths
@@ -313,67 +324,25 @@ class GarbageCollector:
         - schema_paths_referenced / schema_paths_stored / schema_paths_orphaned
           / schema_paths_orphaned_bytes
         - orphaned_paths: orphaned schema files as full relative store paths
+        - hash_deleted / schema_paths_deleted / deleted / bytes_freed (0 when
+          dry_run) / errors / dry_run
         """
-        if not schemas:
-            raise DataJointError("At least one schema must be provided")
+        # References can be gathered across all schemas at once: because paths
+        # embed the schema, a file under schema X is only ever covered by an X
+        # reference, so combined coverage equals per-schema coverage.
+        hash_referenced = self.hash_references(verbose=verbose)
+        schema_paths_referenced = self.schema_references(verbose=verbose)
 
-        hash_referenced: set[str] = set()
         hash_stored: dict[str, int] = {}
-        orphaned_hashes: set[str] = set()
-        schema_paths_referenced: set[str] = set()
         schema_paths_stored: dict[str, int] = {}
-        orphaned_paths: set[str] = set()
+        for schema in self.schemas:
+            hash_stored.update(self.list_hash_paths(schema.database))
+            schema_paths_stored.update(self.list_schema_paths(schema.database))
 
-        for schema in schemas:
-            # --- Hash-addressed storage (this schema's subtree) ---
-            h_ref = self.hash_references(schema, verbose=verbose)
-            h_stored = self.list_hash_paths(schema.database)
-            orphaned_hashes |= set(h_stored.keys()) - h_ref
-
-            # --- Schema-addressed storage (this schema's section) ---
-            s_ref = self.schema_references(schema, verbose=verbose)
-            s_stored = self.list_schema_paths(schema.database)
-            # Coverage, not exact set difference: a referenced path may be a
-            # directory-valued object (many files + a manifest). The walk is
-            # confined to this schema's section, so coverage against s_ref alone
-            # is complete (no hash objects can appear here).
-            orphaned_paths |= {p for p in s_stored if not _is_covered(p, s_ref)}
-
-            hash_referenced |= h_ref
-            hash_stored.update(h_stored)
-            schema_paths_referenced |= s_ref
-            schema_paths_stored.update(s_stored)
-
-        return {
-            # Hash-addressed storage stats
-            "hash_referenced": len(hash_referenced),
-            "hash_stored": len(hash_stored),
-            "hash_orphaned": len(orphaned_hashes),
-            "hash_orphaned_bytes": sum(hash_stored.get(h, 0) for h in orphaned_hashes),
-            "orphaned_hashes": sorted(orphaned_hashes),
-            # Schema-addressed storage stats
-            "schema_paths_referenced": len(schema_paths_referenced),
-            "schema_paths_stored": len(schema_paths_stored),
-            "schema_paths_orphaned": len(orphaned_paths),
-            "schema_paths_orphaned_bytes": sum(schema_paths_stored.get(p, 0) for p in orphaned_paths),
-            "orphaned_paths": sorted(orphaned_paths),
-        }
-
-    def collect(self, *schemas: "Schema", dry_run: bool = True, verbose: bool = False) -> dict[str, Any]:
-        """
-        Remove orphaned storage items.
-
-        Scans the given schemas (via :meth:`scan`), then removes the orphans it
-        identifies. Orphan identity comes entirely from :meth:`scan`, so live
-        objects outside the current section (after a prefix change), other
-        schemas' objects, and the ``filepath_prefix`` namespace are never
-        deleted.
-
-        Returns a dict with: hash_deleted, schema_paths_deleted, deleted,
-        bytes_freed (0 if dry_run), errors, dry_run, and the per-section orphan
-        counts (hash_orphaned, schema_paths_orphaned).
-        """
-        stats = self.scan(*schemas, verbose=verbose)
+        orphaned_hashes = sorted(set(hash_stored.keys()) - hash_referenced)
+        # Coverage, not exact set difference: a referenced path may be a
+        # directory-valued object (many files + a manifest sidecar).
+        orphaned_paths = sorted(p for p in schema_paths_stored if not _is_covered(p, schema_paths_referenced))
 
         hash_deleted = 0
         schema_paths_deleted = 0
@@ -381,46 +350,48 @@ class GarbageCollector:
         errors = 0
 
         if not dry_run:
-            if stats["hash_orphaned"] > 0:
-                # Size map for bytes_freed, merged across the passed schemas.
-                hash_stored: dict[str, int] = {}
-                for schema in schemas:
-                    hash_stored.update(self.list_hash_paths(schema.database))
-                for path in stats["orphaned_hashes"]:
-                    try:
-                        size = hash_stored.get(path, 0)
-                        if delete_path(path, self.store, config=self.config):
-                            hash_deleted += 1
-                            bytes_freed += size
-                            if verbose:
-                                logger.info(f"Deleted: {path} ({size} bytes)")
-                    except Exception as e:
-                        errors += 1
-                        logger.warning(f"Failed to delete {path}: {e}")
+            # The size maps from the scan above are reused for the byte tally —
+            # no second listing pass.
+            for path in orphaned_hashes:
+                try:
+                    if delete_path(path, self.store, config=self.config):
+                        hash_deleted += 1
+                        bytes_freed += hash_stored.get(path, 0)
+                        if verbose:
+                            logger.info(f"Deleted: {path} ({hash_stored.get(path, 0)} bytes)")
+                except Exception as e:
+                    errors += 1
+                    logger.warning(f"Failed to delete {path}: {e}")
 
-            if stats["schema_paths_orphaned"] > 0:
-                schema_paths_stored: dict[str, int] = {}
-                for schema in schemas:
-                    schema_paths_stored.update(self.list_schema_paths(schema.database))
-                for path in stats["orphaned_paths"]:
-                    try:
-                        size = schema_paths_stored.get(path, 0)
-                        if self.delete_schema_path(path):
-                            schema_paths_deleted += 1
-                            bytes_freed += size
-                            if verbose:
-                                logger.info(f"Deleted schema path: {path} ({size} bytes)")
-                    except Exception as e:
-                        errors += 1
-                        logger.warning(f"Failed to delete schema path {path}: {e}")
+            for path in orphaned_paths:
+                try:
+                    if self.delete_schema_path(path):
+                        schema_paths_deleted += 1
+                        bytes_freed += schema_paths_stored.get(path, 0)
+                        if verbose:
+                            logger.info(f"Deleted schema path: {path} ({schema_paths_stored.get(path, 0)} bytes)")
+                except Exception as e:
+                    errors += 1
+                    logger.warning(f"Failed to delete schema path {path}: {e}")
 
         return {
+            # Hash-addressed storage stats
+            "hash_referenced": len(hash_referenced),
+            "hash_stored": len(hash_stored),
+            "hash_orphaned": len(orphaned_hashes),
+            "hash_orphaned_bytes": sum(hash_stored.get(h, 0) for h in orphaned_hashes),
+            "orphaned_hashes": orphaned_hashes,
+            # Schema-addressed storage stats
+            "schema_paths_referenced": len(schema_paths_referenced),
+            "schema_paths_stored": len(schema_paths_stored),
+            "schema_paths_orphaned": len(orphaned_paths),
+            "schema_paths_orphaned_bytes": sum(schema_paths_stored.get(p, 0) for p in orphaned_paths),
+            "orphaned_paths": orphaned_paths,
+            # Deletion outcome (all zero when dry_run)
             "hash_deleted": hash_deleted,
             "schema_paths_deleted": schema_paths_deleted,
             "deleted": hash_deleted + schema_paths_deleted,
             "bytes_freed": bytes_freed,
             "errors": errors,
             "dry_run": dry_run,
-            "hash_orphaned": stats["hash_orphaned"],
-            "schema_paths_orphaned": stats["schema_paths_orphaned"],
         }
