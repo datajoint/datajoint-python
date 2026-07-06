@@ -296,7 +296,7 @@ class TestCollect:
 
 
 class TestScanWithLiveData:
-    """End-to-end tests for gc.scan() against real schemas with external storage.
+    """End-to-end tests for GarbageCollector.scan() against real schemas with external storage.
 
     Exercises the full production path:
         scan_*_references → table.proj(attr).cursor() → raw JSON metadata.
