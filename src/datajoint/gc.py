@@ -56,73 +56,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def _uses_hash_storage(attr) -> bool:
-    """
-    Check if an attribute uses hash-addressed storage.
-
-    Hash-addressed types use content deduplication via MD5/Base32 hashing:
-
-    - ``<hash@store>`` - raw hash storage
-    - ``<blob@store>`` - chains to ``<hash>``
-    - ``<attach@store>`` - chains to ``<hash>``
-
-    Parameters
-    ----------
-    attr : Attribute
-        Attribute from table heading.
-
-    Returns
-    -------
-    bool
-        True if the attribute uses hash-addressed storage.
-    """
-    if not attr.codec:
-        return False
-
-    codec_name = getattr(attr.codec, "name", "")
-    store = getattr(attr, "store", None)
-
-    # <hash> always uses hash-addressed storage (external only)
-    if codec_name == "hash":
-        return True
-
-    # <blob@> and <attach@> use hash-addressed storage when external
-    if codec_name in ("blob", "attach") and store is not None:
-        return True
-
-    return False
-
-
-def _uses_schema_storage(attr) -> bool:
-    """
-    Check if an attribute uses schema-addressed storage.
-
-    Schema-addressed types store data at paths derived from the schema structure:
-
-    - ``<object@store>`` - arbitrary objects (pickled or native formats)
-    - ``<npy@store>`` - NumPy arrays with lazy loading
-
-    Parameters
-    ----------
-    attr : Attribute
-        Attribute from table heading.
-
-    Returns
-    -------
-    bool
-        True if the attribute uses schema-addressed storage.
-    """
-    if not attr.codec:
-        return False
-
-    # Recognize schema-addressed storage by type, not by a hardcoded codec name,
-    # so custom SchemaCodec subclasses (e.g. a user's NetCDF codec) are seen by
-    # GC and their live files are not misclassified as orphans (#1469).
-    from .builtin_codecs.schema import SchemaCodec
-
-    return isinstance(attr.codec, SchemaCodec)
-
-
 def scan_hash_references(
     *schemas: "Schema",
     store_name: str | None = None,
@@ -162,10 +95,10 @@ def scan_hash_references(
                 # Get table class
                 table = schema.get_table(table_name)
 
-                # Check each attribute for hash-addressed storage
-                for attr_name, attr in table.heading.attributes.items():
-                    if not _uses_hash_storage(attr):
-                        continue
+                # Attributes stored in external hash-addressed storage
+                # (classification lives on the heading — Heading.hash_objects).
+                for attr_name in table.heading.hash_objects:
+                    attr = table.heading.attributes[attr_name]
 
                     if verbose:
                         logger.info(f"  Scanning {table_name}.{attr_name}")
@@ -232,10 +165,10 @@ def scan_schema_references(
                 # Get table class
                 table = schema.get_table(table_name)
 
-                # Check each attribute for schema-addressed storage
-                for attr_name, attr in table.heading.attributes.items():
-                    if not _uses_schema_storage(attr):
-                        continue
+                # Attributes stored in schema-addressed storage
+                # (classification lives on the heading — Heading.schema_objects).
+                for attr_name in table.heading.schema_objects:
+                    attr = table.heading.attributes[attr_name]
 
                     if verbose:
                         logger.info(f"  Scanning {table_name}.{attr_name}")

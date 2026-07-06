@@ -61,51 +61,37 @@ class GcCustomCodecTest(dj.Manual):
     """
 
 
-class TestUsesHashStorage:
-    """Tests for _uses_hash_storage helper function."""
+def _make_attr(**overrides):
+    """Build a real heading.Attribute with defaults, overriding named fields."""
+    from datajoint.heading import Attribute, default_attribute_properties
 
-    def test_returns_false_for_no_adapter(self):
-        """Test that False is returned when attribute has no codec."""
-        attr = MagicMock()
-        attr.codec = None
+    return Attribute(**{**default_attribute_properties, **overrides})
 
-        assert gc._uses_hash_storage(attr) is False
 
-    def test_returns_true_for_hash_type(self):
-        """Test that True is returned for <hash@> type."""
-        attr = MagicMock()
-        attr.codec = MagicMock()
-        attr.codec.name = "hash"
-        attr.store = "mystore"
+class TestAttributeIsHashObject:
+    """Attribute.is_hash_object classifies external hash-addressed storage
+    (moved from gc._uses_hash_storage — the classification now lives on the
+    heading so GC and other modules share one source of truth)."""
 
-        assert gc._uses_hash_storage(attr) is True
+    def test_false_for_no_codec(self):
+        assert _make_attr(codec=None).is_hash_object is False
 
-    def test_returns_true_for_blob_external(self):
-        """Test that True is returned for <blob@> type (external)."""
-        attr = MagicMock()
-        attr.codec = MagicMock()
-        attr.codec.name = "blob"
-        attr.store = "mystore"
+    def test_true_for_hash_type(self):
+        # <hash> is external-only; True regardless of store attribute value
+        assert _make_attr(codec=get_codec("hash"), store="mystore").is_hash_object is True
 
-        assert gc._uses_hash_storage(attr) is True
+    def test_true_for_blob_external(self):
+        assert _make_attr(codec=get_codec("blob"), store="mystore").is_hash_object is True
 
-    def test_returns_true_for_attach_external(self):
-        """Test that True is returned for <attach@> type (external)."""
-        attr = MagicMock()
-        attr.codec = MagicMock()
-        attr.codec.name = "attach"
-        attr.store = "mystore"
+    def test_true_for_attach_external(self):
+        assert _make_attr(codec=get_codec("attach"), store="mystore").is_hash_object is True
 
-        assert gc._uses_hash_storage(attr) is True
+    def test_false_for_blob_internal(self):
+        # inline <blob> (no store) lives in the column — not hash-addressed
+        assert _make_attr(codec=get_codec("blob"), store=None).is_hash_object is False
 
-    def test_returns_false_for_blob_internal(self):
-        """Test that False is returned for <blob> internal storage."""
-        attr = MagicMock()
-        attr.codec = MagicMock()
-        attr.codec.name = "blob"
-        attr.store = None
-
-        assert gc._uses_hash_storage(attr) is False
+    def test_false_for_schema_codec(self):
+        assert _make_attr(codec=get_codec("object"), store="mystore").is_hash_object is False
 
 
 class TestHashReferencedPaths:
@@ -134,45 +120,25 @@ class TestHashReferencedPaths:
         assert get_codec("hash").referenced_paths({"hash": "abc123"}) == []
 
 
-class TestUsesSchemaStorage:
-    """Tests for _uses_schema_storage helper function."""
+class TestAttributeIsSchemaObject:
+    """Attribute.is_schema_object classifies schema-addressed storage by codec
+    TYPE (so custom SchemaCodec subclasses are included, #1469)."""
 
-    def test_returns_false_for_no_adapter(self):
-        """Test that False is returned when attribute has no codec."""
-        attr = MagicMock()
-        attr.codec = None
+    def test_false_for_no_codec(self):
+        assert _make_attr(codec=None).is_schema_object is False
 
-        assert gc._uses_schema_storage(attr) is False
+    def test_true_for_object_type(self):
+        assert _make_attr(codec=get_codec("object")).is_schema_object is True
 
-    def test_returns_true_for_object_type(self):
-        """Test that True is returned for <object@> type."""
-        attr = MagicMock()
-        attr.codec = get_codec("object")
+    def test_true_for_npy_type(self):
+        assert _make_attr(codec=get_codec("npy")).is_schema_object is True
 
-        assert gc._uses_schema_storage(attr) is True
+    def test_true_for_custom_schema_subclass(self):
+        # by type, not name — a custom ObjectCodec subclass counts (#1469)
+        assert _make_attr(codec=get_codec("gc_custom_object")).is_schema_object is True
 
-    def test_returns_true_for_npy_type(self):
-        """Test that True is returned for <npy@> type."""
-        attr = MagicMock()
-        attr.codec = get_codec("npy")
-
-        assert gc._uses_schema_storage(attr) is True
-
-    def test_returns_true_for_custom_schema_subclass(self):
-        """Recognition is by type, not name: a custom SchemaCodec subclass
-        (here, a subclass of ObjectCodec) must be seen as schema-addressed so
-        GC does not misclassify its live files as orphans (#1469)."""
-        attr = MagicMock()
-        attr.codec = get_codec("gc_custom_object")
-
-        assert gc._uses_schema_storage(attr) is True
-
-    def test_returns_false_for_other_types(self):
-        """Test that False is returned for non-schema-addressed types."""
-        attr = MagicMock()
-        attr.codec = get_codec("blob")
-
-        assert gc._uses_schema_storage(attr) is False
+    def test_false_for_hash_codec(self):
+        assert _make_attr(codec=get_codec("blob"), store="mystore").is_schema_object is False
 
 
 class TestSchemaReferencedPaths:
@@ -432,8 +398,9 @@ class TestScanWithLiveData:
     def test_custom_codec_reference_not_orphaned(self, schema_custom):
         """#1469: a live custom SchemaCodec value must be recognized as
         referenced and its file path must NOT be flagged as an orphan. Before
-        the fix, _uses_schema_storage keyed on the hardcoded names object/npy,
-        so this codec was never scanned and its live file was reported orphaned.
+        the fix, schema-addressed classification keyed on the hardcoded names
+        object/npy, so this codec was never scanned and its live file was
+        reported orphaned. Now Attribute.is_schema_object dispatches on type.
 
         Asserts on the specific live path (not global counts) so it is robust to
         other tests sharing the same ``local`` store.
