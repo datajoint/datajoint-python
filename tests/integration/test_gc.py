@@ -230,7 +230,7 @@ class TestCollect:
         # full report is present
         assert stats["hash_paths_orphaned"] == 1 and stats["orphaned_hash_paths"] == ["_hash/s/path3"]
         assert stats["hash_paths_orphaned_bytes"] == 200
-        assert stats["schema_paths_orphaned"] == 1 and stats["orphaned_paths"] == ["s/t/pk2/f"]
+        assert stats["schema_paths_orphaned"] == 1 and stats["orphaned_schema_paths"] == ["s/t/pk2/f"]
         assert stats["schema_paths_orphaned_bytes"] == 300
         # no combined totals
         for k in ("referenced", "stored", "orphaned", "orphaned_bytes"):
@@ -374,7 +374,7 @@ class TestScanWithLiveData:
         live_path = next(iter(refs))
 
         stats = collector.collect()
-        assert live_path not in stats["orphaned_paths"], f"live custom-codec file wrongly flagged orphan: {live_path}"
+        assert live_path not in stats["orphaned_schema_paths"], f"live custom-codec file wrongly flagged orphan: {live_path}"
 
     def test_custom_codec_survives_collect(self, schema_custom):
         """#1469 end-to-end data-loss guard: collect() must delete only the
@@ -432,7 +432,7 @@ class TestDirectoryObjects:
 
     def test_live_directory_object_not_orphaned(self, schema_dirobj, tmp_path):
         """A live folder object's chunk files and manifest must be covered by
-        its referenced prefix — none may appear in orphaned_paths."""
+        its referenced prefix — none may appear in orphaned_schema_paths."""
         GcObjectTest.insert1({"rid": 1, "results": str(self._make_store_dir(tmp_path, "live.zarr"))})
 
         collector = _gc(schema_dirobj)
@@ -446,7 +446,9 @@ class TestDirectoryObjects:
         assert f"{ref}.manifest.json" in stored, "manifest sidecar must be listed (it is reclaimable state)"
 
         stats = collector.collect()
-        flagged = [p for p in stats["orphaned_paths"] if p == ref or p.startswith(ref + "/") or p == f"{ref}.manifest.json"]
+        flagged = [
+            p for p in stats["orphaned_schema_paths"] if p == ref or p.startswith(ref + "/") or p == f"{ref}.manifest.json"
+        ]
         assert not flagged, f"live directory object misclassified as orphaned: {flagged}"
 
     def test_orphaned_directory_object_fully_reclaimed(self, schema_dirobj, tmp_path):
@@ -609,7 +611,7 @@ class TestPrefixSettingsHonored:
         stats = collector.collect()
         assert stats["hash_paths_referenced"] >= 1
         assert not (hash_refs & set(stats["orphaned_hash_paths"]))
-        assert not (obj_refs & set(stats["orphaned_paths"]))
+        assert not (obj_refs & set(stats["orphaned_schema_paths"]))
 
         # And reclamation works within the configured sections
         (GcObjectTest & {"rid": 2}).delete(prompt=False)
@@ -661,7 +663,7 @@ class TestHashObjectsOutsideCurrentSection:
 
             stats = collector.collect()
             assert hash_ref not in set(
-                stats["orphaned_paths"]
+                stats["orphaned_schema_paths"]
             ), "live hash object outside the current hash section must not be a schema orphan"
             assert hash_ref not in set(stats["orphaned_hash_paths"])
 
@@ -736,7 +738,7 @@ class TestPerSchemaScoping:
         stats = collector.collect()
         # b's live objects are outside a's subtree → not counted, not orphaned
         assert stats["hash_paths_orphaned"] == 0 and stats["schema_paths_orphaned"] == 0
-        assert not any(b.database in p for p in stats["orphaned_paths"] + stats["orphaned_hash_paths"])
+        assert not any(b.database in p for p in stats["orphaned_schema_paths"] + stats["orphaned_hash_paths"])
 
     def test_collect_one_schema_never_touches_the_other(self, two_schemas):
         a, b, b_blob, b_obj = two_schemas

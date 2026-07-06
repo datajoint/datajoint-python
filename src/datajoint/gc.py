@@ -323,7 +323,7 @@ class GarbageCollector:
           (NOT bare hashes — passed as-is to the deleter)
         - schema_paths_referenced / schema_paths_stored / schema_paths_orphaned
           / schema_paths_orphaned_bytes
-        - orphaned_paths: orphaned schema files as full relative store paths
+        - orphaned_schema_paths: orphaned schema files as full relative store paths
         - hash_paths_deleted / schema_paths_deleted / deleted / bytes_freed (0 when
           dry_run) / errors / dry_run
         """
@@ -342,7 +342,7 @@ class GarbageCollector:
         orphaned_hash_paths = sorted(set(hash_paths_stored.keys()) - hash_paths_referenced)
         # Coverage, not exact set difference: a referenced path may be a
         # directory-valued object (many files + a manifest sidecar).
-        orphaned_paths = sorted(p for p in schema_paths_stored if not _is_covered(p, schema_paths_referenced))
+        orphaned_schema_paths = sorted(p for p in schema_paths_stored if not _is_covered(p, schema_paths_referenced))
 
         hash_paths_deleted = 0
         schema_paths_deleted = 0
@@ -363,7 +363,7 @@ class GarbageCollector:
                     errors += 1
                     logger.warning(f"Failed to delete {path}: {e}")
 
-            for path in orphaned_paths:
+            for path in orphaned_schema_paths:
                 try:
                     if self.delete_schema_path(path):
                         schema_paths_deleted += 1
@@ -384,9 +384,9 @@ class GarbageCollector:
             # Schema-addressed storage stats
             "schema_paths_referenced": len(schema_paths_referenced),
             "schema_paths_stored": len(schema_paths_stored),
-            "schema_paths_orphaned": len(orphaned_paths),
-            "schema_paths_orphaned_bytes": sum(schema_paths_stored.get(p, 0) for p in orphaned_paths),
-            "orphaned_paths": orphaned_paths,
+            "schema_paths_orphaned": len(orphaned_schema_paths),
+            "schema_paths_orphaned_bytes": sum(schema_paths_stored.get(p, 0) for p in orphaned_schema_paths),
+            "orphaned_schema_paths": orphaned_schema_paths,
             # Deletion outcome (all zero when dry_run)
             "hash_paths_deleted": hash_paths_deleted,
             "schema_paths_deleted": schema_paths_deleted,
