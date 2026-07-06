@@ -339,6 +339,19 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
     backend = get_store_backend(store_name, config=config)
     stored: dict[str, int] = {}
 
+    # A store may declare a `filepath_prefix` — the namespace reserved for
+    # user-managed <filepath@> content. Files under it are NOT DataJoint-owned
+    # objects and must never be candidates for garbage collection. (Without a
+    # declared filepath_prefix, cohabiting filepath files are indistinguishable
+    # from orphans — see the fail-safe planned with the two-phase GC work.)
+    if config is None:
+        from .settings import config as _global_config
+
+        config = _global_config
+    _spec = config.get_store_spec(store_name)
+    _fp = _spec.get("filepath_prefix")
+    filepath_prefix = (_fp.strip("/") + "/") if _fp else None
+
     try:
         # Walk the storage collecting schema-addressed object files
         full_prefix = backend._full_path("")
@@ -350,6 +363,10 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
             # (e.g. a table `probe_hash`), silently leaking their orphans.
             rel_root = root.replace(full_prefix, "").lstrip("/")
             if rel_root == HASH_STORAGE_PREFIX or rel_root.startswith(HASH_STORAGE_PREFIX + "/"):
+                continue
+
+            # Skip the declared filepath namespace (user-managed files).
+            if filepath_prefix and (rel_root + "/").startswith(filepath_prefix):
                 continue
 
             for filename in files:

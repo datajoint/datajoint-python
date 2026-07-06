@@ -571,6 +571,14 @@ class Config(BaseSettings):
         """
         Validate that storage section prefixes don't overlap.
 
+        These keys are **namespace declarations** for store cohabitation, not
+        relocation settings: DataJoint's hash-addressed layout is fixed at
+        ``_hash/...`` and schema-addressed objects live at
+        ``{schema}/{table}/...`` regardless of these values. Declaring them
+        (a) lets ``<filepath@>`` validation keep user-managed files out of the
+        DataJoint-owned namespaces, and (b) tells garbage collection which
+        subtree (``filepath_prefix``) it must never touch.
+
         Parameters
         ----------
         store_name : str

@@ -49,11 +49,13 @@ logger = logging.getLogger(__name__.split(".")[0])
 
 
 # Fixed layout prefix for hash-addressed storage within a store. This is a
-# storage-layout CONVENTION, not a configurable setting: the `hash_prefix`
-# store key accepted by settings currently serves only as a reserved-namespace
-# declaration for <filepath@> validation (see builtin_codecs/filepath.py) and
-# is NOT consumed here. GC imports this constant so the scanner can never
-# drift from the writer.
+# storage-layout CONVENTION, not a relocation setting. The `hash_prefix` /
+# `schema_prefix` / `filepath_prefix` store keys accepted by settings are
+# NAMESPACE DECLARATIONS for store cohabitation: <filepath@> validation keeps
+# user files out of the reserved namespaces (builtin_codecs/filepath.py), and
+# GC keeps its hands off the declared filepath namespace (gc.list_schema_paths).
+# They do not relocate DataJoint-managed storage. GC imports this constant so
+# the scanner can never drift from the writer.
 HASH_STORAGE_PREFIX = "_hash"
 
 

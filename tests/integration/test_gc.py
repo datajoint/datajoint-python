@@ -662,3 +662,47 @@ class TestHashSubstringTableName:
         stored_after = set(gc.list_schema_paths("local", config=schema_probe.connection._config))
         assert dead_ref not in stored_after, "orphan under a '_hash'-substring table name must be reclaimed"
         assert next(iter(refs_live)) in stored_after, "live file must survive"
+
+
+class TestFilepathPrefixProtection:
+    """A store's declared `filepath_prefix` is the user-managed <filepath@>
+    namespace: GC must never list (and therefore never collect) files under
+    it. Without a declaration, cohabiting user files remain indistinguishable
+    from orphans (documented hazard; fail-safe planned with two-phase GC)."""
+
+    @pytest.fixture
+    def schema_fp(self, connection_test, prefix, mock_stores):
+        schema = dj.Schema(
+            f"{prefix}_test_gc_fpprefix",
+            context={"GcObjectTest": GcObjectTest},
+            connection=connection_test,
+        )
+        schema(GcObjectTest)
+        yield schema
+        schema.drop()
+
+    def test_filepath_prefix_subtree_never_collected(self, schema_fp):
+        from pathlib import Path
+
+        cfg = schema_fp.connection._config
+        location = Path(cfg.get_store_spec("local")["location"])
+        user_file = location / "userfiles" / "deep" / "important.bin"
+        user_file.parent.mkdir(parents=True, exist_ok=True)
+        user_file.write_bytes(b"user-managed")
+
+        GcObjectTest.insert1({"rid": 1, "results": b"managed-object"})
+
+        # Without a declared prefix, the stray user file IS treated as an
+        # orphan candidate (the documented cohabitation hazard).
+        stored_undeclared = gc.list_schema_paths("local", config=cfg)
+        assert "userfiles/deep/important.bin" in stored_undeclared
+
+        cfg.stores["local"]["filepath_prefix"] = "userfiles"
+        try:
+            stored = gc.list_schema_paths("local", config=cfg)
+            assert "userfiles/deep/important.bin" not in stored, "declared filepath namespace must be excluded"
+
+            gc.collect(schema_fp, store_name="local", dry_run=False)
+            assert user_file.exists(), "collect() must never touch the declared filepath namespace"
+        finally:
+            cfg.stores["local"].pop("filepath_prefix", None)
