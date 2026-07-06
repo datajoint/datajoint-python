@@ -228,8 +228,8 @@ class TestCollect:
         assert stats["deleted"] == 0 and stats["bytes_freed"] == 0
         mock_delete.assert_not_called()
         # full report is present
-        assert stats["hash_orphaned"] == 1 and stats["orphaned_hashes"] == ["_hash/s/path3"]
-        assert stats["hash_orphaned_bytes"] == 200
+        assert stats["hash_paths_orphaned"] == 1 and stats["orphaned_hash_paths"] == ["_hash/s/path3"]
+        assert stats["hash_paths_orphaned_bytes"] == 200
         assert stats["schema_paths_orphaned"] == 1 and stats["orphaned_paths"] == ["s/t/pk2/f"]
         assert stats["schema_paths_orphaned_bytes"] == 300
         # no combined totals
@@ -246,7 +246,7 @@ class TestCollect:
             collector = _mock_collector()
             stats = collector.collect(dry_run=False)
 
-        assert stats["hash_deleted"] == 1 and stats["schema_paths_deleted"] == 1
+        assert stats["hash_paths_deleted"] == 1 and stats["schema_paths_deleted"] == 1
         assert stats["deleted"] == 2
         assert stats["bytes_freed"] == 500  # 200 (hash path3) + 300 (schema pk2)
         assert stats["dry_run"] is False
@@ -303,7 +303,7 @@ class TestScanWithLiveData:
         schema.drop()
 
     def test_scan_finds_active_blob_reference(self, schema_blob):
-        """scan() must report hash_referenced >= 1 for a populated <blob@> column.
+        """scan() must report hash_paths_referenced >= 1 for a populated <blob@> column.
 
         Decoded value type returned by BlobCodec.decode is numpy.ndarray, which
         does not satisfy the raw-metadata dict/JSON-string check in referenced_paths — this
@@ -314,7 +314,7 @@ class TestScanWithLiveData:
         collector = _gc(schema_blob)
         stats = collector.collect()
 
-        assert stats["hash_referenced"] >= 1, f"scan should find the active <blob@> reference; got {stats}"
+        assert stats["hash_paths_referenced"] >= 1, f"scan should find the active <blob@> reference; got {stats}"
 
     def test_scan_finds_active_npy_reference(self, schema_npy):
         """scan() must report schema_paths_referenced >= 1 for a populated <npy@> column.
@@ -607,8 +607,8 @@ class TestPrefixSettingsHonored:
 
         # GC scans the same sections: everything referenced, nothing falsely orphaned
         stats = collector.collect()
-        assert stats["hash_referenced"] >= 1
-        assert not (hash_refs & set(stats["orphaned_hashes"]))
+        assert stats["hash_paths_referenced"] >= 1
+        assert not (hash_refs & set(stats["orphaned_hash_paths"]))
         assert not (obj_refs & set(stats["orphaned_paths"]))
 
         # And reclamation works within the configured sections
@@ -663,7 +663,7 @@ class TestHashObjectsOutsideCurrentSection:
             assert hash_ref not in set(
                 stats["orphaned_paths"]
             ), "live hash object outside the current hash section must not be a schema orphan"
-            assert hash_ref not in set(stats["orphaned_hashes"])
+            assert hash_ref not in set(stats["orphaned_hash_paths"])
 
             # End-to-end: collect must not destroy the live hash object.
             collector.collect(dry_run=False)
@@ -735,8 +735,8 @@ class TestPerSchemaScoping:
 
         stats = collector.collect()
         # b's live objects are outside a's subtree → not counted, not orphaned
-        assert stats["hash_orphaned"] == 0 and stats["schema_paths_orphaned"] == 0
-        assert not any(b.database in p for p in stats["orphaned_paths"] + stats["orphaned_hashes"])
+        assert stats["hash_paths_orphaned"] == 0 and stats["schema_paths_orphaned"] == 0
+        assert not any(b.database in p for p in stats["orphaned_paths"] + stats["orphaned_hash_paths"])
 
     def test_collect_one_schema_never_touches_the_other(self, two_schemas):
         a, b, b_blob, b_obj = two_schemas

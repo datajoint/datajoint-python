@@ -318,33 +318,33 @@ class GarbageCollector:
 
         Returns a dict with per-section stats and the deletion outcome:
 
-        - hash_referenced / hash_stored / hash_orphaned / hash_orphaned_bytes
-        - orphaned_hashes: orphaned hash items as full relative store paths
+        - hash_paths_referenced / hash_paths_stored / hash_paths_orphaned / hash_paths_orphaned_bytes
+        - orphaned_hash_paths: orphaned hash items as full relative store paths
           (NOT bare hashes — passed as-is to the deleter)
         - schema_paths_referenced / schema_paths_stored / schema_paths_orphaned
           / schema_paths_orphaned_bytes
         - orphaned_paths: orphaned schema files as full relative store paths
-        - hash_deleted / schema_paths_deleted / deleted / bytes_freed (0 when
+        - hash_paths_deleted / schema_paths_deleted / deleted / bytes_freed (0 when
           dry_run) / errors / dry_run
         """
         # References can be gathered across all schemas at once: because paths
         # embed the schema, a file under schema X is only ever covered by an X
         # reference, so combined coverage equals per-schema coverage.
-        hash_referenced = self.hash_references(verbose=verbose)
+        hash_paths_referenced = self.hash_references(verbose=verbose)
         schema_paths_referenced = self.schema_references(verbose=verbose)
 
-        hash_stored: dict[str, int] = {}
+        hash_paths_stored: dict[str, int] = {}
         schema_paths_stored: dict[str, int] = {}
         for schema in self.schemas:
-            hash_stored.update(self.list_hash_paths(schema.database))
+            hash_paths_stored.update(self.list_hash_paths(schema.database))
             schema_paths_stored.update(self.list_schema_paths(schema.database))
 
-        orphaned_hashes = sorted(set(hash_stored.keys()) - hash_referenced)
+        orphaned_hash_paths = sorted(set(hash_paths_stored.keys()) - hash_paths_referenced)
         # Coverage, not exact set difference: a referenced path may be a
         # directory-valued object (many files + a manifest sidecar).
         orphaned_paths = sorted(p for p in schema_paths_stored if not _is_covered(p, schema_paths_referenced))
 
-        hash_deleted = 0
+        hash_paths_deleted = 0
         schema_paths_deleted = 0
         bytes_freed = 0
         errors = 0
@@ -352,13 +352,13 @@ class GarbageCollector:
         if not dry_run:
             # The size maps from the scan above are reused for the byte tally —
             # no second listing pass.
-            for path in orphaned_hashes:
+            for path in orphaned_hash_paths:
                 try:
                     if delete_path(path, self.store, config=self.config):
-                        hash_deleted += 1
-                        bytes_freed += hash_stored.get(path, 0)
+                        hash_paths_deleted += 1
+                        bytes_freed += hash_paths_stored.get(path, 0)
                         if verbose:
-                            logger.info(f"Deleted: {path} ({hash_stored.get(path, 0)} bytes)")
+                            logger.info(f"Deleted: {path} ({hash_paths_stored.get(path, 0)} bytes)")
                 except Exception as e:
                     errors += 1
                     logger.warning(f"Failed to delete {path}: {e}")
@@ -376,11 +376,11 @@ class GarbageCollector:
 
         return {
             # Hash-addressed storage stats
-            "hash_referenced": len(hash_referenced),
-            "hash_stored": len(hash_stored),
-            "hash_orphaned": len(orphaned_hashes),
-            "hash_orphaned_bytes": sum(hash_stored.get(h, 0) for h in orphaned_hashes),
-            "orphaned_hashes": orphaned_hashes,
+            "hash_paths_referenced": len(hash_paths_referenced),
+            "hash_paths_stored": len(hash_paths_stored),
+            "hash_paths_orphaned": len(orphaned_hash_paths),
+            "hash_paths_orphaned_bytes": sum(hash_paths_stored.get(h, 0) for h in orphaned_hash_paths),
+            "orphaned_hash_paths": orphaned_hash_paths,
             # Schema-addressed storage stats
             "schema_paths_referenced": len(schema_paths_referenced),
             "schema_paths_stored": len(schema_paths_stored),
@@ -388,9 +388,9 @@ class GarbageCollector:
             "schema_paths_orphaned_bytes": sum(schema_paths_stored.get(p, 0) for p in orphaned_paths),
             "orphaned_paths": orphaned_paths,
             # Deletion outcome (all zero when dry_run)
-            "hash_deleted": hash_deleted,
+            "hash_paths_deleted": hash_paths_deleted,
             "schema_paths_deleted": schema_paths_deleted,
-            "deleted": hash_deleted + schema_paths_deleted,
+            "deleted": hash_paths_deleted + schema_paths_deleted,
             "bytes_freed": bytes_freed,
             "errors": errors,
             "dry_run": dry_run,
