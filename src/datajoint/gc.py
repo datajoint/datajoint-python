@@ -387,12 +387,14 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
     """
     List all schema-addressed object files in storage.
 
-    Enumerates the individual object **files** written by schema-addressed
-    codecs, whose paths follow ``{schema}/{table}/{pk}/{field}_{token}[.ext]``.
-    Returning file paths (rather than the enclosing directory) is what lets
-    them match the file paths recorded in each row's stored metadata — the two
-    must be comparable for orphan detection, and per-token granularity lets
-    superseded versions be reclaimed while the current token is retained.
+    Enumerates the individual **files** written by schema-addressed codecs.
+    A single-file object is one file at ``{schema}/{table}/{pk}/{field}_{token}[.ext]``;
+    a directory-valued object (e.g. a Zarr store) is many files under that
+    path prefix, plus a ``{path}.manifest.json`` sidecar beside it — all are
+    listed. Orphan detection matches these files against each row's referenced
+    object path via :func:`_is_covered` (exact, ancestor-prefix, or
+    manifest-sidecar), so superseded per-token versions are reclaimable while
+    every file belonging to a live object — including its manifest — is kept.
 
     Parameters
     ----------
@@ -419,10 +421,11 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
                 continue
 
             for filename in files:
-                # Skip manifest sidecars (mirrors list_stored_hashes)
-                if filename.endswith(".manifest.json"):
-                    continue
-
+                # Manifest sidecars ({object}.manifest.json, written for
+                # folder-valued objects) are deliberately INCLUDED: they are
+                # owned by their object and must be reclaimed with it when the
+                # object is orphaned. _is_covered() keeps a live object's
+                # manifest out of the orphan set.
                 file_path = f"{root}/{filename}"
                 relative_path = file_path.replace(full_prefix, "").lstrip("/")
 
@@ -494,6 +497,32 @@ def delete_schema_path(path: str, store_name: str | None = None, config=None) ->
     return False
 
 
+def _is_covered(path: str, referenced: set[str]) -> bool:
+    """
+    Return True if a stored file is accounted for by a referenced object path.
+
+    A stored file is covered when:
+
+    - it IS a referenced path (single-file object, e.g. ``field_token.npy``);
+    - it lies UNDER a referenced path (directory-valued object, e.g. a Zarr
+      store ``field_token/`` whose stored form is many chunk files); or
+    - it is the ``.manifest.json`` sidecar of a referenced object (written
+      alongside folder-valued objects).
+
+    Uses O(path-depth) ancestor-prefix lookups against the referenced set.
+    """
+    if path.endswith(".manifest.json"):
+        path = path[: -len(".manifest.json")]
+    if path in referenced:
+        return True
+    idx = path.rfind("/")
+    while idx > 0:
+        if path[:idx] in referenced:
+            return True
+        idx = path.rfind("/", 0, idx)
+    return False
+
+
 def scan(
     *schemas: "Schema",
     store_name: str | None = None,
@@ -545,7 +574,10 @@ def scan(
     # --- Schema-addressed storage ---
     schema_paths_referenced = scan_schema_references(*schemas, store_name=store_name, verbose=verbose)
     schema_paths_stored = list_schema_paths(store_name, config=_config)
-    orphaned_paths = set(schema_paths_stored.keys()) - schema_paths_referenced
+    # Coverage, not exact set difference: a referenced path may be a
+    # DIRECTORY-valued object (e.g. a Zarr store), whose stored form is many
+    # files under that prefix, plus a `.manifest.json` sidecar beside it.
+    orphaned_paths = {p for p in schema_paths_stored if not _is_covered(p, schema_paths_referenced)}
     schema_paths_orphaned_bytes = sum(schema_paths_stored.get(p, 0) for p in orphaned_paths)
 
     return {

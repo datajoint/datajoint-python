@@ -545,3 +545,76 @@ class TestScanWithLiveData:
         stored_after = set(gc.list_schema_paths("local", config=schema_custom.connection._config))
         assert live_path in stored_after, f"collect() deleted the live custom-codec file {live_path} (#1469)"
         assert not (deleted_paths & stored_after), f"deleted row's orphan not reclaimed: {deleted_paths & stored_after}"
+
+
+class TestDirectoryObjects:
+    """Directory-valued objects (e.g. Zarr stores) — the referenced metadata
+    path is a directory PREFIX whose stored form is many chunk files plus a
+    `{path}.manifest.json` sidecar. Orphan matching must be coverage-based
+    (exact / ancestor-prefix / manifest), not exact set difference: with exact
+    matching, every chunk of a LIVE store is misclassified as an orphan and
+    collect() deletes live data."""
+
+    @pytest.fixture
+    def schema_dirobj(self, connection_test, prefix, mock_stores):
+        schema = dj.Schema(
+            f"{prefix}_test_gc_dirobj",
+            context={"GcObjectTest": GcObjectTest},
+            connection=connection_test,
+        )
+        schema(GcObjectTest)
+        yield schema
+        schema.drop()
+
+    @staticmethod
+    def _make_store_dir(tmp_path, name, n_chunks=3):
+        d = tmp_path / name
+        d.mkdir()
+        (d / ".zarray").write_bytes(b"{}")
+        for i in range(n_chunks):
+            (d / f"0.{i}").write_bytes(f"chunk{i}".encode())
+        return d
+
+    def test_live_directory_object_not_orphaned(self, schema_dirobj, tmp_path):
+        """A live folder object's chunk files and manifest must be covered by
+        its referenced prefix — none may appear in orphaned_paths."""
+        GcObjectTest.insert1({"rid": 1, "results": str(self._make_store_dir(tmp_path, "live.zarr"))})
+
+        refs = gc.scan_schema_references(schema_dirobj, store_name="local")
+        assert len(refs) == 1
+        ref = next(iter(refs))
+
+        stored = gc.list_schema_paths("local", config=schema_dirobj.connection._config)
+        chunk_files = [p for p in stored if p.startswith(ref + "/")]
+        assert len(chunk_files) >= 4, f"expected the folder's files under {ref}; got {sorted(stored)}"
+        assert f"{ref}.manifest.json" in stored, "manifest sidecar must be listed (it is reclaimable state)"
+
+        stats = gc.scan(schema_dirobj, store_name="local")
+        flagged = [p for p in stats["orphaned_paths"] if p == ref or p.startswith(ref + "/") or p == f"{ref}.manifest.json"]
+        assert not flagged, f"live directory object misclassified as orphaned: {flagged}"
+
+    def test_orphaned_directory_object_fully_reclaimed(self, schema_dirobj, tmp_path):
+        """After deleting one row, collect() must reclaim that folder object's
+        chunks AND manifest while leaving the surviving row's folder intact."""
+        GcObjectTest.insert1({"rid": 1, "results": str(self._make_store_dir(tmp_path, "gone.zarr"))})
+        GcObjectTest.insert1({"rid": 2, "results": str(self._make_store_dir(tmp_path, "kept.zarr"))})
+
+        refs_all = gc.scan_schema_references(schema_dirobj, store_name="local")
+        assert len(refs_all) == 2
+
+        (GcObjectTest & {"rid": 1}).delete(prompt=False)
+        refs_live = gc.scan_schema_references(schema_dirobj, store_name="local")
+        assert len(refs_live) == 1
+        live_ref = next(iter(refs_live))
+        dead_ref = next(iter(refs_all - refs_live))
+
+        gc.collect(schema_dirobj, store_name="local", dry_run=False)
+
+        stored_after = set(gc.list_schema_paths("local", config=schema_dirobj.connection._config))
+        live_files = {p for p in stored_after if p.startswith(live_ref + "/")}
+        assert len(live_files) >= 4, f"live folder object lost files: {sorted(stored_after)}"
+        assert f"{live_ref}.manifest.json" in stored_after, "live object's manifest must survive collect()"
+
+        dead_files = {p for p in stored_after if p == dead_ref or p.startswith(dead_ref + "/")}
+        assert not dead_files, f"orphaned folder object not reclaimed: {sorted(dead_files)}"
+        assert f"{dead_ref}.manifest.json" not in stored_after, "orphaned object's manifest must be reclaimed"
