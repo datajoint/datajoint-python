@@ -756,3 +756,54 @@ class TestPrefixSettingsHonored:
         live = gc.scan_schema_references(schema_prefixed, store_name="local")
         assert live <= stored_after, "live object under custom section must survive"
         assert not ((obj_refs - live) & stored_after), "orphan under custom section must be reclaimed"
+
+
+class TestHashObjectsOutsideCurrentSection:
+    """A live hash object is protected from GC even if it lives OUTSIDE the
+    currently configured hash section — e.g. after `hash_prefix` is changed on
+    a populated store. Reads always work (metadata records the full path); GC
+    must not misclassify such objects as schema-addressed orphans and delete
+    live data. Regression for the prefix-change corner."""
+
+    @pytest.fixture
+    def schema_pfx(self, connection_test, prefix, mock_stores):
+        schema = dj.Schema(
+            f"{prefix}_test_gc_hashmove",
+            context={"GcBlobTest": GcBlobTest, "GcObjectTest": GcObjectTest},
+            connection=connection_test,
+        )
+        schema(GcBlobTest)
+        schema(GcObjectTest)
+        yield schema
+        schema.drop()
+
+    def test_live_hash_object_survives_prefix_change(self, schema_pfx):
+        cfg = schema_pfx.connection._config
+        # Written under the default _hash/ section.
+        GcBlobTest.insert1({"rid": 1, "payload": np.arange(8, dtype="uint8")})
+        GcObjectTest.insert1({"rid": 1, "results": b"schema-obj"})
+        hash_ref = next(iter(gc.scan_hash_references(schema_pfx, store_name="local")))
+        assert hash_ref.startswith("_hash/")
+
+        # Relocate the hash section: new writes would go to content/, but the
+        # existing object stays at _hash/ (metadata keeps its full path).
+        cfg.stores["local"]["hash_prefix"] = "content"
+        try:
+            # Read still works via the metadata path.
+            assert (GcBlobTest & {"rid": 1}).fetch1("payload") is not None
+
+            stats = gc.scan(schema_pfx, store_name="local")
+            assert hash_ref not in set(
+                stats["orphaned_paths"]
+            ), "live hash object outside the current hash section must not be a schema orphan"
+            assert hash_ref not in set(stats["orphaned_hashes"])
+
+            # End-to-end: collect must not destroy the live hash object.
+            gc.collect(schema_pfx, store_name="local", dry_run=False)
+            from datajoint.hash_registry import get_store_backend
+
+            backend = get_store_backend("local", config=cfg)
+            assert backend.exists(hash_ref), "collect() deleted a live hash object after prefix change"
+            assert (GcBlobTest & {"rid": 1}).fetch1("payload") is not None
+        finally:
+            cfg.stores["local"].pop("hash_prefix", None)

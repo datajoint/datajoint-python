@@ -544,7 +544,17 @@ def scan(
     # Coverage, not exact set difference: a referenced path may be a
     # DIRECTORY-valued object (e.g. a Zarr store), whose stored form is many
     # files under that prefix, plus a `.manifest.json` sidecar beside it.
-    orphaned_paths = {p for p in schema_paths_stored if not _is_covered(p, schema_paths_referenced)}
+    #
+    # A stored file is live if covered by EITHER reference set. The schema walk
+    # covers the whole store minus the currently configured hash and filepath
+    # sections, so if hash objects live OUTSIDE the current hash section — e.g.
+    # after hash_prefix was changed on a populated store — they surface here.
+    # They are live (their full paths are in hash_referenced, recorded in row
+    # metadata), so excluding hash_referenced protects them from being deleted
+    # as bogus schema orphans. Without this, a hash_prefix change would make
+    # collect() destroy live hash-addressed data.
+    live = schema_paths_referenced | hash_referenced
+    orphaned_paths = {p for p in schema_paths_stored if not _is_covered(p, live)}
     schema_paths_orphaned_bytes = sum(schema_paths_stored.get(p, 0) for p in orphaned_paths)
 
     return {
