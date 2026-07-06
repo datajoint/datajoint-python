@@ -36,7 +36,6 @@ datajoint.builtin_codecs : Codec implementations for object storage types.
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -114,77 +113,6 @@ def _uses_schema_storage(attr) -> bool:
     from .builtin_codecs.schema import SchemaCodec
 
     return isinstance(attr.codec, SchemaCodec)
-
-
-def _extract_hash_refs(value: Any) -> list[tuple[str, str | None]]:
-    """
-    Extract path references from hash-addressed storage metadata.
-
-    Hash-addressed storage stores metadata as JSON with ``path`` and ``hash`` keys.
-    The path is used for file operations; the hash is for integrity verification.
-
-    Parameters
-    ----------
-    value : Any
-        The stored value (JSON string or dict).
-
-    Returns
-    -------
-    list[tuple[str, str | None]]
-        List of (path, store_name) tuples.
-    """
-    refs = []
-
-    if value is None:
-        return refs
-
-    # Parse JSON if string
-    if isinstance(value, str):
-        try:
-            value = json.loads(value)
-        except (json.JSONDecodeError, TypeError):
-            return refs
-
-    # Extract path from dict (path is required for new data, hash for legacy)
-    if isinstance(value, dict) and "path" in value:
-        refs.append((value["path"], value.get("store")))
-
-    return refs
-
-
-def _extract_schema_refs(value: Any) -> list[tuple[str, str | None]]:
-    """
-    Extract schema-addressed path references from a stored value.
-
-    Schema-addressed storage stores metadata as JSON with a ``path`` key.
-
-    Parameters
-    ----------
-    value : Any
-        The stored value (JSON string or dict).
-
-    Returns
-    -------
-    list[tuple[str, str | None]]
-        List of (path, store_name) tuples.
-    """
-    refs = []
-
-    if value is None:
-        return refs
-
-    # Parse JSON if string
-    if isinstance(value, str):
-        try:
-            value = json.loads(value)
-        except (json.JSONDecodeError, TypeError):
-            return refs
-
-    # Extract path from dict
-    if isinstance(value, dict) and "path" in value:
-        refs.append((value["path"], value.get("store")))
-
-    return refs
 
 
 def scan_hash_references(

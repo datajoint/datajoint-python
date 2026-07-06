@@ -108,36 +108,30 @@ class TestUsesHashStorage:
         assert gc._uses_hash_storage(attr) is False
 
 
-class TestExtractHashRefs:
-    """Tests for _extract_hash_refs helper function."""
+class TestHashReferencedPaths:
+    """Reference extraction for hash-addressed metadata via the codec API
+    (Codec.referenced_paths — the production path used by gc.scan)."""
 
     def test_returns_empty_for_none(self):
-        """Test that empty list is returned for None value."""
-        assert gc._extract_hash_refs(None) == []
+        assert get_codec("hash").referenced_paths(None) == []
 
     def test_parses_json_string(self):
-        """Test parsing JSON string with path."""
         value = '{"path": "_hash/schema/abc123", "hash": "abc123", "store": "mystore"}'
-        refs = gc._extract_hash_refs(value)
+        refs = get_codec("hash").referenced_paths(value)
 
-        assert len(refs) == 1
-        assert refs[0] == ("_hash/schema/abc123", "mystore")
+        assert refs == [("_hash/schema/abc123", "mystore")]
 
     def test_parses_dict_directly(self):
-        """Test parsing dict with path."""
         value = {"path": "_hash/schema/def456", "hash": "def456", "store": None}
-        refs = gc._extract_hash_refs(value)
+        refs = get_codec("hash").referenced_paths(value)
 
-        assert len(refs) == 1
-        assert refs[0] == ("_hash/schema/def456", None)
+        assert refs == [("_hash/schema/def456", None)]
 
     def test_returns_empty_for_invalid_json(self):
-        """Test that empty list is returned for invalid JSON."""
-        assert gc._extract_hash_refs("not json") == []
+        assert get_codec("hash").referenced_paths("not json") == []
 
     def test_returns_empty_for_dict_without_path(self):
-        """Test that empty list is returned for dict without path key."""
-        assert gc._extract_hash_refs({"hash": "abc123"}) == []
+        assert get_codec("hash").referenced_paths({"hash": "abc123"}) == []
 
 
 class TestUsesSchemaStorage:
@@ -181,32 +175,31 @@ class TestUsesSchemaStorage:
         assert gc._uses_schema_storage(attr) is False
 
 
-class TestExtractSchemaRefs:
-    """Tests for _extract_schema_refs helper function."""
+class TestSchemaReferencedPaths:
+    """Reference extraction for schema-addressed metadata via the codec API
+    (inherited by every SchemaCodec subclass, including custom codecs)."""
 
     def test_returns_empty_for_none(self):
-        """Test that empty list is returned for None value."""
-        assert gc._extract_schema_refs(None) == []
+        assert get_codec("object").referenced_paths(None) == []
 
     def test_parses_json_string(self):
-        """Test parsing JSON string with path."""
         value = '{"path": "schema/table/pk/field", "store": "mystore"}'
-        refs = gc._extract_schema_refs(value)
+        refs = get_codec("object").referenced_paths(value)
 
-        assert len(refs) == 1
-        assert refs[0] == ("schema/table/pk/field", "mystore")
+        assert refs == [("schema/table/pk/field", "mystore")]
 
     def test_parses_dict_directly(self):
-        """Test parsing dict with path."""
-        value = {"path": "test/path", "store": None}
-        refs = gc._extract_schema_refs(value)
+        refs = get_codec("object").referenced_paths({"path": "test/path", "store": None})
 
-        assert len(refs) == 1
-        assert refs[0] == ("test/path", None)
+        assert refs == [("test/path", None)]
+
+    def test_custom_subclass_inherits_extraction(self):
+        refs = get_codec("gc_custom_object").referenced_paths({"path": "a/b/c", "store": "local"})
+
+        assert refs == [("a/b/c", "local")]
 
     def test_returns_empty_for_dict_without_path(self):
-        """Test that empty list is returned for dict without path key."""
-        assert gc._extract_schema_refs({"other": "data"}) == []
+        assert get_codec("object").referenced_paths({"other": "data"}) == []
 
 
 class TestScan:
@@ -457,7 +450,7 @@ class TestScanWithLiveData:
         """scan() must report hash_referenced >= 1 for a populated <blob@> column.
 
         Decoded value type returned by BlobCodec.decode is numpy.ndarray, which
-        does not satisfy `_extract_hash_refs`'s dict/JSON-string check — this
+        does not satisfy the raw-metadata dict/JSON-string check in referenced_paths — this
         test fails before the cursor-based fix in scan_hash_references.
         """
         GcBlobTest.insert1({"rid": 1, "payload": np.arange(64, dtype="uint8")})
@@ -470,7 +463,7 @@ class TestScanWithLiveData:
         """scan() must report schema_paths_referenced >= 1 for a populated <npy@> column.
 
         Decoded value type returned by NpyCodec.decode is NpyRef (lazy handle),
-        which does not satisfy `_extract_schema_refs`'s dict check — this test
+        which does not satisfy the raw-metadata dict check in referenced_paths — this test
         fails before the cursor-based fix in scan_schema_references.
         """
         GcNpyTest.insert1({"rid": 1, "waveform": np.arange(64, dtype="float32")})
@@ -483,7 +476,7 @@ class TestScanWithLiveData:
         """scan() must report schema_paths_referenced >= 1 for a populated <object@> column.
 
         Decoded value type returned by ObjectCodec.decode is ObjectRef (lazy
-        handle), which does not satisfy `_extract_schema_refs`'s dict check —
+        handle), which does not satisfy the raw-metadata dict check in referenced_paths —
         this test fails before the cursor-based fix in scan_schema_references.
         """
         GcObjectTest.insert1({"rid": 1, "results": b"hello-gc-test"})
