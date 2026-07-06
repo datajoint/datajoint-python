@@ -739,3 +739,88 @@ class TestHashObjectsOutsideCurrentSection:
             assert (GcBlobTest & {"rid": 1}).fetch1("payload") is not None
         finally:
             cfg.stores["local"].pop("hash_prefix", None)
+
+
+class TestPerSchemaScoping:
+    """GC operates per schema: because every object path embeds the schema and
+    hash dedup is per-schema, scanning/collecting one schema is confined to
+    that schema's subfolder and can never see or delete another schema's
+    objects — even when both share one store. Removes the old 'pass every
+    schema or lose data' hazard."""
+
+    @pytest.fixture
+    def two_schemas(self, connection_test, prefix, mock_stores):
+        # Unique names per test: the shared `local` store persists objects
+        # across tests, but per-schema scoping means leftovers under other
+        # schema names are invisible here — so unique names give clean counts.
+        import time
+
+        uid = str(int(time.time() * 1000))[-9:]
+        a = dj.Schema(
+            f"{prefix}_gcsc_a{uid}",
+            context={"GcBlobTest": GcBlobTest, "GcObjectTest": GcObjectTest},
+            connection=connection_test,
+        )
+        b = dj.Schema(
+            f"{prefix}_gcsc_b{uid}",
+            connection=connection_test,
+        )
+        a(GcBlobTest)
+        a(GcObjectTest)
+        # Distinct classes bound to schema b (same definitions, second schema).
+        b_blob = type("GcBlobTest", (dj.Manual,), {"definition": GcBlobTest.definition})
+        b_obj = type("GcObjectTest", (dj.Manual,), {"definition": GcObjectTest.definition})
+        b(b_blob)
+        b(b_obj)
+        yield a, b, b_blob, b_obj
+        b.drop()
+        a.drop()
+
+    def test_list_scoped_to_schema(self, two_schemas):
+        a, b, b_blob, b_obj = two_schemas
+        cfg = a.connection._config
+        GcBlobTest.insert1({"rid": 1, "payload": np.arange(4, dtype="uint8")})
+        GcObjectTest.insert1({"rid": 1, "results": b"a-obj"})
+        b_blob.insert1({"rid": 1, "payload": np.arange(4, dtype="uint8")})
+        b_obj.insert1({"rid": 1, "results": b"b-obj"})
+
+        a_hashes = set(gc.list_stored_hashes("local", config=cfg, schema_name=a.database))
+        a_paths = set(gc.list_schema_paths("local", config=cfg, schema_name=a.database))
+        assert a_hashes and all(f"/{a.database}/" in h for h in a_hashes), a_hashes
+        assert a_paths and all(p.split("/")[0] == a.database or f"/{a.database}/" in p for p in a_paths), a_paths
+        # nothing from schema b leaked into schema a's scoped listings
+        assert not any(b.database in p for p in a_hashes | a_paths)
+
+    def test_scan_one_schema_ignores_the_other(self, two_schemas):
+        a, b, b_blob, b_obj = two_schemas
+        GcBlobTest.insert1({"rid": 1, "payload": np.arange(4, dtype="uint8")})
+        b_blob.insert1({"rid": 1, "payload": np.arange(4, dtype="uint8")})
+        b_obj.insert1({"rid": 1, "results": b"b-obj"})
+
+        stats = gc.scan(a, store_name="local")
+        # b's live objects are outside a's subtree → not counted, not orphaned
+        assert stats["orphaned"] == 0
+        assert not any(b.database in p for p in stats["orphaned_paths"] + stats["orphaned_hashes"])
+
+    def test_collect_one_schema_never_touches_the_other(self, two_schemas):
+        a, b, b_blob, b_obj = two_schemas
+        cfg = a.connection._config
+        # a has an orphan (insert then delete); b has only live data
+        GcObjectTest.insert1({"rid": 1, "results": b"a-doomed"})
+        b_blob.insert1({"rid": 1, "payload": np.arange(4, dtype="uint8")})
+        b_obj.insert1({"rid": 1, "results": b"b-live"})
+
+        a_orphan = next(iter(gc.scan_schema_references(a, store_name="local")))
+        (GcObjectTest & {"rid": 1}).delete(prompt=False)
+
+        b_hashes_before = set(gc.list_stored_hashes("local", config=cfg, schema_name=b.database))
+        b_paths_before = set(gc.list_schema_paths("local", config=cfg, schema_name=b.database))
+        assert b_hashes_before and b_paths_before
+
+        gc.collect(a, store_name="local", dry_run=False)
+
+        # a's orphan reclaimed; b entirely intact
+        assert a_orphan not in set(gc.list_schema_paths("local", config=cfg, schema_name=a.database))
+        assert set(gc.list_stored_hashes("local", config=cfg, schema_name=b.database)) == b_hashes_before
+        assert set(gc.list_schema_paths("local", config=cfg, schema_name=b.database)) == b_paths_before
+        assert len(b_obj()) == 1  # b's row (and its object) untouched
