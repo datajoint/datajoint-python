@@ -25,7 +25,7 @@ existing data. The path stored at insert time is always used for retrieval.
 
 Hash-addressed storage is used by ``<hash@>``, ``<blob@>``, and ``<attach@>`` types.
 Deduplication occurs within each schema. Deletion requires garbage collection
-via ``dj.gc.collect()``.
+via ``dj.gc.GarbageCollector``.
 
 See Also
 --------
