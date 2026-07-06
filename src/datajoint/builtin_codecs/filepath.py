@@ -113,7 +113,13 @@ class FilepathCodec(Codec):
 
         # Validate path doesn't use reserved sections (hash and schema)
         path_normalized = path.lstrip("/")
-        reserved_prefixes = []
+
+        # The fixed hash-addressed layout is ALWAYS reserved, independent of
+        # any declaration — actual hash objects live under HASH_STORAGE_PREFIX
+        # regardless of the (declarative) hash_prefix store key.
+        from ..hash_registry import HASH_STORAGE_PREFIX
+
+        reserved_prefixes = [("hash storage (fixed layout)", HASH_STORAGE_PREFIX)]
 
         hash_prefix = spec.get("hash_prefix")
         if hash_prefix:

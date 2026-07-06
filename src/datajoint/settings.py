@@ -575,9 +575,13 @@ class Config(BaseSettings):
         relocation settings: DataJoint's hash-addressed layout is fixed at
         ``_hash/...`` and schema-addressed objects live at
         ``{schema}/{table}/...`` regardless of these values. Declaring them
-        (a) lets ``<filepath@>`` validation keep user-managed files out of the
-        DataJoint-owned namespaces, and (b) tells garbage collection which
-        subtree (``filepath_prefix``) it must never touch.
+        (a) lets ``<filepath@>`` validation reject user paths under the
+        declared namespaces — ``hash_prefix`` defaults to ``_hash`` (matching
+        the fixed layout, which stays reserved even if the key is overridden),
+        while ``schema_prefix``'s default ``_schema`` is vestigial:
+        schema-addressed objects actually live in root-level ``{schema}/``
+        directories — and (b) tells garbage collection which subtree
+        (``filepath_prefix``) it must never touch.
 
         Parameters
         ----------

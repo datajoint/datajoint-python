@@ -484,6 +484,46 @@ class TestFilepathCodec:
             dj.config.stores.clear()
             dj.config.stores.update(original_stores)
 
+    def test_filepath_rejects_hash_layout_even_when_prefix_overridden(self):
+        """Overriding hash_prefix must NOT un-reserve the FIXED _hash/ layout:
+        the store key is declarative (it does not relocate hash storage), so
+        the true namespace stays protected regardless of the override."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "content",  # override; hash objects still land in _hash/
+            }
+
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_get_backend.return_value = mock_backend
+
+                # the fixed layout remains reserved
+                with pytest.raises(
+                    ValueError,
+                    match=r"<filepath@> cannot use reserved section '_hash'",
+                ):
+                    filepath_codec.encode("_hash/schema/file.dat", store_name="test_store")
+
+                # the declared override is reserved too
+                with pytest.raises(
+                    ValueError,
+                    match=r"<filepath@> cannot use reserved section 'content'",
+                ):
+                    filepath_codec.encode("content/file.dat", store_name="test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
     def test_filepath_rejects_schema_section(self):
         """Test that filepath rejects paths starting with default schema prefix."""
         from unittest.mock import MagicMock, patch
