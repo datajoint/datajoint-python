@@ -123,7 +123,8 @@ class TestStoragePathGeneration:
             partition_pattern="{subject_id}",
         )
         # subject_id should be at the beginning due to partition
-        assert path.startswith("subject_id=1")
+        # section prefix first, then partition attrs (schema_prefix default "_schema")
+        assert path.startswith("_schema/subject_id=1")
 
 
 class TestObjectRef:

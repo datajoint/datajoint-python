@@ -9,13 +9,15 @@ DataJoint uses two object storage patterns:
 
 Hash-addressed storage
     Types: ``<hash@>``, ``<blob@>``, ``<attach@>``
-    Path: ``_hash/{schema}/{hash}`` (with optional subfolding)
+    Path: ``{hash_prefix}/{schema}/{hash}`` (with optional subfolding;
+    ``hash_prefix`` defaults to ``_hash``)
     Deduplication: Per-schema (identical data within a schema shares storage)
     Deletion: Requires garbage collection
 
 Schema-addressed storage
     Types: ``<object@>``, ``<npy@>``
-    Path: ``{schema}/{table}/{pk}/{field}/``
+    Path: ``{schema_prefix}/{schema}/{table}/{pk}/...`` (``schema_prefix``
+    defaults to ``_schema``; pre-2.3.1 stores hold root-level ``{schema}/...`` paths)
     Deduplication: None (each entity has unique path)
     Deletion: Requires garbage collection
 
@@ -39,7 +41,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .hash_registry import HASH_STORAGE_PREFIX, delete_path, get_store_backend
+from .hash_registry import DEFAULT_HASH_PREFIX, delete_path, get_store_backend
 from .errors import DataJointError
 
 if TYPE_CHECKING:
@@ -273,8 +275,18 @@ def list_stored_hashes(store_name: str | None = None, config=None) -> dict[str, 
     backend = get_store_backend(store_name, config=config)
     stored: dict[str, int] = {}
 
-    # Hash-addressed storage: _hash/{schema}/{subfolders...}/{hash}
-    hash_prefix = f"{HASH_STORAGE_PREFIX}/"
+    if config is None:
+        from .settings import config as _global_config
+
+        config = _global_config
+    # Hash-addressed storage: {hash_prefix}/{schema}/{subfolders...}/{hash}.
+    # The prefix comes from the store's settings — the same value the writer
+    # uses — so scanner and writer cannot drift. NOTE: only the CURRENTLY
+    # configured prefix is scanned; objects written under a previous prefix
+    # value remain readable (their metadata stores full paths) but are not
+    # candidates for reclamation until the setting is restored.
+    _spec = config.get_store_spec(store_name)
+    hash_prefix = _spec.get("hash_prefix", DEFAULT_HASH_PREFIX).strip("/") + "/"
     # Base32 pattern: 26 lowercase alphanumeric chars
     base32_pattern = re.compile(r"^[a-z2-7]{26}$")
 
@@ -351,9 +363,15 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
     _spec = config.get_store_spec(store_name)
     _fp = _spec.get("filepath_prefix")
     filepath_prefix = (_fp.strip("/") + "/") if _fp else None
+    _hp = _spec.get("hash_prefix", DEFAULT_HASH_PREFIX).strip("/")
+    hash_section = _hp + "/" if _hp else None
 
     try:
-        # Walk the storage collecting schema-addressed object files
+        # Walk the storage collecting schema-addressed object files. The walk
+        # covers the WHOLE store (minus the hash and filepath sections) rather
+        # than just the schema_prefix section: stores written before
+        # schema_prefix was honored hold objects at root-level {schema}/...
+        # paths, and those must remain listable and reclaimable.
         full_prefix = backend._full_path("")
 
         for root, dirs, files in backend.fs.walk(full_prefix):
@@ -362,7 +380,7 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
             # exclude user tables/schemas whose names merely contain "_hash"
             # (e.g. a table `probe_hash`), silently leaking their orphans.
             rel_root = root.replace(full_prefix, "").lstrip("/")
-            if rel_root == HASH_STORAGE_PREFIX or rel_root.startswith(HASH_STORAGE_PREFIX + "/"):
+            if hash_section and (rel_root + "/").startswith(hash_section):
                 continue
 
             # Skip the declared filepath namespace (user-managed files).

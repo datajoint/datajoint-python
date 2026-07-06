@@ -5,11 +5,11 @@ This module provides hash-addressed storage with deduplication for the ``<hash>`
 codec. Content is identified by a Base32-encoded MD5 hash and stored with
 per-schema isolation::
 
-    _hash/{schema}/{hash}
+    {hash_prefix}/{schema}/{hash}          (hash_prefix defaults to _hash)
 
 With optional subfolding (configured per-store)::
 
-    _hash/{schema}/{fold1}/{fold2}/{hash}
+    {hash_prefix}/{schema}/{fold1}/{fold2}/{hash}
 
 Subfolding creates directory hierarchies to improve performance on filesystems
 that struggle with large directories (ext3, FAT32, NFS). Modern filesystems
@@ -48,15 +48,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-# Fixed layout prefix for hash-addressed storage within a store. This is a
-# storage-layout CONVENTION, not a relocation setting. The `hash_prefix` /
-# `schema_prefix` / `filepath_prefix` store keys accepted by settings are
-# NAMESPACE DECLARATIONS for store cohabitation: <filepath@> validation keeps
-# user files out of the reserved namespaces (builtin_codecs/filepath.py), and
-# GC keeps its hands off the declared filepath namespace (gc.list_schema_paths).
-# They do not relocate DataJoint-managed storage. GC imports this constant so
-# the scanner can never drift from the writer.
-HASH_STORAGE_PREFIX = "_hash"
+# Default section prefix for hash-addressed storage. The authoritative value
+# is the per-store `hash_prefix` setting (default "_hash", see
+# settings.get_store_spec and docs/how-to/configure-storage) — writers, GC,
+# and <filepath@> validation all consume the same setting so the layout can
+# be relocated per store without the components drifting apart.
+DEFAULT_HASH_PREFIX = "_hash"
 
 
 def compute_hash(data: bytes) -> str:
@@ -108,17 +105,18 @@ def build_hash_path(
     content_hash: str,
     schema_name: str,
     subfolding: tuple[int, ...] | None = None,
+    hash_prefix: str = DEFAULT_HASH_PREFIX,
 ) -> str:
     """
     Build the storage path for hash-addressed storage.
 
     Path structure without subfolding::
 
-        _hash/{schema}/{hash}
+        {hash_prefix}/{schema}/{hash}          (hash_prefix defaults to _hash)
 
     Path structure with subfolding (e.g., (2, 2))::
 
-        _hash/{schema}/{fold1}/{fold2}/{hash}
+        {hash_prefix}/{schema}/{fold1}/{fold2}/{hash}
 
     Parameters
     ----------
@@ -128,6 +126,9 @@ def build_hash_path(
         Database/schema name for isolation.
     subfolding : tuple[int, ...], optional
         Subfolding pattern from store config. None means flat (no subfolding).
+    hash_prefix : str, optional
+        Section prefix from the store's ``hash_prefix`` setting
+        (default ``"_hash"``).
 
     Returns
     -------
@@ -138,12 +139,14 @@ def build_hash_path(
     if not (len(content_hash) == 26 and content_hash.isalnum() and content_hash.islower()):
         raise DataJointError(f"Invalid content hash (expected 26-char lowercase base32): {content_hash}")
 
+    prefix = hash_prefix.strip("/")
+    section = f"{prefix}/" if prefix else ""
     if subfolding:
         folds = _subfold(content_hash, subfolding)
         fold_path = "/".join(folds)
-        return f"{HASH_STORAGE_PREFIX}/{schema_name}/{fold_path}/{content_hash}"
+        return f"{section}{schema_name}/{fold_path}/{content_hash}"
     else:
-        return f"{HASH_STORAGE_PREFIX}/{schema_name}/{content_hash}"
+        return f"{section}{schema_name}/{content_hash}"
 
 
 def get_store_backend(store_name: str | None = None, config: Config | None = None) -> StorageBackend:
@@ -228,8 +231,17 @@ def put_hash(
         Metadata dict with keys: hash, path, schema, store, size.
     """
     content_hash = compute_hash(data)
-    subfolding = get_store_subfolding(store_name, config=config)
-    path = build_hash_path(content_hash, schema_name, subfolding)
+    if config is None:
+        from .settings import config  # type: ignore[assignment]
+    assert config is not None
+    spec = config.get_store_spec(store_name)
+    subfolding = tuple(spec["subfolding"]) if spec.get("subfolding") else None
+    path = build_hash_path(
+        content_hash,
+        schema_name,
+        subfolding,
+        hash_prefix=spec.get("hash_prefix", DEFAULT_HASH_PREFIX),
+    )
 
     backend = get_store_backend(store_name, config=config)
 

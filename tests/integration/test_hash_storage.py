@@ -98,17 +98,24 @@ class TestBuildHashPath:
 class TestPutHash:
     """Tests for put_hash function."""
 
-    @patch("datajoint.hash_registry.get_store_subfolding")
     @patch("datajoint.hash_registry.get_store_backend")
-    def test_stores_new_content(self, mock_get_backend, mock_get_subfolding):
-        """Test storing new content."""
+    def test_stores_new_content(self, mock_get_backend):
+        """Test storing new content (spec-driven: put_hash reads the store
+        spec for subfolding and hash_prefix)."""
+        import datajoint as dj
+
         mock_backend = MagicMock()
         mock_backend.exists.return_value = False
         mock_get_backend.return_value = mock_backend
-        mock_get_subfolding.return_value = None
 
-        data = b"new content"
-        result = put_hash(data, schema_name="test_schema", store_name="test_store")
+        original_stores = dj.config.stores.copy()
+        dj.config.stores["test_store"] = {"protocol": "file", "location": "/tmp/test_hash_store"}
+        try:
+            data = b"new content"
+            result = put_hash(data, schema_name="test_schema", store_name="test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
 
         # Verify return value includes hash and path
         assert "hash" in result
@@ -122,17 +129,23 @@ class TestPutHash:
         # Verify backend was called
         mock_backend.put_buffer.assert_called_once()
 
-    @patch("datajoint.hash_registry.get_store_subfolding")
     @patch("datajoint.hash_registry.get_store_backend")
-    def test_deduplicates_existing_content(self, mock_get_backend, mock_get_subfolding):
+    def test_deduplicates_existing_content(self, mock_get_backend):
         """Test that existing content is not re-uploaded."""
+        import datajoint as dj
+
         mock_backend = MagicMock()
         mock_backend.exists.return_value = True  # Content already exists
         mock_get_backend.return_value = mock_backend
-        mock_get_subfolding.return_value = None
 
-        data = b"existing content"
-        result = put_hash(data, schema_name="test_schema", store_name="test_store")
+        original_stores = dj.config.stores.copy()
+        dj.config.stores["test_store"] = {"protocol": "file", "location": "/tmp/test_hash_store"}
+        try:
+            data = b"existing content"
+            result = put_hash(data, schema_name="test_schema", store_name="test_store")
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
 
         # Verify return value is still correct
         assert result["hash"] == compute_hash(data)

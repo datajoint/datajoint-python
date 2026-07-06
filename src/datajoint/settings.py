@@ -571,17 +571,18 @@ class Config(BaseSettings):
         """
         Validate that storage section prefixes don't overlap.
 
-        These keys are **namespace declarations** for store cohabitation, not
-        relocation settings: DataJoint's hash-addressed layout is fixed at
-        ``_hash/...`` and schema-addressed objects live at
-        ``{schema}/{table}/...`` regardless of these values. Declaring them
-        (a) lets ``<filepath@>`` validation reject user paths under the
-        declared namespaces — ``hash_prefix`` defaults to ``_hash`` (matching
-        the fixed layout, which stays reserved even if the key is overridden),
-        while ``schema_prefix``'s default ``_schema`` is vestigial:
-        schema-addressed objects actually live in root-level ``{schema}/``
-        directories — and (b) tells garbage collection which subtree
-        (``filepath_prefix``) it must never touch.
+        These keys **control the store layout** (see
+        how-to/configure-storage in the documentation): ``hash_prefix``
+        (default ``_hash``) is where hash-addressed objects are written and
+        scanned; ``schema_prefix`` (default ``_schema``) is where
+        schema-addressed objects are written; ``filepath_prefix`` (default
+        unrestricted) is the namespace ``<filepath@>`` paths must stay in.
+        Writers, garbage collection, and ``<filepath@>`` validation all
+        consume the same values, so the sections may be relocated per store
+        without the components drifting apart. Changing a prefix on a store
+        that already holds data is not recommended: existing objects remain
+        readable (their metadata stores full paths) but reclamation scans
+        only the currently configured sections.
 
         Parameters
         ----------

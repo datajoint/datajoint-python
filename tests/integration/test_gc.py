@@ -706,3 +706,53 @@ class TestFilepathPrefixProtection:
             assert user_file.exists(), "collect() must never touch the declared filepath namespace"
         finally:
             cfg.stores["local"].pop("filepath_prefix", None)
+
+
+class TestPrefixSettingsHonored:
+    """The per-store hash_prefix/schema_prefix settings control the layout
+    (docs: how-to/configure-storage): writers place objects under the
+    configured sections and GC scans the same sections — relocation without
+    drift between components."""
+
+    @pytest.fixture
+    def schema_prefixed(self, connection_test, prefix, mock_stores):
+        cfg = connection_test._config
+        cfg.stores["local"]["hash_prefix"] = "content"
+        cfg.stores["local"]["schema_prefix"] = "objects"
+        schema = dj.Schema(
+            f"{prefix}_test_gc_prefixes",
+            context={"GcBlobTest": GcBlobTest, "GcObjectTest": GcObjectTest},
+            connection=connection_test,
+        )
+        schema(GcBlobTest)
+        schema(GcObjectTest)
+        yield schema
+        schema.drop()
+        cfg.stores["local"].pop("hash_prefix", None)
+        cfg.stores["local"].pop("schema_prefix", None)
+
+    def test_custom_sections_written_scanned_and_collected(self, schema_prefixed):
+        cfg = schema_prefixed.connection._config
+        GcBlobTest.insert1({"rid": 1, "payload": np.arange(16, dtype="uint8")})
+        GcObjectTest.insert1({"rid": 1, "results": b"payload-one"})
+        GcObjectTest.insert1({"rid": 2, "results": b"payload-two"})
+
+        # Writers honored the configured sections (metadata records the real paths)
+        hash_refs = gc.scan_hash_references(schema_prefixed, store_name="local")
+        assert hash_refs and all(r.startswith("content/") for r in hash_refs), hash_refs
+        obj_refs = gc.scan_schema_references(schema_prefixed, store_name="local")
+        assert len(obj_refs) == 2 and all(r.startswith("objects/") for r in obj_refs), obj_refs
+
+        # GC scans the same sections: everything referenced, nothing falsely orphaned
+        stats = gc.scan(schema_prefixed, store_name="local")
+        assert stats["hash_referenced"] >= 1
+        assert not (hash_refs & set(stats["orphaned_hashes"]))
+        assert not (obj_refs & set(stats["orphaned_paths"]))
+
+        # And reclamation works within the configured sections
+        (GcObjectTest & {"rid": 2}).delete(prompt=False)
+        gc.collect(schema_prefixed, store_name="local", dry_run=False)
+        stored_after = set(gc.list_schema_paths("local", config=cfg))
+        live = gc.scan_schema_references(schema_prefixed, store_name="local")
+        assert live <= stored_after, "live object under custom section must survive"
+        assert not ((obj_refs - live) & stored_after), "orphan under custom section must be reclaimed"

@@ -120,6 +120,7 @@ class StagedInsert:
             ext=ext if ext else None,
             partition_pattern=partition_pattern,
             token_length=token_length,
+            schema_prefix=spec.get("schema_prefix", "_schema"),
         )
 
         self._staged_objects[field] = {
