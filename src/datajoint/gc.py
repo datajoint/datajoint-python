@@ -141,7 +141,8 @@ def scan_hash_references(
     Returns
     -------
     set[str]
-        Set of storage paths that are referenced.
+        Full relative store paths referenced by live rows, exactly as recorded
+        in each row's metadata (independent of the store's current prefixes).
     """
     referenced: set[str] = set()
 
@@ -193,7 +194,9 @@ def scan_schema_references(
     Scan schemas for schema-addressed storage references.
 
     Examines all tables in the given schemas and extracts paths from columns
-    that use schema-addressed storage (``<object@>``, ``<npy@>``).
+    that use schema-addressed storage — any ``SchemaCodec`` (built-in
+    ``<object@>``, ``<npy@>`` and custom subclasses, recognized by type per
+    #1469), not a fixed codec-name list.
 
     Parameters
     ----------
@@ -207,7 +210,9 @@ def scan_schema_references(
     Returns
     -------
     set[str]
-        Set of storage paths that are referenced.
+        Full relative store paths referenced by live rows, exactly as recorded
+        in each row's metadata. For a directory-valued object the recorded
+        path is the directory prefix, not its individual files.
     """
     referenced: set[str] = set()
 
@@ -254,9 +259,12 @@ def list_stored_hashes(store_name: str | None = None, config=None) -> dict[str, 
     """
     List all hash-addressed items in storage.
 
-    Scans the ``_hash/`` directory in the specified store and returns
-    all storage paths found. These correspond to ``<hash@>``, ``<blob@>``,
-    and ``<attach@>`` types.
+    Scans the store's configured hash-addressed section — the ``hash_prefix``
+    setting, default ``_hash/`` — and returns the stored objects found. These
+    correspond to ``<hash@>``, ``<blob@>``, and ``<attach@>`` types. Only the
+    CURRENTLY configured prefix is walked: objects written under a former
+    prefix are not listed here (they remain readable via their metadata paths,
+    and :func:`scan` still protects them from deletion — see its note).
 
     Parameters
     ----------
@@ -268,7 +276,8 @@ def list_stored_hashes(store_name: str | None = None, config=None) -> dict[str, 
     Returns
     -------
     dict[str, int]
-        Dict mapping storage path to size in bytes.
+        Dict mapping each object's full relative store path
+        (``{hash_prefix}/{schema}/[{subfolders}/]{hash}``) to its size in bytes.
     """
     import re
 
@@ -308,14 +317,14 @@ def list_stored_hashes(store_name: str | None = None, config=None) -> dict[str, 
                         file_path = f"{root}/{filename}"
                         size = backend.fs.size(file_path)
                         # Build relative path for comparison with stored metadata
-                        # Path format: _hash/{schema}/{subfolders...}/{hash}
+                        # Path format: {hash_prefix}/{schema}/{subfolders...}/{hash}
                         relative_path = file_path.replace(backend._full_path(""), "").lstrip("/")
                         stored[relative_path] = size
                     except Exception:
                         pass
 
     except FileNotFoundError:
-        # No _hash/ directory exists yet
+        # The hash section does not exist yet
         pass
     except Exception as e:
         logger.warning(f"Error listing stored hashes: {e}")
@@ -328,13 +337,23 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
     List all schema-addressed object files in storage.
 
     Enumerates the individual **files** written by schema-addressed codecs.
-    A single-file object is one file at ``{schema}/{table}/{pk}/{field}_{token}[.ext]``;
-    a directory-valued object (e.g. a Zarr store) is many files under that
-    path prefix, plus a ``{path}.manifest.json`` sidecar beside it — all are
-    listed. Orphan detection matches these files against each row's referenced
-    object path via :func:`_is_covered` (exact, ancestor-prefix, or
-    manifest-sidecar), so superseded per-token versions are reclaimable while
-    every file belonging to a live object — including its manifest — is kept.
+    A single-file object is one file at
+    ``{schema_prefix}/{schema}/{table}/{pk}/{field}_{token}[.ext]``
+    (``schema_prefix`` defaults to ``_schema``); a directory-valued object
+    (e.g. a Zarr store) is many files under that path prefix, plus a
+    ``{path}.manifest.json`` sidecar beside it — all are listed. Orphan
+    detection matches these files against each row's referenced object path
+    via :func:`_is_covered` (exact, ancestor-prefix, or manifest-sidecar), so
+    superseded per-token versions are reclaimable while every file belonging
+    to a live object — including its manifest — is kept.
+
+    Scope: the walk covers the WHOLE store except the store's configured hash
+    and filepath sections. This is deliberate — objects written by DataJoint
+    2.3.0 and earlier live at root-level ``{schema}/...`` (no ``schema_prefix``
+    section), and hash objects can sit outside the *current* hash section if
+    ``hash_prefix`` was changed on a populated store; both must stay listable.
+    :func:`scan` distinguishes true orphans from live hash objects that surface
+    here by checking coverage against BOTH the schema and hash reference sets.
 
     Parameters
     ----------
@@ -396,7 +415,9 @@ def list_schema_paths(store_name: str | None = None, config=None) -> dict[str, i
                 file_path = f"{root}/{filename}"
                 relative_path = file_path.replace(full_prefix, "").lstrip("/")
 
-                # Schema-addressed files live at least at {schema}/{table}/.../{file}
+                # Floor guard: a real object is at least {schema}/{table}/.../{file}
+                # (root-level legacy layout) or {schema_prefix}/{schema}/... —
+                # both have >= 2 slashes. Drops stray shallow files.
                 if relative_path.count("/") < 2:
                     continue
 
@@ -498,8 +519,19 @@ def scan(
     """
     Scan for orphaned storage items without deleting.
 
-    Scans both hash-addressed storage (for ``<hash@>``, ``<blob@>``, ``<attach@>``)
-    and schema-addressed storage (for ``<object@>``, ``<npy@>``).
+    Scans both hash-addressed storage (``<hash@>``, ``<blob@>``, ``<attach@>``)
+    and schema-addressed storage (any ``SchemaCodec``: ``<object@>``, ``<npy@>``
+    and custom subclasses). Section locations follow the store's ``hash_prefix``
+    / ``schema_prefix`` settings.
+
+    A stored file is considered live if it is covered by EITHER reference set
+    (schema or hash). This is what keeps a live hash object safe when it sits
+    outside the current hash section — e.g. after ``hash_prefix`` was changed
+    on a populated store: it surfaces in the schema-addressed walk but is
+    covered by the hash references (its metadata path), so it is never
+    misclassified as an orphan. The trade-off (documented, not a bug): objects
+    under a *former* prefix are not reclamation candidates until the setting is
+    restored.
 
     Parameters
     ----------
@@ -519,12 +551,13 @@ def scan(
         - hash_stored: Number of hash items in storage
         - hash_orphaned: Number of unreferenced hash items
         - hash_orphaned_bytes: Total size of orphaned hashes
-        - orphaned_hashes: List of orphaned content hashes
+        - orphaned_hashes: List of orphaned hash items as full relative store
+          paths (NOT bare hashes — passed as-is to the deleter)
         - schema_paths_referenced: Number of schema items referenced in database
-        - schema_paths_stored: Number of schema items in storage
-        - schema_paths_orphaned: Number of unreferenced schema items
-        - schema_paths_orphaned_bytes: Total size of orphaned schema items
-        - orphaned_paths: List of orphaned schema paths
+        - schema_paths_stored: Number of schema files in storage
+        - schema_paths_orphaned: Number of unreferenced schema files
+        - schema_paths_orphaned_bytes: Total size of orphaned schema files
+        - orphaned_paths: List of orphaned schema files as full relative store paths
     """
     if not schemas:
         raise DataJointError("At least one schema must be provided")
@@ -587,8 +620,11 @@ def collect(
     """
     Remove orphaned storage items.
 
-    Scans the given schemas for storage references, then removes any
-    items that are not referenced.
+    Scans the given schemas (via :func:`scan`) for storage references, then
+    removes items covered by neither the schema nor hash reference set. Orphan
+    identity therefore comes entirely from :func:`scan`: live objects outside
+    the current section (after a prefix change) and the store's declared
+    ``filepath_prefix`` namespace are never deleted.
 
     Parameters
     ----------
