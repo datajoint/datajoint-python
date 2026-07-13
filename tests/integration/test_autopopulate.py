@@ -381,7 +381,7 @@ def test_upstream_provides_pre_restricted_ancestor(prefix, connection_test):
         """
 
         def make(self, key):
-            # Provenance-safe read: self.upstream pre-restricted to current key
+            # Upstream read: self.upstream pre-restricted to current key
             name = self.upstream[Subject].fetch1("name")
             self.insert1({**key, "greeting": f"Hello, {name}!"})
 
