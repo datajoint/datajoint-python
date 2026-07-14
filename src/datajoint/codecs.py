@@ -38,6 +38,7 @@ class MyTable(dj.Manual):
 
 from __future__ import annotations
 
+import json
 import logging
 from abc import ABC, abstractmethod
 from typing import Any
@@ -218,6 +219,45 @@ class Codec(ABC):
             If the value fails domain validation.
         """
         pass
+
+    def referenced_paths(self, stored: Any) -> list[tuple[str, str | None]]:
+        """
+        Return the external store paths this stored value references.
+
+        Garbage collection and delete-time cleanup call this on the *stored*
+        (encoded) representation of a column value — the JSON/dict already in
+        the database — so discovery stays metadata-only (no download or decode).
+
+        The default recognizes DataJoint's standard external-storage metadata:
+        a dict (or JSON string) carrying a ``path`` and optional ``store``. This
+        covers hash-addressed (``<hash@>``/``<blob@>``/``<attach@>``) and
+        schema-addressed (``<object@>``/``<npy@>`` and any :class:`SchemaCodec`
+        subclass) storage with no extra work, and returns an empty list for
+        values that are not externally stored (e.g. in-table ``<blob>``).
+
+        Override only if your codec stores external references in a non-standard
+        shape. Returning the paths here is what lets garbage collection see a
+        custom codec's files as *referenced* rather than orphaned (see #1469).
+
+        Parameters
+        ----------
+        stored : any
+            The stored (encoded) value as read from the database column.
+
+        Returns
+        -------
+        list[tuple[str, str | None]]
+            ``(path, store_name)`` for each external artifact referenced.
+        """
+        value = stored
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                return []
+        if isinstance(value, dict) and "path" in value:
+            return [(value["path"], value.get("store"))]
+        return []
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self.name!r})>"
