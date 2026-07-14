@@ -14,13 +14,10 @@ The contract is documented in
 ``datajoint-docs/src/reference/specs/provenance.md`` §3.
 
 Implementation note: the active-make context is stored in a
-``contextvars.ContextVar``. No cross-process or cross-thread propagation is
-required: ``_populate_one`` pushes the context immediately before invoking
-``make()`` and pops it in a ``finally``, all within whichever process or
-thread executes that ``make()`` call — so distributed populate workers each
-establish their own context locally. The ContextVar provides per-task
-isolation and token-based nesting (a nested make restores the outer context
-exactly on pop).
+``contextvars.ContextVar`` so it propagates correctly across threads
+that share the parent's context (e.g. the populate-in-subprocess path
+which uses ``multiprocessing`` workers, each of which inherits its
+parent's contextvar binding at fork time).
 """
 
 from __future__ import annotations
