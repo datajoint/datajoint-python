@@ -21,7 +21,7 @@ class HashCodec(Codec):
     The database column stores JSON metadata: ``{hash, store, size}``.
     Duplicate content is automatically deduplicated across all tables.
 
-    Deletion: Requires garbage collection via ``dj.gc.collect()``.
+    Deletion: Requires garbage collection via ``dj.gc.GarbageCollector``.
 
     External only - requires @ modifier.
 

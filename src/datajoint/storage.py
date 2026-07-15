@@ -196,6 +196,8 @@ def build_object_path(
     ext: str | None,
     partition_pattern: str | None = None,
     token_length: int = 8,
+    *,
+    schema_prefix: str,
 ) -> tuple[str, str]:
     """
     Build the storage path for an object attribute.
@@ -216,6 +218,10 @@ def build_object_path(
         Partition pattern with ``{attr}`` placeholders.
     token_length : int, optional
         Length of random token suffix. Default 8.
+    schema_prefix : str
+        Section prefix from the store's ``schema_prefix`` setting. No fallback
+        by design: settings (``get_store_spec``) is the single source of the
+        ``"_schema"`` default, applied to every store spec.
 
     Returns
     -------
@@ -256,8 +262,11 @@ def build_object_path(
             pk_parts.append(f"{attr}={encode_pk_value(value)}")
 
     # Construct full path
-    # Pattern: {partition_attrs}/{schema}/{table}/{remaining_pk}/{filename}
+    # Pattern: {schema_prefix}/{partition_attrs}/{schema}/{table}/{remaining_pk}/{filename}
     parts = []
+    prefix = schema_prefix.strip("/")
+    if prefix:
+        parts.append(prefix)
     if partition_parts:
         parts.extend(partition_parts)
     parts.append(schema)
