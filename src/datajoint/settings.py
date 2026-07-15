@@ -560,6 +560,19 @@ class Config(BaseSettings):
         """
         Validate that storage section prefixes don't overlap.
 
+        These keys **control the store layout** (see
+        how-to/configure-storage in the documentation): ``hash_prefix``
+        (default ``_hash``) is where hash-addressed objects are written and
+        scanned; ``schema_prefix`` (default ``_schema``) is where
+        schema-addressed objects are written; ``filepath_prefix`` (default
+        unrestricted) is the namespace ``<filepath@>`` paths must stay in.
+        Writers, garbage collection, and ``<filepath@>`` validation all
+        consume the same values, so the sections may be relocated per store
+        without the components drifting apart. Changing a prefix on a store
+        that already holds data is not recommended: existing objects remain
+        readable (their metadata stores full paths) but reclamation scans
+        only the currently configured sections.
+
         Parameters
         ----------
         store_name : str

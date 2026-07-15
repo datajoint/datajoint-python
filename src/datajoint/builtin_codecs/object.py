@@ -53,7 +53,7 @@ class ObjectCodec(SchemaCodec):
 
             {store_root}/{schema}/{table}/{pk}/{field}/
 
-    Deletion: Requires garbage collection via ``dj.gc.collect()``.
+    Deletion: Requires garbage collection via ``dj.gc.GarbageCollector``.
 
     Comparison with hash-addressed::
 

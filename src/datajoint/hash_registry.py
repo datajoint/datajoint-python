@@ -5,11 +5,11 @@ This module provides hash-addressed storage with deduplication for the ``<hash>`
 codec. Content is identified by a Base32-encoded MD5 hash and stored with
 per-schema isolation::
 
-    _hash/{schema}/{hash}
+    {hash_prefix}/{schema}/{hash}          (hash_prefix defaults to _hash)
 
 With optional subfolding (configured per-store)::
 
-    _hash/{schema}/{fold1}/{fold2}/{hash}
+    {hash_prefix}/{schema}/{fold1}/{fold2}/{hash}
 
 Subfolding creates directory hierarchies to improve performance on filesystems
 that struggle with large directories (ext3, FAT32, NFS). Modern filesystems
@@ -25,7 +25,7 @@ existing data. The path stored at insert time is always used for retrieval.
 
 Hash-addressed storage is used by ``<hash@>``, ``<blob@>``, and ``<attach@>`` types.
 Deduplication occurs within each schema. Deletion requires garbage collection
-via ``dj.gc.collect()``.
+via ``dj.gc.GarbageCollector``.
 
 See Also
 --------
@@ -97,17 +97,19 @@ def build_hash_path(
     content_hash: str,
     schema_name: str,
     subfolding: tuple[int, ...] | None = None,
+    *,
+    hash_prefix: str,
 ) -> str:
     """
     Build the storage path for hash-addressed storage.
 
     Path structure without subfolding::
 
-        _hash/{schema}/{hash}
+        {hash_prefix}/{schema}/{hash}          (hash_prefix defaults to _hash)
 
     Path structure with subfolding (e.g., (2, 2))::
 
-        _hash/{schema}/{fold1}/{fold2}/{hash}
+        {hash_prefix}/{schema}/{fold1}/{fold2}/{hash}
 
     Parameters
     ----------
@@ -117,6 +119,10 @@ def build_hash_path(
         Database/schema name for isolation.
     subfolding : tuple[int, ...], optional
         Subfolding pattern from store config. None means flat (no subfolding).
+    hash_prefix : str
+        Section prefix from the store's ``hash_prefix`` setting. There is no
+        fallback here by design: settings (``get_store_spec``) is the single
+        source of the ``"_hash"`` default, applied to every store spec.
 
     Returns
     -------
@@ -127,12 +133,14 @@ def build_hash_path(
     if not (len(content_hash) == 26 and content_hash.isalnum() and content_hash.islower()):
         raise DataJointError(f"Invalid content hash (expected 26-char lowercase base32): {content_hash}")
 
+    prefix = hash_prefix.strip("/")
+    section = f"{prefix}/" if prefix else ""
     if subfolding:
         folds = _subfold(content_hash, subfolding)
         fold_path = "/".join(folds)
-        return f"_hash/{schema_name}/{fold_path}/{content_hash}"
+        return f"{section}{schema_name}/{fold_path}/{content_hash}"
     else:
-        return f"_hash/{schema_name}/{content_hash}"
+        return f"{section}{schema_name}/{content_hash}"
 
 
 def get_store_backend(store_name: str | None = None, config: Config | None = None) -> StorageBackend:
@@ -217,8 +225,17 @@ def put_hash(
         Metadata dict with keys: hash, path, schema, store, size.
     """
     content_hash = compute_hash(data)
-    subfolding = get_store_subfolding(store_name, config=config)
-    path = build_hash_path(content_hash, schema_name, subfolding)
+    if config is None:
+        from .settings import config  # type: ignore[assignment]
+    assert config is not None
+    spec = config.get_store_spec(store_name)
+    subfolding = tuple(spec["subfolding"]) if spec.get("subfolding") else None
+    path = build_hash_path(
+        content_hash,
+        schema_name,
+        subfolding,
+        hash_prefix=spec["hash_prefix"],  # always present: settings applies the default
+    )
 
     backend = get_store_backend(store_name, config=config)
 

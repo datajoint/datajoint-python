@@ -27,6 +27,14 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Exercise both ends of the supported range (requires-python
+        # >=3.10,<3.15). The version-pinned pixi environments are defined in
+        # pyproject.toml under [tool.pixi.environments].
+        environment: [test-py310, test-py314]
+    name: test (${{ matrix.environment }})
     steps:
       - uses: actions/checkout@v4
 
@@ -35,9 +43,10 @@ jobs:
         with:
           cache: true
           locked: false
+          environments: ${{ matrix.environment }}
 
       - name: Run tests
-        run: pixi run -e test test-cov
+        run: pixi run -e ${{ matrix.environment }} test-cov
 
   # Unit tests run without containers (faster feedback)
   unit-tests:
