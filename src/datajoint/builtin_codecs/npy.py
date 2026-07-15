@@ -272,7 +272,7 @@ class NpyCodec(SchemaCodec):
         - Path: ``{schema}/{table}/{pk}/{attribute}.npy``
         - Database column: JSON with ``{path, store, dtype, shape}``
 
-    Deletion: Requires garbage collection via ``dj.gc.collect()``.
+    Deletion: Requires garbage collection via ``dj.gc.GarbageCollector``.
 
     See Also
     --------

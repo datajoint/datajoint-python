@@ -484,6 +484,44 @@ class TestFilepathCodec:
             dj.config.stores.clear()
             dj.config.stores.update(original_stores)
 
+    def test_filepath_reservation_follows_hash_prefix_override(self):
+        """hash_prefix controls the layout: overriding it moves the reserved
+        section along with the writer (both consume the same setting), so the
+        override is reserved and the former default is released."""
+        from unittest.mock import MagicMock, patch
+
+        import datajoint as dj
+
+        filepath_codec = get_codec("filepath")
+
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_store"] = {
+                "protocol": "file",
+                "location": "/tmp/test",
+                "hash_prefix": "content",  # override; hash objects still land in _hash/
+            }
+
+            with patch("datajoint.hash_registry.get_store_backend") as mock_get_backend:
+                mock_backend = MagicMock()
+                mock_backend.exists.return_value = True
+                mock_get_backend.return_value = mock_backend
+
+                # the overridden section is reserved
+                with pytest.raises(
+                    ValueError,
+                    match=r"<filepath@> cannot use reserved section 'content'",
+                ):
+                    filepath_codec.encode("content/file.dat", store_name="test_store")
+
+                # the former default is released — hash objects now live under
+                # the override, so `_hash/` is ordinary user namespace here
+                result = filepath_codec.encode("_hash/schema/file.dat", store_name="test_store")
+                assert result["path"] == "_hash/schema/file.dat"
+        finally:
+            dj.config.stores.clear()
+            dj.config.stores.update(original_stores)
+
     def test_filepath_rejects_schema_section(self):
         """Test that filepath rejects paths starting with default schema prefix."""
         from unittest.mock import MagicMock, patch

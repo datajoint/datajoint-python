@@ -168,6 +168,41 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         assert self.attribute_expression.startswith(("`", '"'))
         return self.attribute_expression.strip('`"')
 
+    @property
+    def is_hash_object(self) -> bool:
+        """
+        True if the value is stored in external hash-addressed storage.
+
+        Covers ``<hash@>`` (external-only) and ``<blob@>``/``<attach@>`` *with*
+        a store. Inline ``<blob>``/``<attach>`` (no store) return False — their
+        bytes live in the column, so there is nothing in object storage to
+        collect. The ``store is not None`` test mirrors the framework's own
+        ``is_store`` determination (see ``declare``/``Heading`` compilation).
+        """
+        if not self.codec:
+            return False
+        name = getattr(self.codec, "name", "")
+        if name == "hash":
+            return True  # <hash> is external-only (get_dtype raises without @)
+        # <blob>/<attach> are dual-mode: external only when a store is set.
+        return name in ("blob", "attach") and self.store is not None
+
+    @property
+    def is_schema_object(self) -> bool:
+        """
+        True if the value is stored in schema-addressed storage.
+
+        Covers ``<object@>``, ``<npy@>``, and any custom ``SchemaCodec``
+        subclass — recognized by codec *type*, not name, so third-party codecs
+        are included (see #1469). Schema-addressed storage is external-only, so
+        no store guard is needed.
+        """
+        if not self.codec:
+            return False
+        from .builtin_codecs.schema import SchemaCodec  # local import avoids import cycle
+
+        return isinstance(self.codec, SchemaCodec)
+
 
 class Heading:
     """
@@ -276,6 +311,18 @@ class Heading:
     def non_blobs(self) -> list[str]:
         """Attributes that are not blobs or JSON."""
         return [k for k, v in self.attributes.items() if not (v.is_blob or v.json)]
+
+    @property
+    def hash_objects(self) -> list[str]:
+        """Names of attributes stored in external hash-addressed storage (``<hash@>``,
+        external ``<blob@>``/``<attach@>``). See :attr:`Attribute.is_hash_object`."""
+        return [k for k, v in self.attributes.items() if v.is_hash_object]
+
+    @property
+    def schema_objects(self) -> list[str]:
+        """Names of attributes stored in schema-addressed storage (``<object@>``,
+        ``<npy@>``, custom ``SchemaCodec``). See :attr:`Attribute.is_schema_object`."""
+        return [k for k, v in self.attributes.items() if v.is_schema_object]
 
     @property
     def new_attributes(self) -> list[str]:

@@ -114,7 +114,7 @@ class SchemaCodec(Codec, register=False):
         Build schema-addressed storage path.
 
         Constructs a path that mirrors the database schema structure:
-        ``{schema}/{table}/{pk_values}/{field}{ext}``
+        ``{schema_prefix}/{schema}/{table}/{pk_values}/{field}{ext}``
 
         Supports partitioning if configured in the store.
 
@@ -150,6 +150,7 @@ class SchemaCodec(Codec, register=False):
         spec = config.get_store_spec(store_name)
         partition_pattern = spec.get("partition_pattern")
         token_length = spec.get("token_length", 8)
+        schema_prefix = spec["schema_prefix"]  # always present: settings applies the default
 
         return build_object_path(
             schema=schema,
@@ -159,6 +160,7 @@ class SchemaCodec(Codec, register=False):
             ext=ext,
             partition_pattern=partition_pattern,
             token_length=token_length,
+            schema_prefix=schema_prefix,
         )
 
     def _get_backend(self, store_name: str | None = None, config=None):
