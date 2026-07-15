@@ -5,7 +5,7 @@ DataJoint is a framework for scientific data pipelines based on the **Relational
 - **Tables represent workflow steps** — Each table is a step in your pipeline
 - **Foreign keys encode dependencies** — Parent tables must be populated before child tables
 - **Computations are declarative** — Define *what* to compute; DataJoint handles *when*
-- **Results are immutable** — Full provenance and reproducibility
+- **Results are immutable** — Full lineage and reproducibility
 
 **Documentation:** https://docs.datajoint.com
 

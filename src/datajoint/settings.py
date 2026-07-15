@@ -69,7 +69,6 @@ ENV_VAR_MAPPING = {
     "database.database_prefix": "DJ_DATABASE_PREFIX",
     "database.create_tables": "DJ_CREATE_TABLES",
     "loglevel": "DJ_LOG_LEVEL",
-    "strict_provenance": "DJ_STRICT_PROVENANCE",
     "display.diagram_direction": "DJ_DIAGRAM_DIRECTION",
 }
 
@@ -360,16 +359,6 @@ class Config(BaseSettings):
         description="If True, skip loading datajoint.json and the secrets directory. "
         "Intended for env-var-only deployments (e.g. the DataJoint platform). "
         "*New in 2.2.3.*",
-    )
-
-    strict_provenance: bool = Field(
-        default=False,
-        validation_alias="DJ_STRICT_PROVENANCE",
-        description="If True, enforces the upstream-only convention inside make(): "
-        "reads must go through self.upstream[Ancestor], writes must target self "
-        "or self's Part tables with primary keys consistent with the current key. "
-        "Off by default; opt-in for deployments that need runtime provenance "
-        "guarantees backing downstream lineage / CDC tooling. *New in 2.3.*",
     )
 
     # Cache path for query results
