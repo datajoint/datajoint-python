@@ -22,6 +22,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__.split(".")[0])
 
+# Parallel populate hands the live table and its open connection to workers by
+# process inheritance, so it requires the `fork` start method. Python 3.14
+# changed the default from `fork` to `forkserver`, which pickles the payload
+# instead — that neither carries a live DB connection nor the table's internal
+# state, and it deadlocks. Pin to `fork` where available (all POSIX platforms);
+# fall back to the platform default elsewhere.
+_MP_START_METHOD = "fork" if "fork" in mp.get_all_start_methods() else None
+
 
 # --- helper functions for multiprocessing --
 
@@ -30,7 +38,8 @@ def _initialize_populate(table: Table, jobs: Job | None, populate_kwargs: dict[s
     """
     Initialize a worker process for multiprocessing.
 
-    Saves the unpickled table to the current process and reconnects to database.
+    Stores the inherited table on the worker process and reconnects to database
+    (the parent closes its connection before forking; each worker reopens one).
 
     Parameters
     ----------
@@ -476,7 +485,9 @@ class AutoPopulate:
                 if hasattr(self.connection._conn, "ctx"):
                     del self.connection._conn.ctx
                 with (
-                    mp.Pool(processes, _initialize_populate, (self, None, populate_kwargs)) as pool,
+                    mp.get_context(_MP_START_METHOD).Pool(
+                        processes, _initialize_populate, (self, None, populate_kwargs)
+                    ) as pool,
                     tqdm(desc="Processes: ", total=nkeys) if display_progress else contextlib.nullcontext() as progress_bar,
                 ):
                     for status in pool.imap(_call_populate1, keys, chunksize=1):
@@ -572,7 +583,9 @@ class AutoPopulate:
                     if hasattr(self.connection._conn, "ctx"):
                         del self.connection._conn.ctx  # SSLContext is not pickleable
                     with (
-                        mp.Pool(processes, _initialize_populate, (self, self.jobs, populate_kwargs)) as pool,
+                        mp.get_context(_MP_START_METHOD).Pool(
+                            processes, _initialize_populate, (self, self.jobs, populate_kwargs)
+                        ) as pool,
                         tqdm(desc="Processes: ", total=nkeys)
                         if display_progress
                         else contextlib.nullcontext() as progress_bar,
@@ -866,8 +879,6 @@ class AutoPopulate:
 
         pk_condition = make_condition(self, key, set())
         self.connection.query(
-            f"UPDATE {self.full_table_name} SET "
-            "_job_start_time=%s, _job_duration=%s, _job_version=%s "
-            f"WHERE {pk_condition}",
+            f"UPDATE {self.full_table_name} SET _job_start_time=%s, _job_duration=%s, _job_version=%s WHERE {pk_condition}",
             args=(start_time, duration, version[:64] if version else ""),
         )
