@@ -389,3 +389,61 @@ def test_trace_seed_with_no_ancestors(schema_by_backend):
     assert len(trace[Standalone]) == 1
     counts = trace.counts()
     assert counts == {Standalone.full_table_name: 1}
+
+
+def test_trace_stops_at_master_no_part_down_collection(schema_by_backend):
+    """Pins shipped merge-table semantics: trace walks ancestor FK edges only.
+    It does NOT descend from an ancestor Master into that Master's Parts — an
+    ancestor's Part is included only when the Part itself lies on an FK path
+    to the seed. In the merge shape Parent -> Master.P -> Master -> Child,
+    trace(Child & key) reaches Master but neither Master.P nor Parent.
+
+    This corrects the design comment on datajoint/datajoint-python discussion
+    1232, which described a Master->Parts down-collection that was never
+    implemented; the spec (provenance.md, Allowed table set) matches this
+    test. If down-collection is ever added deliberately, this test must be
+    revised alongside the spec — it exists so the semantics cannot drift
+    silently."""
+
+    @schema_by_backend
+    class Parent(dj.Manual):
+        definition = """
+        parent_id : int32
+        """
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+        class P(dj.Part):
+            definition = """
+            -> master
+            -> Parent
+            """
+
+    @schema_by_backend
+    class Child(dj.Manual):
+        definition = """
+        -> Master
+        child_id : int32
+        """
+
+    Parent.insert([(5,)])
+    Master.insert([(10,)])
+    Master.P.insert([(10, 5)])
+    Child.insert([(10, 1000)])
+
+    trace = dj.Diagram.trace(Child & {"master_id": 10, "child_id": 1000})
+
+    # The Master is a true ancestor — reachable and correctly restricted.
+    assert len(trace[Master]) == 1
+    assert trace[Master].fetch1("master_id") == 10
+
+    # The Master's Part and the Part's parent are NOT in the trace: the Part
+    # is a descendant of Master, not on an ancestor path from Child.
+    with pytest.raises(DataJointError, match="not in this trace"):
+        trace[Master.P]
+    with pytest.raises(DataJointError, match="not in this trace"):
+        trace[Parent]

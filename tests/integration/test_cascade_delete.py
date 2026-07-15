@@ -479,3 +479,103 @@ def test_cascade_part_of_part_actual_delete(schema_by_backend):
     assert Master().fetch1("master_id") == 2
     assert len(Master.PartA()) == 1
     assert len(Master.PartB()) == 1
+
+
+# =========================================================================
+# Post-2.3 audit: with part_integrity="cascade", EVERY restricted Part of a
+# master must contribute its rows to the master's restriction. The upward
+# walk used to be deduplicated per master (first Part wins), silently
+# under-restricting the master when a second Part of the same master was
+# reached via a different FK path.
+# =========================================================================
+
+
+def test_cascade_two_parts_same_master_both_restrict(schema_by_backend):
+    """Two Parts of one master, each referencing an external table. Deleting
+    the external row reaches PartA (under master 1) and PartB (under master 2);
+    the cascade must restrict BOTH masters, not just the first Part's."""
+
+    @schema_by_backend
+    class Ext(dj.Manual):
+        definition = """
+        ext_id : int32
+        """
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+        class PartA(dj.Part):
+            definition = """
+            -> master
+            -> Ext
+            """
+
+        class PartB(dj.Part):
+            definition = """
+            -> master
+            -> Ext
+            """
+
+    Ext.insert([(1,), (2,)])
+    Master.insert([(1,), (2,), (3,)])
+    Master.PartA.insert([(1, 1), (3, 2)])  # ext 1 under master 1; control under master 3
+    Master.PartB.insert([(2, 1), (3, 2)])  # ext 1 under master 2; control under master 3
+
+    counts = dj.Diagram.cascade(Ext & {"ext_id": 1}, part_integrity="cascade").counts()
+
+    # Both masters must be in the cascade — master 1 (via PartA) AND master 2
+    # (via PartB). The old once-per-master dedup returned 1 here.
+    assert counts.get(Master.full_table_name, 0) == 2, (
+        f"both masters must be restricted (PartA -> master 1, PartB -> master 2); "
+        f"got {counts.get(Master.full_table_name)}: the upward walk fired for "
+        f"only one Part of the master."
+    )
+
+    # End-to-end delete: both compositional units removed; master 3 untouched.
+    (Ext & {"ext_id": 1}).delete(prompt=False, part_integrity="cascade")
+
+    remaining_masters = {r["master_id"] for r in Master.to_dicts()}
+    assert remaining_masters == {3}, f"masters 1 and 2 must be deleted; got {remaining_masters}"
+    assert len(Master.PartA()) == 1  # only the control row (3, 2)
+    assert len(Master.PartB()) == 1
+    assert len(Ext & {"ext_id": 2}) == 1  # unrelated ext row intact
+
+
+def test_diagram_cascade_rejects_invalid_part_integrity(schema_by_backend):
+    """Diagram.cascade validates part_integrity eagerly (mirrors Table.delete)
+    — a typo must raise, not silently degrade to enforce/ignore behavior."""
+
+    @schema_by_backend
+    class Simple(dj.Manual):
+        definition = """
+        sid : int32
+        """
+
+    Simple.insert([(1,)])
+
+    with pytest.raises(ValueError, match="part_integrity must be"):
+        dj.Diagram.cascade(Simple & {"sid": 1}, part_integrity="casade")
+
+
+def test_drop_rejects_invalid_part_integrity(schema_by_backend):
+    """Table.drop validates part_integrity: 'cascade' is delete-only and typos
+    must raise instead of silently behaving as 'ignore'. The table survives."""
+
+    @schema_by_backend
+    class Keeper(dj.Manual):
+        definition = """
+        kid : int32
+        """
+
+    Keeper.insert([(1,)])
+
+    with pytest.raises(ValueError, match="part_integrity must be"):
+        Keeper.drop(part_integrity="cascade")
+    with pytest.raises(ValueError, match="part_integrity must be"):
+        Keeper.drop(part_integrity="enforcee")
+
+    # validation fired before any drop work — table intact
+    assert len(Keeper()) == 1
