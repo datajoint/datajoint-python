@@ -140,6 +140,19 @@ class Dependencies(nx.DiGraph):
         self._node_alias_count = itertools.count()  # reset alias IDs for consistency
         super().clear()
 
+    def __getstate__(self) -> dict:
+        # itertools.count is not picklable. Multiprocessing populate pickles the
+        # table (and thus its connection's Dependencies) to worker processes,
+        # where dependencies are reloaded — so the counter is dropped here and
+        # rebuilt in __setstate__ rather than carried across the pickle.
+        state = self.__dict__.copy()
+        state.pop("_node_alias_count", None)
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
+        self._node_alias_count = itertools.count()
+
     def load(self, force: bool = True, schema_names: set[str] | None = None) -> None:
         """
         Load dependencies for the given schemas.
