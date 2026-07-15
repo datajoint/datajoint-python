@@ -696,6 +696,12 @@ class Diagram(nx.DiGraph):  # noqa: C901
         Walks the dependency graph in topological order, applying
         propagation rules at each edge. Only processes descendants of
         start_node to avoid duplicate propagation when chaining.
+
+        Invariant (``part_integrity="cascade"``): each restricted Part fires
+        its own upward walk to its Master exactly once — deduplicated per
+        ``(part, master)`` pair (``visited_part_master_pairs``), not per
+        master — so a Master reached through several restricted Parts is
+        restricted from every one of them.
         """
 
         sorted_nodes = topo_sort(self)
