@@ -492,14 +492,18 @@ def test_upstream_cleared_after_make(prefix, connection_test):
 
         def make(self, key):
             captured.append(self)  # the actual populate instance
-            assert self._upstream is not None  # set for the duration of make()
+            # Lazy: the trace is NOT built here because this make() never reads
+            # self.upstream — but we ARE inside make() (the key is recorded).
+            assert self._upstream is None
+            assert self._upstream_key is not None
             self.insert1({**key, "val": 0})
 
     Derived.populate()
     assert captured, "make() did not run"
     inst = captured[0]
-    # The finally block must have cleared _upstream on this very instance.
-    assert inst._upstream is None
+    # The finally block must have cleared the make() key on this very instance —
+    # that is what makes self.upstream raise afterward.
+    assert inst._upstream_key is None
     with pytest.raises(DataJointError, match="only available inside make"):
         inst.upstream
 
@@ -529,7 +533,7 @@ def test_upstream_cleared_after_make_raises(prefix, connection_test):
 
         def make(self, key):
             captured.append(self)
-            assert self._upstream is not None
+            assert self._upstream_key is not None  # inside make()
             raise RuntimeError("make failed on purpose")
 
     with pytest.raises(RuntimeError, match="make failed on purpose"):
@@ -537,7 +541,7 @@ def test_upstream_cleared_after_make_raises(prefix, connection_test):
     assert captured, "make() did not run"
     inst = captured[0]
     # Cleared by the finally block even though make() raised.
-    assert inst._upstream is None
+    assert inst._upstream_key is None
     with pytest.raises(DataJointError, match="only available inside make"):
         inst.upstream
 
@@ -557,7 +561,7 @@ def test_upstream_seen_across_tripartite_make(prefix, connection_test):
         """
         contents = [(1, 100), (2, 200)]
 
-    seen = []  # (source_id, phase, id(self._upstream))
+    seen = []  # (source_id, phase, id(self.upstream))
 
     @schema
     class TriComputed(dj.Computed):
@@ -568,15 +572,15 @@ def test_upstream_seen_across_tripartite_make(prefix, connection_test):
         """
 
         def make_fetch(self, key):
-            seen.append((key["source_id"], "fetch", id(self._upstream)))
+            seen.append((key["source_id"], "fetch", id(self.upstream)))
             return (self.upstream[Source].fetch1("value"),)
 
         def make_compute(self, key, value):
-            seen.append((key["source_id"], "compute", id(self._upstream)))
+            seen.append((key["source_id"], "compute", id(self.upstream)))
             return (value * 2,)
 
         def make_insert(self, key, doubled):
-            seen.append((key["source_id"], "insert", id(self._upstream)))
+            seen.append((key["source_id"], "insert", id(self.upstream)))
             self.insert1({**key, "result": doubled})
 
     TriComputed.populate()

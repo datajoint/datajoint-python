@@ -98,7 +98,8 @@ class AutoPopulate:
     _key_source = None
     _allow_insert = False
     _jobs = None
-    _upstream = None  # set per-make() by _populate_one; see `upstream` property below
+    _upstream = None  # memoized upstream trace for the current make(); built lazily on first use
+    _upstream_key = None  # current make() key; not None iff executing inside make()
 
     @property
     def upstream(self):
@@ -132,12 +133,19 @@ class AutoPopulate:
                 traces = self.upstream[ExtractTraces].to_arrays("trace")
                 self.insert1({**key, "summary": compute(traces, date)})
         """
-        if self._upstream is None:
+        if self._upstream_key is None:
             raise DataJointError(
                 "self.upstream is only available inside make(). "
                 "Outside make(), construct a trace explicitly: "
                 "dj.Diagram.trace(self & key)."
             )
+        if self._upstream is None:
+            # Build the trace lazily on first access and memoize it for this
+            # make() call, so make() calls that never read self.upstream pay
+            # nothing. See #1493.
+            from .diagram import Diagram
+
+            self._upstream = Diagram.trace(self & self._upstream_key)
         return self._upstream
 
     class _JobsDescriptor:
@@ -665,12 +673,11 @@ class AutoPopulate:
         logger.jobs(f"Making {key} -> {self.full_table_name}")
         self.__class__._allow_insert = True
 
-        # Pre-construct the upstream view for this make() call. Lazy — only
-        # `dj.Diagram.trace(self & key)` runs here (graph copy); the
-        # expensive SQL fetch fires when the user accesses self.upstream[T].
-        from .diagram import Diagram
-
-        self._upstream = Diagram.trace(self & dict(key))
+        # Record the key for a lazily-constructed upstream view. The trace is
+        # built on first `self.upstream` access (see the `upstream` property),
+        # so make() calls that never read upstream pay nothing. See #1493.
+        self._upstream_key = dict(key)
+        self._upstream = None
 
         try:
             if not is_generator:
@@ -733,6 +740,7 @@ class AutoPopulate:
             # access raises a clear error rather than silently using a
             # stale trace from the previous make() call.
             self._upstream = None
+            self._upstream_key = None
 
     def progress(self, *restrictions: Any, display: bool = False) -> tuple[int, int]:
         """
