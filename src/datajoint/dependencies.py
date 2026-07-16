@@ -132,11 +132,13 @@ class Dependencies(nx.DiGraph):
         self._conn = connection
         self._node_alias_count = itertools.count()
         self._loaded = False
+        self._loaded_schemas = set()  # schema names currently represented in the graph
         super().__init__(self)
 
     def clear(self) -> None:
         """Clear the graph and reset loaded state."""
         self._loaded = False
+        self._loaded_schemas = set()
         self._node_alias_count = itertools.count()  # reset alias IDs for consistency
         super().clear()
 
@@ -165,6 +167,7 @@ class Dependencies(nx.DiGraph):
 
         # Build schema list for IN clause
         names = schema_names if schema_names is not None else set(self._conn.schemas)
+        self._loaded_schemas = set(names)
         if not names:
             self._loaded = True
             return
@@ -257,6 +260,11 @@ class Dependencies(nx.DiGraph):
                 break
             known_schemas |= new_schemas
 
+        # Skip the expensive rebuild when the graph already contains every needed
+        # schema, so repeated calls within one operation don't reload the whole
+        # dependency tree. See #1493.
+        if self._loaded and known_schemas <= self._loaded_schemas:
+            return
         self.load(force=True, schema_names=known_schemas)
 
     def load_all_upstream(self) -> None:
@@ -286,6 +294,11 @@ class Dependencies(nx.DiGraph):
                 break
             known_schemas |= new_schemas
 
+        # Skip the expensive rebuild when the graph already contains every needed
+        # schema, so repeated Diagram.trace() calls within one populate() don't
+        # reload the whole dependency tree per key. See #1493.
+        if self._loaded and known_schemas <= self._loaded_schemas:
+            return
         self.load(force=True, schema_names=known_schemas)
 
     def topo_sort(self) -> list[str]:
