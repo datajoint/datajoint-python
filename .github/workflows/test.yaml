@@ -30,11 +30,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Exercise both ends of the supported range (requires-python
-        # >=3.10,<3.15). The version-pinned pixi environments are defined in
-        # pyproject.toml under [tool.pixi.environments].
+        # Python: exercise both ends of the supported range (requires-python
+        # >=3.10,<3.15); version-pinned pixi environments live in pyproject.toml
+        # under [tool.pixi.environments].
         environment: [test-py310, test-py314]
-    name: test (${{ matrix.environment }})
+        # MySQL: exercise both LTS lines we support / that AWS RDS runs. 8.0 uses
+        # the datajoint image (SSL configured); 8.4 uses the official image (TLS
+        # tests already skip outside external containers). See #1497.
+        mysql-image: ["datajoint/mysql:8.0", "mysql:8.4"]
+    name: test (${{ matrix.environment }}, mysql=${{ matrix.mysql-image }})
     steps:
       - uses: actions/checkout@v4
 
@@ -46,6 +50,8 @@ jobs:
           environments: ${{ matrix.environment }}
 
       - name: Run tests
+        env:
+          DJ_TEST_MYSQL_IMAGE: ${{ matrix.mysql-image }}
         run: pixi run -e ${{ matrix.environment }} test-cov
 
   # Unit tests run without containers (faster feedback)
