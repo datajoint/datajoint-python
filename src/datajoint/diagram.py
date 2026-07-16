@@ -663,6 +663,13 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         Cannot be called on a Diagram produced by ``Diagram.cascade()``.
 
+        Propagation is strictly downstream. Unlike ``cascade``'s
+        ``part_integrity="cascade"``, ``restrict`` never walks upward from a
+        Part to its Master: an export is seeded at root entities and flows
+        down, so a Master (with all of its Parts) is always included before
+        its Parts and no Part foreign key dangles. Use :meth:`trace` for
+        upstream / ancestor closure.
+
         Parameters
         ----------
         table_expr : QueryExpression
@@ -796,6 +803,14 @@ class Diagram(nx.DiGraph):  # noqa: C901
                         # which assumed shared PK attribute names. See #1429.
                         # Deduped per (part, master) pair — every restricted Part
                         # of a master contributes its own master rows.
+                        #
+                        # This upward walk is intentionally exclusive to cascade
+                        # delete. `restrict` (mode="restrict") is downstream-only by
+                        # design: export is seeded at roots and flows down, so a
+                        # Master is always included (with all its Parts) before its
+                        # Parts and no Part FK dangles — a read-only slice has no
+                        # compositional-atomicity obligation. Do not enable this for
+                        # restrict.
                         if part_integrity == "cascade" and mode == "cascade":
                             master_name = extract_master(target)
                             if (
