@@ -941,13 +941,23 @@ class Diagram(nx.DiGraph):  # noqa: C901
         so we read props from one and skip the alias node when walking.
 
         After the walk, the master's restriction is **materialized** to a
-        literal value tuple via ``to_arrays()``. Without materialization, a
-        subsequent forward cascade from the master back down to its parts
-        would produce a self-referential subquery (MySQL error 1093, since
-        the master's restriction depends on the same Part being deleted).
-        Materializing converts the restriction into a static value set, so
-        the forward cascade generates ``WHERE ... IN (literal-list)`` rather
-        than ``WHERE ... IN (SELECT ... FROM <part>)``.
+        literal value tuple via ``to_arrays()``. This is required for
+        correctness on **every backend**, not merely to avoid MySQL error
+        1093. ``Table.delete`` executes per-table deletes in reverse
+        topological order (leaves first), so the Part is deleted *before* the
+        Master. The master's restriction is derived from that Part, so if it
+        were left as a live subquery it would evaluate to empty once the Part
+        rows are gone — and the Master would silently escape deletion,
+        reintroducing the very compositional-integrity violation this walk
+        exists to prevent. Materializing the master's primary keys to a static
+        value set at plan time (before any rows are deleted) captures them
+        while the Part still exists, so the master delete becomes
+        ``WHERE ... IN (literal-list)``.
+
+        (Secondary benefit: the literal set also sidesteps the self-referential
+        ``WHERE ... IN (SELECT ... FROM <part>)`` subquery that MySQL rejects
+        with error 1093 — but note the delete-order reason above applies to
+        PostgreSQL too, so this must not be made a MySQL-only optimization.)
 
         Limitations
         -----------
