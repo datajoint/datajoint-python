@@ -762,3 +762,84 @@ class TestPerSchemaScoping:
         assert set(collector.list_hash_paths(b.database)) == b_hashes_before
         assert set(collector.list_schema_paths(b.database)) == b_paths_before
         assert len(b_obj()) == 1  # b's row (and its object) untouched
+
+
+class TestScanErrorGuard:
+    """A walk failure during list_*_paths (anything other than FileNotFoundError,
+    which just means the section doesn't exist yet) leaves the stored listing
+    partial. Comparing partial listings against complete reference sets would
+    classify live files as orphaned — silent data loss under dry_run=False.
+    The scan-error guard captures such errors and refuses to delete."""
+
+    def test_scan_errors_reset_between_collect_calls(self):
+        """_scan_errors is reset at the start of each collect() call, so an
+        error from a prior collect() never carries over into the next report."""
+        with ExitStack() as es:
+            for p in TestCollect._patch_data(TestCollect):
+                es.enter_context(p)
+            es.enter_context(patch("datajoint.gc.delete_path"))
+            collector = _mock_collector()
+            # Simulate a leftover error from a previous run.
+            collector._scan_errors = ["stale error from previous call"]
+
+            stats = collector.collect()  # dry_run=True
+
+        assert stats["scan_errors"] == [], "scan_errors must be reset at the start of collect()"
+        assert collector._scan_errors == [], "the collector's _scan_errors must be cleared for the new run"
+
+    def test_dry_run_false_raises_when_scan_errors_present(self):
+        """collect(dry_run=False) must refuse to delete when list_*_paths hit a
+        non-FileNotFoundError walk failure — partial listing means live files
+        could be misclassified as orphans."""
+        # Real walk failure: mock fs.walk on list_hash_paths to raise a
+        # non-FileNotFoundError, exercising the outer except that records the
+        # scan error.
+        with ExitStack() as es:
+            es.enter_context(patch.object(gc.GarbageCollector, "hash_references", return_value=set()))
+            es.enter_context(patch.object(gc.GarbageCollector, "schema_references", return_value=set()))
+
+            # Real list_hash_paths runs and hits fs.walk failure; list_schema_paths
+            # is stubbed to a clean empty listing so only the hash walk errors.
+            es.enter_context(patch.object(gc.GarbageCollector, "list_schema_paths", return_value={}))
+
+            collector = _mock_collector()
+            collector.backend.fs.walk.side_effect = PermissionError("s3 access denied")
+            collector.backend._full_path.return_value = "/root"
+
+            mock_delete = es.enter_context(patch("datajoint.gc.delete_path"))
+            with pytest.raises(DataJointError, match="Refusing to delete"):
+                collector.collect(dry_run=False)
+
+            # And no deletion happened.
+            mock_delete.assert_not_called()
+
+    def test_scan_errors_in_stats_dict(self):
+        """The returned stats dict always includes a 'scan_errors' key: empty
+        list on a clean scan, list of "<method>(<schema>): <exception>" strings
+        when a walk failed."""
+        # Clean case — scan_errors is an empty list.
+        with ExitStack() as es:
+            for p in TestCollect._patch_data(TestCollect):
+                es.enter_context(p)
+            es.enter_context(patch("datajoint.gc.delete_path"))
+            stats = _mock_collector().collect()
+
+        assert "scan_errors" in stats
+        assert stats["scan_errors"] == []
+
+        # Error case — list of strings identifying which listing failed.
+        with ExitStack() as es:
+            es.enter_context(patch.object(gc.GarbageCollector, "hash_references", return_value=set()))
+            es.enter_context(patch.object(gc.GarbageCollector, "schema_references", return_value=set()))
+            es.enter_context(patch.object(gc.GarbageCollector, "list_schema_paths", return_value={}))
+
+            collector = _mock_collector()
+            collector.schemas[0].database = "s"
+            collector.backend.fs.walk.side_effect = PermissionError("s3 access denied")
+            collector.backend._full_path.return_value = "/root"
+
+            stats = collector.collect()  # dry_run=True → returns rather than raising
+
+        assert len(stats["scan_errors"]) == 1
+        assert stats["scan_errors"][0].startswith("list_hash_paths(s):")
+        assert "s3 access denied" in stats["scan_errors"][0]

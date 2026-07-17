@@ -121,6 +121,10 @@ class GarbageCollector:
         spec = self.config.get_store_spec(store)
         self._hash_prefix = spec["hash_prefix"].strip("/")  # settings applies the "_hash" default
         self._schema_prefix = spec["schema_prefix"].strip("/")  # ... "_schema" default
+        # Per-collect() scan errors (walk failures in list_*_paths). Non-empty
+        # blocks destructive deletion in collect(dry_run=False). Reset at the
+        # start of each collect() call.
+        self._scan_errors: list[str] = []
 
     # ------------------------------------------------------------------ #
     # References — extracted from database metadata (per-schema connection)
@@ -205,15 +209,17 @@ class GarbageCollector:
                     if not _BASE32_HASH.match(filename):
                         continue
                     file_path = f"{root}/{filename}"
+                    relative_path = file_path[len(full_root):].lstrip("/")
                     try:
-                        relative_path = file_path.replace(full_root, "").lstrip("/")
                         stored[relative_path] = self.backend.fs.size(file_path)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"Could not size {file_path}: {e}")
+                        stored[relative_path] = 0
         except FileNotFoundError:
             pass  # the hash section does not exist yet
         except Exception as e:
             logger.warning(f"Error listing stored hashes: {e}")
+            self._scan_errors.append(f"list_hash_paths({schema_name}): {e}")
         return stored
 
     def list_schema_paths(self, schema_name: str) -> dict[str, int]:
@@ -252,15 +258,17 @@ class GarbageCollector:
                     # reclaimed with it. _is_covered() keeps a live object's
                     # manifest out of the orphan set.
                     file_path = f"{root}/{filename}"
-                    relative_path = file_path.replace(full_root, "").lstrip("/")
+                    relative_path = file_path[len(full_root):].lstrip("/")
                     try:
                         stored[relative_path] = self.backend.fs.size(file_path)
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"Could not size {file_path}: {e}")
                         stored[relative_path] = 0
         except FileNotFoundError:
             pass  # this schema's section does not exist yet
         except Exception as e:
             logger.warning(f"Error listing stored schemas: {e}")
+            self._scan_errors.append(f"list_schema_paths({schema_name}): {e}")
         return stored
 
     # ------------------------------------------------------------------ #
@@ -327,6 +335,7 @@ class GarbageCollector:
         - hash_paths_deleted / schema_paths_deleted / deleted / bytes_freed (0 when
           dry_run) / errors / dry_run
         """
+        self._scan_errors = []  # reset per-call; populated by list_*_paths below
         # References can be gathered across all schemas at once: because paths
         # embed the schema, a file under schema X is only ever covered by an X
         # reference, so combined coverage equals per-schema coverage.
@@ -350,6 +359,12 @@ class GarbageCollector:
         errors = 0
 
         if not dry_run:
+            if self._scan_errors:
+                raise DataJointError(
+                    f"Refusing to delete: {len(self._scan_errors)} scan error(s) — "
+                    f"partial listing risks classifying live files as orphaned. "
+                    f"Errors: {self._scan_errors}"
+                )
             # The size maps from the scan above are reused for the byte tally —
             # no second listing pass.
             for path in orphaned_hash_paths:
@@ -393,5 +408,6 @@ class GarbageCollector:
             "deleted": hash_paths_deleted + schema_paths_deleted,
             "bytes_freed": bytes_freed,
             "errors": errors,
+            "scan_errors": list(self._scan_errors),
             "dry_run": dry_run,
         }
