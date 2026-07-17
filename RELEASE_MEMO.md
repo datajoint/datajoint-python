@@ -82,20 +82,23 @@ Ensure PRs have appropriate labels before merging.
    - Set release name to `Release X.Y.Z`
    - Set tag to `vX.Y.Z`
    - Review and edit release notes
-4. **Publish the release**
+4. **Publish the release** — this creates the `vX.Y.Z` tag.
 5. Automation will:
-   - Update `version.py` to `X.Y.Z`
-   - Build and publish to PyPI
-   - Create PR to merge version update back to master
+   - Build from the tag and publish to PyPI
+   - Attach the wheel/sdist as release assets
 
 ### Version Note
 
-The release drafter computes version from the previous tag. You may need to **manually edit** the release name for major version changes.
+The release drafter computes the version from the previous tag. You may need to
+**manually edit** the release name/tag for major version changes.
 
-The regex in `post_draft_release_published.yaml` extracts version from the release name:
-```bash
-VERSION=$(echo "${{ github.event.release.name }}" | grep -oP '\d+\.\d+\.\d+')
-```
+The package version is **derived from the git tag** at build time by
+[hatch-vcs](https://github.com/ofek/hatch-vcs) (see `[tool.hatch.version]` in
+`pyproject.toml`) — the tag is the single source of truth. There is **no
+`version.py` value to bump** and **no follow-up version PR**: publishing the
+`vX.Y.Z` tag is what sets the version everywhere (`pip install`, `pip show`, and
+`datajoint.__version__`). Do not hand-edit `src/datajoint/version.py`; it only
+re-exports the build-generated `_version.py`.
 
 ---
 

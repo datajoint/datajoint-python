@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
@@ -219,7 +219,14 @@ module = [
 ignore_errors = true
 
 [tool.hatch.version]
-path = "src/datajoint/version.py"
+# Version is derived from the git tag at build time (hatch-vcs), so the tag is
+# the single source of truth: `pip install git+...@vX.Y.Z` reports X.Y.Z. The
+# resolved version is written to the generated (git-ignored) src/datajoint/_version.py
+# by the build hook below; src/datajoint/version.py reads it back at runtime.
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/datajoint/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/datajoint"]
