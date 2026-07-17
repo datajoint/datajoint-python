@@ -1,5 +1,5 @@
 """
-Hash-addressed storage codec with SHA256 deduplication.
+Hash-addressed storage codec with MD5-based deduplication.
 """
 
 from __future__ import annotations
@@ -12,11 +12,13 @@ from ..errors import DataJointError
 
 class HashCodec(Codec):
     """
-    Hash-addressed storage with SHA256 deduplication.
+    Hash-addressed storage with content-addressed deduplication.
 
     The ``<hash@>`` codec stores raw bytes using hash-addressed storage.
-    Data is identified by its SHA256 hash and stored in a hierarchical directory:
-    ``_hash/{hash[:2]}/{hash[2:4]}/{hash}``
+    Data is identified by a 26-character Base32-encoded MD5 digest of the
+    content, and stored at ``{hash_prefix}/{schema}/{hash}`` (``hash_prefix``
+    defaults to ``_hash``). Stores with subfolding configured insert
+    additional path segments: ``{hash_prefix}/{schema}/{fold1}/{fold2}/{hash}``.
 
     The database column stores JSON metadata: ``{hash, store, size}``.
     Duplicate content is automatically deduplicated across all tables.

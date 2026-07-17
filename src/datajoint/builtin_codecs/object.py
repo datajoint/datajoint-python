@@ -15,7 +15,9 @@ class ObjectCodec(SchemaCodec):
     Schema-addressed storage for files and folders.
 
     The ``<object@>`` codec provides managed file/folder storage using
-    schema-addressed paths: ``{schema}/{table}/{pk}/{field}/``. This creates
+    schema-addressed paths: ``{schema_prefix}/{schema}/{table}/{pk}/{field}_{token}/``
+    (``schema_prefix`` defaults to ``_schema``; ``{token}`` is a random
+    per-write suffix). This creates
     a browsable organization in object storage that mirrors the database schema.
 
     Unlike hash-addressed storage (``<hash@>``), each row has its own unique path
@@ -51,7 +53,7 @@ class ObjectCodec(SchemaCodec):
     Storage Structure:
         Objects are stored at::
 
-            {store_root}/{schema}/{table}/{pk}/{field}/
+            {store_root}/{schema_prefix}/{schema}/{table}/{pk}/{field}_{token}/
 
     Deletion: Requires garbage collection via ``dj.gc.GarbageCollector``.
 
