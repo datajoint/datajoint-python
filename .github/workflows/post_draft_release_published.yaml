@@ -47,18 +47,6 @@ jobs:
           git add src/datajoint/version.py
           git commit -m "Update version.py to $VERSION"
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-      - name: Update README.md badge
-        run: |
-          # commits since the last release
-          NEW_HREF="https://github.com/datajoint/datajoint-python/compare/${{ github.event.release.tag_name }}...master"
-          NEW_SRC="https://img.shields.io/github/commits-since/datajoint/datajoint-python/${{ github.event.release.tag_name }}?color=red"
-          # Update href in the <a> tag
-          sed -i 's|\(<a id="commit-since-release-link"[^>]*href="\)[^"]*\(".*\)|\1'"$NEW_HREF"'\2|' README.md
-          # Update src in the <img> tag
-          sed -i 's|\(<img id="commit-since-release-img"[^>]*src="\)[^"]*\(".*\)|\1'"$NEW_SRC"'\2|' README.md
-          git add README.md
-          # Only commit if there are changes (handles re-runs gracefully)
-          git diff --cached --quiet README.md || git commit -m "Update README.md badge to ${{ github.event.release.tag_name }}"
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v5
         with:
