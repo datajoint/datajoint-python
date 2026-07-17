@@ -12,9 +12,8 @@ run-name: Post ${{ github.event.release.name }}
 jobs:
   pypi-release:
     permissions:
-      # write permission is required to update version.py
+      # write permission is required to upload build artifacts as release assets
       contents: write
-      pull-requests: write
     # Use the oldest supported version to build, just in case there are issues
     # for our case, this doesn't matter that much, since the build is for 3.x
     strategy:
@@ -33,20 +32,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      # new release needs the updated version.py
-      - name: Update version.py
-        run: |
-          VERSION=$(echo "${{ github.event.release.name }}" | grep -oP '\d+\.\d+\.\d+')
-          sed -i "s/^__version__ = .*/__version__ = \"$VERSION\"/" src/datajoint/version.py
-          cat src/datajoint/version.py
-          # Commit the changes
-          BRANCH_NAME="update-version-$VERSION"
-          git switch -c $BRANCH_NAME
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add src/datajoint/version.py
-          git commit -m "Update version.py to $VERSION"
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          # Full history + tags so hatch-vcs can derive the version from the
+          # release tag. The checked-out ref is the tag itself, so the build
+          # reports exactly X.Y.Z — no version.py bump or follow-up PR needed.
+          fetch-depth: 0
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v5
         with:
@@ -108,17 +97,6 @@ jobs:
           asset_path: ${{env.DJ_SDIST_PATH}}
           asset_name: pip-datajoint-${{ github.event.release.tag_name }}.tar.gz
           asset_content_type: application/gzip
-      - name: Create Pull Request
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git push origin ${{ env.BRANCH_NAME }}
-          gh pr create \
-            --title "[github-actions]Update version.py to ${{ github.event.release.name }}" \
-            --body "This PR updates \`version.py\` to match the latest release: ${{ github.event.release.name }}" \
-            --base master \
-            --head ${{ env.BRANCH_NAME }} \
-            --reviewer dimitri-yatsenko,drewyangdev,ttngu207
       - name: Post release notification to Slack
         if: ${{ env.TEST_PYPI == 'false' }}
         uses: slackapi/slack-github-action@v2.0.0
