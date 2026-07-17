@@ -209,7 +209,7 @@ class GarbageCollector:
                     if not _BASE32_HASH.match(filename):
                         continue
                     file_path = f"{root}/{filename}"
-                    relative_path = file_path[len(full_root):].lstrip("/")
+                    relative_path = file_path[len(full_root) :].lstrip("/")
                     try:
                         stored[relative_path] = self.backend.fs.size(file_path)
                     except Exception as e:
@@ -258,7 +258,7 @@ class GarbageCollector:
                     # reclaimed with it. _is_covered() keeps a live object's
                     # manifest out of the orphan set.
                     file_path = f"{root}/{filename}"
-                    relative_path = file_path[len(full_root):].lstrip("/")
+                    relative_path = file_path[len(full_root) :].lstrip("/")
                     try:
                         stored[relative_path] = self.backend.fs.size(file_path)
                     except Exception as e:
