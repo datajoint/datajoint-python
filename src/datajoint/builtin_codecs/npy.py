@@ -226,7 +226,9 @@ class NpyCodec(SchemaCodec):
     Schema-addressed storage for numpy arrays as .npy files.
 
     The ``<npy@>`` codec stores numpy arrays as standard ``.npy`` files
-    using schema-addressed paths: ``{schema}/{table}/{pk}/{attribute}.npy``.
+    using schema-addressed paths: ``{schema_prefix}/{schema}/{table}/{pk}/{attribute}_{token}.npy``
+    (``schema_prefix`` defaults to ``_schema``; ``{token}`` is a random
+    per-write suffix).
     Arrays are fetched lazily via ``NpyRef``, which provides metadata access
     without I/O and transparent numpy integration via ``__array__``.
 
@@ -269,7 +271,7 @@ class NpyCodec(SchemaCodec):
 
     Storage Details:
         - File format: NumPy .npy (version 1.0 or 2.0)
-        - Path: ``{schema}/{table}/{pk}/{attribute}.npy``
+        - Path: ``{schema_prefix}/{schema}/{table}/{pk}/{attribute}_{token}.npy``
         - Database column: JSON with ``{path, store, dtype, shape}``
 
     Deletion: Requires garbage collection via ``dj.gc.GarbageCollector``.
