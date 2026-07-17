@@ -5,12 +5,6 @@
 | Branch | Purpose | Version |
 |--------|---------|---------|
 | `master` | Main development | 2.3.x |
-| `maint/2.0` | Maintenance releases | 2.0.x |
-
-For 2.0.x bugfixes:
-1. Commit to `maint/2.0`
-2. Tag and release as v2.0.x
-3. Cherry-pick to master if applicable
 
 ---
 
@@ -68,10 +62,11 @@ The release drafter uses PR labels to categorize changes:
 
 | Label | Category |
 |-------|----------|
-| `breaking` | BREAKING CHANGES |
-| `enhancement` | Added |
-| `bug` | Fixed |
-| `documentation` | (usually excluded) |
+| `breaking` | 💥 Breaking Changes |
+| `feature` | 🚀 Features |
+| `enhancement` | ⚡️ Enhancements |
+| `bug` | 🐛 Bug Fixes |
+| `documentation` | 📝 Documentation |
 
 Ensure PRs have appropriate labels before merging.
 
