@@ -210,6 +210,7 @@ After build completes:
 
 - @datajointbot
 - @dimitri-yatsenko
+- @MilagrosMarin
 - @ttngu207
 
 ## Links
