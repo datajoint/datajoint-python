@@ -37,12 +37,12 @@ Project structure::
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
 import warnings
 from contextlib import contextmanager
-from copy import deepcopy
 from enum import Enum
 from pathlib import Path
 from typing import Any, Iterator, Literal
@@ -805,14 +805,14 @@ class Config(BaseSettings):
                 if len(key_parts) == 1:
                     key = key_parts[0]
                     if hasattr(self, key):
-                        backup[key_parts] = deepcopy(getattr(self, key))
+                        backup[key_parts] = copy.deepcopy(getattr(self, key))
                         setattr(self, key, value)
                 elif len(key_parts) == 2:
                     group, attr = key_parts
                     if hasattr(self, group):
                         group_obj = getattr(self, group)
                         if hasattr(group_obj, attr):
-                            backup[key_parts] = deepcopy(getattr(group_obj, attr))
+                            backup[key_parts] = copy.deepcopy(getattr(group_obj, attr))
                             setattr(group_obj, attr, value)
 
             yield self
