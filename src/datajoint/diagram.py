@@ -15,7 +15,7 @@ pygraphviz. All other methods are always available.
 
 from __future__ import annotations
 
-import copy as copy_module
+import copy
 import functools
 import inspect
 import io
@@ -103,9 +103,9 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self._expanded_nodes = set(source._expanded_nodes)
             self.context = source.context
             self._connection = source._connection
-            self._cascade_restrictions = copy_module.deepcopy(source._cascade_restrictions)
-            self._restrict_conditions = copy_module.deepcopy(source._restrict_conditions)
-            self._restriction_attrs = copy_module.deepcopy(source._restriction_attrs)
+            self._cascade_restrictions = copy.deepcopy(source._cascade_restrictions)
+            self._restrict_conditions = copy.deepcopy(source._restrict_conditions)
+            self._restriction_attrs = copy.deepcopy(source._restriction_attrs)
             super().__init__(source)
             return
 
