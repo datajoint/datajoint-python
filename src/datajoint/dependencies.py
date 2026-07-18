@@ -8,7 +8,6 @@ proper ordering of operations like delete and drop.
 
 from __future__ import annotations
 
-import itertools
 import re
 from collections import defaultdict
 
@@ -41,13 +40,13 @@ def extract_master(part_table: str) -> str | None:
     return None
 
 
-def topo_sort(graph: nx.DiGraph) -> list[str]:
+def topo_sort(graph: nx.MultiDiGraph) -> list[str]:
     """
     Topological sort keeping part tables with their masters.
 
     Parameters
     ----------
-    graph : nx.DiGraph
+    graph : nx.MultiDiGraph
         Dependency graph.
 
     Returns
@@ -56,21 +55,7 @@ def topo_sort(graph: nx.DiGraph) -> list[str]:
         Table names in topological order with parts following masters.
     """
 
-    graph = nx.DiGraph(graph)  # make a copy
-
-    # collapse alias nodes
-    alias_nodes = [node for node in graph if node.isdigit()]
-    for node in alias_nodes:
-        try:
-            direct_edge = (
-                next(x for x in graph.in_edges(node))[0],
-                next(x for x in graph.out_edges(node))[1],
-            )
-        except StopIteration:
-            pass  # a disconnected alias node
-        else:
-            graph.add_edge(*direct_edge)
-    graph.remove_nodes_from(alias_nodes)
+    graph = nx.MultiDiGraph(graph)  # make a mutable copy
 
     # Add parts' dependencies to their masters' dependencies
     # to ensure correct topological ordering of the masters.
@@ -102,12 +87,16 @@ def topo_sort(graph: nx.DiGraph) -> list[str]:
     return sorted_nodes
 
 
-class Dependencies(nx.DiGraph):
+class Dependencies(nx.MultiDiGraph):
     """
     Graph of foreign key dependencies between loaded tables.
 
-    Extends NetworkX DiGraph to track foreign key relationships and
-    support operations like cascade delete and topological ordering.
+    Extends NetworkX MultiDiGraph to track foreign key relationships and
+    support operations like cascade delete and topological ordering. A
+    ``MultiDiGraph`` is used so that multiple foreign keys between the same
+    pair of tables (including renamed/aliased ones) are represented as
+    distinct parallel edges keyed by ``(parent, child, key)`` — no synthetic
+    intermediate "alias" nodes are needed.
 
     Parameters
     ----------
@@ -130,7 +119,6 @@ class Dependencies(nx.DiGraph):
 
     def __init__(self, connection=None) -> None:
         self._conn = connection
-        self._node_alias_count = itertools.count()
         self._loaded = False
         self._loaded_schemas = set()  # schema names currently represented in the graph
         super().__init__(self)
@@ -139,7 +127,6 @@ class Dependencies(nx.DiGraph):
         """Clear the graph and reset loaded state."""
         self._loaded = False
         self._loaded_schemas = set()
-        self._node_alias_count = itertools.count()  # reset alias IDs for consistency
         super().clear()
 
     def load(self, force: bool = True, schema_names: set[str] | None = None) -> None:
@@ -208,7 +195,14 @@ class Dependencies(nx.DiGraph):
             d["referenced_table"] = key["referenced_table"]
             d["attr_map"][key["column_name"]] = key["referenced_column_name"]
 
-        # add edges to the graph
+        # Add one edge per foreign key, keyed by the FK's child-side attribute
+        # names as a tuple (in declaration order). This key uniquely identifies
+        # a parallel edge between a pair of tables — every FK to a given parent
+        # references its primary key, so parallel FKs differ only in their
+        # referencing columns — and is derived purely from the schema (no
+        # DB-internal constraint names). A stable, meaningful key makes graph
+        # merges (e.g. ``Diagram + Diagram``) idempotent instead of duplicating
+        # shared edges, so no synthetic alias node is needed.
         for fk in fks.values():
             props = dict(
                 primary=set(fk["attr_map"]) <= set(pks[fk["referencing_table"]]),
@@ -216,14 +210,12 @@ class Dependencies(nx.DiGraph):
                 aliased=any(k != v for k, v in fk["attr_map"].items()),
                 multi=set(fk["attr_map"]) != set(pks[fk["referencing_table"]]),
             )
-            if not props["aliased"]:
-                self.add_edge(fk["referenced_table"], fk["referencing_table"], **props)
-            else:
-                # for aliased dependencies, add an extra node in the format '1', '2', etc
-                alias_node = "%d" % next(self._node_alias_count)
-                self.add_node(alias_node)
-                self.add_edge(fk["referenced_table"], alias_node, **props)
-                self.add_edge(alias_node, fk["referencing_table"], **props)
+            self.add_edge(
+                fk["referenced_table"],
+                fk["referencing_table"],
+                key=tuple(fk["attr_map"]),
+                **props,
+            )
 
         if not nx.is_directed_acyclic_graph(self):
             raise DataJointError("DataJoint can only work with acyclic dependencies")
@@ -312,7 +304,7 @@ class Dependencies(nx.DiGraph):
         """
         return topo_sort(self)
 
-    def parents(self, table_name: str, primary: bool | None = None) -> dict:
+    def parents(self, table_name: str, primary: bool | None = None) -> list[tuple[str, dict]]:
         r"""
         Get tables referenced by this table's foreign keys.
 
@@ -327,13 +319,19 @@ class Dependencies(nx.DiGraph):
 
         Returns
         -------
-        dict
-            Mapping of parent table name to edge properties.
+        list[tuple[str, dict]]
+            One ``(parent_table_name, edge_properties)`` pair per foreign key.
+            A parent may appear more than once when this table has multiple
+            (e.g. renamed) foreign keys to it — each is a distinct parallel edge.
         """
         self.load(force=False)
-        return {p[0]: p[2] for p in self.in_edges(table_name, data=True) if primary is None or p[2]["primary"] == primary}
+        return [
+            (u, props)
+            for u, _, props in self.in_edges(table_name, data=True)
+            if primary is None or props["primary"] == primary
+        ]
 
-    def children(self, table_name: str, primary: bool | None = None) -> dict:
+    def children(self, table_name: str, primary: bool | None = None) -> list[tuple[str, dict]]:
         r"""
         Get tables that reference this table through foreign keys.
 
@@ -348,11 +346,17 @@ class Dependencies(nx.DiGraph):
 
         Returns
         -------
-        dict
-            Mapping of child table name to edge properties.
+        list[tuple[str, dict]]
+            One ``(child_table_name, edge_properties)`` pair per foreign key.
+            A child may appear more than once when it has multiple (e.g. renamed)
+            foreign keys to this table — each is a distinct parallel edge.
         """
         self.load(force=False)
-        return {p[1]: p[2] for p in self.out_edges(table_name, data=True) if primary is None or p[2]["primary"] == primary}
+        return [
+            (v, props)
+            for _, v, props in self.out_edges(table_name, data=True)
+            if primary is None or props["primary"] == primary
+        ]
 
     def descendants(self, full_table_name: str) -> list[str]:
         r"""
