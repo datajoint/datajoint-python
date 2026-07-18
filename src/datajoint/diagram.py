@@ -27,7 +27,7 @@ from .condition import AndList
 from .dependencies import extract_master, topo_sort
 from .errors import DataJointError
 from .table import Table, lookup_class_name
-from .user_tables import Computed, Imported, Lookup, Manual, Part, _AliasNode, _get_tier
+from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
 
 try:
     from matplotlib import pyplot as plt
@@ -47,7 +47,7 @@ except ImportError:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-class Diagram(nx.DiGraph):  # noqa: C901
+class Diagram(nx.MultiDiGraph):  # noqa: C901
     """
     Schema diagram as a directed acyclic graph (DAG).
 
@@ -235,9 +235,12 @@ class Diagram(nx.DiGraph):  # noqa: C901
         """
         result = Diagram(self)  # copy
         try:
-            # Merge nodes and edges from the other diagram
+            # Merge nodes and edges from the other diagram. Edges are keyed by
+            # their FK-attribute tuple, so re-adding an FK shared by both
+            # operands (they derive from the same dependency graph) overwrites
+            # rather than duplicates — the union is idempotent.
             result.add_nodes_from(arg.nodes(data=True))
-            result.add_edges_from(arg.edges(data=True))
+            result.add_edges_from(arg.edges(keys=True, data=True))
             result.nodes_to_show.update(arg.nodes_to_show)
             # Merge contexts for class name lookups
             result.context = {**result.context, **arg.context}
@@ -252,8 +255,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
                     new = nx.algorithms.boundary.node_boundary(result, result.nodes_to_show)
                     if not new:
                         break
-                    # add nodes referenced by aliased nodes
-                    new.update(nx.algorithms.boundary.node_boundary(result, (a for a in new if a.isdigit())))
                     result.nodes_to_show.update(new)
                 # New nodes from expansion are expanded
                 result._expanded_nodes = result._expanded_nodes | result.nodes_to_show
@@ -281,12 +282,13 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 self.nodes_to_show.remove(arg.full_table_name)
             except AttributeError:
                 for i in range(arg):
-                    graph = nx.DiGraph(self).reverse()
+                    # Reverse a plain MultiDiGraph copy — networkx's reverse()
+                    # would otherwise try to instantiate Diagram() (which needs
+                    # a `source`). node_boundary only needs topology.
+                    graph = nx.MultiDiGraph(self).reverse(copy=True)
                     new = nx.algorithms.boundary.node_boundary(graph, self.nodes_to_show)
                     if not new:
                         break
-                    # add nodes referenced by aliased nodes
-                    new.update(nx.algorithms.boundary.node_boundary(graph, (a for a in new if a.isdigit())))
                     self.nodes_to_show.update(new)
         return self
 
@@ -349,7 +351,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         node = table_expr.full_table_name
 
         result = cls.__new__(cls)
-        nx.DiGraph.__init__(result, conn.dependencies)
+        nx.MultiDiGraph.__init__(result, conn.dependencies)
         result._connection = conn
         result.context = {}
         result._cascade_restrictions = {}
@@ -381,11 +383,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         result._expanded_nodes = set(result.nodes_to_show)
 
         # Trim graph to cascade subgraph: only restricted tables
-        # (seed + descendants) plus alias nodes connecting them.
+        # (seed + descendants).
         keep = set(result._cascade_restrictions)
-        for alias in (n for n in result.nodes() if n.isdigit()):
-            if set(result.predecessors(alias)) & keep and set(result.successors(alias)) & keep:
-                keep.add(alias)
         result.remove_nodes_from(set(result.nodes()) - keep)
         result.nodes_to_show &= keep
         result._expanded_nodes &= keep
@@ -437,7 +436,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         node = table_expr.full_table_name
 
         result = cls.__new__(cls)
-        nx.DiGraph.__init__(result, conn.dependencies)
+        nx.MultiDiGraph.__init__(result, conn.dependencies)
         result._connection = conn
         result.context = {}
         result._cascade_restrictions = {}  # trace uses cascade-shape storage (OR semantics)
@@ -458,12 +457,8 @@ class Diagram(nx.DiGraph):  # noqa: C901
         # Propagate upstream
         result._propagate_restrictions_upstream(node)
 
-        # Trim graph to trace subgraph: only restricted tables (seed + ancestors)
-        # plus alias nodes connecting them.
+        # Trim graph to trace subgraph: only restricted tables (seed + ancestors).
         keep = set(result._cascade_restrictions)
-        for alias in (n for n in result.nodes() if n.isdigit()):
-            if set(result.predecessors(alias)) & keep and set(result.successors(alias)) & keep:
-                keep.add(alias)
         result.remove_nodes_from(set(result.nodes()) - keep)
         result.nodes_to_show &= keep
         result._expanded_nodes &= keep
@@ -500,8 +495,11 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 child_ft = self._restricted_table(node)
                 child_attrs = self._restriction_attrs.get(node, set())
 
-                for parent, _, edge_props in self.in_edges(node, data=True):
-                    edge_key = (parent, node)
+                # A renamed/aliased FK is now a direct parallel edge (keyed by
+                # the multigraph edge key), so in_edges yields the real parent
+                # with the correct attr_map directly — no alias-node hop.
+                for parent, _, ekey, edge_props in self.in_edges(node, keys=True, data=True):
+                    edge_key = (parent, node, ekey)
                     if edge_key in propagated_edges:
                         continue
                     propagated_edges.add(edge_key)
@@ -509,46 +507,20 @@ class Diagram(nx.DiGraph):  # noqa: C901
                     if parent not in allowed_nodes:
                         continue
 
-                    if isinstance(parent, str) and parent.isdigit():
-                        # Alias node — find the real parent on the far side.
-                        # The alias has its own in_edges; the props on both
-                        # half-edges are identical, so we can use either.
-                        for real_parent, _, real_edge_props in self.in_edges(parent, data=True):
-                            real_edge_key = (real_parent, parent, node)
-                            if real_edge_key in propagated_edges:
-                                continue
-                            propagated_edges.add(real_edge_key)
-                            if real_parent not in allowed_nodes:
-                                continue
-                            attr_map = real_edge_props.get("attr_map", {})
-                            aliased = real_edge_props.get("aliased", False)
-                            was_new = real_parent not in restrictions
-                            self._apply_propagation_rule_upward(
-                                child_ft,
-                                child_attrs,
-                                real_parent,
-                                attr_map,
-                                aliased,
-                                "cascade",  # OR semantics for trace
-                                restrictions,
-                            )
-                            if was_new and real_parent in restrictions:
-                                any_new = True
-                    else:
-                        attr_map = edge_props.get("attr_map", {})
-                        aliased = edge_props.get("aliased", False)
-                        was_new = parent not in restrictions
-                        self._apply_propagation_rule_upward(
-                            child_ft,
-                            child_attrs,
-                            parent,
-                            attr_map,
-                            aliased,
-                            "cascade",
-                            restrictions,
-                        )
-                        if was_new and parent in restrictions:
-                            any_new = True
+                    attr_map = edge_props.get("attr_map", {})
+                    aliased = edge_props.get("aliased", False)
+                    was_new = parent not in restrictions
+                    self._apply_propagation_rule_upward(
+                        child_ft,
+                        child_attrs,
+                        parent,
+                        attr_map,
+                        aliased,
+                        "cascade",  # OR semantics for trace
+                        restrictions,
+                    )
+                    if was_new and parent in restrictions:
+                        any_new = True
 
     def __getitem__(self, key):
         """
@@ -604,11 +576,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 full_name = key
             else:
                 # Class name — search graph nodes for a matching tail
-                candidates = [
-                    n
-                    for n in self.nodes()
-                    if not (isinstance(n, str) and n.isdigit()) and n.lower().rstrip('`"').endswith(key.lower())
-                ]
+                candidates = [n for n in self.nodes() if n.lower().rstrip('`"').endswith(key.lower())]
                 if not candidates:
                     raise DataJointError(f"Table {key!r} is not in this trace's subgraph " f"(not an ancestor of the seed).")
                 if len(candidates) > 1:
@@ -748,67 +716,50 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
                 parent_attrs = self._restriction_attrs.get(node, set())
 
-                for _, target, edge_props in self.out_edges(node, data=True):
+                # A renamed/aliased FK is now a direct parallel edge (keyed by
+                # the multigraph edge key), so out_edges yields the real child
+                # with the correct attr_map directly — no alias-node hop.
+                for _, target, ekey, edge_props in self.out_edges(node, keys=True, data=True):
                     attr_map = edge_props.get("attr_map", {})
                     aliased = edge_props.get("aliased", False)
 
-                    if target.isdigit():
-                        # Alias node — follow through to real child
-                        for _, child_node, _ in self.out_edges(target, data=True):
-                            edge_key = (node, target, child_node)
-                            if edge_key in propagated_edges:
-                                continue
-                            propagated_edges.add(edge_key)
-                            was_new = child_node not in restrictions
-                            self._apply_propagation_rule(
-                                parent_ft,
-                                parent_attrs,
-                                child_node,
-                                attr_map,
-                                True,
-                                mode,
-                                restrictions,
-                            )
-                            if was_new and child_node in restrictions:
-                                any_new = True
-                    else:
-                        edge_key = (node, target)
-                        if edge_key in propagated_edges:
-                            continue
-                        propagated_edges.add(edge_key)
-                        was_new = target not in restrictions
-                        self._apply_propagation_rule(
-                            parent_ft,
-                            parent_attrs,
-                            target,
-                            attr_map,
-                            aliased,
-                            mode,
-                            restrictions,
-                        )
-                        if was_new and target in restrictions:
-                            any_new = True
+                    edge_key = (node, target, ekey)
+                    if edge_key in propagated_edges:
+                        continue
+                    propagated_edges.add(edge_key)
+                    was_new = target not in restrictions
+                    self._apply_propagation_rule(
+                        parent_ft,
+                        parent_attrs,
+                        target,
+                        attr_map,
+                        aliased,
+                        mode,
+                        restrictions,
+                    )
+                    if was_new and target in restrictions:
+                        any_new = True
 
-                        # part_integrity="cascade": propagate up from part to master
-                        # via the actual FK graph path, applying upward propagation
-                        # rules at each edge. Handles Part-of-Part chains and
-                        # renamed FKs (via .proj()), unlike the prior implementation
-                        # which assumed shared PK attribute names. See #1429.
-                        # Deduped per (part, master) pair — every restricted Part
-                        # of a master contributes its own master rows.
-                        if part_integrity == "cascade" and mode == "cascade":
-                            master_name = extract_master(target)
-                            if (
-                                master_name
-                                and master_name in self.nodes()
-                                and (target, master_name) not in visited_part_master_pairs
-                            ):
-                                visited_part_master_pairs.add((target, master_name))
-                                propagated = self._propagate_part_to_master(target, master_name, mode, restrictions)
-                                if propagated:
-                                    allowed_nodes.add(master_name)
-                                    allowed_nodes.update(nx.descendants(self, master_name))
-                                    any_new = True
+                    # part_integrity="cascade": propagate up from part to master
+                    # via the actual FK graph path, applying upward propagation
+                    # rules at each edge. Handles Part-of-Part chains and
+                    # renamed FKs (via .proj()), unlike the prior implementation
+                    # which assumed shared PK attribute names. See #1429.
+                    # Deduped per (part, master) pair — every restricted Part
+                    # of a master contributes its own master rows.
+                    if part_integrity == "cascade" and mode == "cascade":
+                        master_name = extract_master(target)
+                        if (
+                            master_name
+                            and master_name in self.nodes()
+                            and (target, master_name) not in visited_part_master_pairs
+                        ):
+                            visited_part_master_pairs.add((target, master_name))
+                            propagated = self._propagate_part_to_master(target, master_name, mode, restrictions)
+                            if propagated:
+                                allowed_nodes.add(master_name)
+                                allowed_nodes.update(nx.descendants(self, master_name))
+                                any_new = True
 
     def _apply_propagation_rule(
         self,
@@ -981,19 +932,18 @@ class Diagram(nx.DiGraph):  # noqa: C901
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return False
 
-        # Strip alias nodes; what remains is the sequence of real tables.
-        real_path = [n for n in path if not (isinstance(n, str) and n.isdigit())]
+        # The path is a sequence of real tables (no alias nodes exist anymore).
+        real_path = list(path)
         if len(real_path) < 2 or real_path[-1] != part_node or real_path[0] != master_name:
             return False
 
         # Walk real_path in reverse (child → parent direction). For each
-        # adjacent (parent, child) pair, look up the edge props — direct
-        # edge if non-aliased, via alias node if aliased.
+        # adjacent (parent, child) pair, look up the FK edge props.
         any_propagated = False
         for i in range(len(real_path) - 1, 0, -1):
             child = real_path[i]
             parent = real_path[i - 1]
-            edge_props = self._find_real_edge_props(parent, child)
+            edge_props = self._edge_props(parent, child)
             if edge_props is None:
                 return any_propagated  # Path broken (shouldn't happen if shortest_path succeeded)
 
@@ -1039,19 +989,17 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         return any_propagated
 
-    def _find_real_edge_props(self, parent, child):
+    def _edge_props(self, parent, child):
         """
-        Return edge props for parent → child, transparently traversing the
-        integer-named alias node that the graph inserts for aliased FKs.
-        Returns None if no such edge or alias-mediated edge exists.
+        Return the FK edge properties for a direct ``parent → child`` foreign
+        key, or ``None`` if there is no such edge. When multiple parallel FKs
+        exist between the pair, the first one is returned (consistent with the
+        single-FK-path limitation documented on ``_propagate_part_to_master``).
         """
-        if self.has_edge(parent, child):
-            return self.edges[parent, child]
-        for _, mid, _ in self.out_edges(parent, data=True):
-            if isinstance(mid, str) and mid.isdigit() and self.has_edge(mid, child):
-                # Both half-edges carry the same attr_map / aliased props
-                return self.edges[parent, mid]
-        return None
+        data = self.get_edge_data(parent, child)
+        if not data:
+            return None
+        return next(iter(data.values()))
 
     def counts(self):
         """
@@ -1078,15 +1026,13 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
     def __iter__(self):
         """
-        Iterate over non-alias nodes in topological order (parents first).
+        Iterate over nodes in topological order (parents first).
 
         Yields restricted ``FreeTable`` objects when cascade or restrict
         conditions have been applied, unrestricted ``FreeTable`` otherwise.
-
-        Alias nodes (used internally for multi-FK edges) are skipped.
         """
         for node in topo_sort(self):
-            if not node.isdigit() and node in self.nodes_to_show:
+            if node in self.nodes_to_show:
                 yield self._restricted_table(node)
 
     def __reversed__(self):
@@ -1097,7 +1043,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         deletes and drops.
         """
         for node in reversed(topo_sort(self)):
-            if not node.isdigit() and node in self.nodes_to_show:
+            if node in self.nodes_to_show:
                 yield self._restricted_table(node)
 
     def prune(self):
@@ -1127,8 +1073,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         if result._restrict_conditions:
             for node in list(result._restrict_conditions):
-                if node.isdigit():
-                    continue
                 if len(result._restricted_table(node)) == 0:
                     result._restrict_conditions.pop(node)
                     result._restriction_attrs.pop(node, None)
@@ -1136,21 +1080,19 @@ class Diagram(nx.DiGraph):  # noqa: C901
         else:
             # Unrestricted: check physical row counts
             for node in list(result.nodes_to_show):
-                if node.isdigit():
-                    continue
                 ft = FreeTable(self._connection, node)
                 if len(ft) == 0:
                     result.nodes_to_show.discard(node)
 
         return result
 
-    def _make_graph(self) -> nx.DiGraph:
+    def _make_graph(self) -> nx.MultiDiGraph:
         """
         Build graph object ready for drawing.
 
         Returns
         -------
-        nx.DiGraph
+        nx.MultiDiGraph
             Graph with nodes relabeled to class names.
         """
         # mark "distinguished" tables, i.e. those that introduce new primary key
@@ -1164,13 +1106,12 @@ class Diagram(nx.DiGraph):  # noqa: C901
             self.nodes[name]["distinguished"] = (
                 "primary_key" in self.nodes[name] and foreign_attributes < self.nodes[name]["primary_key"]
             )
-        # include aliased nodes that are sandwiched between two displayed nodes
-        gaps = set(nx.algorithms.boundary.node_boundary(self, valid_nodes)).intersection(
-            nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), valid_nodes)
-        )
-        nodes = valid_nodes.union(a for a in gaps if a.isdigit())
-        # construct subgraph and rename nodes to class names
-        graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
+        # construct subgraph and rename nodes to class names. A MultiDiGraph is
+        # used so parallel FKs between the same pair of tables (e.g. a renamed
+        # FK alongside a direct one) survive to the renderer as distinct edges.
+        # Subgraph a plain MultiDiGraph copy — subgraphing/copying Diagram itself
+        # would try to instantiate Diagram() (which requires a `source`).
+        graph = nx.MultiDiGraph(nx.MultiDiGraph(self).subgraph(valid_nodes))
         nx.set_node_attributes(graph, name="node_type", values={n: _get_tier(n) for n in graph})
         # relabel nodes to class names
         mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
@@ -1180,7 +1121,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def _apply_collapse(self, graph: nx.DiGraph) -> tuple[nx.DiGraph, dict[str, str]]:
+    def _apply_collapse(self, graph: nx.MultiDiGraph) -> tuple[nx.MultiDiGraph, dict[str, str]]:
         """
         Apply collapse logic to the graph.
 
@@ -1189,12 +1130,12 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         Parameters
         ----------
-        graph : nx.DiGraph
+        graph : nx.MultiDiGraph
             The graph from _make_graph().
 
         Returns
         -------
-        tuple[nx.DiGraph, dict[str, str]]
+        tuple[nx.MultiDiGraph, dict[str, str]]
             Modified graph and mapping of collapsed schema labels to their table count.
         """
         # Filter to valid nodes (those that exist in the underlying graph)
@@ -1283,8 +1224,10 @@ class Diagram(nx.DiGraph):  # noqa: C901
             label = collapsed_labels[schema_name]
             collapsed_counts[label] = len(class_names)
 
-        # Create new graph with collapsed nodes
-        new_graph = nx.DiGraph()
+        # Create new graph with collapsed nodes. Keep it a MultiDiGraph so the
+        # graph type is uniform with _make_graph()'s output; parallel edges
+        # between the same pair of collapsed schema nodes are deduped below.
+        new_graph = nx.MultiDiGraph()
 
         # Map old node names to new names (collapsed nodes -> schema label)
         node_mapping = {}
@@ -1297,18 +1240,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 else:
                     node_mapping[node] = node
             else:
-                # Alias nodes - check if they should be collapsed
-                # An alias node should be collapsed if ALL its neighbors are collapsed
-                neighbors = set(graph.predecessors(node)) | set(graph.successors(node))
-                if neighbors and neighbors <= nodes_to_collapse:
-                    # Get schema from first neighbor
-                    neighbor = next(iter(neighbors))
-                    full_name = class_to_full.get(neighbor)
-                    if full_name:
-                        schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
-                        if schema_name:
-                            node_mapping[node] = collapsed_labels[schema_name]
-                            continue
                 node_mapping[node] = node
 
         # Build reverse mapping: label -> schema_name
@@ -1332,12 +1263,23 @@ class Diagram(nx.DiGraph):  # noqa: C901
             else:
                 new_graph.add_node(new_node, **graph.nodes[old_node])
 
-        # Add edges (avoiding self-loops and duplicates)
-        for src, dest, data in graph.edges(data=True):
+        # Add edges (avoiding self-loops). Edges touching a collapsed schema
+        # node are merged to a single arrow per node pair (many tables → one
+        # box), but parallel foreign keys between two *expanded* tables (e.g. two
+        # renamed FKs to the same parent) are preserved as distinct edges by key.
+        for src, dest, key, data in graph.edges(keys=True, data=True):
             new_src = node_mapping[src]
             new_dest = node_mapping[dest]
-            if new_src != new_dest and not new_graph.has_edge(new_src, new_dest):
-                new_graph.add_edge(new_src, new_dest, **data)
+            if new_src == new_dest:
+                continue
+            touches_collapsed = new_src in collapsed_counts or new_dest in collapsed_counts
+            if touches_collapsed:
+                # Many tables → one schema box: collapse to a single arrow.
+                if not new_graph.has_edge(new_src, new_dest):
+                    new_graph.add_edge(new_src, new_dest, **data)
+            else:
+                # Both endpoints expanded: keep each FK as its own keyed edge.
+                new_graph.add_edge(new_src, new_dest, key=key, **data)
 
         return new_graph, collapsed_counts
 
@@ -1366,7 +1308,7 @@ class Diagram(nx.DiGraph):  # noqa: C901
         return None
 
     @staticmethod
-    def _encapsulate_edge_attributes(graph: nx.DiGraph) -> None:
+    def _encapsulate_edge_attributes(graph: nx.MultiDiGraph) -> None:
         """
         Encapsulate edge attr_map in double quotes for pydot compatibility.
 
@@ -1376,12 +1318,12 @@ class Diagram(nx.DiGraph):  # noqa: C901
         --------
         https://github.com/pydot/pydot/issues/258#issuecomment-795798099
         """
-        for u, v, *_, edgedata in graph.edges(data=True):
+        for u, v, k, edgedata in graph.edges(keys=True, data=True):
             if "attr_map" in edgedata:
-                graph.edges[u, v]["attr_map"] = '"{0}"'.format(edgedata["attr_map"])
+                graph.edges[u, v, k]["attr_map"] = '"{0}"'.format(edgedata["attr_map"])
 
     @staticmethod
-    def _encapsulate_node_names(graph: nx.DiGraph) -> None:
+    def _encapsulate_node_names(graph: nx.MultiDiGraph) -> None:
         """
         Encapsulate node names in double quotes for pydot compatibility.
 
@@ -1463,14 +1405,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 # Multiple schemas share this module name - add schema name
                 cluster_labels[schema_name] = f"{label} ({schema_name})"
 
-        # Assign alias nodes (orange dots) to the same schema as their child table
-        for node, data in graph.nodes(data=True):
-            if data.get("node_type") is _AliasNode:
-                # Find the child (successor) - the table that declares the renamed FK
-                successors = list(graph.successors(node))
-                if successors and successors[0] in schema_map:
-                    schema_map[node] = schema_map[successors[0]]
-
         # Assign collapsed nodes to their schema so they appear in the cluster
         for node, data in graph.nodes(data=True):
             if data.get("collapsed") and data.get("schema_name"):
@@ -1485,14 +1419,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
                 fontsize=round(scale * 8),
                 size=0.4 * scale,
                 fixed=False,
-            ),
-            _AliasNode: dict(
-                shape="circle",
-                color="#FF880080",
-                fontcolor="#FF880080",
-                fontsize=round(scale * 0),
-                size=0.05 * scale,
-                fixed=True,
             ),
             Manual: dict(
                 shape="box",
@@ -1551,6 +1477,19 @@ class Diagram(nx.DiGraph):  # noqa: C901
             else:
                 node_props[node] = label_props[d["node_type"]]
 
+        # A renamed (aliased) FK is drawn as a distinctly-colored edge (there
+        # is no longer an intermediate "alias" node); describe the column
+        # renames in an edge tooltip (visible on hover in the SVG output).
+        for _u, _v, edata in graph.edges(data=True):
+            if edata.get("aliased") and isinstance(edata.get("attr_map"), dict):
+                renames = "; ".join(
+                    "{child} ← {parent}".format(child=child, parent=parent)
+                    for child, parent in edata["attr_map"].items()
+                    if child != parent
+                )
+                if renames:
+                    edata["tooltip"] = renames
+
         self._encapsulate_node_names(graph)
         self._encapsulate_edge_attributes(graph)
         dot = nx.drawing.nx_pydot.to_pydot(graph)
@@ -1597,18 +1536,23 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         for edge in dot.get_edges():
             # see https://graphviz.org/doc/info/attrs.html
+            # Read this edge's FK properties directly off the (possibly parallel)
+            # pydot edge — to_pydot stringifies the edge data, so booleans arrive
+            # as "True"/"False". This is parallel-edge-safe: each FK between the
+            # same pair of tables is its own pydot edge.
             src = edge.get_source()
             dest = edge.get_destination()
-            props = graph.get_edge_data(src, dest)
-            if props is None:
-                raise DataJointError("Could not find edge with source '{}' and destination '{}'".format(src, dest))
-            edge.set_color("#00000040")
-            edge.set_style("solid" if props.get("primary") else "dashed")
+            primary = str(edge.get("primary")) == "True"
+            multi = str(edge.get("multi")) == "True"
+            aliased = str(edge.get("aliased")) == "True"
+            # Renamed FK → distinct color; others → the usual translucent black.
+            edge.set_color("#FF8800" if aliased else "#00000040")
+            edge.set_style("solid" if primary else "dashed")
             dest_node_type = graph.nodes[dest].get("node_type")
             master_part = dest_node_type is Part and dest.startswith(src + ".")
             edge.set_weight(3 if master_part else 1)
             edge.set_arrowhead("none")
-            edge.set_penwidth(0.75 if props.get("multi") else 2)
+            edge.set_penwidth(0.75 if multi else 2)
 
         # Group nodes into schema clusters (always on)
         if schema_map:
@@ -1717,13 +1661,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             else:
                 cluster_labels[schema_name] = schema_name
 
-        # Assign alias nodes to the same schema as their child table
-        for node, data in graph.nodes(data=True):
-            if data.get("node_type") is _AliasNode:
-                successors = list(graph.successors(node))
-                if successors and successors[0] in schema_map:
-                    schema_map[node] = schema_map[successors[0]]
-
         lines = [f"flowchart {direction}"]
 
         # Define class styles matching Graphviz colors
@@ -1742,7 +1679,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             Computed: ("([", "])"),  # stadium/pill
             Imported: ("([", "])"),  # stadium/pill
             Part: ("[", "]"),  # box
-            _AliasNode: ("((", "))"),  # circle
             None: ("((", "))"),  # circle
         }
 
@@ -1752,7 +1688,6 @@ class Diagram(nx.DiGraph):  # noqa: C901
             Computed: "computed",
             Imported: "imported",
             Part: "part",
-            _AliasNode: "",
             None: "",
         }
 
@@ -1795,13 +1730,19 @@ class Diagram(nx.DiGraph):  # noqa: C901
 
         lines.append("")
 
-        # Add edges
-        for src, dest, data in graph.edges(data=True):
+        # Add edges. Enumerate so aliased (renamed) FK edges can be recolored
+        # via linkStyle by their declaration index (Mermaid keys link styles by
+        # the order edges appear). Parallel FKs are separate edges here.
+        link_styles = []
+        for idx, (src, dest, data) in enumerate(graph.edges(data=True)):
             safe_src = src.replace(".", "_").replace(" ", "_")
             safe_dest = dest.replace(".", "_").replace(" ", "_")
             # Solid arrow for primary FK, dotted for non-primary
             style = "-->" if data.get("primary") else "-.->"
             lines.append(f"    {safe_src} {style} {safe_dest}")
+            if data.get("aliased"):
+                link_styles.append(f"    linkStyle {idx} stroke:#FF8800")
+        lines.extend(link_styles)
 
         return "\n".join(lines)
 

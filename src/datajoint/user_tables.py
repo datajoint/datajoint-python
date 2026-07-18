@@ -265,14 +265,6 @@ class Part(UserTable, metaclass=PartMeta):
 user_table_classes = (Manual, Lookup, Computed, Imported, Part)
 
 
-class _AliasNode:
-    """
-    special class to indicate aliased foreign keys
-    """
-
-    pass
-
-
 def _get_tier(table_name):
     """given the table name, return the user table class."""
     # Handle both MySQL backticks and PostgreSQL double quotes
@@ -283,7 +275,7 @@ def _get_tier(table_name):
         # PostgreSQL format: "schema"."table_name"
         extracted_name = table_name.split('"')[-2]
     else:
-        return _AliasNode
+        return None
     try:
         return next(tier for tier in user_table_classes if re.fullmatch(tier.tier_regexp, extracted_name))
     except StopIteration:

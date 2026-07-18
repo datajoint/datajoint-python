@@ -376,11 +376,7 @@ class Table(QueryExpression):
             List of parents as table names or table objects with (optional) foreign
             key information.
         """
-        get_edge = self.connection.dependencies.parents
-        nodes = [
-            next(iter(get_edge(name).items())) if name.isdigit() else (name, props)
-            for name, props in get_edge(self.full_table_name, primary).items()
-        ]
+        nodes = list(self.connection.dependencies.parents(self.full_table_name, primary))
         if as_objects:
             nodes = [(FreeTable(self.connection, name), props) for name, props in nodes]
         if not foreign_key_info:
@@ -408,11 +404,7 @@ class Table(QueryExpression):
             List of children as table names or table objects with (optional) foreign
             key information.
         """
-        get_edge = self.connection.dependencies.children
-        nodes = [
-            next(iter(get_edge(name).items())) if name.isdigit() else (name, props)
-            for name, props in get_edge(self.full_table_name, primary).items()
-        ]
+        nodes = list(self.connection.dependencies.children(self.full_table_name, primary))
         if as_objects:
             nodes = [(FreeTable(self.connection, name), props) for name, props in nodes]
         if not foreign_key_info:
@@ -437,7 +429,6 @@ class Table(QueryExpression):
         return [
             FreeTable(self.connection, node) if as_objects else node
             for node in self.connection.dependencies.descendants(self.full_table_name)
-            if not node.isdigit()
         ]
 
     def ancestors(self, as_objects=False):
@@ -458,7 +449,6 @@ class Table(QueryExpression):
         return [
             FreeTable(self.connection, node) if as_objects else node
             for node in self.connection.dependencies.ancestors(self.full_table_name)
-            if not node.isdigit()
         ]
 
     def parts(self, as_objects=False):
@@ -477,11 +467,7 @@ class Table(QueryExpression):
             List of part table names or table objects.
         """
         self.connection.dependencies.load(force=False)
-        nodes = [
-            node
-            for node in self.connection.dependencies.nodes
-            if not node.isdigit() and node.startswith(self.full_table_name[:-1] + "__")
-        ]
+        nodes = [node for node in self.connection.dependencies.nodes if node.startswith(self.full_table_name[:-1] + "__")]
         return [FreeTable(self.connection, c) for c in nodes] if as_objects else nodes
 
     @property
