@@ -82,9 +82,7 @@ class TestLoadAllShortCircuit:
         assert conn.dependencies._loaded_schemas, "warm-up must populate _loaded_schemas"
 
         # Second identical call must hit the early-return: no load(), no rebuild.
-        with patch.object(
-            type(conn.dependencies), "load", wraps=conn.dependencies.load
-        ) as spy_load:
+        with patch.object(type(conn.dependencies), "load", wraps=conn.dependencies.load) as spy_load:
             conn.dependencies.load_all_downstream()
         assert spy_load.call_count == 0, (
             "load_all_downstream must short-circuit when _loaded_schemas already "
@@ -101,9 +99,7 @@ class TestLoadAllShortCircuit:
         assert conn.dependencies._loaded is True
         assert conn.dependencies._loaded_schemas
 
-        with patch.object(
-            type(conn.dependencies), "load", wraps=conn.dependencies.load
-        ) as spy_load:
+        with patch.object(type(conn.dependencies), "load", wraps=conn.dependencies.load) as spy_load:
             conn.dependencies.load_all_upstream()
         assert spy_load.call_count == 0, (
             "load_all_upstream must short-circuit when _loaded_schemas already "

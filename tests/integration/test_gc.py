@@ -904,9 +904,7 @@ class TestDeleteSchemaPathPruning:
         assert stats["schema_paths_deleted"] >= 1
 
         # The orphaned file is gone.
-        assert not (store_root / dead_ref).exists(), (
-            f"orphaned schema file must be deleted; still present at {dead_ref}"
-        )
+        assert not (store_root / dead_ref).exists(), f"orphaned schema file must be deleted; still present at {dead_ref}"
         # The pruning loop must have removed the now-empty pk-dir.
         dead_pk_dir = (store_root / dead_ref).parent
         assert not dead_pk_dir.exists(), (
@@ -917,18 +915,12 @@ class TestDeleteSchemaPathPruning:
 
         # The sibling pk-dir with a live file must be preserved.
         live_pk_dir = (store_root / live_ref).parent
-        assert live_pk_dir.exists(), (
-            f"pk-directory holding a live file must not be pruned; missing {live_pk_dir}"
-        )
-        assert (store_root / live_ref).exists(), (
-            f"live schema file must survive collect(); missing {live_ref}"
-        )
+        assert live_pk_dir.exists(), f"pk-directory holding a live file must not be pruned; missing {live_pk_dir}"
+        assert (store_root / live_ref).exists(), f"live schema file must survive collect(); missing {live_ref}"
 
         # The table directory (grandparent) still holds live content, so it
         # must be preserved — the pruning walk must stop at "not empty".
-        assert live_pk_dir.parent.exists(), (
-            "table directory must survive when it still holds a live pk-dir"
-        )
+        assert live_pk_dir.parent.exists(), "table directory must survive when it still holds a live pk-dir"
 
     def test_pruning_stops_at_store_root(self, schema_prune):
         """After removing the last orphan under a schema, the pruning walk may

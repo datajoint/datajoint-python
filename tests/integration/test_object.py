@@ -157,8 +157,7 @@ class TestStoragePathGeneration:
         # Regression sentinel: deleting the ``if prefix:`` guard would produce
         # a leading empty segment, i.e. ``"/myschema/..."``.
         assert not path.startswith("/"), (
-            f"path must not have a leading empty segment when schema_prefix is empty; "
-            f"got {path!r}"
+            f"path must not have a leading empty segment when schema_prefix is empty; " f"got {path!r}"
         )
 
     def test_build_object_path_empty_schema_prefix_with_partition(self):
