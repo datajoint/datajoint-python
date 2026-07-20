@@ -843,3 +843,116 @@ class TestScanErrorGuard:
         assert len(stats["scan_errors"]) == 1
         assert stats["scan_errors"][0].startswith("list_hash_paths(s):")
         assert "s3 access denied" in stats["scan_errors"][0]
+
+
+class TestDeleteSchemaPathPruning:
+    """Finding #8 (audit deferred): ``GarbageCollector.delete_schema_path``
+    prunes now-empty parent directories after removing the orphaned file
+    (``gc.py:277-306``). The pruning walk was previously uncovered — no test
+    exercised the ``while parent and parent != root and parent.startswith(root)``
+    loop, its ``fs.ls`` "not empty" break, its exception guards, or the
+    stop-at-store-root boundary.
+
+    A regression to "delete the file, leave every parent dir behind" would
+    silently pass CI and gradually accumulate empty directories on every
+    store, so a live-data test that inspects the on-disk tree after
+    ``collect(dry_run=False)`` is the right lock.
+    """
+
+    @pytest.fixture
+    def schema_prune(self, connection_test, prefix, mock_stores):
+        schema = dj.Schema(
+            f"{prefix}_test_gc_prune",
+            context={"GcObjectTest": GcObjectTest},
+            connection=connection_test,
+        )
+        schema(GcObjectTest)
+        yield schema
+        schema.drop()
+
+    def test_pruning_removes_empty_pk_directory(self, schema_prune):
+        """Deleting the only file under a pk-dir must remove the file AND
+        prune the now-empty pk-dir; a sibling pk-dir with a live file survives.
+
+        Regressing ``delete_schema_path`` to skip the ``while ... rmdir``
+        pruning loop would leave the empty ``rid=1/`` directory behind and
+        make this test fail.
+        """
+        from pathlib import Path
+
+        # Two rows in separate pk-dirs: rid=1 will be orphaned, rid=2 stays live.
+        GcObjectTest.insert1({"rid": 1, "results": b"orphan-me"})
+        GcObjectTest.insert1({"rid": 2, "results": b"live"})
+
+        collector = _gc(schema_prune)
+        cfg = schema_prune.connection._config
+        store_root = Path(cfg.get_store_spec("local")["location"])
+
+        # Sanity: both pk-dirs exist on disk pre-delete.
+        refs_all = collector.schema_references()
+        assert len(refs_all) == 2
+        for ref in refs_all:
+            assert (store_root / ref).exists(), f"expected {ref} to exist pre-delete"
+
+        # Orphan rid=1 and reclaim.
+        (GcObjectTest & {"rid": 1}).delete(prompt=False)
+        refs_live = collector.schema_references()
+        live_ref = next(iter(refs_live))
+        dead_ref = next(iter(refs_all - refs_live))
+
+        stats = collector.collect(dry_run=False)
+        assert stats["schema_paths_deleted"] >= 1
+
+        # The orphaned file is gone.
+        assert not (store_root / dead_ref).exists(), (
+            f"orphaned schema file must be deleted; still present at {dead_ref}"
+        )
+        # The pruning loop must have removed the now-empty pk-dir.
+        dead_pk_dir = (store_root / dead_ref).parent
+        assert not dead_pk_dir.exists(), (
+            f"parent pk-directory must be pruned when its last file is removed; "
+            f"still present at {dead_pk_dir} — deleting the pruning loop at "
+            f"gc.py:293-302 would make this test fail"
+        )
+
+        # The sibling pk-dir with a live file must be preserved.
+        live_pk_dir = (store_root / live_ref).parent
+        assert live_pk_dir.exists(), (
+            f"pk-directory holding a live file must not be pruned; missing {live_pk_dir}"
+        )
+        assert (store_root / live_ref).exists(), (
+            f"live schema file must survive collect(); missing {live_ref}"
+        )
+
+        # The table directory (grandparent) still holds live content, so it
+        # must be preserved — the pruning walk must stop at "not empty".
+        assert live_pk_dir.parent.exists(), (
+            "table directory must survive when it still holds a live pk-dir"
+        )
+
+    def test_pruning_stops_at_store_root(self, schema_prune):
+        """After removing the last orphan under a schema, the pruning walk may
+        remove the pk-dir, table-dir, schema-dir, and section-dir but MUST
+        stop at the store root — a regression to "keep walking past the root"
+        would be catastrophic (removes user's storage directory itself).
+
+        The boundary ``while parent and parent != root and parent.startswith(root)``
+        owns this invariant.
+        """
+        from pathlib import Path
+
+        GcObjectTest.insert1({"rid": 1, "results": b"only-row"})
+
+        collector = _gc(schema_prune)
+        cfg = schema_prune.connection._config
+        store_root = Path(cfg.get_store_spec("local")["location"])
+        assert store_root.exists()
+
+        (GcObjectTest & {"rid": 1}).delete(prompt=False)
+        collector.collect(dry_run=False)
+
+        # Store root must survive even when its entire contents were pruned.
+        assert store_root.exists(), (
+            f"pruning walk must stop at store root; root itself was removed at {store_root} — "
+            f"the `parent != root and parent.startswith(root)` boundary in gc.py:295 owns this"
+        )
