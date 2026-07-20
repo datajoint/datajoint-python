@@ -130,6 +130,55 @@ class TestStoragePathGeneration:
         # section prefix first, then partition attrs (schema_prefix default "_schema")
         assert path.startswith("_schema/subject_id=1")
 
+    def test_build_object_path_empty_schema_prefix(self):
+        """Finding #19 (audit deferred): ``schema_prefix=""`` reproduces the
+        documented legacy pre-2.3.1 storage layout (no section prefix).
+
+        The guard at ``storage.py:267-269`` (``prefix = schema_prefix.strip("/");
+        if prefix: parts.append(prefix)``) exists specifically so an empty
+        prefix does NOT produce a path with an empty leading segment (e.g.
+        ``"/myschema/MyTable/..."``). Every other test in this class passes
+        ``schema_prefix="_schema"`` and would still pass if the ``if prefix:``
+        guard were deleted, so a regression to always-prepend would go
+        unnoticed. This test locks in the pre-2.3.1 layout.
+        """
+        path, token = build_object_path(
+            schema="myschema",
+            table="MyTable",
+            field="data_file",
+            primary_key={"id": 42},
+            ext=".dat",
+            schema_prefix="",
+        )
+        assert path == f"myschema/MyTable/id=42/data_file_{token}.dat", (
+            f"empty schema_prefix must produce a path with NO leading section "
+            f"segment (documented legacy layout); got {path!r}"
+        )
+        # Regression sentinel: deleting the ``if prefix:`` guard would produce
+        # a leading empty segment, i.e. ``"/myschema/..."``.
+        assert not path.startswith("/"), (
+            f"path must not have a leading empty segment when schema_prefix is empty; " f"got {path!r}"
+        )
+
+    def test_build_object_path_empty_schema_prefix_with_partition(self):
+        """Finding #19 companion: legacy layout must also compose correctly
+        with a partition pattern — partition attrs lead, no empty segment
+        before them."""
+        path, token = build_object_path(
+            schema="myschema",
+            table="MyTable",
+            field="data",
+            primary_key={"subject_id": 1, "session_id": 2},
+            ext=".dat",
+            partition_pattern="{subject_id}",
+            schema_prefix="",
+        )
+        assert path.startswith("subject_id=1/myschema/"), (
+            f"empty schema_prefix + partition must start with the partition "
+            f"segment (no empty leading segment); got {path!r}"
+        )
+        assert not path.startswith("/")
+
 
 class TestObjectRef:
     """Tests for ObjectRef class."""

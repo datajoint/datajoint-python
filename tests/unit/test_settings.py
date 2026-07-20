@@ -509,6 +509,19 @@ class TestStoreSecrets:
 class TestStoreEnv:
     """Test DJ_STORES env var and DJ_IGNORE_CONFIG_FILE flag."""
 
+    @pytest.fixture(autouse=True)
+    def _isolate_dj_env(self, monkeypatch):
+        """Clear ambient DJ_* env vars so tests are isolated from the developer's shell.
+
+        pydantic-settings reads any DJ_* prefixed variable and merges it into the
+        settings object; a developer with ``DJ_HOST``/``DJ_USER``/``DJ_PASS``/
+        ``DJ_PORT``/``DJ_BACKEND`` exported (e.g. from a local ``.env``) would
+        otherwise see assertions on the config's defaults or file-loaded values
+        fail here even though the test's own contract is unrelated.
+        """
+        for var in ("DJ_HOST", "DJ_USER", "DJ_PASS", "DJ_PORT", "DJ_BACKEND"):
+            monkeypatch.delenv(var, raising=False)
+
     def _isolate_filesystem(self, monkeypatch, tmp_path):
         """chdir into a tmp_path with a .git sentinel so find_config_file stops there."""
         (tmp_path / ".git").mkdir()
@@ -936,6 +949,19 @@ class TestDatabaseNameConfiguration:
 
 class TestBackendConfiguration:
     """Test database backend configuration and port auto-detection."""
+
+    @pytest.fixture(autouse=True)
+    def _isolate_dj_env(self, monkeypatch):
+        """Clear ambient DJ_* env vars so tests are isolated from the developer's shell.
+
+        ``DatabaseSettings()`` reads ``DJ_HOST``/``DJ_USER``/``DJ_PASS``/
+        ``DJ_PORT``/``DJ_BACKEND`` from the process env; leaked values would
+        otherwise fail assertions on backend defaults and auto-detected ports.
+        Individual tests may still ``monkeypatch.setenv(...)`` to test explicit
+        settings — the fixture runs first, so their setenv wins.
+        """
+        for var in ("DJ_HOST", "DJ_USER", "DJ_PASS", "DJ_PORT", "DJ_BACKEND"):
+            monkeypatch.delenv(var, raising=False)
 
     def test_backend_default(self):
         """Test default backend is mysql."""
