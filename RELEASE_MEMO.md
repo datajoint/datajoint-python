@@ -150,11 +150,16 @@ If the bot doesn't create a PR, manually update the feedstock:
      run:
        - python >={{ python_min }}
        - numpy
+       - pymysql >=0.7.2
+       - deepdiff
+       - pyparsing
        - pandas
-       - pymysql >=1.0
-       - minio
+       - tqdm
+       - networkx
+       - pydot
+       - fsspec >=2023.1.0
+       - pydantic-settings >=2.0.0
        - packaging
-       # ... etc
    ```
 
 5. **Submit PR** to the feedstock

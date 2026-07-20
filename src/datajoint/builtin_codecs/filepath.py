@@ -22,8 +22,10 @@ class FilepathCodec(Codec):
 
     This codec gives users maximum freedom in organizing their files while
     reusing DataJoint's store configuration. Files can be placed anywhere
-    in the store EXCEPT the reserved ``_hash/`` and ``_schema/`` sections
-    which are managed by DataJoint.
+    in the store EXCEPT the reserved sections managed by DataJoint (the
+    hash-addressed and schema-addressed sections — from each store's
+    ``hash_prefix`` and ``schema_prefix`` settings, defaults ``_hash`` and
+    ``_schema``).
 
     This is useful when:
     - Files are managed externally (e.g., by acquisition software)
@@ -54,7 +56,8 @@ class FilepathCodec(Codec):
         JSON metadata: ``{path, store, size, timestamp}``
 
     Reserved Sections:
-        Paths cannot start with ``_hash/`` or ``_schema/`` - these are managed by DataJoint.
+        Paths cannot start with the store's reserved ``hash_prefix`` or
+        ``schema_prefix`` sections (defaults ``_hash/`` and ``_schema/``).
 
     Warning:
         The file must exist in the store at the specified path.
@@ -78,7 +81,8 @@ class FilepathCodec(Codec):
         Parameters
         ----------
         value : str
-            Relative path within the store. Cannot use reserved sections (_hash/, _schema/).
+            Relative path within the store. Cannot use the store's reserved
+            hash/schema sections.
         key : dict, optional
             Primary key values (unused).
         store_name : str, optional
@@ -92,7 +96,7 @@ class FilepathCodec(Codec):
         Raises
         ------
         ValueError
-            If path uses reserved sections (_hash/ or _schema/).
+            If path uses the store's reserved hash/schema sections.
         FileNotFoundError
             If file does not exist in the store.
         """

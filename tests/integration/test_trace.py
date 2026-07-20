@@ -400,7 +400,7 @@ def test_trace_stops_at_master_no_part_down_collection(schema_by_backend):
 
     This corrects the design comment on datajoint/datajoint-python discussion
     1232, which described a Master->Parts down-collection that was never
-    implemented; the spec (provenance.md, Allowed table set) matches this
+    implemented; the spec (trace.md §Allowed table set) matches this
     test. If down-collection is ever added deliberately, this test must be
     revised alongside the spec — it exists so the semantics cannot drift
     silently."""
