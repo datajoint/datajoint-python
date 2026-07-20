@@ -89,6 +89,11 @@ class AutoPopulate:
         Query yielding keys to be populated. Default is join of FK parents.
     jobs : Job
         Job table (``~~table_name``) for distributed processing.
+    upstream : Diagram
+        Pre-restricted ancestor view for the current ``make(self, key)`` call
+        (property). Available only inside ``make()``; built lazily on first
+        access and memoized for the call. See the property docstring for
+        details.
 
     Notes
     -----
@@ -736,9 +741,11 @@ class AutoPopulate:
             return True
         finally:
             self.__class__._allow_insert = False
-            # Clear the per-make() upstream view so subsequent attribute
-            # access raises a clear error rather than silently using a
-            # stale trace from the previous make() call.
+            # Clear the per-make() upstream state: `_upstream = None` invalidates
+            # the memoized Diagram; `_upstream_key = None` restores the "outside
+            # make()" state so subsequent `self.upstream` access raises a clear
+            # error via the property guard rather than silently returning a stale
+            # trace from the previous call.
             self._upstream = None
             self._upstream_key = None
 
