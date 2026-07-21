@@ -28,11 +28,22 @@ class LevelAwareFormatter(logging.Formatter):
     def format(self, record):
         timestamp = self.formatTime(record, "%Y-%m-%d %H:%M:%S")
         if record.levelno >= logging.WARNING:
-            return f"[{timestamp}][{record.levelname}]: {record.getMessage()}"
+            message = f"[{timestamp}][{record.levelname}]: {record.getMessage()}"
         elif record.levelno == JOBS:
-            return f"[{timestamp}][JOBS]: {record.getMessage()}"
+            message = f"[{timestamp}][JOBS]: {record.getMessage()}"
         else:
-            return f"[{timestamp}] {record.getMessage()}"
+            message = f"[{timestamp}] {record.getMessage()}"
+
+        # Render exception/stack info like the base logging.Formatter does, so
+        # that a logger.exception(...)/exc_info=... call never silently drops
+        # the traceback (see #1516).
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
+        if record.exc_text:
+            message = f"{message}\n{record.exc_text}"
+        if record.stack_info:
+            message = f"{message}\n{self.formatStack(record.stack_info)}"
+        return message
 
 
 # Select output stream: stdout (default, no red highlighting) or stderr
@@ -44,13 +55,7 @@ stream_handler.setFormatter(LevelAwareFormatter())
 logger.setLevel(level=log_level)
 logger.handlers = [stream_handler]
 
-
-def excepthook(exc_type, exc_value, exc_traceback):
-    if issubclass(exc_type, KeyboardInterrupt):
-        sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        return
-
-    logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
-
-
-sys.excepthook = excepthook
+# NOTE: DataJoint intentionally does NOT install a process-wide sys.excepthook.
+# Importing a library must not change how *unrelated* uncaught exceptions are
+# reported in the host process. Uncaught exceptions are left to Python's default
+# handler, which prints the full type/message/traceback to stderr. (See #1516.)
