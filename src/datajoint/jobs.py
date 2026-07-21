@@ -206,9 +206,14 @@ class Job(Table):
         fk_attrs = []
         for name in target_pk:
             if name in fk_derived_attrs:
-                # FK-derived: comes from a primary FK parent
+                # FK-derived: comes from a primary FK parent.
+                # Use original_type (the DataJoint-level alias, e.g. "uuid") when
+                # present, falling back to the resolved SQL type. attr.type holds
+                # the backend-resolved type (e.g. "binary(16)" for uuid), which is
+                # not valid DataJoint definition syntax and fails to re-parse when
+                # the jobs table is declared. Mirrors heading.py's own fallback.
                 attr = heading[name]
-                fk_attrs.append((name, attr.type))
+                fk_attrs.append((name, attr.original_type or attr.type))
             else:
                 # Native PK attribute - not from FK
                 logger.warning(

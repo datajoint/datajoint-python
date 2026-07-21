@@ -14,6 +14,18 @@ class Basic(dj.Manual):
     """
 
 
+class BasicComputed(dj.Computed):
+    definition = """
+    # Computed table whose primary key is FK-derived from a uuid attribute
+    -> Basic
+    ---
+    value : int32
+    """
+
+    def make(self, key):
+        self.insert1(dict(key, value=1))
+
+
 class Topic(dj.Manual):
     definition = """
     # A topic for items

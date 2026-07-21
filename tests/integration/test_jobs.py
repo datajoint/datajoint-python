@@ -7,6 +7,7 @@ import datajoint as dj
 from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 
 from tests import schema
+from tests.schema_uuid import BasicComputed
 
 
 def test_reserve_job(clean_jobs, subject, experiment):
@@ -206,3 +207,26 @@ def test_jobs_refresh_with_keep_completed(clean_jobs, subject, experiment):
 
         # Calling refresh again should not raise semantic matching error
         experiment.jobs.refresh()  # This was failing before the fix
+
+
+def test_jobs_table_uuid_fk_derived_pk(schema_uuid):
+    """Jobs table generation must handle uuid-typed FK-derived primary keys (#1515).
+
+    The auto-generated jobs table definition previously leaked the resolved SQL
+    type (binary(16)) for a uuid PK attribute instead of the DataJoint alias
+    (uuid), so declaring the ~~table raised
+    "Unsupported attribute type binary(16)" on first .jobs access.
+    """
+    # Definition must carry the DataJoint alias, not the resolved SQL type.
+    definition = BasicComputed.jobs.definition
+    assert "uuid" in definition
+    assert "binary(16)" not in definition
+
+    # First .jobs access declares the ~~table; this is where the bug fired.
+    BasicComputed.jobs.refresh()
+    assert BasicComputed.jobs.is_declared
+
+    # The declared PK attribute round-trips back to uuid / binary(16).
+    pk = BasicComputed.jobs.heading.primary_key
+    assert "item" in pk
+    assert BasicComputed.jobs.heading["item"].original_type == "uuid"
