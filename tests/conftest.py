@@ -863,6 +863,7 @@ def schema_uuid(connection_test, prefix):
         connection=connection_test,
     )
     schema(schema_uuid_module.Basic)
+    schema(schema_uuid_module.BasicComputed)
     schema(schema_uuid_module.Topic)
     schema(schema_uuid_module.Item)
     yield schema
