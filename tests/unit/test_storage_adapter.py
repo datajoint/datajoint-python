@@ -193,6 +193,16 @@ class TestStorageBackendPluginDelegation:
         with pytest.raises(DataJointError, match="Unsupported storage protocol"):
             backend.get_url("schema/file.dat")
 
+    def test_file_protocol_full_path_uses_forward_slashes(self):
+        """`_full_path` must return POSIX-style separators to match fsspec's
+        LocalFileSystem.walk() output, even on Windows, so that callers doing
+        string-prefix stripping (e.g. gc.py) can match paths correctly."""
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "file", "location": "data\\blobs"}
+        backend.protocol = "file"
+        result = backend._full_path("schema/ab/cd/hash123")
+        assert result == "data/blobs/schema/ab/cd/hash123"
+
 
 class TestGetStoreSpecPluginDelegation:
     """Tests for plugin protocol handling in Config.get_store_spec()."""
