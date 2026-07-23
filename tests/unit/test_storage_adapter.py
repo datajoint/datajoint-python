@@ -1,14 +1,17 @@
 """Tests for the StorageAdapter plugin system."""
 
+from pathlib import PureWindowsPath
+
 import pytest
 
 import datajoint as dj
+from datajoint import storage
 from datajoint.errors import DataJointError
 from datajoint.storage import StorageBackend
 from datajoint.storage_adapter import (
+    _COMMON_STORE_KEYS,
     StorageAdapter,
     _adapter_registry,
-    _COMMON_STORE_KEYS,
     get_storage_adapter,
 )
 
@@ -192,6 +195,17 @@ class TestStorageBackendPluginDelegation:
         backend.protocol = "totally_unknown_xyz"
         with pytest.raises(DataJointError, match="Unsupported storage protocol"):
             backend.get_url("schema/file.dat")
+
+    def test_file_protocol_full_path_uses_forward_slashes(self, monkeypatch):
+        """`_full_path` must return forward slashes to match fsspec's walk()
+        output (gc.py relies on this for string-prefix stripping)."""
+        # monkeypatch to PureWindowsPath so that the test is platform-independent
+        monkeypatch.setattr(storage, "Path", PureWindowsPath)
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "file", "location": "data\\blobs"}
+        backend.protocol = "file"
+        result = backend._full_path("schema/ab/cd/hash123")
+        assert result == "data/blobs/schema/ab/cd/hash123"
 
 
 class TestGetStoreSpecPluginDelegation:
