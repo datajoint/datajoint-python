@@ -418,7 +418,7 @@ class StorageBackend:
         elif self.protocol == "file":
             location = self.spec.get("location", "")
             if location:
-                return str(Path(location) / path)
+                return (Path(location) / path).as_posix()
             return path
         else:
             return self._require_adapter().full_path(self.spec, path)
