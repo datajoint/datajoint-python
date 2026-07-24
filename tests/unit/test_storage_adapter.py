@@ -1,5 +1,6 @@
 """Tests for the StorageAdapter plugin system."""
 
+import re
 from pathlib import PureWindowsPath
 
 import pytest
@@ -206,6 +207,16 @@ class TestStorageBackendPluginDelegation:
         backend.protocol = "file"
         result = backend._full_path("schema/ab/cd/hash123")
         assert result == "data/blobs/schema/ab/cd/hash123"
+
+    def test_file_protocol_get_url_no_backslash(self, tmp_path):
+        """`get_url` must produce a valid file:// URL (forward slashes only)
+        on whatever OS the test runs on, including Windows."""
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "file", "location": str(tmp_path)}
+        backend.protocol = "file"
+        result = backend.get_url("schema/ab/cd/hash123")
+        # exactly 3 slashes, no backslash and disregard tmp_path
+        assert re.fullmatch(r"file:///[^/\\][^\\]*/schema/ab/cd/hash123", result)
 
 
 class TestGetStoreSpecPluginDelegation:
