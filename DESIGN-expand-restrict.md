@@ -90,10 +90,10 @@ accumulating reachable rows by **union** (a table is reached if reachable via an
 path). Directional:
 
 ```
-Diagram.expand(seed, direction="down" | "up" | "both")
+Diagram.expand(seed, direction="down" | "up" | "both")   # default "down"
 ```
 
-- `direction="down"` — descendants: the **delete blast radius**.
+- `direction="down"` (default) — descendants: the **delete blast radius**.
 - `direction="up"` — ancestors: the **valid query sources** a `make()` may read
   under the reproducibility contract.
 - `direction="both"` — a referentially-consistent **export region** around the
@@ -113,10 +113,10 @@ An **instance method** on any Diagram (including one built by `expand`). Carves
 the diagram down by applying conditions, accumulating by **intersection**:
 
 ```
-diagram.restrict(*conditions, direction="down" | "up" | "both")
+diagram.restrict(*conditions, direction="down" | "up" | "both")   # default "down"
 ```
 
-Each condition propagates by R1 (in the chosen direction) and R2. The result:
+Each condition propagates by R1 (in the chosen direction, default `"down"`) and R2. The result:
 **every table is restricted by the conjunction of all conditions that reach it**;
 tables that go empty drop out. Properties:
 
@@ -161,9 +161,10 @@ group). `cascade`/`trace` survive as named shortcuts.
 
 ## Open / follow-ups
 
-- **`restrict` direction default and the both-way carve** — confirm whether a
-  condition on a descendant should also trim ancestors to those still referenced
-  (`direction="both"`) for a fully-consistent export slice; pick the default.
+- **`restrict` direction default** — resolved: default is `direction="down"` (for
+  both `expand` and `restrict`), matching `cascade`. A both-way carve (a
+  descendant condition also trimming ancestors for a fully-consistent export
+  slice) remains available via `direction="both"` but is opt-in.
 - **A3 / #1481** — `direction="up"` applies R2, so `trace` descends from an
   ancestor master into its parts (reproducibility-contract grounds). This flips
   the currently-pinned `test_trace_stops_at_master_no_part_down_collection`;
