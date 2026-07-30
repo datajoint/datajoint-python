@@ -14,12 +14,14 @@ the API — are the thing agreed upon.
 A **restriction** on a table is a subset of its rows, written as a condition.
 
 Every foreign key `child → parent` defines a function: each child row references
-exactly one parent row. Propagating a restriction across that edge is a
-**semijoin** (restrict-by-matching), and it works in either direction:
+exactly one parent row. Propagating a restriction across that edge is itself a
+**restriction** — restrict the neighbor by the restricted table, matched on the
+foreign-key attributes (`&` with a query expression). It works in either
+direction:
 
-- **downstream** (parent restricted `T'` → child): `S' = S ⋉ T'` — the children
+- **downstream** (parent restricted `T'` → child): `S' = S & T'` — the children
   whose parent is in `T'`.
-- **upstream** (child restricted `S'` → parent): `T' = T ⋉ S'` — the parents
+- **upstream** (child restricted `S'` → parent): `T' = T & S'` — the parents
   referenced by `S'`.
 
 Downstream and upstream are the *same* operation pointed opposite ways along the
@@ -43,20 +45,20 @@ table on the path shares those PK columns by name.
 *secondary* (non-PK) attributes. A raw predicate still selects the right child
 rows, but the restriction is no longer a statement about the child's *identity*,
 so it cannot be promoted to the child's PK and ridden further. Keep it
-relational: **project the restricted parent to its key and semijoin the child on
-the FK columns.**
+relational: **project the restricted parent to its key and restrict the child by
+it, matched on the FK columns.**
 
 **Complication B — renamed foreign key.** The referencing columns have different
 names in the child. The parent's predicate names columns the child lacks. Fix,
 mechanically: **rename the restriction's columns through the FK's attribute map**
-before the semijoin (reverse the rename going upstream).
+before restricting (reverse the rename going upstream).
 
 **Unification.** These are one rule with two degenerate fast paths:
 
-> **R1 (edge rule):** propagate a restriction across an FK edge as a **semijoin**
-> against the restricted neighbor, projected/renamed onto the shared FK columns.
-> When the FK is the whole primary key and unrenamed, the projection is the
-> identity and the semijoin collapses to "apply the same predicate."
+> **R1 (edge rule):** propagate a restriction across an FK edge by **restricting**
+> the neighbor by the restricted table (`&`), projected/renamed onto the shared
+> FK columns. When the FK is the whole primary key and unrenamed, the projection
+> is the identity and the restriction collapses to "apply the same predicate."
 
 (R1 absorbs what were previously six separate rules: forward F1/F2/F3 and upward
 U1/U2/U3.)
@@ -76,8 +78,8 @@ master and its parts are one entity, created and deleted all-or-nothing.
 > **R2 (group rule):** a restriction touching any part of a master's group brings
 > the whole group — existential lift part→master, then expand master→all parts.
 
-R2 is a closure over the master–part grouping, which is exactly why FK semijoins
-alone can't express it.
+R2 is a closure over the master–part grouping, which is exactly why FK
+restrictions alone can't express it.
 
 ## 4. Two operations over R1 + R2
 
@@ -101,7 +103,7 @@ Diagram.expand(seed, direction="down" | "up" | "both")   # default "down"
 
 A single-seed additive closure is always consistent and never needs an
 intersection: tracing up pulls exactly the referenced ancestors, cascading down
-pulls exactly the dependents — all exact semijoins.
+pulls exactly the dependents — all exact restrictions.
 
 **Retained aliases:** `Diagram.cascade(seed) = expand(seed, "down")` and
 `Diagram.trace(seed) = expand(seed, "up")`. Inside `make()`,
@@ -156,7 +158,7 @@ descendant; `expand` + combine cannot assemble it, `restrict.restrict` does.
 | serves | blast radius / make() sources / export region | multi-condition pipeline carving |
 | aliases | `cascade`=down, `trace`=up | — |
 
-One data structure, two composable transforms, two rules (R1 edge-semijoin, R2
+One data structure, two composable transforms, two rules (R1 edge-restriction, R2
 group). `cascade`/`trace` survive as named shortcuts.
 
 ## Open / follow-ups
