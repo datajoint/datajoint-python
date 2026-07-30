@@ -183,7 +183,8 @@ changes names across an edge, so it is the only place this needs care. The shape
 of `r` decides how. A restriction comes in one of three kinds, and they cross a
 renamed edge differently:
 
-- **materialized** — a dict, or a sequence of dicts (literal `attr: value` rows);
+- **materialized** — a dict of primary-key values, or a sequence of them
+  (literal `attr: value` rows, e.g. `A.keys()`);
 - **subquery** — a query expression (another table, possibly restricted);
 - **string** — a raw SQL predicate over attribute names, e.g. `'weight > 10'`.
 
@@ -224,20 +225,24 @@ deletions elsewhere, so the delete-order hazard that forces `cascade` to
 materialize (see below) does not arise here. The whole walk stays symbolic — no
 subqueries, and the per-table keys stay human-legible.
 
-**When the relabelling is exact.** Only for key attributes the foreign key
-actually carries across (the referenced attributes — typically the primary key).
-Two caveats:
+**A key must be primary-key-only to qualify.** A foreign key references the
+parent's **primary key**, so primary-key attributes are exactly the ones that
+cross edges — they relabel and propagate. A **secondary** attribute (e.g.
+`weight`) is referenced by no foreign key, so it cannot cross any edge; it exists
+only on `A`. A `key` that mixes in a secondary attribute is therefore **not a
+materialized-key restriction at all** — the secondary part is an opaque
+value-condition, which makes the whole seed an `A & cond` case (Kind 2 / Kind 3
+below). It can be reduced back to Kind 1 by materializing to primary keys first:
+`(A & cond).keys()`.
 
-1. Dropping is exact when the removed field is an **identity attribute the
-   neighbor simply lacks** (the upstream case above — the child's own key). It is
-   lossy only when the removed field was an extra **constraint** — a secondary
-   attribute that narrows which `A` rows exist (e.g. `{'subject_id': 5,
-   'weight': 10}`): dropping `weight` would keep neighbor rows for `subject_id 5`
-   even if that row's weight is not 10. Resolve this by **materializing first** —
-   `(A & key).keys()` reduces the seed to referenced-key values with the
-   constraint already applied, after which relabel-and-drop is exact.
-2. If the foreign key carries only part of `A`'s identity, the relabelled dict is
-   a partial-key restriction on the neighbor — still exact, just not a full key.
+(Edge nuance: a secondary attribute that is *itself* a foreign key does propagate
+— but only along that one edge. The clean, safe rule is still "primary-key-only →
+Kind 1; anything else → opaque condition," since non-primary attributes do not
+propagate uniformly.)
+
+Even for a primary-key-only key: if a foreign key carries only part of `A`'s
+identity, the relabelled dict is a partial-key restriction on the neighbor —
+still exact, just not a full key.
 
 This is the common, cheap case: "give me everything for this entity"
 (`A & {'subject_id': 5}`, or a set of such rows via `A.keys()`).
