@@ -236,9 +236,9 @@ below). It can be reduced back to Kind 1 by materializing to primary keys first:
 `(A & cond).keys()`.
 
 (Edge nuance: a secondary attribute that is *itself* a foreign key does propagate
-— but only along that one edge. The clean, safe rule is still "primary-key-only →
-Kind 1; anything else → opaque condition," since non-primary attributes do not
-propagate uniformly.)
+— but only along that one edge. The clean, safe rule is still: a primary-key-only
+key uses Kind 1, and anything else is treated as an opaque condition, since
+non-primary attributes do not propagate uniformly.)
 
 Even for a primary-key-only key: if a foreign key carries only part of `A`'s
 identity, the relabelled dict is a partial-key restriction on the neighbor —
