@@ -180,9 +180,18 @@ class Analysis(dj.Manual):
 the related sub-diagram. Each time we cross a foreign key we must re-express the
 restriction in the neighbor's attribute names. Renaming is the only thing that
 changes names across an edge, so it is the only place this needs care. The shape
-of `r` decides how.
+of `r` decides how. A restriction comes in one of three kinds, and they cross a
+renamed edge differently:
 
-### Form 1 — `A & key`, where `key` is a dict `{attr: value, ...}`
+- **materialized** — a dict, or a sequence of dicts (literal `attr: value` rows);
+- **subquery** — a query expression (another table, possibly restricted);
+- **string** — a raw SQL predicate over attribute names, e.g. `'weight > 10'`.
+
+Only the materialized kind is *frozen literal values*; the other two are *live*
+(evaluated against current data). This split is what decides whether a renamed
+edge can be crossed by simply relabelling, or must be crossed relationally.
+
+### Kind 1 — a materialized restriction: a dict, or a sequence of dicts
 
 A dict is a set of "attribute equals value" conditions. Crossing a renamed
 foreign key, the neighbor's restriction is obtained by **renaming the dict's keys
@@ -194,61 +203,87 @@ through the edge, values unchanged**:
 - **upstream** (`A` is the child, neighbor is the parent): apply the pairs the
   other way — `A & {'animal': 5}` induces `parent & {'subject_id': 5}`.
 
+In both directions the rule is the same: **keep the referenced attributes
+(relabelled), and drop any key field that does not exist on the neighbor.** Going
+upstream this drops the child's own identity attributes (e.g. `analysis_id`),
+which the parent does not have — leaving exactly the parent's key. Going
+downstream nothing is dropped; the child's own key attributes are simply left
+unconstrained (a partial key).
+
 Multi-hop composes: the renamings chain, so a key is relabelled edge by edge
-(`subject_id: 5` → `animal: 5` → `creature: 5`). This is exact because the
+(`subject_id: 5`, then `animal: 5`, then `creature: 5`). This is exact because the
 renaming is pure (values and types are preserved) and the attribute's identity
 across the edge is fixed by the edge's pairing, not by any coincidental match of
 names.
 
-**When the shortcut is exact.** Only for key attributes the foreign key actually
-carries across (the referenced attributes — typically the primary key). Two
-caveats:
+**A sequence of dicts** — as returned by `A.keys()` — is the OR (union) of its
+member dicts; relabel each element the same way, and the result stays a sequence
+of relabelled dicts. Because the values are frozen literals, a materialized
+restriction is **stable**: it cannot be invalidated by traversal order or by
+deletions elsewhere, so the delete-order hazard that forces `cascade` to
+materialize (see below) does not arise here. The whole walk stays symbolic — no
+subqueries, and the per-table keys stay human-legible.
 
-1. A dict entry on an attribute the edge does **not** carry (a secondary
-   attribute of `A`, or one the foreign key doesn't reference) has no name on the
-   neighbor, so it can't be relabelled. If that entry changes which `A` rows
-   exist, dropping it would over-select the neighbor. So Form 1 applies when
-   `key`'s attributes are among the edge's referenced attributes; otherwise the
-   non-carried part must be enforced as in Form 2.
+**When the relabelling is exact.** Only for key attributes the foreign key
+actually carries across (the referenced attributes — typically the primary key).
+Two caveats:
+
+1. Dropping is exact when the removed field is an **identity attribute the
+   neighbor simply lacks** (the upstream case above — the child's own key). It is
+   lossy only when the removed field was an extra **constraint** — a secondary
+   attribute that narrows which `A` rows exist (e.g. `{'subject_id': 5,
+   'weight': 10}`): dropping `weight` would keep neighbor rows for `subject_id 5`
+   even if that row's weight is not 10. Resolve this by **materializing first** —
+   `(A & key).keys()` reduces the seed to referenced-key values with the
+   constraint already applied, after which relabel-and-drop is exact.
 2. If the foreign key carries only part of `A`'s identity, the relabelled dict is
    a partial-key restriction on the neighbor — still exact, just not a full key.
 
-This is the common, cheap case ("give me everything for this entity",
-`A & {'subject_id': 5}`): the per-table restriction stays a dict, and traversal
-is a name-substitution walk — no subqueries, and the per-table keys stay
-human-legible.
+This is the common, cheap case: "give me everything for this entity"
+(`A & {'subject_id': 5}`, or a set of such rows via `A.keys()`).
 
-### Form 2 — `A & cond`, where `cond` is a general condition
+### Kind 2 — a subquery restriction: a query expression
 
-A general condition — a SQL predicate (`'weight > 10'`), a query expression, a
-list — is not a set of equalities on the foreign-key attributes, so there are no
-keys to relabel. Propagate it as a **restriction by the renamed, projected
-seed**: restrict `A` by `cond`, project it onto the referenced attributes under
-the neighbor's names, and restrict the neighbor by that.
+`A & subq`, where `subq` is another table or a restricted expression, has named
+attributes but no literal values yet — it is *live*. There are no keys to
+relabel; cross the edge **relationally**, by projecting the restricted seed onto
+the neighbor's referenced attributes (renamed) and restricting the neighbor:
 
-- **downstream:** `child & (A & cond).proj(animal='subject_id', sess='session_id')`
+- **downstream:** `child & (A & subq).proj(animal='subject_id', sess='session_id')`
   — project restricted `A` to the referenced attributes under the child's names,
-  then restrict the child by it.
-- **upstream:** `parent & (A & cond).proj(subject_id='animal', session_id='sess')`
+  then restrict the child.
+- **upstream:** `parent & (A & subq).proj(subject_id='animal', session_id='sess')`
   — project under the parent's names (the renaming reversed).
 
-This is always correct, including when `cond` touches attributes the foreign key
-doesn't carry: those simply constrain which `A` rows the projection sees.
+Because it is live, a subquery restriction is delete-order-sensitive: when it
+feeds a `delete`, it must be materialized first (see the unifying note), which
+also turns it into Kind 1.
 
-### How the two relate
+### Kind 3 — a string query: a raw SQL predicate
 
-Form 1 is the special case of Form 2 where `cond` is a dict of equalities on the
-carried attributes: there, restricting the neighbor by
-`(A & key).proj(...renamed...)` selects exactly the neighbor rows the relabelled
-dict does — so we skip building the projection and just rename keys. Form 2 is
-the fallback whenever that equivalence doesn't hold.
+`A & 'weight > 10'` is opaque text naming attributes in `A`'s namespace. It
+**cannot cross the edge as text**: it may name attributes the foreign key does
+not carry (`weight` here), and rewriting arbitrary SQL to the neighbor's names is
+not reliable. So restrict `A` by the string first, then project the referenced
+attributes (renamed) onto the neighbor and restrict — exactly as in Kind 2. The
+string's *effect* crosses only through the referenced-attribute values of the
+surviving `A` rows; the string itself never crosses.
 
-**Consequence for `expand`.** Per reached table, `expand` can carry either a
-relabelled dict (Form 1 — when the seed is a qualifying dict and every edge on
-the path is a rename over carried attributes) or a relational restriction
-(Form 2). Prefer the dict path when available: it is symbolic, composes by
-chaining the edge renamings, and yields legible per-table keys — this is the
-"update the key names as we traverse" behavior.
+### The unifying note
+
+Kinds 2 and 3 are *live*; Kind 1 is *materialized*. Any live restriction can be
+made materialized by fetching the seed's keys — `(A & r).keys()` — at which point
+relabelling (Kind 1) becomes available and the result is delete-safe. That is
+precisely what `cascade` does at plan time. So there are really two strategies —
+**relabel** (materialized) or **restrict-then-project** (live) — and a live
+restriction becomes relabel-able the moment it is materialized.
+
+**Consequence for `expand`.** Per reached table, `expand` carries either a
+relabelled materialized restriction or a relational one. Prefer the materialized
+path when available: it is symbolic, composes by chaining the edge renamings,
+yields legible per-table keys, and is delete-safe — this is the "update the key
+names as we traverse" behavior. A live seed can be materialized up front to get
+all of that.
 
 ## Summary
 
