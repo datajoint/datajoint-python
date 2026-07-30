@@ -887,9 +887,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         by walking the full path (intermediate Parts get restricted too) and
         renamed FKs via the upward rules.
 
-        Alias nodes (integer-named graph nodes inserted for aliased edges)
-        are transparent — both half-edges carry the same `attr_map` props,
-        so we read props from one and skip the alias node when walking.
+        A renamed/aliased FK is a direct parallel edge in the MultiDiGraph
+        (keyed by the child-side attr tuple), carrying its own ``attr_map``;
+        the upward rules read that map directly — there is no alias-node hop.
 
         After the walk, the master's restriction is **materialized** to a
         literal value tuple via ``to_arrays()``. This is required for
@@ -912,14 +912,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         Limitations
         -----------
-        - **Single FK path**: ``nx.shortest_path`` returns *one* path from
-          ``master_name`` to ``part_node``. If a Part is reachable from its
-          Master through multiple distinct FK chains (e.g. references two
-          different intermediate Parts), restrictions through the
-          non-shortest paths are not applied. This pattern is unusual; if a
-          schema hits it, the user is responsible for restricting the
-          additional paths explicitly via ``part_integrity="ignore"`` plus
-          manual ``delete()`` calls.
+        - **Multiple FK paths**: every simple FK path from ``master_name`` to
+          ``part_node`` is walked (``nx.all_simple_edge_paths`` also enumerates
+          parallel FK edges between the same table pair). A Part reachable from
+          its Master through several distinct FK chains contributes master rows
+          through each, combined with OR — a master row is affected if *any*
+          part-path taints it.
         - **Memory cost of materialization**: ``master_ft.proj().to_arrays()``
           pulls the matching master primary keys into Python memory. Cost is
           bounded by the count of *distinct* master rows referenced by the
@@ -927,41 +925,51 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
           grow with bulk cascades on tables with many master rows. Cascade
           *preview* (``Diagram.cascade(...).counts()``) pays the same cost.
         """
+        # Enumerate EVERY simple FK path master → part. Because the graph is a
+        # MultiDiGraph, `all_simple_edge_paths` also yields parallel FK edges
+        # between the same table pair, each as its own (parent, child, key)
+        # tuple — so a Part reachable through more than one FK chain is
+        # restricted through all of them, not just the shortest (see #1492,
+        # completing the multigraph migration). OR convergence (cascade
+        # semantics) combines the chains: a master row is affected if any
+        # part-path taints it.
         try:
-            path = nx.shortest_path(self, master_name, part_node)
+            edge_paths = list(nx.all_simple_edge_paths(self, master_name, part_node))
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return False
-
-        # The path is a sequence of real tables (no alias nodes exist anymore).
-        real_path = list(path)
-        if len(real_path) < 2 or real_path[-1] != part_node or real_path[0] != master_name:
+        if not edge_paths:
             return False
 
-        # Walk real_path in reverse (child → parent direction). For each
-        # adjacent (parent, child) pair, look up the FK edge props.
+        # Walk each path child → parent (reverse of the master → part order) so
+        # every parent accumulates from its already-restricted child. Dedup by
+        # (parent, child, key) across overlapping paths: re-applying an edge is
+        # wasteful and, for the non-idempotent proj rules, would double-append.
         any_propagated = False
-        for i in range(len(real_path) - 1, 0, -1):
-            child = real_path[i]
-            parent = real_path[i - 1]
-            edge_props = self._edge_props(parent, child)
-            if edge_props is None:
-                return any_propagated  # Path broken (shouldn't happen if shortest_path succeeded)
+        walked_edges = set()
+        for edge_path in edge_paths:
+            for parent, child, ekey in reversed(edge_path):
+                if (parent, child, ekey) in walked_edges:
+                    continue
+                walked_edges.add((parent, child, ekey))
+                edge_props = self.get_edge_data(parent, child, ekey)
+                if edge_props is None:
+                    continue  # Path broken (shouldn't happen for an enumerated edge)
 
-            attr_map = edge_props.get("attr_map", {})
-            aliased = edge_props.get("aliased", False)
-            child_ft = self._restricted_table(child)
-            child_attrs = self._restriction_attrs.get(child, set())
+                attr_map = edge_props.get("attr_map", {})
+                aliased = edge_props.get("aliased", False)
+                child_ft = self._restricted_table(child)
+                child_attrs = self._restriction_attrs.get(child, set())
 
-            self._apply_propagation_rule_upward(
-                child_ft,
-                child_attrs,
-                parent,
-                attr_map,
-                aliased,
-                mode,
-                restrictions,
-            )
-            any_propagated = True
+                self._apply_propagation_rule_upward(
+                    child_ft,
+                    child_attrs,
+                    parent,
+                    attr_map,
+                    aliased,
+                    mode,
+                    restrictions,
+                )
+                any_propagated = True
 
         # Materialize the master's restriction so subsequent forward cascade
         # doesn't produce self-referential subqueries. Replace the master's
@@ -988,18 +996,6 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 self._restriction_attrs.setdefault(master_name, set())
 
         return any_propagated
-
-    def _edge_props(self, parent, child):
-        """
-        Return the FK edge properties for a direct ``parent → child`` foreign
-        key, or ``None`` if there is no such edge. When multiple parallel FKs
-        exist between the pair, the first one is returned (consistent with the
-        single-FK-path limitation documented on ``_propagate_part_to_master``).
-        """
-        data = self.get_edge_data(parent, child)
-        if not data:
-            return None
-        return next(iter(data.values()))
 
     def counts(self):
         """
