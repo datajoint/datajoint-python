@@ -45,6 +45,27 @@ def is_url(path: str) -> bool:
     return path.lower().startswith(URL_PROTOCOLS)
 
 
+def _path_to_file_url(resolved_path: Path | PurePosixPath) -> str:
+    """
+    Convert an already-resolved absolute path to a ``file://`` URL.
+
+    Uses ``as_posix()`` so the same logic handles both POSIX paths (which
+    already start with ``/``) and Windows paths (``C:/...``, no leading
+    slash) without OS-specific branching.
+
+    Parameters
+    ----------
+    resolved_path : Path or PurePosixPath
+        Absolute, already-resolved path.
+
+    Returns
+    -------
+    str
+        ``file://`` URL.
+    """
+    return f"file:///{resolved_path.as_posix().lstrip('/')}"
+
+
 def normalize_to_url(path: str) -> str:
     """
     Normalize a path to URL form.
@@ -72,15 +93,7 @@ def normalize_to_url(path: str) -> str:
     """
     if is_url(path):
         return path
-    # Convert local path to file:// URL
-    # Ensure absolute path and proper format
-    abs_path = str(Path(path).resolve())
-    # Handle Windows paths (C:\...) vs Unix paths (/...)
-    if abs_path.startswith("/"):
-        return f"file://{abs_path}"
-    else:
-        # Windows: file:///C:/path
-        return f"file:///{abs_path.replace(chr(92), '/')}"
+    return _path_to_file_url(Path(path).resolve())
 
 
 def parse_url(url: str) -> tuple[str, str]:
@@ -418,7 +431,7 @@ class StorageBackend:
         elif self.protocol == "file":
             location = self.spec.get("location", "")
             if location:
-                return str(Path(location) / path)
+                return (Path(location) / path).as_posix()
             return path
         else:
             return self._require_adapter().full_path(self.spec, path)
@@ -453,13 +466,7 @@ class StorageBackend:
         full_path = self._full_path(path)
 
         if self.protocol == "file":
-            # Ensure absolute path for file:// URL
-            abs_path = str(Path(full_path).resolve())
-            if abs_path.startswith("/"):
-                return f"file://{abs_path}"
-            else:
-                # Windows path
-                return f"file:///{abs_path.replace(chr(92), '/')}"
+            return _path_to_file_url(Path(full_path).resolve())
         elif self.protocol == "s3":
             return f"s3://{full_path}"
         elif self.protocol == "gcs":

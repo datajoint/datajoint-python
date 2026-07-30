@@ -1,9 +1,12 @@
 """Unit tests for storage URL functions."""
 
+from pathlib import PurePosixPath, PureWindowsPath
+
 import pytest
 
 from datajoint.storage import (
     URL_PROTOCOLS,
+    _path_to_file_url,
     is_url,
     normalize_to_url,
     parse_url,
@@ -77,6 +80,18 @@ class TestNormalizeToUrl:
         assert url.startswith("file://")
         # Should be absolute (contain full path)
         assert "/" in url[7:]  # After "file://"
+
+
+class TestPathToFileUrl:
+    """Test _path_to_file_url function (platform-independent via Pure*Path)."""
+
+    def test_posix_path(self):
+        url = _path_to_file_url(PurePosixPath("/data/file.dat"))
+        assert url == "file:///data/file.dat"
+
+    def test_windows_path_no_backslash_in_result(self):
+        url = _path_to_file_url(PureWindowsPath("C:\\data\\file.dat"))
+        assert url == "file:///C:/data/file.dat"
 
 
 class TestParseUrl:
