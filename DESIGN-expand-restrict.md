@@ -19,10 +19,10 @@ exactly one parent row. Propagating a restriction across that edge is itself a
 foreign-key attributes (`&` with a query expression). It works in either
 direction:
 
-- **downstream** (parent restricted `T'` → child): `S' = S & T'` — the children
-  whose parent is in `T'`.
-- **upstream** (child restricted `S'` → parent): `T' = T & S'` — the parents
-  referenced by `S'`.
+- **downstream** (a restriction on the parent, carried to the child):
+  `child & parent_restricted` — the child rows whose parent is in the restricted set.
+- **upstream** (a restriction on the child, carried to the parent):
+  `parent & child_restricted` — the parent rows referenced by the restricted child.
 
 Downstream and upstream are the *same* operation pointed opposite ways along the
 same FK. This is the whole engine; everything below is about how the edge rule
@@ -143,8 +143,9 @@ descendant; `expand` + combine cannot assemble it, `restrict.restrict` does.
   **intersects** a propagated condition in (carve). One representation, so they
   chain in any order — `Diagram.expand(seed, "both").restrict(cond).restrict(cond)`
   — and the current "cascade and restrict are mutually exclusive" wall is
-  removed. Per-table combine is unambiguous because composition order is explicit
-  (∪ at a grow step, ∩ at a carve step).
+  removed. Per-table combine is unambiguous because composition order is explicit:
+  a grow step ORs rows in (restrict by a list, `[cond, …]`), a carve step ANDs a
+  further restriction on (chained `&`).
 - **Materialization is a delete-time concern, not part of traversal.** Freezing a
   group's keys before deleting (delete runs parts-before-masters) matters only
   when a traversal feeds `delete`; the read-only closures never pay for it.
