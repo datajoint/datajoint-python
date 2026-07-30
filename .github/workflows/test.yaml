@@ -92,6 +92,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # NOTE: pip resolves `[project.optional-dependencies].test`, which is a
+      # DIFFERENT set than the pixi Linux legs' `[dependency-groups].test`
+      # (e.g. it omits graphviz). A unit test importing a dep present in only
+      # one set would then pass on Linux but error on Windows (or vice versa) —
+      # a dep-set mismatch that reads like an OS bug. Keep the two `test` sets
+      # in sync when unit-test dependencies change.
       - name: Install package with test extras
         run: pip install -e ".[test]"
 
