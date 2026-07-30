@@ -150,6 +150,106 @@ descendant; `expand` + combine cannot assemble it, `restrict.restrict` does.
   group's keys before deleting (delete runs parts-before-masters) matters only
   when a traversal feeds `delete`; the read-only closures never pay for it.
 
+## 6. Renamed foreign keys and the seed restriction — a self-contained derivation
+
+This section stands on its own; it does not depend on the rules above.
+
+**Setup.** A foreign key copies a parent table's referenced attributes into the
+child. A *renamed* foreign key gives those copied attributes new names in the
+child. Record the edge's renaming as pairs `parent_attr -> child_attr`, one per
+referenced attribute; a non-renamed foreign key pairs each attribute with itself.
+Renaming in a foreign key is a pure attribute rename — it never computes or
+changes a value or type. Example:
+
+```python
+class Session(dj.Manual):
+    definition = """
+    subject_id : int32
+    session_id : int32
+    """
+
+class Analysis(dj.Manual):
+    definition = """
+    -> Session.proj(animal='subject_id', sess='session_id')
+    analysis_id : int32
+    """
+# edge renaming (Session -> Analysis): subject_id -> animal, session_id -> sess
+```
+
+**Goal.** `Diagram.expand(A & r)` seeds table `A` with restriction `r` and grows
+the related sub-diagram. Each time we cross a foreign key we must re-express the
+restriction in the neighbor's attribute names. Renaming is the only thing that
+changes names across an edge, so it is the only place this needs care. The shape
+of `r` decides how.
+
+### Form 1 — `A & key`, where `key` is a dict `{attr: value, ...}`
+
+A dict is a set of "attribute equals value" conditions. Crossing a renamed
+foreign key, the neighbor's restriction is obtained by **renaming the dict's keys
+through the edge, values unchanged**:
+
+- **downstream** (`A` is the parent, neighbor is the child): rewrite each
+  `subject_id: 5` to `animal: 5` using the edge's `parent_attr -> child_attr`
+  pairs. `A & {'subject_id': 5}` induces `child & {'animal': 5}`.
+- **upstream** (`A` is the child, neighbor is the parent): apply the pairs the
+  other way — `A & {'animal': 5}` induces `parent & {'subject_id': 5}`.
+
+Multi-hop composes: the renamings chain, so a key is relabelled edge by edge
+(`subject_id: 5` → `animal: 5` → `creature: 5`). This is exact because the
+renaming is pure (values and types are preserved) and the attribute's identity
+across the edge is fixed by the edge's pairing, not by any coincidental match of
+names.
+
+**When the shortcut is exact.** Only for key attributes the foreign key actually
+carries across (the referenced attributes — typically the primary key). Two
+caveats:
+
+1. A dict entry on an attribute the edge does **not** carry (a secondary
+   attribute of `A`, or one the foreign key doesn't reference) has no name on the
+   neighbor, so it can't be relabelled. If that entry changes which `A` rows
+   exist, dropping it would over-select the neighbor. So Form 1 applies when
+   `key`'s attributes are among the edge's referenced attributes; otherwise the
+   non-carried part must be enforced as in Form 2.
+2. If the foreign key carries only part of `A`'s identity, the relabelled dict is
+   a partial-key restriction on the neighbor — still exact, just not a full key.
+
+This is the common, cheap case ("give me everything for this entity",
+`A & {'subject_id': 5}`): the per-table restriction stays a dict, and traversal
+is a name-substitution walk — no subqueries, and the per-table keys stay
+human-legible.
+
+### Form 2 — `A & cond`, where `cond` is a general condition
+
+A general condition — a SQL predicate (`'weight > 10'`), a query expression, a
+list — is not a set of equalities on the foreign-key attributes, so there are no
+keys to relabel. Propagate it as a **restriction by the renamed, projected
+seed**: restrict `A` by `cond`, project it onto the referenced attributes under
+the neighbor's names, and restrict the neighbor by that.
+
+- **downstream:** `child & (A & cond).proj(animal='subject_id', sess='session_id')`
+  — project restricted `A` to the referenced attributes under the child's names,
+  then restrict the child by it.
+- **upstream:** `parent & (A & cond).proj(subject_id='animal', session_id='sess')`
+  — project under the parent's names (the renaming reversed).
+
+This is always correct, including when `cond` touches attributes the foreign key
+doesn't carry: those simply constrain which `A` rows the projection sees.
+
+### How the two relate
+
+Form 1 is the special case of Form 2 where `cond` is a dict of equalities on the
+carried attributes: there, restricting the neighbor by
+`(A & key).proj(...renamed...)` selects exactly the neighbor rows the relabelled
+dict does — so we skip building the projection and just rename keys. Form 2 is
+the fallback whenever that equivalence doesn't hold.
+
+**Consequence for `expand`.** Per reached table, `expand` can carry either a
+relabelled dict (Form 1 — when the seed is a qualifying dict and every edge on
+the path is a rename over carried attributes) or a relational restriction
+(Form 2). Prefer the dict path when available: it is symbolic, composes by
+chaining the edge renamings, and yields legible per-table keys — this is the
+"update the key names as we traverse" behavior.
+
 ## Summary
 
 | | additive (grow) | subtractive (carve) |
