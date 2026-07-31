@@ -190,6 +190,7 @@ def compile_foreign_key(
     index_sql: list[str],
     adapter,
     fk_attribute_map: dict[str, tuple[str, str]] | None = None,
+    fk_index_candidates: list[list[str]] | None = None,
 ) -> None:
     """
     Parse a foreign key line and update declaration components.
@@ -215,6 +216,11 @@ def compile_foreign_key(
         Database adapter for backend-specific SQL generation.
     fk_attribute_map : dict, optional
         Mapping of ``child_attr -> (parent_table, parent_attr)``. Updated in place.
+    fk_index_candidates : list, optional
+        PostgreSQL only. Collects each non-unique foreign key's columns as a
+        candidate supporting index; the redundancy/coverage decision is made
+        post-parse (once the full primary key and index list are known).
+        Updated in place.
 
     Raises
     ------
@@ -301,27 +307,22 @@ def compile_foreign_key(
         f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
     )
 
-    # Declare a supporting index on the foreign-key columns.
+    # Supporting index on the foreign-key columns.
     #
-    # MySQL/InnoDB creates one implicitly for every foreign key, so we emit an
-    # explicit index only on the PostgreSQL path — Postgres never auto-indexes
-    # the referencing (child) columns and offers no server setting to make it
-    # (see #1512). The `unique` case keeps its UNIQUE INDEX on every backend.
-    #
-    # Coverage-aware: skip when the foreign-key columns are already a left-prefix
-    # of the child's primary key, since the primary-key index then already serves
-    # foreign-key lookups and cascades. That holds exactly for a *leading*
-    # primary foreign key; a secondary foreign key (`primary_key is None`) or a
-    # non-leading primary foreign key is not covered and needs its own index.
+    # The `unique` option is a uniqueness constraint, always emitted, on every
+    # backend. For the non-unique case: MySQL/InnoDB indexes every foreign key
+    # implicitly, but PostgreSQL never indexes the referencing (child) columns
+    # and offers no server setting to make it (see #1512), so DataJoint must.
+    # Whether that index is *redundant* (the columns are already a left-prefix of
+    # the primary key or of another declared index) can only be decided once the
+    # whole definition is parsed, so here we merely record the candidate; the
+    # coverage decision happens post-parse in `prepare_declare`.
     fk_attrs = list(ref.primary_key)
     if is_unique:
         index_cols = ", ".join(adapter.quote_identifier(attr) for attr in fk_attrs)
         index_sql.append(f"UNIQUE INDEX ({index_cols})")
-    elif adapter.backend == "postgresql":
-        covered_by_pk = primary_key is not None and list(primary_key[: len(fk_attrs)]) == fk_attrs
-        if not covered_by_pk:
-            index_cols = ", ".join(adapter.quote_identifier(attr) for attr in fk_attrs)
-            index_sql.append(f"INDEX ({index_cols})")
+    elif adapter.backend == "postgresql" and fk_index_candidates is not None:
+        fk_index_candidates.append(fk_attrs)
 
 
 def prepare_declare(
@@ -368,6 +369,7 @@ def prepare_declare(
     external_stores = []
     fk_attribute_map = {}  # child_attr -> (parent_table, parent_attr)
     column_comments = {}  # column_name -> comment (for PostgreSQL COMMENT ON)
+    fk_index_candidates = []  # PostgreSQL: FK column-lists that may need a support index (#1512)
 
     for line in definition:
         if not line or line.startswith("#"):  # ignore additional comments
@@ -385,6 +387,7 @@ def prepare_declare(
                 index_sql,
                 adapter,
                 fk_attribute_map,
+                fk_index_candidates,
             )
         elif re.match(r"^(unique\s+)?index\s*\(.*\)\s*(#.*)?$", line, re.I):  # index
             compile_index(re.sub(r"\s*#.*$", "", line), index_sql, adapter)
@@ -399,6 +402,33 @@ def prepare_declare(
                 attribute_sql.append(sql)
                 if comment:
                     column_comments[name] = comment
+
+    # Foreign-key support indexes (PostgreSQL; #1512). Now that the whole
+    # definition is parsed, emit an index on each candidate foreign key's columns
+    # UNLESS they are already a left-prefix of the primary key, of a declared
+    # index, or of a longer FK-support index already emitted — in which case that
+    # existing index already serves foreign-key lookups and cascades. Candidates
+    # are only collected on PostgreSQL (MySQL/InnoDB indexes FKs implicitly), so
+    # this loop is a no-op elsewhere.
+    if fk_index_candidates:
+
+        def _index_columns(index_def: str) -> list[str]:
+            match = re.match(r"(?:unique\s+)?index\s*\(([^)]+)\)", index_def, re.I)
+            return [col.strip().strip('`"') for col in match.group(1).split(",")] if match else []
+
+        # Existing prefixes an FK index could be redundant against: the primary
+        # key and every already-declared index. Grows as we accept FK indexes.
+        existing_prefixes = [list(primary_key)] + [_index_columns(s) for s in index_sql]
+
+        def _covered(candidate: list[str]) -> bool:
+            return any(prefix[: len(candidate)] == candidate for prefix in existing_prefixes)
+
+        # Longest first, so a shorter FK index left-covered by a longer one is skipped.
+        for candidate in sorted(fk_index_candidates, key=len, reverse=True):
+            if not _covered(candidate):
+                index_cols = ", ".join(adapter.quote_identifier(attr) for attr in candidate)
+                index_sql.append(f"INDEX ({index_cols})")
+                existing_prefixes.append(candidate)
 
     return (
         table_comment,

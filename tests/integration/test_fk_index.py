@@ -137,3 +137,34 @@ def test_leading_primary_fk_no_redundant_index(schema_by_backend, db_creds_by_ba
     assert not _fk_support_indexes(
         connection_by_backend, schema_by_backend.database, Q.table_name
     ), "a leading primary FK is covered by the PK index; no redundant FK-support index should be created"
+
+
+def test_secondary_fk_covered_by_declared_index(schema_by_backend, db_creds_by_backend, connection_by_backend):
+    """A secondary FK whose columns are a left-prefix of a user-declared index
+    needs no separate FK-support index (post-parse coverage vs declared indexes)."""
+    if db_creds_by_backend["backend"] != "postgresql":
+        pytest.skip("PostgreSQL-specific")
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+    @schema_by_backend
+    class Child(dj.Manual):
+        definition = """
+        child_id : int32
+        ---
+        -> Master
+        note : varchar(16)
+        index (master_id, note)
+        """
+
+    # The declared index (master_id, note) already left-covers master_id, so no
+    # standalone FK-support index on master_id should be created.
+    names = _fk_support_indexes(connection_by_backend, schema_by_backend.database, Child.table_name)
+    assert (
+        f"idx_{Child.table_name}_master_id" not in names
+    ), f"a secondary FK covered by a declared index must not get a redundant FK-support index; got {names}"
+    assert f"idx_{Child.table_name}_master_id_note" in names, "the declared composite index should still exist"
