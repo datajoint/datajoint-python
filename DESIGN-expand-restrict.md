@@ -323,6 +323,85 @@ yields legible per-table keys, and is delete-safe — this is the "update the ke
 names as we traverse" behavior. A live seed can be materialized up front to get
 all of that.
 
+## 7. The group rule and the relabel fast-path — how a key crosses master↔part
+
+Section 6 handled ordinary foreign keys. Part tables are the other complication.
+This section works out how a materialized key crosses a master↔part boundary,
+and shows that the group rule (R2) needs **no new key machinery** — it is the
+existing relabel fast-path, run twice, with the part-specific attribute
+deliberately lost in between.
+
+**Setup.** Take a master `Session` with primary key `session_id`, and its part
+`Session.Trial` with primary key `(session_id, trial_id)`. A part always carries
+its master's full primary key inside its own — the `-> master` reference is a
+*primary, non-renamed* foreign key, so on that edge the relabel is the identity
+(names are shared). The part adds its own key attribute (`trial_id`) on top. R2:
+a master and its parts are one entity — a restriction touching any part lifts to
+the master, and the master brings in *all* its parts.
+
+### master to part (downstream): nothing new
+
+`Session & {'session_id': 5}` crosses down to `Session.Trial` by the ordinary
+downstream relabel: keep `session_id`, leave `trial_id` unconstrained. The result
+is the partial key `{'session_id': 5}`, which selects *every* trial of session 5.
+"All parts follow the master" falls straight out of the down rule.
+
+### part to master (upstream): the existential lift is relabel-drop
+
+`Session.Trial & {'session_id': 5, 'trial_id': 2}` going up: the master's full
+primary key (`session_id`) is present, so the fast-path fires — **relabel-drop**:
+keep `session_id`, drop the part-specific `trial_id` (absent on the master) →
+`{'session_id': 5}`.
+
+The "existential" needs no extra mechanism: a *sequence* of part keys spanning
+several trials of session 5 all drop to the same `{'session_id': 5}`, and the
+master key-set **de-duplicates**. Dropping the part-specific attribute collapses
+sibling-part keys onto one master key — the OR-over-siblings is free.
+
+### master to all parts (re-expansion): not a relabel of the seed
+
+R2's atomicity requires that once the master is in, *all* its parts come —
+including trials the seed never named. That is not obtainable by relabelling the
+seed key; it is a **fresh downstream step from the recovered master key**:
+
+`{'session_id': 5}` on `Session` → (down relabel) → `{'session_id': 5}` on
+`Session.Trial`, which drops the `trial_id` constraint and so *widens* from
+"trial 2" to all trials of session 5.
+
+### The signature: the round trip is lossy, and the loss is atomicity
+
+Follow `trial_id` around the loop:
+
+1. seed part key `{'session_id': 5, 'trial_id': 2}`
+2. lift (up, drop) → master `{'session_id': 5}` — `trial_id` gone
+3. re-expand (down) → part `{'session_id': 5}` — `trial_id` cannot be restored
+
+The part-specific constraint is destroyed by the lift and cannot be recovered on
+the way back down. Stated as a rule: **a key that reaches a part via its master
+carries no part-specific constraint.** That loss *is* compositional atomicity in
+key terms — the whole part-group comes along precisely because the returning key
+no longer distinguishes trial 2 from its siblings. The lift *narrows* the key (to
+the master); the re-expansion *widens* it (to all parts); the asymmetry is the
+point.
+
+### Two corollaries
+
+- **Materialized stays materialized.** Relabel-drop of literal values yields
+  literal values, and the re-expansion is a relabel of that literal master key.
+  So a materialized-key seed stays materialized through the entire
+  part→master→parts round trip, and is therefore **delete-safe for free** — the
+  delete-order materialization (#1496) only ever has to fire for *live*
+  (subquery/string) seeds.
+- **One mechanism, three call sites.** The same round trip fires in cascade-down
+  (`part_integrity="cascade"`, #1429), in trace-up (#1481, a master drags in its
+  parts), and in `restrict` (#1501, where a part *predicate* is promoted to its
+  master and the whole group is kept — not carved part-by-part). R2 is
+  direction-agnostic; only what *triggers* it differs.
+
+So R2 adds no new key machinery: relabel-drop (lift) plus a downstream relabel
+(re-expand) over the existing fast-path. The only non-relabel act is recognizing
+that the re-expansion is new growth from the master, not a transform of the seed.
+
 ## Summary
 
 | | additive (grow) | subtractive (carve) |
