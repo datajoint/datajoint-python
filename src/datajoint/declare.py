@@ -321,7 +321,7 @@ def compile_foreign_key(
     if is_unique:
         index_cols = ", ".join(adapter.quote_identifier(attr) for attr in fk_attrs)
         index_sql.append(f"UNIQUE INDEX ({index_cols})")
-    elif adapter.backend == "postgresql" and fk_index_candidates is not None:
+    elif not adapter.auto_indexes_foreign_keys and fk_index_candidates is not None:
         fk_index_candidates.append(fk_attrs)
 
 
