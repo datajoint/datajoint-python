@@ -301,10 +301,27 @@ def compile_foreign_key(
         f"FOREIGN KEY ({fk_cols}) REFERENCES {ref_table_name} ({pk_cols}) ON UPDATE CASCADE ON DELETE RESTRICT"
     )
 
-    # declare unique index
+    # Declare a supporting index on the foreign-key columns.
+    #
+    # MySQL/InnoDB creates one implicitly for every foreign key, so we emit an
+    # explicit index only on the PostgreSQL path — Postgres never auto-indexes
+    # the referencing (child) columns and offers no server setting to make it
+    # (see #1512). The `unique` case keeps its UNIQUE INDEX on every backend.
+    #
+    # Coverage-aware: skip when the foreign-key columns are already a left-prefix
+    # of the child's primary key, since the primary-key index then already serves
+    # foreign-key lookups and cascades. That holds exactly for a *leading*
+    # primary foreign key; a secondary foreign key (`primary_key is None`) or a
+    # non-leading primary foreign key is not covered and needs its own index.
+    fk_attrs = list(ref.primary_key)
     if is_unique:
-        index_cols = ", ".join(adapter.quote_identifier(attr) for attr in ref.primary_key)
+        index_cols = ", ".join(adapter.quote_identifier(attr) for attr in fk_attrs)
         index_sql.append(f"UNIQUE INDEX ({index_cols})")
+    elif adapter.backend == "postgresql":
+        covered_by_pk = primary_key is not None and list(primary_key[: len(fk_attrs)]) == fk_attrs
+        if not covered_by_pk:
+            index_cols = ", ".join(adapter.quote_identifier(attr) for attr in fk_attrs)
+            index_sql.append(f"INDEX ({index_cols})")
 
 
 def prepare_declare(
