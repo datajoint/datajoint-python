@@ -225,24 +225,57 @@ deletions elsewhere, so the delete-order hazard that forces `cascade` to
 materialize (see below) does not arise here. The whole walk stays symbolic — no
 subqueries, and the per-table keys stay human-legible.
 
-**A key must be primary-key-only to qualify.** A foreign key references the
-parent's **primary key**, so primary-key attributes are exactly the ones that
-cross edges — they relabel and propagate. A **secondary** attribute (e.g.
-`weight`) is referenced by no foreign key, so it cannot cross any edge; it exists
-only on `A`. A `key` that mixes in a secondary attribute is therefore **not a
-materialized-key restriction at all** — the secondary part is an opaque
-value-condition, which makes the whole seed an `A & cond` case (Kind 2 / Kind 3
-below). It can be reduced back to Kind 1 by materializing to primary keys first:
-`(A & cond).keys()`.
+**Which attributes cross an edge.** An attribute of `key` propagates across an
+edge if and only if that edge **carries** it — that is, the foreign key
+references it:
 
-(Edge nuance: a secondary attribute that is *itself* a foreign key does propagate
-— but only along that one edge. The clean, safe rule is still: a primary-key-only
-key uses Kind 1, and anything else is treated as an opaque condition, since
-non-primary attributes do not propagate uniformly.)
+- A **data** attribute (`weight`) is referenced by no foreign key, so it is
+  carried by no edge and never propagates. A `key` containing one is not a
+  materialized-key restriction at all: that part is an opaque value-condition,
+  making the whole seed an `A & cond` case (Kind 2 / Kind 3). Reduce it back to
+  Kind 1 by materializing to keys first: `(A & cond).keys()`.
+- A **foreign-key** attribute propagates along its own edge — including a
+  *secondary* one (a below-the-line `-> Other`), which crosses that edge even
+  though it is not part of `A`'s primary key.
 
-Even for a primary-key-only key: if a foreign key carries only part of `A`'s
-identity, the relabelled dict is a partial-key restriction on the neighbor —
-still exact, just not a full key.
+So the test is per edge — *does `key` cover the attributes this edge carries?* —
+not a global "is `key` primary-key-only?".
+
+**Direction matters, because a foreign key is a function.** Each child row has
+exactly one parent, so the two directions have different completeness needs:
+
+- **Down** (parent to children) is the preimage — one parent, many children. A
+  parent's key relabels to a *partial* child key and restricts the children that
+  reference it: a parent key **always suffices**, and the child's own key
+  attributes just stay free.
+- **Up** (child to parent) is the image — many children, one parent. To *name*
+  the referenced parent by relabelling, `key` must include the parent's **full
+  primary key** (in the child's attribute names — whether those attributes are
+  primary or secondary in the child). A partial parent key cannot identify the
+  parent rows by relabelling alone.
+
+**Fallback when the up-condition fails — this is where `expand` and `restrict`
+differ.** When `key` does not pin the parent's full primary key, the relabel
+fast-path cannot fire, and the two operations diverge by their very natures:
+
+- **`expand` (additive) must resolve it.** Its purpose is to enumerate the
+  referenced set exactly (blast radius, sources); it can include neither *all*
+  parents nor *none*, so it **materializes** — queries the child for the actual
+  referenced parent keys — and continues. There is no safe skip.
+- **`restrict` (subtractive) may skip it.** Carving removes only rows it can
+  *prove* are excluded; when it cannot determine which parent rows lack a
+  surviving child, it **leaves the parent uncarved**. The slice stays
+  referentially valid (a looser superset — children keep their parents), just
+  less trimmed.
+
+The relabel fast-path itself fires under the *same* condition for both (`key`
+covers the edge's carried attributes; for up, the full parent primary key); only
+the fallback differs — a direct consequence of additive-must-be-exact versus
+subtractive-removes-only-the-provable.
+
+Even when the fast-path fires: if a foreign key carries only part of the
+neighbor's identity, the relabelled dict is a partial-key restriction on the
+neighbor — still exact, just not a full key.
 
 This is the common, cheap case: "give me everything for this entity"
 (`A & {'subject_id': 5}`, or a set of such rows via `A.keys()`).
