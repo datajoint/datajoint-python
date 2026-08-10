@@ -54,7 +54,7 @@ _scale = 1.2
 _TIER_STRUCTURE = {
     None: dict(shape="circle", fontsize=round(_scale * 8), size=0.4 * _scale, fixed=False, rounded=False),
     Manual: dict(shape="box", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=True),
-    Lookup: dict(shape="box", fontsize=round(_scale * 8), size=0.4 * _scale, fixed=False, rounded=True),
+    Lookup: dict(shape="box", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=True),
     Computed: dict(shape="ellipse", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=False),
     Imported: dict(shape="ellipse", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=False),
     Part: dict(shape="box", fontsize=round(_scale * 8), size=0.1 * _scale, fixed=False, rounded=True),
