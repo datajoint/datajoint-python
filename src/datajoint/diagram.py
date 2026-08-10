@@ -1540,19 +1540,24 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             # pydot edge — to_pydot stringifies the edge data, so booleans arrive
             # as "True"/"False". This is parallel-edge-safe: each FK between the
             # same pair of tables is its own pydot edge.
-            src = edge.get_source()
-            dest = edge.get_destination()
             primary = str(edge.get("primary")) == "True"
             multi = str(edge.get("multi")) == "True"
             aliased = str(edge.get("aliased")) == "True"
             # Renamed FK → distinct color; others → the usual translucent black.
             edge.set_color("#FF8800" if aliased else "#00000040")
             edge.set_style("solid" if primary else "dashed")
-            dest_node_type = graph.nodes[dest].get("node_type")
-            master_part = dest_node_type is Part and dest.startswith(src + ".")
-            edge.set_weight(3 if master_part else 1)
-            edge.set_arrowhead("none")
+            # Line weight encodes cardinality, and only cardinality. `multi` is
+            # True when the child has primary-key attributes beyond those this
+            # foreign key contributes — whether newly declared or inherited from
+            # another foreign key — i.e. a one-to-many dependency, drawn thin.
+            # When the foreign key constitutes the child's *entire* primary key
+            # the dependency is 1:1, drawn thick. Master-part is NOT a weight: a
+            # part almost always adds a key attribute, so its edge is thin under
+            # this same rule. penwidth is the visible thickness; the layout
+            # `weight` hint follows the same predicate so the two never diverge.
             edge.set_penwidth(0.75 if multi else 2)
+            edge.set_weight(1 if multi else 3)
+            edge.set_arrowhead("none")
 
         # Group nodes into schema clusters (always on)
         if schema_map:
