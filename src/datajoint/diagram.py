@@ -1496,8 +1496,19 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         dot.set_rankdir(direction)
         for node in dot.get_nodes():
             node.set_shape("circle")
-            name = node.get_name().strip('"')
-            props = node_props[name]
+            # Recover the original node key. `_encapsulate_node_names` wraps every
+            # key in one layer of double quotes; a plain strip('"') over-strips
+            # when the key is itself a quoted PostgreSQL table name
+            # (`"schema"."table"`), which previously raised a KeyError below
+            # (#1535). Try candidates and pick the one that is an actual key.
+            raw = node.get_name()
+            name = next(
+                (k for k in (raw, raw.strip('"'), raw[1:-1]) if k in node_props),
+                raw.strip('"'),
+            )
+            props = node_props.get(name)
+            if props is None:
+                continue  # unknown node — leave default styling rather than crash
             node.set_fontsize(props["fontsize"])
             node.set_fontcolor(props["fontcolor"])
             node.set_shape(props["shape"])
