@@ -1704,6 +1704,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                         rank = pydot.Subgraph(rank="same")
                         for nm in same_rank:
                             rank.add_node(pydot.Node(nm))
+                        # Pin the within-rank order: master first, then its
+                        # parts. As flat (same-rank) edges, these place the parts
+                        # after the master — below it in LR, to its right in TB —
+                        # rather than leaving the order to Graphviz's heuristic.
+                        for a, b in zip(same_rank, same_rank[1:]):
+                            rank.add_edge(pydot.Edge(a, b, style="invis"))
                         entity.add_subgraph(rank)
                     cluster.add_subgraph(entity)
 
