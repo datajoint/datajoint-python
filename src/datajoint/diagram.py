@@ -47,6 +47,61 @@ except ImportError:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
+# Structural node attributes per tier — shape, sizing, and whether the box has
+# rounded corners. These are theme-independent; only the colors change with the
+# theme. `_scale` matches the historical 1.2 scaling factor for fonts and boxes.
+_scale = 1.2
+_TIER_STRUCTURE = {
+    None: dict(shape="circle", fontsize=round(_scale * 8), size=0.4 * _scale, fixed=False, rounded=False),
+    Manual: dict(shape="box", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=True),
+    Lookup: dict(shape="box", fontsize=round(_scale * 8), size=0.4 * _scale, fixed=False, rounded=True),
+    Computed: dict(shape="ellipse", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=False),
+    Imported: dict(shape="ellipse", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=False),
+    Part: dict(shape="box", fontsize=round(_scale * 8), size=0.1 * _scale, fixed=False, rounded=True),
+    "collapsed": dict(shape="box3d", fontsize=round(_scale * 10), size=0.5 * _scale, fixed=False, rounded=False),
+}
+
+# Color themes (#1532). Each tier gets a (fill, stroke, text) triple. Edge colors
+# share a single alpha so a renamed (amber) edge sits at the same visual density
+# as ordinary edges, differing only in hue.
+_DIAGRAM_THEMES = {
+    "light": dict(
+        bg=None,
+        palette={
+            None: ("#FFFDE7", "#C9BC5B", "#6B6420"),
+            Manual: ("#E7F3EC", "#2F7D5B", "#1B5138"),
+            Lookup: ("#F2F4F7", "#A9B1BD", "#495261"),
+            Computed: ("#FBEAEC", "#B23A48", "#7C2430"),
+            Imported: ("#E2ECFA", "#2A5FA5", "#123A6D"),
+            Part: ("#FFFFFF", "#9AA6B8", "#46536B"),
+            "collapsed": ("#EDEEF0", "#808890", "#404040"),
+        },
+        edge="#3A424F",
+        edge_renamed="#C77D3A",
+        edge_alpha="9E",
+        schema_cluster=("gray", "gray"),
+        entity_fill="#F3F5F8",
+    ),
+    "dark": dict(
+        bg="#161A21",
+        palette={
+            None: ("#3A3620", "#C9BC5B", "#EBE3A0"),
+            Manual: ("#16281F", "#4FA97F", "#BCE6CF"),
+            Lookup: ("#242832", "#8A93A1", "#C9CFD9"),
+            Computed: ("#331A1F", "#D0687A", "#F3C2CB"),
+            Imported: ("#152538", "#5E92D6", "#C3DAF6"),
+            Part: ("#1E232C", "#7B879B", "#C4CCDB"),
+            "collapsed": ("#242730", "#8890A0", "#C7CDD6"),
+        },
+        edge="#AEB6C2",
+        edge_renamed="#D68C4A",
+        edge_alpha="C0",
+        schema_cluster=("#606875", "#8A93A1"),
+        entity_fill="#1E222B",
+    ),
+}
+
+
 class Diagram(nx.MultiDiGraph):  # noqa: C901
     """
     Schema diagram as a directed acyclic graph (DAG).
@@ -92,7 +147,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
     Layout direction is controlled via ``dj.config.display.diagram_direction``
     (default ``"TB"``). Use ``dj.config.override()`` to change temporarily::
 
-        with dj.config.override(display_diagram_direction="LR"):
+        with dj.config.override(display__diagram_direction="LR"):
             dj.Diagram(schema).draw()
     """
 
@@ -1412,91 +1467,20 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             if data.get("collapsed") and data.get("schema_name"):
                 schema_map[node] = data["schema_name"]
 
-        scale = 1.2  # scaling factor for fonts and boxes
-        # Modernized tier palette (#1532): each tier gets a readable
-        # fill / stroke / text triple in place of the old alpha-blended primary
-        # fills. Shape stays load-bearing and unchanged so an existing diagram
-        # reads without relearning: Manual = rounded rectangle, Imported and
-        # Computed = ellipse, Lookup and Part = subtle (white/near-white) box.
-        label_props = {
-            None: dict(
-                shape="circle",
-                fill="#FFFDE7",
-                stroke="#C9BC5B",
-                fontcolor="#6B6420",
-                fontsize=round(scale * 8),
-                size=0.4 * scale,
-                fixed=False,
-                rounded=False,
-            ),
-            Manual: dict(
-                shape="box",
-                fill="#E7F3EC",
-                stroke="#2F7D5B",
-                fontcolor="#1B5138",
-                fontsize=round(scale * 10),
-                size=0.4 * scale,
-                fixed=False,
-                rounded=True,
-            ),
-            Lookup: dict(
-                shape="box",
-                fill="#F2F4F7",
-                stroke="#A9B1BD",
-                fontcolor="#495261",
-                fontsize=round(scale * 8),
-                size=0.4 * scale,
-                fixed=False,
-                rounded=True,
-            ),
-            Computed: dict(
-                shape="ellipse",
-                fill="#FBEAEC",
-                stroke="#B23A48",
-                fontcolor="#7C2430",
-                fontsize=round(scale * 10),
-                size=0.4 * scale,
-                fixed=False,
-                rounded=False,
-            ),
-            Imported: dict(
-                shape="ellipse",
-                fill="#E2ECFA",
-                stroke="#2A5FA5",
-                fontcolor="#123A6D",
-                fontsize=round(scale * 10),
-                size=0.4 * scale,
-                fixed=False,
-                rounded=False,
-            ),
-            Part: dict(
-                shape="box",
-                fill="#FFFFFF",
-                stroke="#9AA6B8",
-                fontcolor="#46536B",
-                fontsize=round(scale * 8),
-                size=0.1 * scale,
-                fixed=False,
-                rounded=True,
-            ),
-            "collapsed": dict(
-                shape="box3d",
-                fill="#EDEEF0",
-                stroke="#808890",
-                fontcolor="#404040",
-                fontsize=round(scale * 10),
-                size=0.5 * scale,
-                fixed=False,
-                rounded=False,
-            ),
-        }
-        # Build node_props, handling collapsed nodes specially
+        # Select the color theme (#1532). Structure (shape/size/rounded) is
+        # theme-independent; only the fill/stroke/text colors change.
+        theme_name = self._connection._config.display.diagram_theme
+        theme = _DIAGRAM_THEMES.get(theme_name, _DIAGRAM_THEMES["light"])
+        palette = theme["palette"]
+
+        # Build node_props by merging the structural attributes for each tier
+        # with the theme's (fill, stroke, text) colors. Collapsed nodes use the
+        # "collapsed" entry.
         node_props = {}
         for node, d in graph.nodes(data=True):
-            if d.get("collapsed"):
-                node_props[node] = label_props["collapsed"]
-            else:
-                node_props[node] = label_props[d["node_type"]]
+            tier = "collapsed" if d.get("collapsed") else d["node_type"]
+            fill, stroke, text = palette[tier]
+            node_props[node] = dict(_TIER_STRUCTURE[tier], fill=fill, stroke=stroke, fontcolor=text)
 
         # A renamed (aliased) FK is drawn as a distinctly-colored edge (there
         # is no longer an intermediate "alias" node); describe the column
@@ -1515,6 +1499,8 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         self._encapsulate_edge_attributes(graph)
         dot = nx.drawing.nx_pydot.to_pydot(graph)
         dot.set_rankdir(direction)
+        if theme["bg"]:
+            dot.set_bgcolor(theme["bg"])
 
         # Master↔part grouping (#1532): map each part (class name "Master.Part")
         # to its master ("Master"), and record which parts depend on a sibling
@@ -1588,8 +1574,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             multi = str(edge.get("multi")) == "True"
             aliased = str(edge.get("aliased")) == "True"
             # Renamed FK → a distinct, desaturated amber consistent with the
-            # modernized palette (#1532); others → a light translucent slate.
-            edge.set_color("#C77D3A" if aliased else "#3A424F33")
+            # modernized palette (#1532); others → a translucent slate. Both
+            # share the theme's edge alpha so the amber sits at the same visual
+            # density as ordinary edges, differing only in hue.
+            base = theme["edge_renamed"] if aliased else theme["edge"]
+            edge.set_color(base + theme["edge_alpha"])
             edge.set_style("solid" if primary else "dashed")
             # Line weight encodes cardinality, and only cardinality. `multi` is
             # True when the child has primary-key attributes beyond those this
@@ -1626,12 +1615,13 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             # chain descends.
             for schema_name, nodes in schemas.items():
                 label = cluster_labels.get(schema_name, schema_name)
+                sc_color, sc_fontcolor = theme["schema_cluster"]
                 cluster = pydot.Cluster(
                     f"cluster_{schema_name}",
                     label=label,
                     style="rounded,dashed",
-                    color="gray",
-                    fontcolor="gray",
+                    color=sc_color,
+                    fontcolor=sc_fontcolor,
                 )
                 node_by_name = {n.get_name().strip('"'): n for n in nodes}
                 # masters in this schema that have at least one part present
@@ -1650,8 +1640,8 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                         "cluster_entity_" + master_name.replace(".", "_"),
                         label="",
                         style="rounded,filled",
-                        fillcolor="#F3F5F8",
-                        color="#F3F5F8",
+                        fillcolor=theme["entity_fill"],
+                        color=theme["entity_fill"],
                     )
                     entity.add_node(node_by_name[master_name])
                     grouped.add(master_name)

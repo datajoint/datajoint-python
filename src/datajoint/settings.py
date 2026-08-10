@@ -70,6 +70,7 @@ ENV_VAR_MAPPING = {
     "database.create_tables": "DJ_CREATE_TABLES",
     "loglevel": "DJ_LOG_LEVEL",
     "display.diagram_direction": "DJ_DIAGRAM_DIRECTION",
+    "display.diagram_theme": "DJ_DIAGRAM_THEME",
 }
 
 Role = Enum("Role", "manual lookup imported computed job")
@@ -244,6 +245,11 @@ class DisplaySettings(BaseSettings):
         default="LR",
         validation_alias="DJ_DIAGRAM_DIRECTION",
         description="Default diagram layout direction: 'TB' (top-to-bottom) or 'LR' (left-to-right)",
+    )
+    diagram_theme: Literal["light", "dark"] = Field(
+        default="light",
+        validation_alias="DJ_DIAGRAM_THEME",
+        description="Default diagram color theme: 'light' or 'dark' (dark background with adjusted palette)",
     )
 
 
