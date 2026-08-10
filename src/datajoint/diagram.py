@@ -1411,62 +1411,81 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 schema_map[node] = data["schema_name"]
 
         scale = 1.2  # scaling factor for fonts and boxes
-        label_props = {  # http://matplotlib.org/examples/color/named_colors.html
+        # Modernized tier palette (#1532): each tier gets a readable
+        # fill / stroke / text triple in place of the old alpha-blended primary
+        # fills. Shape stays load-bearing and unchanged so an existing diagram
+        # reads without relearning: Manual = rounded rectangle, Imported and
+        # Computed = ellipse, Lookup and Part = subtle (white/near-white) box.
+        label_props = {
             None: dict(
                 shape="circle",
-                color="#FFFF0040",
-                fontcolor="yellow",
+                fill="#FFFDE7",
+                stroke="#C9BC5B",
+                fontcolor="#6B6420",
                 fontsize=round(scale * 8),
                 size=0.4 * scale,
                 fixed=False,
+                rounded=False,
             ),
             Manual: dict(
                 shape="box",
-                color="#00FF0030",
-                fontcolor="darkgreen",
+                fill="#E7F3EC",
+                stroke="#2F7D5B",
+                fontcolor="#1B5138",
                 fontsize=round(scale * 10),
                 size=0.4 * scale,
                 fixed=False,
+                rounded=True,
             ),
             Lookup: dict(
-                shape="plaintext",
-                color="#00000020",
-                fontcolor="black",
+                shape="box",
+                fill="#F2F4F7",
+                stroke="#A9B1BD",
+                fontcolor="#495261",
                 fontsize=round(scale * 8),
                 size=0.4 * scale,
                 fixed=False,
+                rounded=True,
             ),
             Computed: dict(
                 shape="ellipse",
-                color="#FF000020",
-                fontcolor="#7F0000A0",
+                fill="#FBEAEC",
+                stroke="#B23A48",
+                fontcolor="#7C2430",
                 fontsize=round(scale * 10),
                 size=0.4 * scale,
                 fixed=False,
+                rounded=False,
             ),
             Imported: dict(
                 shape="ellipse",
-                color="#00007F40",
-                fontcolor="#00007FA0",
+                fill="#E2ECFA",
+                stroke="#2A5FA5",
+                fontcolor="#123A6D",
                 fontsize=round(scale * 10),
                 size=0.4 * scale,
                 fixed=False,
+                rounded=False,
             ),
             Part: dict(
-                shape="plaintext",
-                color="#00000000",
-                fontcolor="black",
+                shape="box",
+                fill="#FFFFFF",
+                stroke="#9AA6B8",
+                fontcolor="#46536B",
                 fontsize=round(scale * 8),
                 size=0.1 * scale,
                 fixed=False,
+                rounded=True,
             ),
             "collapsed": dict(
                 shape="box3d",
-                color="#80808060",
+                fill="#EDEEF0",
+                stroke="#808890",
                 fontcolor="#404040",
                 fontsize=round(scale * 10),
                 size=0.5 * scale,
                 fixed=False,
+                rounded=False,
             ),
         }
         # Build node_props, handling collapsed nodes specially
@@ -1501,10 +1520,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             node.set_fontsize(props["fontsize"])
             node.set_fontcolor(props["fontcolor"])
             node.set_shape(props["shape"])
-            node.set_fontname("arial")
+            node.set_fontname("Helvetica")
             node.set_fixedsize("shape" if props["fixed"] else False)
             node.set_width(props["size"])
             node.set_height(props["size"])
+            node.set_margin("0.11,0.06")  # generous label padding (inches)
 
             # Handle collapsed nodes specially
             node_data = graph.nodes.get(f'"{name}"', {})
@@ -1531,8 +1551,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     if cluster_label and name.startswith(cluster_label + "."):
                         display_name = name[len(cluster_label) + 1 :]
                 node.set_label("<<u>" + display_name + "</u>>" if node.get("distinguished") == "True" else display_name)
-            node.set_color(props["color"])
-            node.set_style("filled")
+            node.set_fillcolor(props["fill"])
+            node.set_color(props["stroke"])
+            node.set_style("rounded,filled" if props.get("rounded") else "filled")
 
         for edge in dot.get_edges():
             # see https://graphviz.org/doc/info/attrs.html
@@ -1543,8 +1564,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             primary = str(edge.get("primary")) == "True"
             multi = str(edge.get("multi")) == "True"
             aliased = str(edge.get("aliased")) == "True"
-            # Renamed FK → distinct color; others → the usual translucent black.
-            edge.set_color("#FF8800" if aliased else "#00000040")
+            # Renamed FK → a distinct, desaturated amber consistent with the
+            # modernized palette (#1532); others → a light translucent slate.
+            edge.set_color("#C77D3A" if aliased else "#3A424F33")
             edge.set_style("solid" if primary else "dashed")
             # Line weight encodes cardinality, and only cardinality. `multi` is
             # True when the child has primary-key attributes beyond those this
