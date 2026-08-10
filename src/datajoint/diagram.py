@@ -1629,7 +1629,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 cluster = pydot.Cluster(
                     f"cluster_{schema_name}",
                     label=label,
-                    style="dashed",
+                    style="rounded,dashed",
                     color="gray",
                     fontcolor="gray",
                 )
@@ -1643,11 +1643,15 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
                 grouped = set()
                 for master_name, parts in masters_here.items():
+                    # Subtle rounded shaded background (no dashed frame) — the
+                    # entity grouping should read quietly, not compete with the
+                    # schema box.
                     entity = pydot.Cluster(
                         "cluster_entity_" + master_name.replace(".", "_"),
                         label="",
-                        style="dashed",
-                        color="#C7CDD6",
+                        style="rounded,filled",
+                        fillcolor="#F3F5F8",
+                        color="#F3F5F8",
                     )
                     entity.add_node(node_by_name[master_name])
                     grouped.add(master_name)
