@@ -1688,6 +1688,8 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 cluster = pydot.Cluster(
                     f"cluster_{schema_name}",
                     label=label,
+                    labelloc="t",
+                    labeljust="r",  # schema name in the top-right corner of the cluster
                     style="rounded,dashed",
                     color=sc_color,
                     fontcolor=sc_fontcolor,
