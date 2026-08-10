@@ -1691,6 +1691,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     style="rounded,dashed",
                     color=sc_color,
                     fontcolor=sc_fontcolor,
+                    fontname="Helvetica",  # schema label in a sans font, not Graphviz's Times default
                 )
                 node_by_name = {n.get_name().strip('"'): n for n in nodes}
                 # masters in this schema that have at least one part present
