@@ -1641,6 +1641,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             edge.set_penwidth(0.75 if multi else 2)
             edge.set_weight(1 if multi else 3)
             edge.set_arrowhead("none")
+            # A master→part edge is drawn but must NOT constrain the within-rank
+            # order, so the invisible ordering edges (added per entity below) can
+            # place the part below the master (LR) / to its right (TB).
+            dst = edge.get_destination().strip('"')
+            if dst in part_names and part_master.get(dst) == edge.get_source().strip('"'):
+                edge.set_constraint("false")
 
         # Group nodes into schema clusters (always on)
         if schema_map:
@@ -1704,12 +1710,15 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                         rank = pydot.Subgraph(rank="same")
                         for nm in same_rank:
                             rank.add_node(pydot.Node(nm))
-                        # Pin the within-rank order: master first, then its
-                        # parts. As flat (same-rank) edges, these place the parts
-                        # after the master — below it in LR, to its right in TB —
-                        # rather than leaving the order to Graphviz's heuristic.
+                        # Pin the within-rank order so parts sit below the master
+                        # in LR and to its right in TB. Inside a cluster whose
+                        # master is anchored by external (derivation-chain) edges,
+                        # Graphviz's flat-edge ordering is inverted between the two
+                        # orientations, so the invisible ordering edge direction
+                        # is chosen per rankdir (verified empirically).
                         for a, b in zip(same_rank, same_rank[1:]):
-                            rank.add_edge(pydot.Edge(a, b, style="invis"))
+                            tail, head = (a, b) if direction == "TB" else (b, a)
+                            rank.add_edge(pydot.Edge(tail, head, style="invis"))
                         entity.add_subgraph(rank)
                     cluster.add_subgraph(entity)
 
