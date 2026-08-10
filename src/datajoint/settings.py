@@ -246,10 +246,13 @@ class DisplaySettings(BaseSettings):
         validation_alias="DJ_DIAGRAM_DIRECTION",
         description="Default diagram layout direction: 'TB' (top-to-bottom) or 'LR' (left-to-right)",
     )
-    diagram_theme: Literal["light", "dark"] = Field(
+    diagram_theme: Literal["light", "dark", "auto"] = Field(
         default="light",
         validation_alias="DJ_DIAGRAM_THEME",
-        description="Default diagram color theme: 'light' or 'dark' (dark background with adjusted palette)",
+        description=(
+            "Default diagram color theme: 'light', 'dark' (dark background with adjusted palette), "
+            "or 'auto' (single SVG that adapts to the viewer's light/dark mode)"
+        ),
     )
 
 

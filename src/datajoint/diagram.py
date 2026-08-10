@@ -97,9 +97,51 @@ _DIAGRAM_THEMES = {
         edge_renamed="#D68C4A",
         edge_alpha="C0",
         schema_cluster=("#606875", "#8A93A1"),
-        entity_fill="#1E222B",
+        entity_fill="#2A313D",
     ),
 }
+
+
+def _adaptive_style_block() -> str:
+    """
+    Build a ``<style>`` block that adapts a light-rendered diagram SVG to the
+    viewer's dark mode via ``@media (prefers-color-scheme: dark)`` (#1532).
+
+    The two palettes are collision-free — every light color maps to exactly one
+    role — so a per-color attribute-selector override is unambiguous. Graphviz
+    emits lowercase hex, so selectors are lowercased.
+    """
+    light, dark = _DIAGRAM_THEMES["light"], _DIAGRAM_THEMES["dark"]
+    dark_edge_opacity = round(int(dark["edge_alpha"], 16) / 255, 3)
+    rules = [
+        f"svg {{ background-color: {dark['bg']}; }}",
+        f'polygon[fill="white"] {{ fill: {dark["bg"]}; }}',  # graph canvas
+    ]
+
+    def fill_rule(light_hex, dark_hex):
+        return f'[fill="{light_hex.lower()}"] {{ fill: {dark_hex}; }}'
+
+    def stroke_rule(light_hex, dark_hex, opacity=None):
+        extra = f" stroke-opacity: {opacity};" if opacity is not None else ""
+        return f'[stroke="{light_hex.lower()}"] {{ stroke: {dark_hex};{extra} }}'
+
+    for tier, (lf, ls, lt) in light["palette"].items():
+        df, ds, dt = dark["palette"][tier]
+        rules += [fill_rule(lf, df), stroke_rule(ls, ds), fill_rule(lt, dt)]
+    # edges (share the theme alpha)
+    rules += [
+        stroke_rule(light["edge"], dark["edge"], dark_edge_opacity),
+        stroke_rule(light["edge_renamed"], dark["edge_renamed"], dark_edge_opacity),
+    ]
+    # entity cluster fill + (borderless) stroke, and schema cluster border/label
+    rules += [
+        fill_rule(light["entity_fill"], dark["entity_fill"]),
+        stroke_rule(light["entity_fill"], dark["entity_fill"]),
+        stroke_rule(light["schema_cluster"][0], dark["schema_cluster"][0]),
+        fill_rule(light["schema_cluster"][1], dark["schema_cluster"][1]),
+    ]
+    body = "\n".join("  " + r for r in rules)
+    return "<style>\n@media (prefers-color-scheme: dark) {\n" + body + "\n}\n</style>"
 
 
 class Diagram(nx.MultiDiGraph):  # noqa: C901
@@ -1396,7 +1438,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             copy=False,
         )
 
-    def make_dot(self):
+    def make_dot(self, theme=None):
         """
         Generate a pydot graph object.
 
@@ -1468,9 +1510,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 schema_map[node] = data["schema_name"]
 
         # Select the color theme (#1532). Structure (shape/size/rounded) is
-        # theme-independent; only the fill/stroke/text colors change.
-        theme_name = self._connection._config.display.diagram_theme
-        theme = _DIAGRAM_THEMES.get(theme_name, _DIAGRAM_THEMES["light"])
+        # theme-independent; only the fill/stroke/text colors change. `theme`
+        # (an explicit argument) overrides the configured default; "auto" is
+        # rendered in light colors here and made adaptive at the SVG layer, so
+        # it maps to the light palette.
+        theme_name = theme or self._connection._config.display.diagram_theme
+        theme = _DIAGRAM_THEMES.get(theme_name if theme_name != "auto" else "light", _DIAGRAM_THEMES["light"])
         palette = theme["palette"]
 
         # Build node_props by merging the structural attributes for each tier
@@ -1665,10 +1710,26 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         return dot
 
+    def svg_string(self) -> str:
+        """
+        Render the diagram to an SVG string, honoring the color theme.
+
+        For ``theme="auto"`` the diagram is rendered in light colors and a
+        ``prefers-color-scheme`` style block is injected so a single image
+        adapts to the viewer's light or dark mode. Other themes render directly.
+        """
+        theme_name = self._connection._config.display.diagram_theme
+        if theme_name == "auto":
+            svg = self.make_dot(theme="light").create_svg().decode()
+            # Insert the adaptive style block right after the opening <svg ...>.
+            insert_at = svg.find(">", svg.find("<svg")) + 1
+            return svg[:insert_at] + "\n" + _adaptive_style_block() + svg[insert_at:]
+        return self.make_dot().create_svg().decode()
+
     def make_svg(self):
         from IPython.display import SVG
 
-        return SVG(self.make_dot().create_svg())
+        return SVG(self.svg_string())
 
     def make_png(self):
         return io.BytesIO(self.make_dot().create_png())
