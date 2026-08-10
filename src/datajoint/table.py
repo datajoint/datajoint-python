@@ -1415,7 +1415,19 @@ class Table(QueryExpression):
             # Numeric - convert to string
             elif attr.numeric:
                 value = str(int(value) if isinstance(value, (bool, np.bool_)) else value)
-            # Blob - pass through as bytes (use <blob> for automatic serialization)
+            # Native blob - raw bytes only. Anything else is rejected here rather than
+            # handed to the driver: PyMySQL has no encoder for objects such as ndarray
+            # and falls back to str(value), which stores the text repr of the object
+            # (elided in the middle, for a large array) with no error on insert or on
+            # fetch. Use <blob> for serialization.
+            elif attr.is_blob and attr.codec is None:
+                if not isinstance(value, (bytes, bytearray, memoryview)):
+                    raise DataJointError(
+                        f"Attribute `{name}` is declared as the native binary type "
+                        f"`{attr.type}`, which stores raw bytes, but a value of type "
+                        f"`{type(value).__name__}` was given. Declare the attribute as "
+                        "'<blob>' to store arrays and other Python objects, or pass bytes."
+                    )
 
         return name, placeholder, value
 
