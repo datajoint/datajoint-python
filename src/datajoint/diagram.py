@@ -57,6 +57,10 @@ _TIER_STRUCTURE = {
     Lookup: dict(shape="box", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=True),
     Computed: dict(shape="ellipse", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=False),
     Imported: dict(shape="ellipse", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=False),
+    # A part inherits its master's tier and so has no tier-shape of its own;
+    # historically it was drawn boxless. It nonetheless gets a neutral subtle box
+    # (not a tier shape) so that on the platform each part is a clickable target
+    # that opens the table. Keep the box for that reason.
     Part: dict(shape="box", fontsize=round(_scale * 8), size=0.1 * _scale, fixed=False, rounded=True),
     "collapsed": dict(shape="box3d", fontsize=round(_scale * 10), size=0.5 * _scale, fixed=False, rounded=False),
 }
