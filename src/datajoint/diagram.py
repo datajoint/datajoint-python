@@ -1551,20 +1551,40 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         if theme["bg"]:
             dot.set_bgcolor(theme["bg"])
 
-        # Master↔part grouping (#1532): map each part (class name "Master.Part")
-        # to its master ("Master"), and record which parts depend on a sibling
-        # part so an intra-group chain can descend rather than share a rank.
+        # Master↔part grouping (#1532): map each part to its master, and record
+        # which parts depend on a sibling part so an intra-group chain can
+        # descend rather than share a rank. Nodes may be named either by class
+        # ("Master.Part") when a context resolves them, or by raw table name
+        # ("schema.master__part") otherwise, so the master is found by trying
+        # both suffix conventions against the actual node keys. Everything here
+        # is keyed by the stripped node name (matching the loops below).
+        key_by_stripped = {k.strip('"'): k for k in graph.nodes()}
+
+        def _master_of(part_stripped):
+            candidates = set()
+            if "." in part_stripped:
+                candidates.add(part_stripped.rsplit(".", 1)[0])  # class: Master.Part -> Master
+            if "__" in part_stripped:
+                candidates.add(part_stripped.rsplit("__", 1)[0])  # table: ...master__part -> ...master
+            for candidate in candidates:
+                if candidate in key_by_stripped:
+                    return candidate
+            return None
+
         part_master = {}
         for gname, gdata in graph.nodes(data=True):
             if gdata.get("node_type") is Part:
-                pn = gname.strip('"')
-                part_master[pn] = pn.rsplit(".", 1)[0]
+                part_stripped = gname.strip('"')
+                master_stripped = _master_of(part_stripped)
+                if master_stripped is not None:
+                    part_master[part_stripped] = master_stripped
         part_names = set(part_master)
         depends_on_sibling = set()
-        for pn, mn in part_master.items():
-            for pred in graph.predecessors(f'"{pn}"'):
-                if pred.strip('"') in part_names and part_master.get(pred.strip('"')) == mn:
-                    depends_on_sibling.add(pn)
+        for part_stripped, master_stripped in part_master.items():
+            for pred in graph.predecessors(key_by_stripped[part_stripped]):
+                pred_stripped = pred.strip('"')
+                if pred_stripped in part_names and part_master.get(pred_stripped) == master_stripped:
+                    depends_on_sibling.add(part_stripped)
 
         for node in dot.get_nodes():
             node.set_shape("circle")
