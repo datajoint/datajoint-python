@@ -558,7 +558,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         >>> trace["my_schema.Session"].to_dicts()     # string index → FreeTable
         """
         # Non-trace diagrams: defer to networkx adjacency lookup so existing
-        # `diagram[node_name]` patterns (used in diagram algebra, ERD tests)
+        # `diagram[node_name]` patterns (used in diagram algebra, diagram tests)
         # keep working.
         if getattr(self, "_mode", None) != "trace":
             return super().__getitem__(key)
@@ -1095,15 +1095,17 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         nx.MultiDiGraph
             Graph with nodes relabeled to class names.
         """
-        # mark "distinguished" tables, i.e. those that introduce new primary key
-        # attributes
+        # Mark tables that introduce a new schema dimension, i.e. that add a
+        # primary-key attribute of their own beyond what they inherit through
+        # foreign keys. These are drawn with an underlined label. ("Schema
+        # dimension" / "axis" is the documented term for such a table.)
         # Filter nodes_to_show to only include nodes that exist in the graph
         valid_nodes = self.nodes_to_show.intersection(set(self.nodes()))
         for name in valid_nodes:
             foreign_attributes = set(
                 attr for p in self.in_edges(name, data=True) for attr in p[2]["attr_map"] if p[2]["primary"]
             )
-            self.nodes[name]["distinguished"] = (
+            self.nodes[name]["introduces_dimension"] = (
                 "primary_key" in self.nodes[name] and foreign_attributes < self.nodes[name]["primary_key"]
             )
         # construct subgraph and rename nodes to class names. A MultiDiGraph is
@@ -1513,6 +1515,22 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         self._encapsulate_edge_attributes(graph)
         dot = nx.drawing.nx_pydot.to_pydot(graph)
         dot.set_rankdir(direction)
+
+        # Master↔part grouping (#1532): map each part (class name "Master.Part")
+        # to its master ("Master"), and record which parts depend on a sibling
+        # part so an intra-group chain can descend rather than share a rank.
+        part_master = {}
+        for gname, gdata in graph.nodes(data=True):
+            if gdata.get("node_type") is Part:
+                pn = gname.strip('"')
+                part_master[pn] = pn.rsplit(".", 1)[0]
+        part_names = set(part_master)
+        depends_on_sibling = set()
+        for pn, mn in part_master.items():
+            for pred in graph.predecessors(f'"{pn}"'):
+                if pred.strip('"') in part_names and part_master.get(pred.strip('"')) == mn:
+                    depends_on_sibling.add(pn)
+
         for node in dot.get_nodes():
             node.set_shape("circle")
             name = node.get_name().strip('"')
@@ -1545,12 +1563,17 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     node.set_tooltip("&#13;".join(description))
                 # Strip module prefix from label if it matches the cluster label
                 display_name = name
-                schema_name = schema_map.get(name)
-                if schema_name and "." in name:
-                    cluster_label = cluster_labels.get(schema_name)
-                    if cluster_label and name.startswith(cluster_label + "."):
-                        display_name = name[len(cluster_label) + 1 :]
-                node.set_label("<<u>" + display_name + "</u>>" if node.get("distinguished") == "True" else display_name)
+                if name in part_names:
+                    # The entity cluster carries master membership, so a part
+                    # shows only its own name (`Scan`, not `Acquisition.Scan`).
+                    display_name = name.rsplit(".", 1)[-1]
+                else:
+                    schema_name = schema_map.get(name)
+                    if schema_name and "." in name:
+                        cluster_label = cluster_labels.get(schema_name)
+                        if cluster_label and name.startswith(cluster_label + "."):
+                            display_name = name[len(cluster_label) + 1 :]
+                node.set_label("<<u>" + display_name + "</u>>" if node.get("introduces_dimension") == "True" else display_name)
             node.set_fillcolor(props["fill"])
             node.set_color(props["stroke"])
             node.set_style("rounded,filled" if props.get("rounded") else "filled")
@@ -1595,8 +1618,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                         schemas[schema_name] = []
                     schemas[schema_name].append(node)
 
-            # Create clusters for each schema
-            # Use Python module name if 1:1 mapping, otherwise database schema name
+            # Create clusters for each schema. Within a schema, a master and its
+            # parts are enclosed together in a nested, unlabeled entity cluster
+            # (#1532); master and its parts share a rank so horizontal reads as
+            # derivation and vertical as containment, except a part that depends
+            # on a sibling part, which is left off the rank so the intra-group
+            # chain descends.
             for schema_name, nodes in schemas.items():
                 label = cluster_labels.get(schema_name, schema_name)
                 cluster = pydot.Cluster(
@@ -1606,8 +1633,40 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     color="gray",
                     fontcolor="gray",
                 )
-                for node in nodes:
-                    cluster.add_node(node)
+                node_by_name = {n.get_name().strip('"'): n for n in nodes}
+                # masters in this schema that have at least one part present
+                masters_here = {}
+                for pn in part_names:
+                    mn = part_master[pn]
+                    if pn in node_by_name and mn in node_by_name:
+                        masters_here.setdefault(mn, []).append(pn)
+
+                grouped = set()
+                for master_name, parts in masters_here.items():
+                    entity = pydot.Cluster(
+                        "cluster_entity_" + master_name.replace(".", "_"),
+                        label="",
+                        style="dashed",
+                        color="#C7CDD6",
+                    )
+                    entity.add_node(node_by_name[master_name])
+                    grouped.add(master_name)
+                    same_rank = [node_by_name[master_name].get_name()]
+                    for pn in parts:
+                        entity.add_node(node_by_name[pn])
+                        grouped.add(pn)
+                        if pn not in depends_on_sibling:
+                            same_rank.append(node_by_name[pn].get_name())
+                    if len(same_rank) > 1:
+                        rank = pydot.Subgraph(rank="same")
+                        for nm in same_rank:
+                            rank.add_node(pydot.Node(nm))
+                        entity.add_subgraph(rank)
+                    cluster.add_subgraph(entity)
+
+                for name, node in node_by_name.items():
+                    if name not in grouped:
+                        cluster.add_node(node)
                 dot.add_subgraph(cluster)
 
         return dot
