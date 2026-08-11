@@ -336,6 +336,37 @@ class TestStoreSpec:
         finally:
             dj.config.stores = original_stores
 
+    def test_get_store_spec_s3_without_credentials(self):
+        """s3 no longer requires access_key/secret_key (#1537) — matches gcs/azure."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["test_s3"] = {
+                "protocol": "s3",
+                "endpoint": "s3.amazonaws.com",
+                "bucket": "my-bucket",
+                "location": "prefix",
+            }
+            spec = dj.config.get_store_spec("test_s3")
+            assert spec["protocol"] == "s3"
+            assert "access_key" not in spec and "secret_key" not in spec
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_s3_missing_bucket(self):
+        """endpoint/bucket/location stay required for s3."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["bad_s3"] = {
+                "protocol": "s3",
+                "endpoint": "s3.amazonaws.com",
+                "location": "prefix",
+                # missing bucket
+            }
+            with pytest.raises(DataJointError, match="missing"):
+                dj.config.get_store_spec("bad_s3")
+        finally:
+            dj.config.stores = original_stores
+
     def test_get_store_spec_missing_required(self):
         """Test missing required keys raises error."""
         original_stores = dj.config.stores.copy()
