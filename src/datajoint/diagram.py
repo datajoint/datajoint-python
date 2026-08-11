@@ -1783,19 +1783,33 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         -----
         Layout direction is controlled via ``dj.config.display.diagram_direction``.
         Tables are grouped by schema using Mermaid subgraphs, with the Python
-        module name shown as the group label when available.
+        module name shown as the group label when available. A master and its
+        parts are nested in an inner subgraph, mirroring the Graphviz entity
+        cluster.
+
+        The notation matches the modernized Graphviz renderer (#1532/#1533):
+        the tier palette is shared from ``_DIAGRAM_THEMES["light"]``; edge
+        thickness encodes cardinality (thick = 1:1, thin = one-to-many),
+        **not** primary-vs-secondary; renamed foreign keys are drawn in the
+        theme's amber. Three Graphviz features have no Mermaid equivalent and
+        are omitted: the top-right schema-label placement, the Helvetica font,
+        and the underline marking a dimension-introducing table. Dark mode is
+        left to the Mermaid host's theme rather than emitted inline.
 
         Examples
         --------
         >>> print(dj.Diagram(schema).make_mermaid())
         flowchart TB
-            subgraph my_pipeline
+            classDef manual fill:#E7F3EC,stroke:#2F7D5B,color:#1B5138
+            ...
+            subgraph my_pipeline["my_pipeline"]
                 Mouse[Mouse]:::manual
                 Session[Session]:::manual
                 Neuron([Neuron]):::computed
             end
             Mouse --> Session
             Session --> Neuron
+            linkStyle 0 stroke:#3A424F,stroke-width:1px
         """
         graph = self._make_graph()
         direction = self._connection._config.display.diagram_direction
@@ -1829,87 +1843,113 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             else:
                 cluster_labels[schema_name] = schema_name
 
-        lines = [f"flowchart {direction}"]
+        lines = [f"flowchart {direction}", ""]
 
-        # Define class styles matching Graphviz colors
-        lines.append("    classDef manual fill:#90EE90,stroke:#006400")
-        lines.append("    classDef lookup fill:#D3D3D3,stroke:#696969")
-        lines.append("    classDef computed fill:#FFB6C1,stroke:#8B0000")
-        lines.append("    classDef imported fill:#ADD8E6,stroke:#00008B")
-        lines.append("    classDef part fill:#FFFFFF,stroke:#000000")
-        lines.append("    classDef collapsed fill:#808080,stroke:#404040")
-        lines.append("")
-
-        # Shape mapping: Manual=box, Computed/Imported=stadium, Lookup/Part=box
-        shape_map = {
-            Manual: ("[", "]"),  # box
-            Lookup: ("[", "]"),  # box
-            Computed: ("([", "])"),  # stadium/pill
-            Imported: ("([", "])"),  # stadium/pill
-            Part: ("[", "]"),  # box
-            None: ("((", "))"),  # circle
-        }
-
+        # Tier styles are shared from the modernized Graphviz light theme so the
+        # two renderers speak one palette. Each tuple is (fill, stroke, text).
+        theme = _DIAGRAM_THEMES["light"]
         tier_class = {
             Manual: "manual",
             Lookup: "lookup",
             Computed: "computed",
             Imported: "imported",
             Part: "part",
-            None: "",
+            None: "other",
         }
+        for tier, cls in tier_class.items():
+            fill, stroke, text = theme["palette"][tier]
+            lines.append(f"    classDef {cls} fill:{fill},stroke:{stroke},color:{text}")
+        cf, cs, ct = theme["palette"]["collapsed"]
+        lines.append(f"    classDef collapsed fill:{cf},stroke:{cs},color:{ct}")
+        lines.append("")
+
+        # Shape mapping: Manual/Lookup/Part = box, Computed/Imported = stadium.
+        shape_map = {
+            Manual: ("[", "]"),
+            Lookup: ("[", "]"),
+            Part: ("[", "]"),
+            Computed: ("([", "])"),
+            Imported: ("([", "])"),
+            None: ("((", "))"),
+        }
+
+        def safe(n):
+            return n.replace(".", "_").replace(" ", "_")
+
+        node_data = {n: d for n, d in graph.nodes(data=True)}
+
+        # Identify master-part groups (same convention as the Graphviz entity
+        # cluster) so a master and its parts nest in an inner subgraph.
+        def _master_of(part):
+            for cand in (
+                part.rsplit(".", 1)[0] if "." in part else None,
+                part.rsplit("__", 1)[0] if "__" in part else None,
+            ):
+                if cand is not None and cand in node_data:
+                    return cand
+            return None
+
+        part_master = {n: m for n, d in node_data.items() if d.get("node_type") is Part and (m := _master_of(n)) is not None}
+        parts_of = {}
+        for p, m in part_master.items():
+            parts_of.setdefault(m, []).append(p)
+
+        def node_line(node, data, indent, label):
+            safe_id = safe(node)
+            if data.get("collapsed"):
+                tc = data.get("table_count", 0)
+                txt = f"{tc} tables" if tc != 1 else "1 table"
+                return f'{indent}{safe_id}[["({txt})"]]:::collapsed'
+            tier = data.get("node_type")
+            left, right = shape_map.get(tier, ("[", "]"))
+            cls = tier_class.get(tier, "other")
+            if node in part_master:
+                # part shows only its own name (entity subgraph carries the master)
+                display = node.rsplit(".", 1)[-1]
+            else:
+                display = node[len(label) + 1 :] if ("." in node and node.startswith(label + ".")) else node
+            return f"{indent}{safe_id}{left}{display}{right}:::{cls}"
 
         # Group nodes by schema into subgraphs (including collapsed nodes)
         schemas = {}
-        for node, data in graph.nodes(data=True):
-            if data.get("collapsed"):
-                # Collapsed nodes use their schema_name attribute
-                schema_name = data.get("schema_name")
-            else:
-                schema_name = schema_map.get(node)
+        for node, data in node_data.items():
+            schema_name = data.get("schema_name") if data.get("collapsed") else schema_map.get(node)
             if schema_name:
-                if schema_name not in schemas:
-                    schemas[schema_name] = []
-                schemas[schema_name].append((node, data))
+                schemas.setdefault(schema_name, []).append((node, data))
 
-        # Add nodes grouped by schema subgraphs
         for schema_name, nodes in schemas.items():
             label = cluster_labels.get(schema_name, schema_name)
-            lines.append(f"    subgraph {label}")
+            lines.append(f'    subgraph {safe(schema_name)}["{label}"]')
+            rendered = set()
+            # masters in this schema with their parts nested in an entity subgraph
             for node, data in nodes:
-                safe_id = node.replace(".", "_").replace(" ", "_")
-                if data.get("collapsed"):
-                    # Collapsed node - show only table count
-                    table_count = data.get("table_count", 0)
-                    count_text = f"{table_count} tables" if table_count != 1 else "1 table"
-                    lines.append(f'        {safe_id}[["({count_text})"]]:::collapsed')
-                else:
-                    # Regular node
-                    tier = data.get("node_type")
-                    left, right = shape_map.get(tier, ("[", "]"))
-                    cls = tier_class.get(tier, "")
-                    # Strip module prefix from display name if it matches the cluster label
-                    display_name = node
-                    if "." in node and node.startswith(label + "."):
-                        display_name = node[len(label) + 1 :]
-                    class_suffix = f":::{cls}" if cls else ""
-                    lines.append(f"        {safe_id}{left}{display_name}{right}{class_suffix}")
+                if node in parts_of and node not in rendered:
+                    lines.append(f'        subgraph entity_{safe(node)}[" "]')
+                    lines.append(node_line(node, data, "            ", label))
+                    rendered.add(node)
+                    for p in parts_of[node]:
+                        lines.append(node_line(p, node_data.get(p, {}), "            ", label))
+                        rendered.add(p)
+                    lines.append("        end")
+            # standalone nodes (and any part whose master is elsewhere)
+            for node, data in nodes:
+                if node not in rendered:
+                    lines.append(node_line(node, data, "        ", label))
+                    rendered.add(node)
             lines.append("    end")
 
         lines.append("")
 
-        # Add edges. Enumerate so aliased (renamed) FK edges can be recolored
-        # via linkStyle by their declaration index (Mermaid keys link styles by
-        # the order edges appear). Parallel FKs are separate edges here.
+        # Edges. Enumerate so each edge's linkStyle keys by appearance order
+        # (Mermaid's convention). Parallel FKs are separate edges. Thickness
+        # encodes cardinality (thick = 1:1, thin = one-to-many); renamed FKs
+        # take the theme's amber. Arrows point parent -> child.
         link_styles = []
         for idx, (src, dest, data) in enumerate(graph.edges(data=True)):
-            safe_src = src.replace(".", "_").replace(" ", "_")
-            safe_dest = dest.replace(".", "_").replace(" ", "_")
-            # Solid arrow for primary FK, dotted for non-primary
-            style = "-->" if data.get("primary") else "-.->"
-            lines.append(f"    {safe_src} {style} {safe_dest}")
-            if data.get("aliased"):
-                link_styles.append(f"    linkStyle {idx} stroke:#FF8800")
+            lines.append(f"    {safe(src)} --> {safe(dest)}")
+            color = theme["edge_renamed"] if data.get("aliased") else theme["edge"]
+            width = "1px" if data.get("multi") else "2px"
+            link_styles.append(f"    linkStyle {idx} stroke:{color},stroke-width:{width}")
         lines.extend(link_styles)
 
         return "\n".join(lines)

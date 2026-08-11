@@ -109,3 +109,48 @@ def test_auto_theme_is_adaptive(schema_by_backend):
     assert "@media (prefers-color-scheme: dark)" in svg, "auto theme must inject the adaptive media block"
     # base render is light; the media block maps a light color to its dark counterpart
     assert "#e7f3ec" in svg and "#16281f" in svg, "auto theme must carry both light base and dark override colors"
+
+
+def test_mermaid_matches_modernized_notation(schema_by_backend):
+    """`make_mermaid` speaks the same notation as the Graphviz renderer:
+    shared palette, cardinality-weighted edges, amber renamed FKs, and
+    master-part entity nesting."""
+    if not dj.diagram.diagram_active:
+        pytest.skip("networkx/pydot not available")
+    schema = schema_by_backend
+
+    @schema
+    class Subject(dj.Manual):
+        definition = "subject_id : int32"
+
+    @schema
+    class Scan(dj.Imported):
+        definition = "-> Subject\nscan_id : int32"  # composite PK -> thin edges
+
+        class Field(dj.Part):
+            definition = "-> master\nfield_id : int32"
+
+    @schema
+    class Analysis(dj.Computed):
+        definition = "-> Scan.proj(src_scan='scan_id')"  # renamed FK, whole PK -> thick amber
+
+    ctx = dict(Subject=Subject, Scan=Scan, Analysis=Analysis)
+    mmd = dj.Diagram(schema, context=ctx).make_mermaid()
+
+    # shared light-theme palette (classDefs), not the old bright colors
+    assert "classDef manual fill:#E7F3EC,stroke:#2F7D5B" in mmd
+    assert "classDef computed fill:#FBEAEC,stroke:#B23A48" in mmd
+    assert "#90EE90" not in mmd, "old bright palette must be gone"
+
+    # cardinality edge weights via linkStyle: thick 1:1 and thin one-to-many both present
+    assert "stroke-width:2px" in mmd, "thick (1:1) edge missing"
+    assert "stroke-width:1px" in mmd, "thin (one-to-many) edge missing"
+    # cardinality replaces the old primary/secondary dotted-edge encoding
+    assert "-.->" not in mmd, "edges must not encode primary/secondary as dotted"
+
+    # renamed FK takes the theme's amber; ordinary edges the slate
+    assert "stroke:#C77D3A" in mmd, "renamed-FK amber missing"
+    assert "stroke:#3A424F" in mmd, "ordinary edge slate missing"
+
+    # master-part group nests in an entity subgraph
+    assert "subgraph entity_" in mmd, "master-part entity nesting missing"
