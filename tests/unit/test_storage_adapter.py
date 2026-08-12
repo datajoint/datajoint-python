@@ -1,14 +1,18 @@
 """Tests for the StorageAdapter plugin system."""
 
+import re
+from pathlib import PureWindowsPath
+
 import pytest
 
 import datajoint as dj
+from datajoint import storage
 from datajoint.errors import DataJointError
 from datajoint.storage import StorageBackend
 from datajoint.storage_adapter import (
+    _COMMON_STORE_KEYS,
     StorageAdapter,
     _adapter_registry,
-    _COMMON_STORE_KEYS,
     get_storage_adapter,
 )
 
@@ -193,6 +197,27 @@ class TestStorageBackendPluginDelegation:
         with pytest.raises(DataJointError, match="Unsupported storage protocol"):
             backend.get_url("schema/file.dat")
 
+    def test_file_protocol_full_path_uses_forward_slashes(self, monkeypatch):
+        """`_full_path` must return forward slashes to match fsspec's walk()
+        output (gc.py relies on this for string-prefix stripping)."""
+        # monkeypatch to PureWindowsPath so that the test is platform-independent
+        monkeypatch.setattr(storage, "Path", PureWindowsPath)
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "file", "location": "data\\blobs"}
+        backend.protocol = "file"
+        result = backend._full_path("schema/ab/cd/hash123")
+        assert result == "data/blobs/schema/ab/cd/hash123"
+
+    def test_file_protocol_get_url_no_backslash(self, tmp_path):
+        """`get_url` must produce a valid file:// URL (forward slashes only)
+        on whatever OS the test runs on, including Windows."""
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "file", "location": str(tmp_path)}
+        backend.protocol = "file"
+        result = backend.get_url("schema/ab/cd/hash123")
+        # exactly 3 slashes, no backslash and disregard tmp_path
+        assert re.fullmatch(r"file:///[^/\\][^\\]*/schema/ab/cd/hash123", result)
+
 
 class TestGetStoreSpecPluginDelegation:
     """Tests for plugin protocol handling in Config.get_store_spec()."""
@@ -311,3 +336,61 @@ class TestEntryPointDiscovery:
         assert adapter is not None
         assert sa_mod.get_storage_adapter("bad") is None
         assert any("bad" in rec.message and "boom" in rec.message for rec in caplog.records)
+
+
+class TestS3AmbientCredentials:
+    """s3 stores may omit access_key/secret_key and fall through to the
+    botocore credential chain, matching gcs/azure (#1537)."""
+
+    @staticmethod
+    def _backend(spec):
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "s3", "endpoint": "s3.amazonaws.com", "bucket": "b", **spec}
+        backend.protocol = "s3"
+        backend._fs = None
+        return backend
+
+    def _captured_kwargs(self, monkeypatch, spec):
+        captured = {}
+
+        def fake_filesystem(protocol, **kwargs):
+            captured["protocol"] = protocol
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(storage.fsspec, "filesystem", fake_filesystem)
+        self._backend(spec)._create_filesystem()
+        return captured
+
+    def test_no_credentials_validates(self):
+        # both absent is valid — ambient identity resolves downstream
+        self._backend({})._validate_spec()
+
+    def test_no_credentials_forwards_none(self, monkeypatch):
+        kw = self._captured_kwargs(monkeypatch, {})
+        assert kw["key"] is None and kw["secret"] is None
+
+    def test_both_credentials_forwarded(self, monkeypatch):
+        kw = self._captured_kwargs(monkeypatch, {"access_key": "AK", "secret_key": "SK"})
+        assert kw["key"] == "AK" and kw["secret"] == "SK"
+
+    def test_empty_string_treated_as_absent(self, monkeypatch):
+        # "" survives s3fs's None-filter and botocore reads it as an explicit
+        # (invalid) credential, so it must be coerced to None
+        self._backend({"access_key": "", "secret_key": ""})._validate_spec()
+        kw = self._captured_kwargs(monkeypatch, {"access_key": "", "secret_key": ""})
+        assert kw["key"] is None and kw["secret"] is None
+
+    def test_partial_credentials_rejected(self):
+        with pytest.raises(DataJointError, match="Incomplete S3 credentials"):
+            self._backend({"access_key": "AK"})._validate_spec()
+        with pytest.raises(DataJointError, match="Incomplete S3 credentials"):
+            self._backend({"secret_key": "SK"})._validate_spec()
+
+    def test_missing_endpoint_or_bucket_still_required(self):
+        backend = StorageBackend.__new__(StorageBackend)
+        backend.spec = {"protocol": "s3", "bucket": "b"}  # no endpoint
+        backend.protocol = "s3"
+        backend._fs = None
+        with pytest.raises(DataJointError, match="Missing S3 configuration"):
+            backend._validate_spec()
