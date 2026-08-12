@@ -475,7 +475,7 @@ class Config(BaseSettings):
         # Define required and allowed keys by protocol
         required_keys: dict[str, tuple[str, ...]] = {
             "file": ("protocol", "location"),
-            "s3": ("protocol", "endpoint", "bucket", "access_key", "secret_key", "location"),
+            "s3": ("protocol", "endpoint", "bucket", "location"),
             "gcs": ("protocol", "bucket", "location"),
             "azure": ("protocol", "container", "location"),
         }
