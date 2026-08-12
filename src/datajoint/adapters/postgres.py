@@ -720,6 +720,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """
         return False
 
+    @property
+    def auto_indexes_foreign_keys(self) -> bool:
+        """
+        PostgreSQL never indexes a foreign key's referencing columns
+        automatically, so DataJoint emits an explicit (coverage-aware) index.
+        """
+        return False
+
     # =========================================================================
     # Introspection
     # =========================================================================

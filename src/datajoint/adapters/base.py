@@ -617,6 +617,22 @@ class DatabaseAdapter(ABC):
         """
         return True  # Default for MySQL, override in PostgreSQL
 
+    @property
+    def auto_indexes_foreign_keys(self) -> bool:
+        """
+        Whether this backend implicitly indexes a foreign key's referencing
+        (child) columns as part of enforcing the constraint.
+
+        MySQL/InnoDB does; PostgreSQL does not (and offers no server setting to
+        make it), so DataJoint must emit an explicit index on that backend.
+
+        Returns
+        -------
+        bool
+            True for MySQL, False for PostgreSQL.
+        """
+        return True  # Default for MySQL, override in PostgreSQL
+
     def create_index_ddl(
         self,
         full_table_name: str,

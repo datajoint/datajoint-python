@@ -340,10 +340,21 @@ class StorageBackend:
             if location and not Path(location).is_dir():
                 raise FileNotFoundError(f"Inaccessible local directory {location}")
         elif self.protocol == "s3":
-            required = ["endpoint", "bucket", "access_key", "secret_key"]
+            required = ["endpoint", "bucket"]
             missing = [k for k in required if not self.spec.get(k)]
             if missing:
                 raise errors.DataJointError(f"Missing S3 configuration: {', '.join(missing)}")
+            # access_key/secret_key are optional: when both are absent the
+            # underlying botocore credential chain resolves an ambient identity
+            # (instance profile, IRSA, ECS task role, SSO), matching gcs/azure.
+            # But botocore treats exactly one as a partial credential and fails
+            # late (PartialCredentialsError at first access), so reject that here
+            # with a clear message.
+            if bool(self.spec.get("access_key")) != bool(self.spec.get("secret_key")):
+                raise errors.DataJointError(
+                    "Incomplete S3 credentials: set both access_key and secret_key, "
+                    "or neither to use ambient AWS credentials."
+                )
 
     @property
     def fs(self) -> fsspec.AbstractFileSystem:
@@ -376,10 +387,14 @@ class StorageBackend:
             else:
                 endpoint_url = endpoint
 
+            # Coerce falsy (missing or empty-string) credentials to None so s3fs
+            # drops them and botocore falls through to the default chain. A
+            # forwarded "" is NOT equivalent: it survives s3fs's None-filter and
+            # botocore reads it as an explicit (invalid) credential.
             return fsspec.filesystem(
                 "s3",
-                key=self.spec["access_key"],
-                secret=self.spec["secret_key"],
+                key=self.spec.get("access_key") or None,
+                secret=self.spec.get("secret_key") or None,
                 client_kwargs={"endpoint_url": endpoint_url},
             )
 
