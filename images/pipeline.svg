@@ -1,118 +1,165 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 540"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 700"
      font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
      font-size="22">
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
-            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#666"/>
-    </marker>
-  </defs>
+  <!-- Adaptive theming (dj.Diagram "auto" mode): the figure renders in the
+       light palette by default and remaps to the dark palette under
+       prefers-color-scheme: dark. Colors are unique per role, so attribute
+       selectors override the inline presentation attributes unambiguously;
+       the three whites (page, code panel, part fill) are disambiguated by
+       class since they map to different darks. -->
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #161A21; }
+      .panel { fill: #1E232C; }
+      .part { fill: #1E232C; }
+      /* node fills */
+      [fill="#E7F3EC"] { fill: #16281F; }
+      [fill="#E2ECFA"] { fill: #152538; }
+      [fill="#F2F4F7"] { fill: #242832; }
+      [fill="#FBEAEC"] { fill: #331A1F; }
+      [fill="#F3F5F8"] { fill: #2A313D; }
+      /* strokes (nodes, cluster, edges) */
+      [stroke="#2F7D5B"] { stroke: #4FA97F; }
+      [stroke="#2A5FA5"] { stroke: #5E92D6; }
+      [stroke="#A9B1BD"] { stroke: #8A93A1; }
+      [stroke="#B23A48"] { stroke: #D0687A; }
+      [stroke="#9AA6B8"] { stroke: #7B879B; }
+      [stroke="#E2E6EC"] { stroke: #39414E; }
+      [stroke="#3A424F"] { stroke: #AEB6C2; }
+      /* node text */
+      [fill="#1B5138"] { fill: #BCE6CF; }
+      [fill="#123A6D"] { fill: #C3DAF6; }
+      [fill="#495261"] { fill: #C9CFD9; }
+      [fill="#7C2430"] { fill: #F3C2CB; }
+      [fill="#46536B"] { fill: #C4CCDB; }
+      /* code panel + annotations */
+      [fill="#24292e"] { fill: #c9d1d9; }
+      [fill="#005cc5"] { fill: #79c0ff; }
+      [fill="#6f42c1"] { fill: #d2a8ff; }
+      [fill="#22863a"] { fill: #7ee787; }
+      [fill="#5a5a5a"] { fill: #8b949e; }
+      [stroke="#d0d0d0"] { stroke: #30363d; }
+      [stroke="#bbb"] { stroke: #484f58; }
+      [stroke="#c9ced6"] { stroke: #484f58; }
+    }
+  </style>
 
-  <!-- Opaque white background — keeps the whole illustration legible
-       on any page theme (e.g. GitHub dark-mode README rendering). -->
-  <rect width="100%" height="100%" fill="white"/>
+  <!-- Page background (adaptive; light default keeps GitHub/README legible even
+       where prefers-color-scheme is not honored). -->
+  <rect class="bg" width="100%" height="100%" fill="white"/>
 
-  <!-- ============ LEFT PANEL: Pipeline diagram ============ -->
+  <!-- ============ LEFT PANEL: pipeline diagram (dj.Diagram notation) ============
+       Node styling mirrors the modernized dj.Diagram light theme:
+         Manual   rectangle  fill #E7F3EC stroke #2F7D5B
+         Lookup   rectangle  fill #F2F4F7 stroke #A9B1BD
+         Imported oval       fill #E2ECFA stroke #2A5FA5
+         Computed oval       fill #FBEAEC stroke #B23A48
+         Part     rectangle  fill #FFFFFF stroke #9AA6B8
+       Edge thickness encodes cardinality: thick = 1:1 (the FK is the child's
+       whole primary key), thin = one-to-many. A master and its parts sit in a
+       subtle rounded entity cluster. -->
 
-  <!-- Edges -->
-  <g stroke="#666" stroke-width="1.6" fill="none">
-    <line x1="200" y1="90"  x2="200" y2="118" marker-end="url(#arrow)"/>
-    <line x1="200" y1="160" x2="200" y2="188" marker-end="url(#arrow)"/>
-    <line x1="200" y1="230" x2="200" y2="259" marker-end="url(#arrow)"/>
-    <line x1="215" y1="316" x2="232" y2="352" marker-end="url(#arrow)"/>
-    <line x1="320" y1="310" x2="294" y2="358" marker-end="url(#arrow)"/>
-    <line x1="250" y1="410" x2="250" y2="441" marker-end="url(#arrow)"/>
+  <!-- master-part entity cluster (drawn behind its members) -->
+  <rect x="142" y="350" width="216" height="152" rx="14"
+        fill="#F3F5F8" stroke="#E2E6EC" stroke-width="1.4"/>
+
+  <!-- Edges (no arrowheads — vertical flow implies direction, as dj.Diagram renders) -->
+  <g stroke="#3A424F" fill="none">
+    <line x1="200" y1="84"  x2="200" y2="110" stroke-width="1.4"/>
+    <line x1="200" y1="154" x2="200" y2="180" stroke-width="1.4"/>
+    <line x1="200" y1="224" x2="200" y2="262" stroke-width="3"/>   <!-- Scan->AverageFrame: 1:1, thick -->
+    <line x1="210" y1="316" x2="244" y2="366" stroke-width="1.4"/>
+    <line x1="432" y1="300" x2="304" y2="380" stroke-width="1.4"/>
+    <line x1="250" y1="422" x2="250" y2="448" stroke-width="1.4"/>
   </g>
 
   <!-- Manual: Subject -->
-  <rect x="135" y="50" width="130" height="40" rx="3"
-        fill="#7eca9c" stroke="none"/>
-  <text x="200" y="78" text-anchor="middle" fill="#1a1a1a" font-weight="500">Subject</text>
+  <rect x="135" y="40" width="130" height="44" rx="6" fill="#E7F3EC" stroke="#2F7D5B" stroke-width="1.6"/>
+  <text x="200" y="69" text-anchor="middle" fill="#1B5138" font-weight="600">Subject</text>
 
   <!-- Manual: Session -->
-  <rect x="135" y="120" width="130" height="40" rx="3"
-        fill="#7eca9c" stroke="none"/>
-  <text x="200" y="148" text-anchor="middle" fill="#1a1a1a" font-weight="500">Session</text>
+  <rect x="135" y="110" width="130" height="44" rx="6" fill="#E7F3EC" stroke="#2F7D5B" stroke-width="1.6"/>
+  <text x="200" y="139" text-anchor="middle" fill="#1B5138" font-weight="600">Session</text>
 
   <!-- Manual: Scan -->
-  <rect x="135" y="190" width="130" height="40" rx="3"
-        fill="#7eca9c" stroke="none"/>
-  <text x="200" y="218" text-anchor="middle" fill="#1a1a1a" font-weight="500">Scan</text>
+  <rect x="135" y="180" width="130" height="44" rx="6" fill="#E7F3EC" stroke="#2F7D5B" stroke-width="1.6"/>
+  <text x="200" y="209" text-anchor="middle" fill="#1B5138" font-weight="600">Scan</text>
 
   <!-- Imported: AverageFrame -->
-  <ellipse cx="200" cy="290" rx="90" ry="28"
-           fill="#7eb6ca" stroke="none"/>
-  <text x="200" y="298" text-anchor="middle" fill="#1a1a1a" font-weight="500">AverageFrame</text>
+  <ellipse cx="200" cy="290" rx="94" ry="28" fill="#E2ECFA" stroke="#2A5FA5" stroke-width="1.6"/>
+  <text x="200" y="298" text-anchor="middle" fill="#123A6D" font-weight="600">AverageFrame</text>
 
   <!-- Lookup: SegmentationParams -->
-  <rect x="320" y="270" width="220" height="40" rx="3"
-        fill="#e8e8e8" stroke="none"/>
-  <text x="430" y="298" text-anchor="middle" fill="#1a1a1a" font-weight="500">SegmentationParams</text>
+  <rect x="327" y="256" width="236" height="44" rx="6" fill="#F2F4F7" stroke="#A9B1BD" stroke-width="1.6"/>
+  <text x="445" y="285" text-anchor="middle" fill="#495261" font-weight="600">SegmentationParams</text>
 
-  <!-- Computed: Segmentation (highlighted — origin of zoom callout) -->
-  <ellipse cx="250" cy="380" rx="100" ry="30"
-           fill="#ca7e7e" stroke="none"/>
-  <text x="250" y="388" text-anchor="middle" fill="#1a1a1a" font-weight="600">Segmentation</text>
+  <!-- Computed: Segmentation (master) -->
+  <ellipse cx="250" cy="392" rx="102" ry="30" fill="#FBEAEC" stroke="#B23A48" stroke-width="1.6"/>
+  <text x="250" y="400" text-anchor="middle" fill="#7C2430" font-weight="700">Segmentation</text>
 
-  <!-- Computed: Activity -->
-  <ellipse cx="250" cy="470" rx="74" ry="26"
-           fill="#ca7e7e" stroke="none"/>
-  <text x="250" y="478" text-anchor="middle" fill="#1a1a1a" font-weight="500">Activity</text>
+  <!-- Part: Activity -->
+  <rect class="part" x="176" y="448" width="148" height="42" rx="6" fill="#FFFFFF" stroke="#9AA6B8" stroke-width="1.6"/>
+  <text x="250" y="476" text-anchor="middle" fill="#46536B" font-weight="600">Activity</text>
 
-  <!-- ============ Zoom-in callout ============ -->
-  <g stroke="#999" stroke-width="1" stroke-dasharray="5,4" fill="none">
-    <line x1="340" y1="358" x2="580" y2="80"/>
-    <line x1="340" y1="402" x2="580" y2="470"/>
+  <!-- zoom connectors: the code panel is the Segmentation master-part group -->
+  <g stroke="#c9ced6" stroke-width="1" stroke-dasharray="5,4" fill="none">
+    <line x1="358" y1="356" x2="588" y2="62"/>
+    <line x1="358" y1="496" x2="588" y2="658"/>
   </g>
 
-  <!-- ============ RIGHT PANEL: Code snippet ============ -->
-  <!-- Indentation handled via per-line x offsets:
-       level 0 (no indent): x = 600
-       level 1 (4 spaces):  x = 643
-       level 2 (8 spaces):  x = 686
-       Char width @ 18px monospace ≈ 10.8 -->
-
-  <rect x="580" y="80" width="660" height="390" rx="4"
-        fill="white" stroke="#d0d0d0" stroke-width="1"/>
+  <!-- ============ RIGHT PANEL: code snippet ============
+       Indentation via per-line x offsets @ 16px monospace (~9.6 px/char):
+       L0 x=610, L1 x=648, L2 x=686, L3 x=724 -->
+  <rect class="panel" x="588" y="60" width="627" height="600" rx="6" fill="white" stroke="#d0d0d0" stroke-width="1"/>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-     font-size="18" fill="#24292e">
-    <text x="600" y="112"><tspan fill="#005cc5">@schema</tspan></text>
-    <text x="600" y="136"><tspan fill="#005cc5">class</tspan> <tspan fill="#6f42c1" font-weight="600">Segmentation</tspan>(dj.Computed):</text>
-    <text x="643" y="160">definition = <tspan fill="#22863a">"""</tspan></text>
-    <text x="643" y="184" fill="#22863a">-&gt; AverageFrame</text>
-    <text x="643" y="208" fill="#22863a">-&gt; SegmentationParams</text>
-    <text x="643" y="232" fill="#22863a">---</text>
-    <text x="643" y="256" fill="#22863a">num_cells<tspan dx="11">: int32</tspan></text>
-    <text x="643" y="280" fill="#22863a">cell_masks : &lt;blob@&gt;</text>
-    <text x="643" y="304" fill="#22863a">"""</text>
-    <text x="643" y="352"><tspan fill="#005cc5">def</tspan> <tspan fill="#6f42c1" font-weight="600">make</tspan>(self, key):</text>
-    <text x="686" y="376">frame = (AverageFrame &amp; key).fetch1(<tspan fill="#22863a">'frame'</tspan>)</text>
-    <text x="686" y="400">params = (SegmentationParams &amp; key).fetch1()</text>
-    <text x="686" y="424">masks, n = segment(frame, **params)</text>
-    <text x="686" y="448">self.insert1(dict(key, num_cells=n, cell_masks=masks))</text>
+     font-size="16" fill="#24292e">
+    <text x="610" y="92"><tspan fill="#005cc5">@schema</tspan></text>
+    <text x="610" y="113"><tspan fill="#005cc5">class</tspan> <tspan fill="#6f42c1" font-weight="600">Segmentation</tspan>(dj.Computed):</text>
+    <text x="648" y="134">definition = <tspan fill="#22863a">"""</tspan></text>
+    <text x="648" y="155" fill="#22863a">-&gt; AverageFrame</text>
+    <text x="648" y="176" fill="#22863a">-&gt; SegmentationParams</text>
+    <text x="648" y="197" fill="#22863a">---</text>
+    <text x="648" y="218" fill="#22863a">num_cells : int32</text>
+    <text x="648" y="239" fill="#22863a">"""</text>
+
+    <text x="648" y="281"><tspan fill="#005cc5">class</tspan> <tspan fill="#6f42c1" font-weight="600">Activity</tspan>(dj.Part):</text>
+    <text x="686" y="302">definition = <tspan fill="#22863a">"""</tspan></text>
+    <text x="686" y="323" fill="#22863a">-&gt; master</text>
+    <text x="686" y="344" fill="#22863a">roi_id : int32</text>
+    <text x="686" y="365" fill="#22863a">---</text>
+    <text x="686" y="386" fill="#22863a">cell_mask : &lt;blob@&gt;</text>
+    <text x="686" y="407" fill="#22863a">trace     : &lt;blob@&gt;</text>
+    <text x="686" y="428" fill="#22863a">"""</text>
+
+    <text x="648" y="470"><tspan fill="#005cc5">def</tspan> <tspan fill="#6f42c1" font-weight="600">make</tspan>(self, key):</text>
+    <text x="686" y="491">frame  = (AverageFrame &amp; key).fetch1(<tspan fill="#22863a">'frame'</tspan>)</text>
+    <text x="686" y="512">params = (SegmentationParams &amp; key).fetch1()</text>
+    <text x="686" y="533">masks, traces = segment(frame, **params)</text>
+    <text x="686" y="554">self.insert1(dict(key, num_cells=len(masks)))</text>
+    <text x="686" y="575">self.Activity.insert(</text>
+    <text x="724" y="596">dict(key, roi_id=i, cell_mask=m, trace=t)</text>
+    <text x="724" y="617"><tspan fill="#005cc5">for</tspan> i, (m, t) <tspan fill="#005cc5">in</tspan> enumerate(zip(masks, traces)))</text>
   </g>
 
   <!-- ============ Annotations ============ -->
-  <g font-style="italic" fill="#5a5a5a" font-size="19">
-    <text x="1260" y="112">database link</text>
-    <line x1="1255" y1="107" x2="690" y2="107"
-          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+  <g font-style="italic" fill="#5a5a5a" font-size="18">
+    <text x="1235" y="92">database link</text>
+    <line x1="1230" y1="87" x2="700" y2="87" stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
 
-    <text x="1260" y="136">table name</text>
-    <line x1="1255" y1="131" x2="855" y2="131"
-          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+    <text x="1235" y="113">table name</text>
+    <line x1="1230" y1="108" x2="905" y2="108" stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
 
-    <text x="1260" y="208">dependency</text>
-    <line x1="1255" y1="203" x2="850" y2="203"
-          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+    <text x="1235" y="155">dependency</text>
+    <line x1="1230" y1="150" x2="820" y2="150" stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
 
-    <text x="1260" y="280">object-store attribute</text>
-    <line x1="1255" y1="275" x2="900" y2="275"
-          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+    <text x="1235" y="281">part table</text>
+    <line x1="1230" y1="276" x2="835" y2="276" stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
 
-    <text x="1260" y="400">computation</text>
-    <line x1="1255" y1="395" x2="970" y2="395"
-          stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+    <text x="1235" y="386">object-store attribute</text>
+    <line x1="1230" y1="381" x2="905" y2="381" stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
+
+    <text x="1235" y="491">computation</text>
+    <line x1="1230" y1="486" x2="985" y2="486" stroke="#bbb" stroke-width="0.7" stroke-dasharray="3,3"/>
   </g>
 </svg>

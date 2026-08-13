@@ -47,6 +47,107 @@ except ImportError:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
+# Structural node attributes per tier — shape, sizing, and whether the box has
+# rounded corners. These are theme-independent; only the colors change with the
+# theme. `_scale` matches the historical 1.2 scaling factor for fonts and boxes.
+_scale = 1.2
+_TIER_STRUCTURE = {
+    None: dict(shape="circle", fontsize=round(_scale * 8), size=0.4 * _scale, fixed=False, rounded=False),
+    Manual: dict(shape="box", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=True),
+    Lookup: dict(shape="box", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=True),
+    Computed: dict(shape="ellipse", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=False),
+    Imported: dict(shape="ellipse", fontsize=round(_scale * 10), size=0.4 * _scale, fixed=False, rounded=False),
+    # A part inherits its master's tier and so has no tier-shape of its own;
+    # historically it was drawn boxless. It nonetheless gets a neutral subtle box
+    # (not a tier shape) so that on the platform each part is a clickable target
+    # that opens the table. Keep the box for that reason.
+    Part: dict(shape="box", fontsize=round(_scale * 8), size=0.1 * _scale, fixed=False, rounded=True),
+    "collapsed": dict(shape="box3d", fontsize=round(_scale * 10), size=0.5 * _scale, fixed=False, rounded=False),
+}
+
+# Color themes (#1532). Each tier gets a (fill, stroke, text) triple. Edge colors
+# share a single alpha so a renamed (amber) edge sits at the same visual density
+# as ordinary edges, differing only in hue.
+_DIAGRAM_THEMES = {
+    "light": dict(
+        bg=None,
+        palette={
+            None: ("#FFFDE7", "#C9BC5B", "#6B6420"),
+            Manual: ("#E7F3EC", "#2F7D5B", "#1B5138"),
+            Lookup: ("#F2F4F7", "#A9B1BD", "#495261"),
+            Computed: ("#FBEAEC", "#B23A48", "#7C2430"),
+            Imported: ("#E2ECFA", "#2A5FA5", "#123A6D"),
+            Part: ("#FFFFFF", "#9AA6B8", "#46536B"),
+            "collapsed": ("#EDEEF0", "#808890", "#404040"),
+        },
+        edge="#3A424F",
+        edge_renamed="#C77D3A",
+        edge_alpha="9E",
+        schema_cluster=("gray", "gray"),
+        entity_fill="#F3F5F8",
+    ),
+    "dark": dict(
+        bg="#161A21",
+        palette={
+            None: ("#3A3620", "#C9BC5B", "#EBE3A0"),
+            Manual: ("#16281F", "#4FA97F", "#BCE6CF"),
+            Lookup: ("#242832", "#8A93A1", "#C9CFD9"),
+            Computed: ("#331A1F", "#D0687A", "#F3C2CB"),
+            Imported: ("#152538", "#5E92D6", "#C3DAF6"),
+            Part: ("#1E232C", "#7B879B", "#C4CCDB"),
+            "collapsed": ("#242730", "#8890A0", "#C7CDD6"),
+        },
+        edge="#AEB6C2",
+        edge_renamed="#D68C4A",
+        edge_alpha="C0",
+        schema_cluster=("#606875", "#8A93A1"),
+        entity_fill="#2A313D",
+    ),
+}
+
+
+def _adaptive_style_block() -> str:
+    """
+    Build a ``<style>`` block that adapts a light-rendered diagram SVG to the
+    viewer's dark mode via ``@media (prefers-color-scheme: dark)`` (#1532).
+
+    The two palettes are collision-free — every light color maps to exactly one
+    role — so a per-color attribute-selector override is unambiguous. Graphviz
+    emits lowercase hex, so selectors are lowercased.
+    """
+    light, dark = _DIAGRAM_THEMES["light"], _DIAGRAM_THEMES["dark"]
+    dark_edge_opacity = round(int(dark["edge_alpha"], 16) / 255, 3)
+    rules = [
+        f"svg {{ background-color: {dark['bg']}; }}",
+        f'polygon[fill="white"] {{ fill: {dark["bg"]}; }}',  # graph canvas
+    ]
+
+    def fill_rule(light_hex, dark_hex):
+        return f'[fill="{light_hex.lower()}"] {{ fill: {dark_hex}; }}'
+
+    def stroke_rule(light_hex, dark_hex, opacity=None):
+        extra = f" stroke-opacity: {opacity};" if opacity is not None else ""
+        return f'[stroke="{light_hex.lower()}"] {{ stroke: {dark_hex};{extra} }}'
+
+    for tier, (lf, ls, lt) in light["palette"].items():
+        df, ds, dt = dark["palette"][tier]
+        rules += [fill_rule(lf, df), stroke_rule(ls, ds), fill_rule(lt, dt)]
+    # edges (share the theme alpha)
+    rules += [
+        stroke_rule(light["edge"], dark["edge"], dark_edge_opacity),
+        stroke_rule(light["edge_renamed"], dark["edge_renamed"], dark_edge_opacity),
+    ]
+    # entity cluster fill + (borderless) stroke, and schema cluster border/label
+    rules += [
+        fill_rule(light["entity_fill"], dark["entity_fill"]),
+        stroke_rule(light["entity_fill"], dark["entity_fill"]),
+        stroke_rule(light["schema_cluster"][0], dark["schema_cluster"][0]),
+        fill_rule(light["schema_cluster"][1], dark["schema_cluster"][1]),
+    ]
+    body = "\n".join("  " + r for r in rules)
+    return "<style>\n@media (prefers-color-scheme: dark) {\n" + body + "\n}\n</style>"
+
+
 class Diagram(nx.MultiDiGraph):  # noqa: C901
     """
     Schema diagram as a directed acyclic graph (DAG).
@@ -92,7 +193,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
     Layout direction is controlled via ``dj.config.display.diagram_direction``
     (default ``"TB"``). Use ``dj.config.override()`` to change temporarily::
 
-        with dj.config.override(display_diagram_direction="LR"):
+        with dj.config.override(display__diagram_direction="LR"):
             dj.Diagram(schema).draw()
     """
 
@@ -558,7 +659,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         >>> trace["my_schema.Session"].to_dicts()     # string index → FreeTable
         """
         # Non-trace diagrams: defer to networkx adjacency lookup so existing
-        # `diagram[node_name]` patterns (used in diagram algebra, ERD tests)
+        # `diagram[node_name]` patterns (used in diagram algebra, diagram tests)
         # keep working.
         if getattr(self, "_mode", None) != "trace":
             return super().__getitem__(key)
@@ -1095,15 +1196,17 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         nx.MultiDiGraph
             Graph with nodes relabeled to class names.
         """
-        # mark "distinguished" tables, i.e. those that introduce new primary key
-        # attributes
+        # Mark tables that introduce a new schema dimension, i.e. that add a
+        # primary-key attribute of their own beyond what they inherit through
+        # foreign keys. These are drawn with an underlined label. ("Schema
+        # dimension" / "axis" is the documented term for such a table.)
         # Filter nodes_to_show to only include nodes that exist in the graph
         valid_nodes = self.nodes_to_show.intersection(set(self.nodes()))
         for name in valid_nodes:
             foreign_attributes = set(
                 attr for p in self.in_edges(name, data=True) for attr in p[2]["attr_map"] if p[2]["primary"]
             )
-            self.nodes[name]["distinguished"] = (
+            self.nodes[name]["introduces_dimension"] = (
                 "primary_key" in self.nodes[name] and foreign_attributes < self.nodes[name]["primary_key"]
             )
         # construct subgraph and rename nodes to class names. A MultiDiGraph is
@@ -1339,7 +1442,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             copy=False,
         )
 
-    def make_dot(self):
+    def make_dot(self, theme=None):
         """
         Generate a pydot graph object.
 
@@ -1410,72 +1513,23 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             if data.get("collapsed") and data.get("schema_name"):
                 schema_map[node] = data["schema_name"]
 
-        scale = 1.2  # scaling factor for fonts and boxes
-        label_props = {  # http://matplotlib.org/examples/color/named_colors.html
-            None: dict(
-                shape="circle",
-                color="#FFFF0040",
-                fontcolor="yellow",
-                fontsize=round(scale * 8),
-                size=0.4 * scale,
-                fixed=False,
-            ),
-            Manual: dict(
-                shape="box",
-                color="#00FF0030",
-                fontcolor="darkgreen",
-                fontsize=round(scale * 10),
-                size=0.4 * scale,
-                fixed=False,
-            ),
-            Lookup: dict(
-                shape="plaintext",
-                color="#00000020",
-                fontcolor="black",
-                fontsize=round(scale * 8),
-                size=0.4 * scale,
-                fixed=False,
-            ),
-            Computed: dict(
-                shape="ellipse",
-                color="#FF000020",
-                fontcolor="#7F0000A0",
-                fontsize=round(scale * 10),
-                size=0.4 * scale,
-                fixed=False,
-            ),
-            Imported: dict(
-                shape="ellipse",
-                color="#00007F40",
-                fontcolor="#00007FA0",
-                fontsize=round(scale * 10),
-                size=0.4 * scale,
-                fixed=False,
-            ),
-            Part: dict(
-                shape="plaintext",
-                color="#00000000",
-                fontcolor="black",
-                fontsize=round(scale * 8),
-                size=0.1 * scale,
-                fixed=False,
-            ),
-            "collapsed": dict(
-                shape="box3d",
-                color="#80808060",
-                fontcolor="#404040",
-                fontsize=round(scale * 10),
-                size=0.5 * scale,
-                fixed=False,
-            ),
-        }
-        # Build node_props, handling collapsed nodes specially
+        # Select the color theme (#1532). Structure (shape/size/rounded) is
+        # theme-independent; only the fill/stroke/text colors change. `theme`
+        # (an explicit argument) overrides the configured default; "auto" is
+        # rendered in light colors here and made adaptive at the SVG layer, so
+        # it maps to the light palette.
+        theme_name = theme or self._connection._config.display.diagram_theme
+        theme = _DIAGRAM_THEMES.get(theme_name if theme_name != "auto" else "light", _DIAGRAM_THEMES["light"])
+        palette = theme["palette"]
+
+        # Build node_props by merging the structural attributes for each tier
+        # with the theme's (fill, stroke, text) colors. Collapsed nodes use the
+        # "collapsed" entry.
         node_props = {}
         for node, d in graph.nodes(data=True):
-            if d.get("collapsed"):
-                node_props[node] = label_props["collapsed"]
-            else:
-                node_props[node] = label_props[d["node_type"]]
+            tier = "collapsed" if d.get("collapsed") else d["node_type"]
+            fill, stroke, text = palette[tier]
+            node_props[node] = dict(_TIER_STRUCTURE[tier], fill=fill, stroke=stroke, fontcolor=text)
 
         # A renamed (aliased) FK is drawn as a distinctly-colored edge (there
         # is no longer an intermediate "alias" node); describe the column
@@ -1494,6 +1548,44 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         self._encapsulate_edge_attributes(graph)
         dot = nx.drawing.nx_pydot.to_pydot(graph)
         dot.set_rankdir(direction)
+        if theme["bg"]:
+            dot.set_bgcolor(theme["bg"])
+
+        # Master↔part grouping (#1532): map each part to its master, and record
+        # which parts depend on a sibling part so an intra-group chain can
+        # descend rather than share a rank. Nodes may be named either by class
+        # ("Master.Part") when a context resolves them, or by raw table name
+        # ("schema.master__part") otherwise, so the master is found by trying
+        # both suffix conventions against the actual node keys. Everything here
+        # is keyed by the stripped node name (matching the loops below).
+        key_by_stripped = {k.strip('"'): k for k in graph.nodes()}
+
+        def _master_of(part_stripped):
+            candidates = set()
+            if "." in part_stripped:
+                candidates.add(part_stripped.rsplit(".", 1)[0])  # class: Master.Part -> Master
+            if "__" in part_stripped:
+                candidates.add(part_stripped.rsplit("__", 1)[0])  # table: ...master__part -> ...master
+            for candidate in candidates:
+                if candidate in key_by_stripped:
+                    return candidate
+            return None
+
+        part_master = {}
+        for gname, gdata in graph.nodes(data=True):
+            if gdata.get("node_type") is Part:
+                part_stripped = gname.strip('"')
+                master_stripped = _master_of(part_stripped)
+                if master_stripped is not None:
+                    part_master[part_stripped] = master_stripped
+        part_names = set(part_master)
+        depends_on_sibling = set()
+        for part_stripped, master_stripped in part_master.items():
+            for pred in graph.predecessors(key_by_stripped[part_stripped]):
+                pred_stripped = pred.strip('"')
+                if pred_stripped in part_names and part_master.get(pred_stripped) == master_stripped:
+                    depends_on_sibling.add(part_stripped)
+
         for node in dot.get_nodes():
             node.set_shape("circle")
             name = node.get_name().strip('"')
@@ -1501,10 +1593,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             node.set_fontsize(props["fontsize"])
             node.set_fontcolor(props["fontcolor"])
             node.set_shape(props["shape"])
-            node.set_fontname("arial")
+            node.set_fontname("Helvetica")
             node.set_fixedsize("shape" if props["fixed"] else False)
             node.set_width(props["size"])
             node.set_height(props["size"])
+            node.set_margin("0.11,0.06")  # generous label padding (inches)
 
             # Handle collapsed nodes specially
             node_data = graph.nodes.get(f'"{name}"', {})
@@ -1525,14 +1618,20 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     node.set_tooltip("&#13;".join(description))
                 # Strip module prefix from label if it matches the cluster label
                 display_name = name
-                schema_name = schema_map.get(name)
-                if schema_name and "." in name:
-                    cluster_label = cluster_labels.get(schema_name)
-                    if cluster_label and name.startswith(cluster_label + "."):
-                        display_name = name[len(cluster_label) + 1 :]
-                node.set_label("<<u>" + display_name + "</u>>" if node.get("distinguished") == "True" else display_name)
-            node.set_color(props["color"])
-            node.set_style("filled")
+                if name in part_names:
+                    # The entity cluster carries master membership, so a part
+                    # shows only its own name (`Scan`, not `Acquisition.Scan`).
+                    display_name = name.rsplit(".", 1)[-1]
+                else:
+                    schema_name = schema_map.get(name)
+                    if schema_name and "." in name:
+                        cluster_label = cluster_labels.get(schema_name)
+                        if cluster_label and name.startswith(cluster_label + "."):
+                            display_name = name[len(cluster_label) + 1 :]
+                node.set_label("<<u>" + display_name + "</u>>" if node.get("introduces_dimension") == "True" else display_name)
+            node.set_fillcolor(props["fill"])
+            node.set_color(props["stroke"])
+            node.set_style("rounded,filled" if props.get("rounded") else "filled")
 
         for edge in dot.get_edges():
             # see https://graphviz.org/doc/info/attrs.html
@@ -1543,8 +1642,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             primary = str(edge.get("primary")) == "True"
             multi = str(edge.get("multi")) == "True"
             aliased = str(edge.get("aliased")) == "True"
-            # Renamed FK → distinct color; others → the usual translucent black.
-            edge.set_color("#FF8800" if aliased else "#00000040")
+            # Renamed FK → a distinct, desaturated amber consistent with the
+            # modernized palette (#1532); others → a translucent slate. Both
+            # share the theme's edge alpha so the amber sits at the same visual
+            # density as ordinary edges, differing only in hue.
+            base = theme["edge_renamed"] if aliased else theme["edge"]
+            edge.set_color(base + theme["edge_alpha"])
             edge.set_style("solid" if primary else "dashed")
             # Line weight encodes cardinality, and only cardinality. `multi` is
             # True when the child has primary-key attributes beyond those this
@@ -1573,27 +1676,87 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                         schemas[schema_name] = []
                     schemas[schema_name].append(node)
 
-            # Create clusters for each schema
-            # Use Python module name if 1:1 mapping, otherwise database schema name
+            # Create clusters for each schema. Within a schema, a master and its
+            # parts are enclosed together in a nested, unlabeled entity cluster
+            # (#1532); master and its parts share a rank so horizontal reads as
+            # derivation and vertical as containment, except a part that depends
+            # on a sibling part, which is left off the rank so the intra-group
+            # chain descends.
             for schema_name, nodes in schemas.items():
                 label = cluster_labels.get(schema_name, schema_name)
+                sc_color, sc_fontcolor = theme["schema_cluster"]
                 cluster = pydot.Cluster(
                     f"cluster_{schema_name}",
                     label=label,
-                    style="dashed",
-                    color="gray",
-                    fontcolor="gray",
+                    labelloc="t",
+                    labeljust="r",  # schema name in the top-right corner of the cluster
+                    style="rounded,dashed",
+                    color=sc_color,
+                    fontcolor=sc_fontcolor,
+                    fontname="Helvetica",  # schema label in a sans font, not Graphviz's Times default
                 )
-                for node in nodes:
-                    cluster.add_node(node)
+                node_by_name = {n.get_name().strip('"'): n for n in nodes}
+                # masters in this schema that have at least one part present
+                masters_here = {}
+                for pn in part_names:
+                    mn = part_master[pn]
+                    if pn in node_by_name and mn in node_by_name:
+                        masters_here.setdefault(mn, []).append(pn)
+
+                grouped = set()
+                for master_name, parts in masters_here.items():
+                    # Subtle rounded shaded background (no dashed frame) — the
+                    # entity grouping should read quietly, not compete with the
+                    # schema box.
+                    entity = pydot.Cluster(
+                        "cluster_entity_" + master_name.replace(".", "_"),
+                        label="",
+                        style="rounded,filled",
+                        fillcolor=theme["entity_fill"],
+                        color=theme["entity_fill"],
+                    )
+                    entity.add_node(node_by_name[master_name])
+                    grouped.add(master_name)
+                    same_rank = [node_by_name[master_name].get_name()]
+                    for pn in parts:
+                        entity.add_node(node_by_name[pn])
+                        grouped.add(pn)
+                        if pn not in depends_on_sibling:
+                            same_rank.append(node_by_name[pn].get_name())
+                    if len(same_rank) > 1:
+                        rank = pydot.Subgraph(rank="same")
+                        for nm in same_rank:
+                            rank.add_node(pydot.Node(nm))
+                        entity.add_subgraph(rank)
+                    cluster.add_subgraph(entity)
+
+                for name, node in node_by_name.items():
+                    if name not in grouped:
+                        cluster.add_node(node)
                 dot.add_subgraph(cluster)
 
         return dot
 
+    def svg_string(self) -> str:
+        """
+        Render the diagram to an SVG string, honoring the color theme.
+
+        For ``theme="auto"`` the diagram is rendered in light colors and a
+        ``prefers-color-scheme`` style block is injected so a single image
+        adapts to the viewer's light or dark mode. Other themes render directly.
+        """
+        theme_name = self._connection._config.display.diagram_theme
+        if theme_name == "auto":
+            svg = self.make_dot(theme="light").create_svg().decode()
+            # Insert the adaptive style block right after the opening <svg ...>.
+            insert_at = svg.find(">", svg.find("<svg")) + 1
+            return svg[:insert_at] + "\n" + _adaptive_style_block() + svg[insert_at:]
+        return self.make_dot().create_svg().decode()
+
     def make_svg(self):
         from IPython.display import SVG
 
-        return SVG(self.make_dot().create_svg())
+        return SVG(self.svg_string())
 
     def make_png(self):
         return io.BytesIO(self.make_dot().create_png())
@@ -1620,19 +1783,33 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         -----
         Layout direction is controlled via ``dj.config.display.diagram_direction``.
         Tables are grouped by schema using Mermaid subgraphs, with the Python
-        module name shown as the group label when available.
+        module name shown as the group label when available. A master and its
+        parts are nested in an inner subgraph, mirroring the Graphviz entity
+        cluster.
+
+        The notation matches the modernized Graphviz renderer (#1532/#1533):
+        the tier palette is shared from ``_DIAGRAM_THEMES["light"]``; edge
+        thickness encodes cardinality (thick = 1:1, thin = one-to-many),
+        **not** primary-vs-secondary; renamed foreign keys are drawn in the
+        theme's amber. Three Graphviz features have no Mermaid equivalent and
+        are omitted: the top-right schema-label placement, the Helvetica font,
+        and the underline marking a dimension-introducing table. Dark mode is
+        left to the Mermaid host's theme rather than emitted inline.
 
         Examples
         --------
         >>> print(dj.Diagram(schema).make_mermaid())
         flowchart TB
-            subgraph my_pipeline
+            classDef manual fill:#E7F3EC,stroke:#2F7D5B,color:#1B5138
+            ...
+            subgraph my_pipeline["my_pipeline"]
                 Mouse[Mouse]:::manual
                 Session[Session]:::manual
                 Neuron([Neuron]):::computed
             end
             Mouse --> Session
             Session --> Neuron
+            linkStyle 0 stroke:#3A424F,stroke-width:1px
         """
         graph = self._make_graph()
         direction = self._connection._config.display.diagram_direction
@@ -1666,87 +1843,113 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             else:
                 cluster_labels[schema_name] = schema_name
 
-        lines = [f"flowchart {direction}"]
+        lines = [f"flowchart {direction}", ""]
 
-        # Define class styles matching Graphviz colors
-        lines.append("    classDef manual fill:#90EE90,stroke:#006400")
-        lines.append("    classDef lookup fill:#D3D3D3,stroke:#696969")
-        lines.append("    classDef computed fill:#FFB6C1,stroke:#8B0000")
-        lines.append("    classDef imported fill:#ADD8E6,stroke:#00008B")
-        lines.append("    classDef part fill:#FFFFFF,stroke:#000000")
-        lines.append("    classDef collapsed fill:#808080,stroke:#404040")
-        lines.append("")
-
-        # Shape mapping: Manual=box, Computed/Imported=stadium, Lookup/Part=box
-        shape_map = {
-            Manual: ("[", "]"),  # box
-            Lookup: ("[", "]"),  # box
-            Computed: ("([", "])"),  # stadium/pill
-            Imported: ("([", "])"),  # stadium/pill
-            Part: ("[", "]"),  # box
-            None: ("((", "))"),  # circle
-        }
-
+        # Tier styles are shared from the modernized Graphviz light theme so the
+        # two renderers speak one palette. Each tuple is (fill, stroke, text).
+        theme = _DIAGRAM_THEMES["light"]
         tier_class = {
             Manual: "manual",
             Lookup: "lookup",
             Computed: "computed",
             Imported: "imported",
             Part: "part",
-            None: "",
+            None: "other",
         }
+        for tier, cls in tier_class.items():
+            fill, stroke, text = theme["palette"][tier]
+            lines.append(f"    classDef {cls} fill:{fill},stroke:{stroke},color:{text}")
+        cf, cs, ct = theme["palette"]["collapsed"]
+        lines.append(f"    classDef collapsed fill:{cf},stroke:{cs},color:{ct}")
+        lines.append("")
+
+        # Shape mapping: Manual/Lookup/Part = box, Computed/Imported = stadium.
+        shape_map = {
+            Manual: ("[", "]"),
+            Lookup: ("[", "]"),
+            Part: ("[", "]"),
+            Computed: ("([", "])"),
+            Imported: ("([", "])"),
+            None: ("((", "))"),
+        }
+
+        def safe(n):
+            return n.replace(".", "_").replace(" ", "_")
+
+        node_data = {n: d for n, d in graph.nodes(data=True)}
+
+        # Identify master-part groups (same convention as the Graphviz entity
+        # cluster) so a master and its parts nest in an inner subgraph.
+        def _master_of(part):
+            for cand in (
+                part.rsplit(".", 1)[0] if "." in part else None,
+                part.rsplit("__", 1)[0] if "__" in part else None,
+            ):
+                if cand is not None and cand in node_data:
+                    return cand
+            return None
+
+        part_master = {n: m for n, d in node_data.items() if d.get("node_type") is Part and (m := _master_of(n)) is not None}
+        parts_of = {}
+        for p, m in part_master.items():
+            parts_of.setdefault(m, []).append(p)
+
+        def node_line(node, data, indent, label):
+            safe_id = safe(node)
+            if data.get("collapsed"):
+                tc = data.get("table_count", 0)
+                txt = f"{tc} tables" if tc != 1 else "1 table"
+                return f'{indent}{safe_id}[["({txt})"]]:::collapsed'
+            tier = data.get("node_type")
+            left, right = shape_map.get(tier, ("[", "]"))
+            cls = tier_class.get(tier, "other")
+            if node in part_master:
+                # part shows only its own name (entity subgraph carries the master)
+                display = node.rsplit(".", 1)[-1]
+            else:
+                display = node[len(label) + 1 :] if ("." in node and node.startswith(label + ".")) else node
+            return f"{indent}{safe_id}{left}{display}{right}:::{cls}"
 
         # Group nodes by schema into subgraphs (including collapsed nodes)
         schemas = {}
-        for node, data in graph.nodes(data=True):
-            if data.get("collapsed"):
-                # Collapsed nodes use their schema_name attribute
-                schema_name = data.get("schema_name")
-            else:
-                schema_name = schema_map.get(node)
+        for node, data in node_data.items():
+            schema_name = data.get("schema_name") if data.get("collapsed") else schema_map.get(node)
             if schema_name:
-                if schema_name not in schemas:
-                    schemas[schema_name] = []
-                schemas[schema_name].append((node, data))
+                schemas.setdefault(schema_name, []).append((node, data))
 
-        # Add nodes grouped by schema subgraphs
         for schema_name, nodes in schemas.items():
             label = cluster_labels.get(schema_name, schema_name)
-            lines.append(f"    subgraph {label}")
+            lines.append(f'    subgraph {safe(schema_name)}["{label}"]')
+            rendered = set()
+            # masters in this schema with their parts nested in an entity subgraph
             for node, data in nodes:
-                safe_id = node.replace(".", "_").replace(" ", "_")
-                if data.get("collapsed"):
-                    # Collapsed node - show only table count
-                    table_count = data.get("table_count", 0)
-                    count_text = f"{table_count} tables" if table_count != 1 else "1 table"
-                    lines.append(f'        {safe_id}[["({count_text})"]]:::collapsed')
-                else:
-                    # Regular node
-                    tier = data.get("node_type")
-                    left, right = shape_map.get(tier, ("[", "]"))
-                    cls = tier_class.get(tier, "")
-                    # Strip module prefix from display name if it matches the cluster label
-                    display_name = node
-                    if "." in node and node.startswith(label + "."):
-                        display_name = node[len(label) + 1 :]
-                    class_suffix = f":::{cls}" if cls else ""
-                    lines.append(f"        {safe_id}{left}{display_name}{right}{class_suffix}")
+                if node in parts_of and node not in rendered:
+                    lines.append(f'        subgraph entity_{safe(node)}[" "]')
+                    lines.append(node_line(node, data, "            ", label))
+                    rendered.add(node)
+                    for p in parts_of[node]:
+                        lines.append(node_line(p, node_data.get(p, {}), "            ", label))
+                        rendered.add(p)
+                    lines.append("        end")
+            # standalone nodes (and any part whose master is elsewhere)
+            for node, data in nodes:
+                if node not in rendered:
+                    lines.append(node_line(node, data, "        ", label))
+                    rendered.add(node)
             lines.append("    end")
 
         lines.append("")
 
-        # Add edges. Enumerate so aliased (renamed) FK edges can be recolored
-        # via linkStyle by their declaration index (Mermaid keys link styles by
-        # the order edges appear). Parallel FKs are separate edges here.
+        # Edges. Enumerate so each edge's linkStyle keys by appearance order
+        # (Mermaid's convention). Parallel FKs are separate edges. Thickness
+        # encodes cardinality (thick = 1:1, thin = one-to-many); renamed FKs
+        # take the theme's amber. Arrows point parent -> child.
         link_styles = []
         for idx, (src, dest, data) in enumerate(graph.edges(data=True)):
-            safe_src = src.replace(".", "_").replace(" ", "_")
-            safe_dest = dest.replace(".", "_").replace(" ", "_")
-            # Solid arrow for primary FK, dotted for non-primary
-            style = "-->" if data.get("primary") else "-.->"
-            lines.append(f"    {safe_src} {style} {safe_dest}")
-            if data.get("aliased"):
-                link_styles.append(f"    linkStyle {idx} stroke:#FF8800")
+            lines.append(f"    {safe(src)} --> {safe(dest)}")
+            color = theme["edge_renamed"] if data.get("aliased") else theme["edge"]
+            width = "1px" if data.get("multi") else "2px"
+            link_styles.append(f"    linkStyle {idx} stroke:{color},stroke-width:{width}")
         lines.extend(link_styles)
 
         return "\n".join(lines)
