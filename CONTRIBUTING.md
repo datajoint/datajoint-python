@@ -16,13 +16,13 @@ git clone https://github.com/datajoint/datajoint-python.git
 cd datajoint-python
 
 # Run tests (containers managed automatically)
-pixi run test
+pixi run -e test test
 
 # Run with coverage
-pixi run test-cov
+pixi run -e test test-cov
 
 # Run pre-commit hooks
-pixi run pre-commit run --all-files
+pixi run -e dev pre-commit run --all-files
 ```
 
 ### Alternative: Using pip
@@ -41,8 +41,8 @@ Tests use [testcontainers](https://testcontainers.com/) to automatically manage 
 Integration tests are **backend-parameterized** — tests using the `backend` fixture run automatically against both MySQL and PostgreSQL.
 
 ```bash
-pixi run test                                    # All tests (both backends)
-pixi run test-cov                                # With coverage
+pixi run -e test test                            # All tests (both backends)
+pixi run -e test test-cov                        # With coverage
 pixi run -e test pytest tests/unit/              # Unit tests only
 pixi run -e test pytest tests/integration/test_blob.py -v  # Specific file
 pixi run -e test pytest -m mysql                 # MySQL tests only
@@ -69,12 +69,12 @@ Tests automatically spin up both MySQL and PostgreSQL containers via testcontain
 ```bash
 # MySQL + MinIO
 docker compose up -d db minio
-DJ_USE_EXTERNAL_CONTAINERS=1 pixi run test
+DJ_USE_EXTERNAL_CONTAINERS=1 pixi run -e test test
 docker compose down
 
 # MySQL + PostgreSQL + MinIO
 docker compose up -d db postgres minio
-DJ_USE_EXTERNAL_CONTAINERS=1 pixi run test
+DJ_USE_EXTERNAL_CONTAINERS=1 pixi run -e test test
 docker compose down
 ```
 
@@ -91,8 +91,8 @@ docker compose --profile test up djtest --build
 Hooks run automatically on `git commit`. All must pass.
 
 ```bash
-pixi run pre-commit install              # First time only
-pixi run pre-commit run --all-files      # Run manually
+pixi run -e dev pre-commit install       # First time only
+pixi run -e dev pre-commit run --all-files      # Run manually
 ```
 
 Hooks include: **ruff** (lint/format), **codespell**, YAML/JSON/TOML validation.
@@ -101,9 +101,9 @@ Hooks include: **ruff** (lint/format), **codespell**, YAML/JSON/TOML validation.
 
 ## Before Submitting a PR
 
-1. `pixi run test` — All tests pass
-2. `pixi run pre-commit run --all-files` — Hooks pass
-3. `pixi run test-cov` — Coverage maintained
+1. `pixi run -e test test` — All tests pass
+2. `pixi run -e dev pre-commit run --all-files` — Hooks pass
+3. `pixi run -e test test-cov` — Coverage maintained
 
 ---
 
