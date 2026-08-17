@@ -4,11 +4,17 @@ DataJoint configuration system using pydantic-settings.
 This module provides strongly-typed configuration with automatic loading
 from environment variables, secrets directories, and JSON config files.
 
-Configuration sources (in priority order):
+Configuration sources (highest precedence first):
 
-1. Environment variables (``DJ_*``)
-2. Secrets directories (``.secrets/`` in project, ``/run/secrets/datajoint/``)
+1. Runtime assignment (``dj.config[...] = ...``)
+2. Environment variables (``DJ_*``)
 3. Project config file (``datajoint.json``, searched recursively up to ``.git/.hg``)
+4. Secrets directories (``.secrets/`` in project, ``/run/secrets/datajoint/``)
+5. Built-in defaults
+
+A value set by a higher source is not overridden by a lower one. In particular
+``datajoint.json`` takes precedence over ``.secrets/``: the secrets directory
+only supplies values the config file and environment leave unset.
 
 Examples
 --------
@@ -30,7 +36,7 @@ Project structure::
     ├── datajoint.json      # Project config (commit this)
     ├── .secrets/           # Local secrets (gitignore this)
     │   ├── database.password
-    │   └── aws.secret_access_key
+    │   └── stores.main.secret_key   # one file per setting: database.* or stores.<name>.<attr>
     └── src/
         └── analysis.py     # Config found via parent search
 """
