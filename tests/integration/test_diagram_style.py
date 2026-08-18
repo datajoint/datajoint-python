@@ -175,17 +175,23 @@ def test_theme_text_contrast_meets_aa():
 
 
 def test_adaptive_mapping_is_collision_free():
-    """Every light color maps to exactly one dark counterpart per attribute (#1532 invariant)."""
+    """Every light color maps to exactly one dark counterpart per attribute (#1532 invariant).
+
+    One unified namespace per attribute kind: tier fills and tier texts both emit
+    [fill=...] selectors in the adaptive block, so they must not collide with each
+    other either; entity_fill and the schema-cluster label are fill rules too.
+    """
     light, dark = dj.diagram._DIAGRAM_THEMES["light"], dj.diagram._DIAGRAM_THEMES["dark"]
+    mapping = {}
     for idx, kind in ((0, "fill"), (1, "stroke"), (2, "fill")):
-        mapping = {}
         for tier in light["palette"]:
             lv, dv = light["palette"][tier][idx].lower(), dark["palette"][tier][idx]
             assert mapping.setdefault((kind, lv), dv) == dv, f"collision on {kind} {lv}"
-    strokes = {}
-    for lv, dv in [
-        (light["edge"].lower(), dark["edge"]),
-        (light["edge_renamed"].lower(), dark["edge_renamed"]),
-        (light["schema_cluster"][0].lower(), dark["schema_cluster"][0]),
+    for lkey, dkey, kind in [
+        (light["edge"], dark["edge"], "stroke"),
+        (light["edge_renamed"], dark["edge_renamed"], "stroke"),
+        (light["schema_cluster"][0], dark["schema_cluster"][0], "stroke"),
+        (light["entity_fill"], dark["entity_fill"], "fill"),
+        (light["schema_cluster"][1], dark["schema_cluster"][1], "fill"),
     ]:
-        assert strokes.setdefault(lv, dv) == dv, f"stroke collision on {lv}"
+        assert mapping.setdefault((kind, lkey.lower()), dkey) == dkey, f"collision on {kind} {lkey}"
