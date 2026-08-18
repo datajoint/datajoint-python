@@ -484,10 +484,10 @@ class Heading:
                 in_key=(attr["key"] == "PRI"),
                 nullable=attr["nullable"],  # Already boolean from parse_column_info
                 autoincrement=bool(re.search(r"auto_increment", attr["extra"], flags=re.I)),
-                # NOTE: these use prefix matching, unlike match_type() which requires a
-                # full match. attr["type"] is reported by the server and is not
-                # normalized, so PostgreSQL spellings such as "double precision" and
-                # "timestamp without time zone" are matched on their leading word.
+                # NOTE: .match() here is equivalent to .fullmatch() — every pattern in
+                # these tuples is anchored with $ — so this is not prefix matching.
+                # Server-reported spellings match because the patterns themselves cover
+                # them, not because of the matching mode.
                 numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "NUMERIC", "INTEGER", "FLOAT")),
                 string=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("ENUM", "TEMPORAL", "STRING")),
                 is_blob=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BYTES", "NATIVE_BLOB")),

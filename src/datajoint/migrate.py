@@ -202,8 +202,13 @@ def analyze_columns(schema: Schema) -> dict:
                         logger.warning(
                             f"Column `{col_info['table']}`.`{col_info['column']}` is "
                             "`bigint unsigned` and will be labeled `int64`. DataJoint 2.0 "
-                            "provides no unsigned integer types; values above 2**63-1 do "
-                            "not fit in int64. Verify the stored range before migrating."
+                            "provides no unsigned integer types. The physical column and "
+                            "stored data are unchanged by migration, but `describe()` will "
+                            "report `int64`, so a describe->recreate->copy round trip "
+                            "produces a signed column: values above 2**63-1 do not survive "
+                            "that copy. Verify the stored range before migrating; if the "
+                            "full unsigned range is in use, declare the attribute as "
+                            "decimal(20,0), which holds it losslessly."
                         )
                     result["needs_migration"].append(col_info)
                 # Types that don't need migration (varchar, date, datetime, json, etc.)
