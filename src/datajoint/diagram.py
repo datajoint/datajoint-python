@@ -73,28 +73,34 @@ _DIAGRAM_THEMES = {
         bg=None,
         palette={
             None: ("#FFFDE7", "#C9BC5B", "#6B6420"),
-            Manual: ("#E7F3EC", "#2F7D5B", "#1B5138"),
-            Lookup: ("#F2F4F7", "#A9B1BD", "#495261"),
-            Computed: ("#FBEAEC", "#B23A48", "#7C2430"),
-            Imported: ("#E2ECFA", "#2A5FA5", "#123A6D"),
-            Part: ("#FFFFFF", "#9AA6B8", "#46536B"),
+            Manual: ("#E8F0E9", "#3E7A52", "#28513A"),
+            Lookup: ("#F0F0F1", "#808285", "#5A5C5F"),
+            Computed: ("#FFEDE5", "#FF5113", "#B23200"),
+            Imported: ("#E0F4FC", "#00A0DF", "#00537A"),
+            # Part text is #55585C rather than Lookup's #5A5C5F only so every
+            # light color maps to exactly one role (the adaptive block requires
+            # a collision-free mapping); visually identical.
+            Part: ("#FFFFFF", "#B9BBBE", "#55585C"),
             "collapsed": ("#EDEEF0", "#808890", "#404040"),
         },
-        edge="#3A424F",
+        # Edges and titles are brand navy. The schema-cluster frame is #171D3A —
+        # one step off navy for the same collision-free reason (edge and frame
+        # are both strokes and need distinct dark counterparts).
+        edge="#171C39",
         edge_renamed="#C77D3A",
         edge_alpha="9E",
-        schema_cluster=("gray", "gray"),
+        schema_cluster=("#171D3A", "#171C39"),
         entity_fill="#F3F5F8",
     ),
     "dark": dict(
         bg="#161A21",
         palette={
             None: ("#3A3620", "#C9BC5B", "#EBE3A0"),
-            Manual: ("#16281F", "#4FA97F", "#BCE6CF"),
-            Lookup: ("#242832", "#8A93A1", "#C9CFD9"),
-            Computed: ("#331A1F", "#D0687A", "#F3C2CB"),
-            Imported: ("#152538", "#5E92D6", "#C3DAF6"),
-            Part: ("#1E232C", "#7B879B", "#C4CCDB"),
+            Manual: ("#16281F", "#6BBF94", "#BCE6CF"),
+            Lookup: ("#242832", "#9DA0A4", "#C9CFD9"),
+            Computed: ("#331B12", "#FF7A47", "#FFC7AE"),
+            Imported: ("#0F2433", "#33B8E8", "#BEE7F9"),
+            Part: ("#1E232C", "#8F959D", "#C8CED8"),
             "collapsed": ("#242730", "#8890A0", "#C7CDD6"),
         },
         edge="#AEB6C2",
@@ -1811,7 +1817,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         --------
         >>> print(dj.Diagram(schema).make_mermaid())
         flowchart TB
-            classDef manual fill:#E7F3EC,stroke:#2F7D5B,color:#1B5138
+            classDef manual fill:#E8F0E9,stroke:#3E7A52,color:#28513A
             ...
             subgraph my_pipeline["my_pipeline"]
                 Mouse[Mouse]:::manual
@@ -1820,7 +1826,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             end
             Mouse --> Session
             Session --> Neuron
-            linkStyle 0 stroke:#3A424F,stroke-width:1px
+            linkStyle 0 stroke:#171C39,stroke-width:1px
         """
         graph = self._make_graph()
         direction = self._connection._config.display.diagram_direction
