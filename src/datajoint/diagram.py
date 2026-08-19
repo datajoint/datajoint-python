@@ -1372,19 +1372,39 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             else:
                 new_graph.add_node(new_node, **graph.nodes[old_node])
 
-        # Add edges (avoiding self-loops). Edges touching a collapsed schema
-        # node are merged to a single arrow per node pair (many tables → one
-        # box), but parallel foreign keys between two *expanded* tables (e.g. two
-        # renamed FKs to the same parent) are preserved as distinct edges by key.
+        # Add edges (avoiding self-loops). Edges touching a collapsed node are
+        # merged to a single edge per node pair (many tables → one box), but
+        # parallel foreign keys between two *expanded* tables (e.g. two renamed
+        # FKs to the same parent) are preserved as distinct edges by key.
         for src, dest, key, data in graph.edges(keys=True, data=True):
             new_src = node_mapping[src]
             new_dest = node_mapping[dest]
             if new_src == new_dest:
                 continue
-            touches_collapsed = new_src in collapsed_counts or new_dest in collapsed_counts
-            if touches_collapsed:
-                # Many tables → one schema box: collapse to a single arrow.
+            src_collapsed = new_src in collapsed_counts
+            dest_collapsed = new_dest in collapsed_counts
+            if src_collapsed or dest_collapsed:
+                # At least one endpoint stands for several tables, so several
+                # foreign keys can land on the same node pair; keep one edge.
                 if not new_graph.has_edge(new_src, new_dest):
+                    if src_collapsed and dest_collapsed:
+                        # Both ends are groups: this edge is a *bundle*, standing for
+                        # every foreign key between the two sets of tables. It must
+                        # not carry any single member's per-FK properties --
+                        # cardinality (`multi`), primary-vs-secondary (`primary`) and
+                        # renaming (`aliased`) describe one foreign key and say
+                        # nothing about a set of them. Inheriting them from whichever
+                        # member was visited first made the drawn style depend on
+                        # traversal order. Rendering gives every bundle edge the same
+                        # appearance instead.
+                        #
+                        # Note this is about collapsed *nodes*, not schemas: a
+                        # collapsed node may stand for any subset of tables (e.g.
+                        # `Diagram(schema).collapse() + Diagram(OneTable)`).
+                        data = {k: v for k, v in data.items() if k not in ("primary", "multi", "aliased")}
+                        data["bundle"] = True
+                    # With one end expanded the edge still names a single table, so
+                    # its style stays meaningful and is preserved as-is.
                     new_graph.add_edge(new_src, new_dest, **data)
             else:
                 # Both endpoints expanded: keep each FK as its own keyed edge.
@@ -1656,6 +1676,18 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             # pydot edge — to_pydot stringifies the edge data, so booleans arrive
             # as "True"/"False". This is parallel-edge-safe: each FK between the
             # same pair of tables is its own pydot edge.
+            # A bundle edge is incident to a collapsed node -- one standing for
+            # a set of tables -- and represents every foreign key crossing to the
+            # other end. Cardinality and primary-vs-secondary are properties of an
+            # individual foreign key, so they are not claimed here: every bundle
+            # edge is drawn identically, whatever its members are.
+            if str(edge.get("bundle")) == "True":
+                edge.set_color(theme["edge"] + theme["edge_alpha"])
+                edge.set_style("solid")
+                edge.set_penwidth(2)
+                edge.set_weight(3)
+                edge.set_arrowhead("none")
+                continue
             primary = str(edge.get("primary")) == "True"
             multi = str(edge.get("multi")) == "True"
             aliased = str(edge.get("aliased")) == "True"
@@ -1964,8 +1996,13 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         link_styles = []
         for idx, (src, dest, data) in enumerate(graph.edges(data=True)):
             lines.append(f"    {safe(src)} --> {safe(dest)}")
-            color = theme["edge_renamed"] if data.get("aliased") else theme["edge"]
-            width = "1px" if data.get("multi") else "2px"
+            # Bundle edges (see _apply_collapse) claim no cardinality, so they
+            # all render alike.
+            if data.get("bundle"):
+                color, width = theme["edge"], "2px"
+            else:
+                color = theme["edge_renamed"] if data.get("aliased") else theme["edge"]
+                width = "1px" if data.get("multi") else "2px"
             link_styles.append(f"    linkStyle {idx} stroke:{color},stroke-width:{width}")
         lines.extend(link_styles)
 
