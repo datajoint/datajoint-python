@@ -33,6 +33,18 @@ logger = logging.getLogger(__name__.split(".")[0])
 # Legacy regexp and query kept for reference but no longer used
 
 
+def _substitute_database(ddl: str, database: str) -> str:
+    """Replace the adapter-inserted schema placeholder in DDL.
+
+    Matches the exact quoted fragment produced by the PostgreSQL adapter for
+    enum type qualification (``'"{database}".'`` — see adapters/postgres.py)
+    rather than the bare token, and uses ``str.replace`` rather than
+    ``str.format``, so braces in user-supplied comments and enum values —
+    including a literal ``{database}`` — pass through verbatim.
+    """
+    return ddl.replace('"{database}".', f'"{database}".')
+
+
 @dataclass
 class ValidationResult:
     """
@@ -158,19 +170,19 @@ class Table(QueryExpression):
         # Call declaration hook for validation (subclasses like AutoPopulate can override)
         self._declare_check(primary_key, fk_attribute_map)
 
-        sql = sql.format(database=self.database)
+        sql = _substitute_database(sql, self.database)
         try:
             # Execute pre-DDL statements (e.g., CREATE TYPE for PostgreSQL enums)
             for ddl in pre_ddl:
                 try:
-                    self.connection.query(ddl.format(database=self.database))
+                    self.connection.query(_substitute_database(ddl, self.database))
                 except Exception:
                     # Ignore errors (type may already exist)
                     pass
             self.connection.query(sql)
             # Execute post-DDL statements (e.g., COMMENT ON for PostgreSQL)
             for ddl in post_ddl:
-                self.connection.query(ddl.format(database=self.database))
+                self.connection.query(_substitute_database(ddl, self.database))
         except AccessError:
             # Only suppress if table already exists (idempotent declaration)
             # Otherwise raise - user needs to know about permission issues

@@ -120,6 +120,32 @@ def test_data_types(connection_by_backend, backend, prefix):
 
 
 @pytest.mark.backend_agnostic
+def test_braces_in_comments_by_backend(connection_by_backend, backend, prefix):
+    """Braces in table and attribute comments are literal text on both
+    backends — the MySQL path carries them inline in CREATE TABLE, the
+    PostgreSQL path in post-DDL COMMENT ON statements."""
+    schema = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_braces",
+        connection=connection_by_backend,
+    )
+
+    @schema
+    class BraceCommented(dj.Manual):
+        definition = """
+        # payload spec: {data, config}
+        id : int
+        ---
+        payload = null : varchar(32)   # {data, config} payload
+        """
+
+    assert BraceCommented.is_declared
+    assert BraceCommented.heading["payload"].comment == "{data, config} payload"
+
+    # Cleanup
+    schema.drop()
+
+
+@pytest.mark.backend_agnostic
 def test_table_comments(connection_by_backend, backend, prefix):
     """Test that table comments are preserved on both backends."""
     schema = dj.Schema(
