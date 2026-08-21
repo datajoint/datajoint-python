@@ -617,6 +617,26 @@ class DatabaseAdapter(ABC):
         """
         return True  # Default for MySQL, override in PostgreSQL
 
+    def get_pending_enum_ddl(self, schema_name: str) -> list[str]:
+        """
+        DDL for backend types that must exist before the columns using them,
+        clearing the pending list as it reads.
+
+        Backends that spell column types inline (MySQL) have none. PostgreSQL
+        overrides this to emit CREATE TYPE for enums registered while parsing.
+
+        Parameters
+        ----------
+        schema_name : str
+            Schema used to qualify the type names.
+
+        Returns
+        -------
+        list[str]
+            Empty for MySQL; CREATE TYPE statements for PostgreSQL.
+        """
+        return []
+
     @property
     def supports_column_position(self) -> bool:
         """

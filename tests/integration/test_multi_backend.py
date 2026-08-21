@@ -204,9 +204,25 @@ def test_alter_adds_enum_attribute(connection_by_backend, backend, prefix):
 
     heading = Subject().heading
     assert "status" in heading.names
+    # `type` is the generated type name on PostgreSQL but the full spelling on
+    # MySQL; `original_type` is the definition's own text on both.
+    assert heading["status"].original_type == "enum('active', 'retired', 'transferred')"
 
     # The added column round-trips a value from its own domain.
     Subject.insert1({"subject_id": 1, "species": "mouse", "status": "active"})
     assert (Subject & {"subject_id": 1}).fetch1("status") == "active"
+
+    # Altering again proves the first alter left the type recoverable: describe()
+    # feeds the next alter, so a column whose declared type was not recorded
+    # makes the table permanently un-alterable.
+    Subject.definition = """
+    subject_id : int32
+    ---
+    species : enum('mouse', 'rat')
+    status  : enum('active', 'retired', 'transferred')
+    note = null : varchar(32)
+    """
+    Subject.alter(prompt=False)
+    assert "note" in Subject().heading.names
 
     schema.drop()

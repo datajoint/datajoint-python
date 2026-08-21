@@ -678,7 +678,7 @@ def alter(
     adapter,
     *,
     schema_name: str | None = None,
-) -> tuple[list[str], list[str], list[str]]:
+) -> tuple[list[str], list[str], list[str], dict]:
     """
     Generate SQL ALTER commands for table definition changes.
 
@@ -700,11 +700,15 @@ def alter(
     Returns
     -------
     tuple
-        Three-element tuple:
+        Four-element tuple:
 
         - sql : list[str] - SQL ALTER commands
         - new_stores : list[str] - New external stores used
         - pre_ddl : list[str] - DDL to run before the ALTER (e.g. CREATE TYPE)
+        - column_comments : dict - Comments to reapply after the ALTER. On
+          backends that store them out of line these carry the ``:type:``
+          prefix that ``heading`` reads back as ``original_type``, so skipping
+          them silently loses the declared type of an added attribute.
 
     Raises
     ------
@@ -719,16 +723,13 @@ def alter(
         index_sql,
         external_stores,
         _fk_attribute_map,
-        _column_comments,
+        column_comments,
     ) = prepare_declare(definition, context, adapter)
 
-    # prepare_declare registers backend types (PostgreSQL enums) on the adapter as
-    # a side effect. Drain them here, between the two parses: the old definition's
-    # types already exist in the database, so draining after both would emit
-    # CREATE TYPE for those as well.
-    pre_ddl = []
-    if schema_name and hasattr(adapter, "get_pending_enum_ddl"):
-        pre_ddl.extend(adapter.get_pending_enum_ddl(schema_name))
+    # prepare_declare registers backend types (PostgreSQL enums) on the adapter
+    # as a side effect, so each parse must be drained separately to tell the two
+    # apart. Type names are content hashes, making the statements comparable.
+    new_type_ddl = adapter.get_pending_enum_ddl(schema_name) if schema_name else []
 
     (
         table_comment_,
@@ -741,10 +742,12 @@ def alter(
         _column_comments_,
     ) = prepare_declare(old_definition, context, adapter)
 
-    # Discard what the old definition registered, so it cannot leak into the next
-    # declare() on this adapter (get_pending_enum_ddl clears as it reads).
-    if schema_name and hasattr(adapter, "get_pending_enum_ddl"):
-        adapter.get_pending_enum_ddl(schema_name)
+    # Whatever the old definition registered already exists in the database, so
+    # only the difference needs creating. Draining both also leaves nothing
+    # behind to leak into the next declare() on this adapter, including on the
+    # NotImplementedError paths below.
+    old_type_ddl = set(adapter.get_pending_enum_ddl(schema_name)) if schema_name else set()
+    pre_ddl = [ddl for ddl in new_type_ddl if ddl not in old_type_ddl]
 
     # analyze differences between declarations
     sql = list()
@@ -761,7 +764,7 @@ def alter(
         # For PostgreSQL: would need COMMENT ON TABLE, but that's not an ALTER TABLE clause
         # Keep MySQL syntax for now (ALTER TABLE ... COMMENT="...")
         sql.append(f'COMMENT="{table_comment}"')
-    return sql, [e for e in external_stores if e not in external_stores_], pre_ddl
+    return sql, [e for e in external_stores if e not in external_stores_], pre_ddl, column_comments
 
 
 def _parse_index_args(args: str) -> list[str]:

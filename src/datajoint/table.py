@@ -322,7 +322,7 @@ class Table(QueryExpression):
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
         old_definition = self.describe(context=context)
-        sql, _external_stores, pre_ddl = alter(
+        sql, _external_stores, pre_ddl, column_comments = alter(
             self.definition,
             old_definition,
             context,
@@ -346,10 +346,21 @@ class Table(QueryExpression):
                     for ddl in pre_ddl:
                         try:
                             self.connection.query(_substitute_database(ddl, self.database))
-                        except Exception:
-                            # Ignore errors (type may already exist)
-                            pass
+                        except Exception as error:
+                            # Enum type names are content hashes shared by every
+                            # table in the schema using the same value set, so the
+                            # type may already exist. Logged rather than dropped:
+                            # a genuine failure surfaces on the ALTER below.
+                            logger.debug("pre-DDL skipped (%s): %s", error, ddl)
                     self.connection.query(sql)
+                    # Reapply comments. Where they are stored out of line they
+                    # carry the `:type:` prefix heading reads back as
+                    # original_type, without which describe() loses an added
+                    # attribute's declared type and cannot re-parse the table.
+                    for col_name, comment in column_comments.items():
+                        comment_ddl = self.connection.adapter.column_comment_ddl(self.full_table_name, col_name, comment)
+                        if comment_ddl:
+                            self.connection.query(_substitute_database(comment_ddl, self.database))
                 except AccessError:
                     # skip if no create privilege
                     pass
