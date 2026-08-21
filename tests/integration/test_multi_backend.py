@@ -120,6 +120,32 @@ def test_data_types(connection_by_backend, backend, prefix):
 
 
 @pytest.mark.backend_agnostic
+def test_braces_in_comments_by_backend(connection_by_backend, backend, prefix):
+    """Braces in table and attribute comments are literal text on both
+    backends — the MySQL path carries them inline in CREATE TABLE, the
+    PostgreSQL path in post-DDL COMMENT ON statements."""
+    schema = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_braces",
+        connection=connection_by_backend,
+    )
+
+    @schema
+    class BraceCommented(dj.Manual):
+        definition = """
+        # payload spec: {data, config}
+        id : int
+        ---
+        payload = null : varchar(32)   # {data, config} payload
+        """
+
+    assert BraceCommented.is_declared
+    assert BraceCommented.heading["payload"].comment == "{data, config} payload"
+
+    # Cleanup
+    schema.drop()
+
+
+@pytest.mark.backend_agnostic
 def test_table_comments(connection_by_backend, backend, prefix):
     """Test that table comments are preserved on both backends."""
     schema = dj.Schema(
@@ -140,4 +166,63 @@ def test_table_comments(connection_by_backend, backend, prefix):
     assert Commented.is_declared
 
     # Cleanup
+    schema.drop()
+
+
+@pytest.mark.backend_agnostic
+def test_alter_adds_enum_attribute(connection_by_backend, backend, prefix):
+    """Altering a table to add an enum attribute works on both backends.
+
+    On PostgreSQL an enum column's type is emitted as a schema-qualified
+    placeholder and the type must be created before the ALTER runs, so this
+    exercises both the placeholder substitution and the pre-DDL path.
+    """
+    schema = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_alter_enum",
+        connection=connection_by_backend,
+    )
+
+    @schema
+    class Subject(dj.Manual):
+        definition = """
+        subject_id : int32
+        ---
+        species : enum('mouse', 'rat')
+        """
+
+    assert Subject.is_declared
+
+    # A second enum with different values resolves to a distinct type name, so
+    # the altered column cannot reuse the type created at declaration.
+    Subject.definition = """
+    subject_id : int32
+    ---
+    species : enum('mouse', 'rat')
+    status  : enum('active', 'retired', 'transferred')
+    """
+    Subject.alter(prompt=False)
+
+    heading = Subject().heading
+    assert "status" in heading.names
+    # `type` is the generated type name on PostgreSQL but the full spelling on
+    # MySQL; `original_type` is the definition's own text on both.
+    assert heading["status"].original_type == "enum('active', 'retired', 'transferred')"
+
+    # The added column round-trips a value from its own domain.
+    Subject.insert1({"subject_id": 1, "species": "mouse", "status": "active"})
+    assert (Subject & {"subject_id": 1}).fetch1("status") == "active"
+
+    # Altering again proves the first alter left the type recoverable: describe()
+    # feeds the next alter, so a column whose declared type was not recorded
+    # makes the table permanently un-alterable.
+    Subject.definition = """
+    subject_id : int32
+    ---
+    species : enum('mouse', 'rat')
+    status  : enum('active', 'retired', 'transferred')
+    note = null : varchar(32)
+    """
+    Subject.alter(prompt=False)
+    assert "note" in Subject().heading.names
+
     schema.drop()

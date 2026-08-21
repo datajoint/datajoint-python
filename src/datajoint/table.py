@@ -33,6 +33,18 @@ logger = logging.getLogger(__name__.split(".")[0])
 # Legacy regexp and query kept for reference but no longer used
 
 
+def _substitute_database(ddl: str, database: str) -> str:
+    """Replace the adapter-inserted schema placeholder in DDL.
+
+    Matches the exact quoted fragment produced by the PostgreSQL adapter for
+    enum type qualification (``'"{database}".'`` — see adapters/postgres.py)
+    rather than the bare token, and uses ``str.replace`` rather than
+    ``str.format``, so braces in user-supplied comments and enum values —
+    including a literal ``{database}`` — pass through verbatim.
+    """
+    return ddl.replace('"{database}".', f'"{database}".')
+
+
 @dataclass
 class ValidationResult:
     """
@@ -158,19 +170,19 @@ class Table(QueryExpression):
         # Call declaration hook for validation (subclasses like AutoPopulate can override)
         self._declare_check(primary_key, fk_attribute_map)
 
-        sql = sql.format(database=self.database)
+        sql = _substitute_database(sql, self.database)
         try:
             # Execute pre-DDL statements (e.g., CREATE TYPE for PostgreSQL enums)
             for ddl in pre_ddl:
                 try:
-                    self.connection.query(ddl.format(database=self.database))
+                    self.connection.query(_substitute_database(ddl, self.database))
                 except Exception:
                     # Ignore errors (type may already exist)
                     pass
             self.connection.query(sql)
             # Execute post-DDL statements (e.g., COMMENT ON for PostgreSQL)
             for ddl in post_ddl:
-                self.connection.query(ddl.format(database=self.database))
+                self.connection.query(_substitute_database(ddl, self.database))
         except AccessError:
             # Only suppress if table already exists (idempotent declaration)
             # Otherwise raise - user needs to know about permission issues
@@ -310,15 +322,45 @@ class Table(QueryExpression):
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
         old_definition = self.describe(context=context)
-        sql, _external_stores = alter(self.definition, old_definition, context, self.connection.adapter)
+        sql, _external_stores, pre_ddl, column_comments = alter(
+            self.definition,
+            old_definition,
+            context,
+            self.connection.adapter,
+            schema_name=self.database,
+        )
         if not sql:
             if prompt:
                 logger.warning("Nothing to alter.")
         else:
-            sql = "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql)
+            # Same two steps declare() performs on its own output: substitute the
+            # adapter's schema placeholder, and issue any pre-DDL the attribute
+            # types depend on. The attribute SQL is joined in after the format
+            # call, so it never passes through str.format.
+            sql = _substitute_database(
+                "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql),
+                self.database,
+            )
             if not prompt or user_choice(sql + "\n\nExecute?") == "yes":
                 try:
+                    for ddl in pre_ddl:
+                        try:
+                            self.connection.query(_substitute_database(ddl, self.database))
+                        except Exception as error:
+                            # Enum type names are content hashes shared by every
+                            # table in the schema using the same value set, so the
+                            # type may already exist. Logged rather than dropped:
+                            # a genuine failure surfaces on the ALTER below.
+                            logger.debug("pre-DDL skipped (%s): %s", error, ddl)
                     self.connection.query(sql)
+                    # Reapply comments. Where they are stored out of line they
+                    # carry the `:type:` prefix heading reads back as
+                    # original_type, without which describe() loses an added
+                    # attribute's declared type and cannot re-parse the table.
+                    for col_name, comment in column_comments.items():
+                        comment_ddl = self.connection.adapter.column_comment_ddl(self.full_table_name, col_name, comment)
+                        if comment_ddl:
+                            self.connection.query(_substitute_database(comment_ddl, self.database))
                 except AccessError:
                     # skip if no create privilege
                     pass
