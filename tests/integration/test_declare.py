@@ -470,3 +470,73 @@ class TestSingletonTables:
         # Description should show just the secondary attribute
         assert "info" in description
         # _singleton is hidden, implementation detail
+
+
+def test_native_blob_rejects_non_bytes(schema_any):
+    """
+    A native blob column stores raw bytes. Handing it an object silently stored
+    str(object) before the guard in __make_placeholder; it must raise instead.
+    """
+    import numpy as np
+
+    @schema_any
+    class RawBinary(dj.Manual):
+        definition = """
+        id : int32
+        ---
+        data : longblob
+        """
+
+    with pytest.raises(dj.DataJointError, match="native binary type"):
+        RawBinary.insert1({"id": 1, "data": np.arange(500, dtype="float32")})
+    with pytest.raises(dj.DataJointError, match="native binary type"):
+        RawBinary.insert1({"id": 2, "data": [1, 2, 3]})
+    with pytest.raises(dj.DataJointError, match="native binary type"):
+        RawBinary.insert1({"id": 3, "data": "text"})
+
+    # bytes are what the column is for, and must round-trip untouched
+    RawBinary.insert1({"id": 4, "data": b"\x00\x01\x02"})
+    assert (RawBinary & "id=4").fetch1("data") == b"\x00\x01\x02"
+    assert len(RawBinary()) == 1  # none of the rejected inserts landed
+    RawBinary.drop_quick()
+
+
+def test_bare_blob_datatype(schema_any):
+    """`blob` without a size prefix is a MySQL type in its own right."""
+
+    @schema_any
+    class BareBlob(dj.Manual):
+        definition = """
+        id : int32
+        ---
+        data : blob
+        """
+
+    BareBlob.insert1({"id": 1, "data": b"abc"})
+    assert (BareBlob & "id=1").fetch1("data") == b"abc"
+    BareBlob.drop_quick()
+
+
+def test_decimal_with_modifiers(schema_any):
+    """
+    decimal(M,D) carrying `unsigned`, or spelled with a single argument, was valid in
+    0.14.x and must remain declarable as a native type.
+    """
+    from decimal import Decimal
+
+    @schema_any
+    class Proportion(dj.Manual):
+        definition = """
+        id : int32
+        ---
+        on_proportion  : decimal(2, 2) unsigned
+        scale          : decimal(5)
+        """
+
+    Proportion.insert1({"id": 1, "on_proportion": Decimal("0.25"), "scale": 42})
+    row = (Proportion & "id=1").fetch1()
+    assert row["on_proportion"] == Decimal("0.25")
+    assert int(row["scale"]) == 42
+    # the modified decimal must be recognized as numeric, not fall through as unsupported
+    assert Proportion.heading["on_proportion"].numeric
+    Proportion.drop_quick()

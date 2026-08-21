@@ -64,12 +64,17 @@ TYPE_PATTERN = {
         # Core DataJoint types
         **{name.upper(): pattern for name, (pattern, _) in CORE_TYPES.items()},
         # Native SQL types (passthrough with warning for non-standard use)
-        INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
-        NUMERIC=r"numeric(\s*\(.+\))?(\s+unsigned)?$",  # numeric is SQL alias, use decimal instead
+        INTEGER=r"(((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial)$",
+        # decimal/numeric/dec/fixed are the same SQL type. The canonical core spelling
+        # decimal(M,D) is matched above; anything carrying a modifier or an alias falls
+        # through to here and passes as a native type, as int/float unsigned do.
+        NUMERIC=r"(decimal|numeric|dec|fixed)(\s*\(.+\))?(\s+unsigned)?(\s+zerofill)?$",
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
         STRING=r"(var)?char\s*\(.+\)$",  # Catches char/varchar not matched by core types
         TEMPORAL=r"(time|timestamp|year)(\s*\(.+\))?$",  # time, timestamp, year (not date/datetime)
-        NATIVE_BLOB=r"(tiny|small|medium|long)blob$",  # Specific blob variants
+        # Size prefix is optional: bare `blob` is a MySQL type in its own right, and is
+        # already recognized by migrate.BLOB_TYPES.
+        NATIVE_BLOB=r"(tiny|small|medium|long)?blob$",
         NATIVE_TEXT=r"(tiny|small|medium|long)?text$",  # Native text types (not portable)
         # Codecs use angle brackets
         CODEC=r"<.+>$",
@@ -107,8 +112,12 @@ def match_type(attribute_type: str) -> str:
     DataJointError
         If the type string doesn't match any known pattern.
     """
+    # fullmatch, not match: a declared type must be consumed in its entirety. With
+    # a prefix match, a misspelling such as `int24` or `tinyinteger` classifies as a
+    # native integer and is emitted into the DDL verbatim, so the failure surfaces as
+    # a SQL syntax error from the server rather than as an unsupported-type error here.
     try:
-        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
+        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.fullmatch(attribute_type))
     except StopIteration:
         raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type))
 
@@ -960,6 +969,16 @@ def compile_attribute(
         # Core types and Codecs are recorded in comment for reconstruction
         match["comment"] = ":{type}:{comment}".format(**match)
         substitute_special_type(match, category, foreign_key_sql, context, adapter)
+    elif category == "NATIVE_BLOB":
+        # A native blob is a raw binary column, not a DataJoint blob. Say so plainly:
+        # the generic portability warning below reads as cosmetic, and users migrating
+        # from pre-2.0 expect `longblob` to serialize objects for them.
+        logger.warning(
+            f"Native type '{match['type']}' is used in attribute '{match['name']}'. "
+            "It stores raw bytes only — values are not serialized on write or "
+            "deserialized on read. Use '<blob>' to store arrays and other Python "
+            "objects, or 'bytes' if raw binary is intended."
+        )
     elif category in NATIVE_TYPES:
         # Native type - warn user
         logger.warning(
