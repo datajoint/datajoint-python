@@ -322,14 +322,33 @@ class Table(QueryExpression):
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
         old_definition = self.describe(context=context)
-        sql, _external_stores = alter(self.definition, old_definition, context, self.connection.adapter)
+        sql, _external_stores, pre_ddl = alter(
+            self.definition,
+            old_definition,
+            context,
+            self.connection.adapter,
+            schema_name=self.database,
+        )
         if not sql:
             if prompt:
                 logger.warning("Nothing to alter.")
         else:
-            sql = "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql)
+            # Same two steps declare() performs on its own output: substitute the
+            # adapter's schema placeholder, and issue any pre-DDL the attribute
+            # types depend on. The attribute SQL is joined in after the format
+            # call, so it never passes through str.format.
+            sql = _substitute_database(
+                "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql),
+                self.database,
+            )
             if not prompt or user_choice(sql + "\n\nExecute?") == "yes":
                 try:
+                    for ddl in pre_ddl:
+                        try:
+                            self.connection.query(_substitute_database(ddl, self.database))
+                        except Exception:
+                            # Ignore errors (type may already exist)
+                            pass
                     self.connection.query(sql)
                 except AccessError:
                     # skip if no create privilege

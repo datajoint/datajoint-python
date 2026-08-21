@@ -649,6 +649,10 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
                 else:
                     if idx >= 1 and old_names[idx - 1] != (prev[1] or prev[0]):
                         after = prev[0]
+            if not adapter.supports_column_position:
+                # Without an AFTER clause a reorder-only change has nothing to
+                # emit, so drop the position before it can force a statement.
+                after = None
             if new_def not in old or after:
                 # Determine command type
                 if (old_name or new_name) not in old_names:
@@ -667,7 +671,14 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
     return sql
 
 
-def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple[list[str], list[str]]:
+def alter(
+    definition: str,
+    old_definition: str,
+    context: dict,
+    adapter,
+    *,
+    schema_name: str | None = None,
+) -> tuple[list[str], list[str], list[str]]:
     """
     Generate SQL ALTER commands for table definition changes.
 
@@ -681,14 +692,19 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         Namespace for resolving foreign key references.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    schema_name : str, optional
+        Schema the table lives in. Required to collect pre-DDL for backends that
+        declare column types separately (PostgreSQL enums); omitting it yields an
+        empty ``pre_ddl``.
 
     Returns
     -------
     tuple
-        Two-element tuple:
+        Three-element tuple:
 
         - sql : list[str] - SQL ALTER commands
         - new_stores : list[str] - New external stores used
+        - pre_ddl : list[str] - DDL to run before the ALTER (e.g. CREATE TYPE)
 
     Raises
     ------
@@ -705,6 +721,15 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         _fk_attribute_map,
         _column_comments,
     ) = prepare_declare(definition, context, adapter)
+
+    # prepare_declare registers backend types (PostgreSQL enums) on the adapter as
+    # a side effect. Drain them here, between the two parses: the old definition's
+    # types already exist in the database, so draining after both would emit
+    # CREATE TYPE for those as well.
+    pre_ddl = []
+    if schema_name and hasattr(adapter, "get_pending_enum_ddl"):
+        pre_ddl.extend(adapter.get_pending_enum_ddl(schema_name))
+
     (
         table_comment_,
         primary_key_,
@@ -715,6 +740,11 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         _fk_attribute_map_,
         _column_comments_,
     ) = prepare_declare(old_definition, context, adapter)
+
+    # Discard what the old definition registered, so it cannot leak into the next
+    # declare() on this adapter (get_pending_enum_ddl clears as it reads).
+    if schema_name and hasattr(adapter, "get_pending_enum_ddl"):
+        adapter.get_pending_enum_ddl(schema_name)
 
     # analyze differences between declarations
     sql = list()
@@ -731,7 +761,7 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         # For PostgreSQL: would need COMMENT ON TABLE, but that's not an ALTER TABLE clause
         # Keep MySQL syntax for now (ALTER TABLE ... COMMENT="...")
         sql.append(f'COMMENT="{table_comment}"')
-    return sql, [e for e in external_stores if e not in external_stores_]
+    return sql, [e for e in external_stores if e not in external_stores_], pre_ddl
 
 
 def _parse_index_args(args: str) -> list[str]:

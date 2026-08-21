@@ -167,3 +167,46 @@ def test_table_comments(connection_by_backend, backend, prefix):
 
     # Cleanup
     schema.drop()
+
+
+@pytest.mark.backend_agnostic
+def test_alter_adds_enum_attribute(connection_by_backend, backend, prefix):
+    """Altering a table to add an enum attribute works on both backends.
+
+    On PostgreSQL an enum column's type is emitted as a schema-qualified
+    placeholder and the type must be created before the ALTER runs, so this
+    exercises both the placeholder substitution and the pre-DDL path.
+    """
+    schema = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_alter_enum",
+        connection=connection_by_backend,
+    )
+
+    @schema
+    class Subject(dj.Manual):
+        definition = """
+        subject_id : int32
+        ---
+        species : enum('mouse', 'rat')
+        """
+
+    assert Subject.is_declared
+
+    # A second enum with different values resolves to a distinct type name, so
+    # the altered column cannot reuse the type created at declaration.
+    Subject.definition = """
+    subject_id : int32
+    ---
+    species : enum('mouse', 'rat')
+    status  : enum('active', 'retired', 'transferred')
+    """
+    Subject.alter(prompt=False)
+
+    heading = Subject().heading
+    assert "status" in heading.names
+
+    # The added column round-trips a value from its own domain.
+    Subject.insert1({"subject_id": 1, "species": "mouse", "status": "active"})
+    assert (Subject & {"subject_id": 1}).fetch1("status") == "active"
+
+    schema.drop()

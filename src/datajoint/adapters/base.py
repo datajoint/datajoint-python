@@ -618,6 +618,21 @@ class DatabaseAdapter(ABC):
         return True  # Default for MySQL, override in PostgreSQL
 
     @property
+    def supports_column_position(self) -> bool:
+        """
+        Whether ALTER TABLE can place a column at a position (``AFTER x``).
+
+        MySQL supports it. PostgreSQL has no such clause and always appends,
+        so the position is dropped rather than emitted.
+
+        Returns
+        -------
+        bool
+            True for MySQL, False for PostgreSQL.
+        """
+        return True  # Default for MySQL, override in PostgreSQL
+
+    @property
     def auto_indexes_foreign_keys(self) -> bool:
         """
         Whether this backend implicitly indexes a foreign key's referencing
