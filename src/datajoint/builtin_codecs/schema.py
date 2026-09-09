@@ -28,6 +28,11 @@ class SchemaCodec(Codec, register=False):
         - ``_build_path()``: Construct storage path from context
         - ``_get_backend()``: Get storage backend by name
 
+    Both helpers take a ``config`` and fall back to the global ``dj.config``
+    without one. Read it off ``key["_config"]`` and pass it through, as below: it
+    is the calling connection's config, and in a process holding connections for
+    several users the global one belongs to none of them.
+
     Comparison with Hash-addressed:
         - **Schema-addressed** (this): Path from schema structure, no dedup
         - **Hash-addressed**: Path from content hash, automatic dedup
@@ -39,13 +44,18 @@ class SchemaCodec(Codec, register=False):
 
             def encode(self, value, *, key=None, store_name=None):
                 schema, table, field, pk = self._extract_context(key)
-                path, _ = self._build_path(schema, table, field, pk, ext=".dat")
-                backend = self._get_backend(store_name)
+                config = (key or {}).get("_config")
+                path, _ = self._build_path(
+                    schema, table, field, pk, ext=".dat",
+                    store_name=store_name, config=config,
+                )
+                backend = self._get_backend(store_name, config=config)
                 backend.put_buffer(serialize(value), path)
                 return {"path": path, "store": store_name, ...}
 
             def decode(self, stored, *, key=None):
-                backend = self._get_backend(stored.get("store"))
+                config = (key or {}).get("_config")
+                backend = self._get_backend(stored.get("store"), config=config)
                 return MyRef(stored, backend)
 
     See Also
