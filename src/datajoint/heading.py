@@ -484,7 +484,11 @@ class Heading:
                 in_key=(attr["key"] == "PRI"),
                 nullable=attr["nullable"],  # Already boolean from parse_column_info
                 autoincrement=bool(re.search(r"auto_increment", attr["extra"], flags=re.I)),
-                numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "INTEGER", "FLOAT")),
+                # NOTE: .match() here is equivalent to .fullmatch() — every pattern in
+                # these tuples is anchored with $ — so this is not prefix matching.
+                # Server-reported spellings match because the patterns themselves cover
+                # them, not because of the matching mode.
+                numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "NUMERIC", "INTEGER", "FLOAT")),
                 string=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("ENUM", "TEMPORAL", "STRING")),
                 is_blob=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BYTES", "NATIVE_BLOB")),
                 uuid=False,

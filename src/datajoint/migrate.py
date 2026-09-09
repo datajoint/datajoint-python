@@ -61,18 +61,25 @@ BLOB_TYPES = re.compile(r"^(tiny|small|medium|long|)blob$", re.I)
 # Column Type Migration (Phase 2)
 # =============================================================================
 
-# Mapping from MySQL native types to DataJoint core types
+# Mapping from MySQL native types to DataJoint core types.
+#
+# Every value here must be a type that `declare.match_type` accepts: the values are
+# written into column comments as `:<value>:` markers and read back by
+# `heading.Heading._init_from_database`. DataJoint 2.0 provides no unsigned integer
+# types, so unsigned columns widen to the next signed type that holds their full range.
+# See `test_migrate_core_types_are_declarable` for the assertion that enforces this.
 NATIVE_TO_CORE_TYPE = {
-    # Unsigned integers
-    "tinyint unsigned": "uint8",
-    "smallint unsigned": "uint16",
-    "mediumint unsigned": "uint24",
-    "int unsigned": "uint32",
-    "bigint unsigned": "uint64",
+    # Unsigned integers widen to the next signed type. bigint unsigned is the one case
+    # with no lossless target: values above 2**63-1 do not fit in int64.
+    "tinyint unsigned": "int16",
+    "smallint unsigned": "int32",
+    "mediumint unsigned": "int32",
+    "int unsigned": "int64",
+    "bigint unsigned": "int64",
     # Signed integers
     "tinyint": "int8",
     "smallint": "int16",
-    "mediumint": "int24",
+    "mediumint": "int32",  # int24 is not a core type
     "int": "int32",
     "bigint": "int64",
     # Floats
@@ -191,6 +198,18 @@ def analyze_columns(schema: Schema) -> dict:
                 # Handle numeric types
                 elif lookup_type in NATIVE_TO_CORE_TYPE:
                     col_info["core_type"] = NATIVE_TO_CORE_TYPE[lookup_type]
+                    if lookup_type == "bigint unsigned":
+                        logger.warning(
+                            f"Column `{col_info['table']}`.`{col_info['column']}` is "
+                            "`bigint unsigned` and will be labeled `int64`. DataJoint 2.0 "
+                            "provides no unsigned integer types. The physical column and "
+                            "stored data are unchanged by migration, but `describe()` will "
+                            "report `int64`, so a describe->recreate->copy round trip "
+                            "produces a signed column: values above 2**63-1 do not survive "
+                            "that copy. Verify the stored range before migrating; if the "
+                            "full unsigned range is in use, declare the attribute as "
+                            "decimal(20,0), which holds it losslessly."
+                        )
                     result["needs_migration"].append(col_info)
                 # Types that don't need migration (varchar, date, datetime, json, etc.)
                 # are silently skipped
@@ -211,7 +230,7 @@ def migrate_columns(
 
     Migrates:
 
-    - Numeric types: int unsigned → :uint32:, smallint → :int16:, etc.
+    - Numeric types: int unsigned → :int64:, smallint → :int16:, etc.
     - Blob types: longblob → :<blob>:
 
     Does NOT migrate external storage columns (external-*, attach@*,
