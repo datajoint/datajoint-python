@@ -721,6 +721,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
         return False
 
     @property
+    def supports_column_position(self) -> bool:
+        """
+        PostgreSQL has no ``AFTER`` clause in ALTER TABLE; added columns are
+        always appended.
+        """
+        return False
+
+    @property
     def auto_indexes_foreign_keys(self) -> bool:
         """
         PostgreSQL never indexes a foreign key's referencing columns

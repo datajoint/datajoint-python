@@ -236,6 +236,24 @@ def test_descendants_only_contain_part_table(schema_any):
     ]
 
 
+def test_braces_in_comments(schema_any):
+    """Braces in table and attribute comments are literal text, not
+    str.format template fields."""
+
+    class BraceComment(dj.Manual):
+        definition = """
+        # payload spec: {data, config}
+        brace_id : int
+        ---
+        payload = null : varchar(32)   # {data, config} payload
+        note = null : varchar(64)      # mentions {database} literally
+        """
+
+    schema_any(BraceComment, context=dict(BraceComment=BraceComment))
+    assert BraceComment.heading["payload"].comment == "{data, config} payload"
+    assert BraceComment.heading["note"].comment == "mentions {database} literally"
+
+
 def test_bad_attribute_name(schema_any):
     class BadName(dj.Manual):
         definition = """
