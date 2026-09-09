@@ -649,6 +649,10 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
                 else:
                     if idx >= 1 and old_names[idx - 1] != (prev[1] or prev[0]):
                         after = prev[0]
+            if not adapter.supports_column_position:
+                # Without an AFTER clause a reorder-only change has nothing to
+                # emit, so drop the position before it can force a statement.
+                after = None
             if new_def not in old or after:
                 # Determine command type
                 if (old_name or new_name) not in old_names:
@@ -667,7 +671,14 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
     return sql
 
 
-def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple[list[str], list[str]]:
+def alter(
+    definition: str,
+    old_definition: str,
+    context: dict,
+    adapter,
+    *,
+    schema_name: str | None = None,
+) -> tuple[list[str], list[str], list[str], dict]:
     """
     Generate SQL ALTER commands for table definition changes.
 
@@ -681,14 +692,23 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         Namespace for resolving foreign key references.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    schema_name : str, optional
+        Schema the table lives in. Required to collect pre-DDL for backends that
+        declare column types separately (PostgreSQL enums); omitting it yields an
+        empty ``pre_ddl``.
 
     Returns
     -------
     tuple
-        Two-element tuple:
+        Four-element tuple:
 
         - sql : list[str] - SQL ALTER commands
         - new_stores : list[str] - New external stores used
+        - pre_ddl : list[str] - DDL to run before the ALTER (e.g. CREATE TYPE)
+        - column_comments : dict - Comments to reapply after the ALTER. On
+          backends that store them out of line these carry the ``:type:``
+          prefix that ``heading`` reads back as ``original_type``, so skipping
+          them silently loses the declared type of an added attribute.
 
     Raises
     ------
@@ -703,8 +723,14 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         index_sql,
         external_stores,
         _fk_attribute_map,
-        _column_comments,
+        column_comments,
     ) = prepare_declare(definition, context, adapter)
+
+    # prepare_declare registers backend types (PostgreSQL enums) on the adapter
+    # as a side effect, so each parse must be drained separately to tell the two
+    # apart. Type names are content hashes, making the statements comparable.
+    new_type_ddl = adapter.get_pending_enum_ddl(schema_name) if schema_name else []
+
     (
         table_comment_,
         primary_key_,
@@ -715,6 +741,13 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         _fk_attribute_map_,
         _column_comments_,
     ) = prepare_declare(old_definition, context, adapter)
+
+    # Whatever the old definition registered already exists in the database, so
+    # only the difference needs creating. Draining both also leaves nothing
+    # behind to leak into the next declare() on this adapter, including on the
+    # NotImplementedError paths below.
+    old_type_ddl = set(adapter.get_pending_enum_ddl(schema_name)) if schema_name else set()
+    pre_ddl = [ddl for ddl in new_type_ddl if ddl not in old_type_ddl]
 
     # analyze differences between declarations
     sql = list()
@@ -731,7 +764,7 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         # For PostgreSQL: would need COMMENT ON TABLE, but that's not an ALTER TABLE clause
         # Keep MySQL syntax for now (ALTER TABLE ... COMMENT="...")
         sql.append(f'COMMENT="{table_comment}"')
-    return sql, [e for e in external_stores if e not in external_stores_]
+    return sql, [e for e in external_stores if e not in external_stores_], pre_ddl, column_comments
 
 
 def _parse_index_args(args: str) -> list[str]:
