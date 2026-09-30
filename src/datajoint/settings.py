@@ -312,6 +312,31 @@ class JobsSettings(BaseSettings):
     )
 
 
+class ProvenanceSettings(BaseSettings):
+    """Extrinsic provenance capture at pipeline entry points."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="DJ_PROVENANCE_",
+        case_sensitive=False,
+        extra="forbid",
+        validate_assignment=True,
+    )
+
+    capture: bool = Field(
+        default=True,
+        description="Add the hidden `_prov` attribute to Entry (dj.Manual) tables at declaration "
+        "and fill it on insert. Tables declared while this is False never receive the column; "
+        "use datajoint.migrate.add_prov_column to add it to an existing table.",
+    )
+    source: dict[str, Any] = Field(
+        default_factory=dict,
+        description="External source identity recorded on every row this process enters, e.g. "
+        "{'system': 'PyRat', 'endpoint': 'https://...'}. Set per deployment via "
+        "DJ_PROVENANCE_SOURCE (as JSON), the config file, or the secrets directory. "
+        "No author supplies this at the insert call site.",
+    )
+
+
 class Config(BaseSettings):
     """
     Main DataJoint configuration.
@@ -348,6 +373,7 @@ class Config(BaseSettings):
     connection: ConnectionSettings = Field(default_factory=ConnectionSettings)
     display: DisplaySettings = Field(default_factory=DisplaySettings)
     jobs: JobsSettings = Field(default_factory=JobsSettings)
+    provenance: ProvenanceSettings = Field(default_factory=ProvenanceSettings)
 
     # Unified stores configuration (replaces external and object_storage)
     # ``validation_alias`` redirects pydantic-settings' env source away from the

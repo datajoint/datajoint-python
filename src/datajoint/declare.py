@@ -12,6 +12,7 @@ import re
 
 import pyparsing as pp
 
+from . import provenance
 from .codecs import lookup_codec
 from .condition import translate_attribute
 from .errors import DataJointError
@@ -520,6 +521,13 @@ def declare(
         if is_computed or is_imported:
             job_metadata_sql = adapter.job_metadata_columns()
             attribute_sql.extend(job_metadata_sql)
+
+    # Add the hidden extrinsic-provenance slot to Entry tables, where rows enter
+    # from outside the pipeline.  Computed and Imported tables have no use for
+    # it -- their provenance is entailed by the foreign-key graph -- and a part
+    # inherits its master's.
+    if config.provenance.capture and provenance.is_entry_table(table_name):
+        attribute_sql.extend(adapter.provenance_columns())
 
     if not primary_key:
         # Singleton table: add hidden sentinel attribute

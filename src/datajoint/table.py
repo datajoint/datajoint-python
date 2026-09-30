@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas
 
+from . import provenance
 from .condition import make_condition
 from .declare import alter, declare
 from .dependencies import extract_master
@@ -921,6 +922,7 @@ class Table(QueryExpression):
         # collects the field list from first row (passed by reference)
         field_list = []
         rows = list(self.__make_row_to_insert(row, field_list, ignore_extra_fields) for row in rows)
+        self._attach_provenance(rows, field_list)
         if rows:
             try:
                 # Handle empty field_list (all-defaults insert)
@@ -946,6 +948,36 @@ class Table(QueryExpression):
                 raise err.suggest("To ignore extra fields in insert, set ignore_extra_fields=True")
             except DuplicateError as err:
                 raise err.suggest("To ignore duplicate entries in insert, set skip_duplicates=True")
+
+    def _has_prov_attribute(self):
+        """Whether this table carries the hidden extrinsic-provenance attribute."""
+        self.heading.attributes  # force lazy load; hidden attributes are filtered out of it
+        all_attrs = self.heading._attributes
+        return all_attrs is not None and provenance.PROV_ATTRIBUTE in all_attrs
+
+    def _attach_provenance(self, rows, field_list):
+        """Append the framework-owned `_prov` value to every row of an insert.
+
+        No author supplies this: the content comes from configuration, from the
+        connection, and -- inside a `make()` -- from the ingesting table and key.
+        Rows are modified in place, and `field_list` gains the attribute so the
+        column list matches.
+        """
+        if not rows or not self.connection._config.provenance.capture:
+            return
+        if not self._has_prov_attribute():
+            # Declared before capture was enabled.  datajoint.migrate.add_prov_column
+            # adds the slot to such a table.
+            return
+        payload = provenance.build_payload(self.connection, self.connection._config)
+        if payload is None:
+            return
+        value = provenance.serialize(payload)
+        for row in rows:
+            row["names"] = list(row["names"]) + [provenance.PROV_ATTRIBUTE]
+            row["placeholders"] = list(row["placeholders"]) + ["%s"]
+            row["values"] = list(row["values"]) + [value]
+        field_list.append(provenance.PROV_ATTRIBUTE)
 
     def insert_dataframe(self, df, index_as_pk=None, **insert_kwargs):
         """

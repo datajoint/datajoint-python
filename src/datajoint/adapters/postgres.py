@@ -1366,6 +1366,17 @@ class PostgreSQLAdapter(DatabaseAdapter):
             "\"_job_version\" varchar(64) DEFAULT ''",
         ]
 
+    def provenance_columns(self) -> list[str]:
+        """
+        Return the PostgreSQL extrinsic-provenance column definition.
+
+        Examples
+        --------
+        >>> adapter.provenance_columns()
+        ['"_prov" jsonb DEFAULT NULL']
+        """
+        return ['"_prov" jsonb DEFAULT NULL']
+
     # =========================================================================
     # Error Translation
     # =========================================================================
