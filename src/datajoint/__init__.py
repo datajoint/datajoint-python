@@ -33,9 +33,12 @@ __all__ = [
     "AutoPopulate",
     "Job",
     "Manual",
+    "Entry",
     "Lookup",
     "Imported",
+    "Ingest",
     "Computed",
+    "Compute",
     "Part",
     "Not",
     "AndList",
@@ -95,7 +98,7 @@ from .schemas import _Schema, VirtualModule, list_schemas, virtual_schema
 from .autopopulate import AutoPopulate
 from .jobs import Job
 from .table import FreeTable as _FreeTable, Table, ValidationResult
-from .user_tables import Computed, Imported, Lookup, Manual, Part
+from .user_tables import Compute, Computed, Entry, Imported, Ingest, Lookup, Manual, Part
 from .version import __version__
 
 # =============================================================================

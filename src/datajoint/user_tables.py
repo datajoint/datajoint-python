@@ -262,6 +262,19 @@ class Part(UserTable, metaclass=PartMeta):
         super().alter(prompt=prompt, context=context or self.declaration_context)
 
 
+#: Tier names on a single axis -- what puts rows in the table. ``Manual`` names
+#: its writer but means the origin; ``Imported`` names the origin but means the
+#: writer. ``Entry``, ``Ingest`` and ``Compute`` put all of them on the one
+#: question, and the grammar carries it: nouns are tables something else fills,
+#: verbs are the two things ``populate()`` does.
+#:
+#: These are the same classes, not subclasses, so a table declared either way is
+#: identical -- same SQL prefix, same ``Role``, same tier detection. The old
+#: names are permanent aliases, never deprecated. See #1546.
+Entry = Manual
+Ingest = Imported
+Compute = Computed
+
 user_table_classes = (Manual, Lookup, Computed, Imported, Part)
 
 
