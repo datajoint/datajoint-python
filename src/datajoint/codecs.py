@@ -38,6 +38,7 @@ class MyTable(dj.Manual):
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -176,6 +177,13 @@ class Codec(ABC):
         -------
         any
             Value in the format expected by the dtype.
+
+        Notes
+        -----
+        Implementations may also accept ``context`` (a dict carrying ``schema``,
+        ``table``, ``field`` and ``config``); DataJoint passes it only to codecs
+        whose signature declares it, so adding it is optional and omitting it
+        keeps a codec working unchanged. See :meth:`_codec_config`.
         """
         ...
 
@@ -195,8 +203,40 @@ class Codec(ABC):
         -------
         any
             The reconstructed Python object.
+
+        Notes
+        -----
+        Implementations may also accept ``context``; see :meth:`encode`.
         """
         ...
+
+    @staticmethod
+    def _codec_config(key: dict | None = None, context: dict | None = None):
+        """
+        Return the calling connection's config, or None.
+
+        Always thread the result into ``_build_path`` and ``_get_backend``. Those
+        helpers fall back to the global ``dj.config`` without it, which in a
+        process holding connections for several users belongs to none of them and
+        resolves a different store silently rather than raising.
+
+        Prefers ``context["config"]``. Falls back to ``key["_config"]``, the
+        pre-2.3.4 location, which DataJoint still populates.
+
+        Parameters
+        ----------
+        key : dict, optional
+            The ``key`` argument the codec received.
+        context : dict, optional
+            The ``context`` argument the codec received, if it declares one.
+
+        Returns
+        -------
+        Config or None
+        """
+        if context and context.get("config") is not None:
+            return context["config"]
+        return (key or {}).get("_config")
 
     def validate(self, value: Any) -> None:
         """
@@ -617,14 +657,21 @@ def decode_attribute(attr, data, squeeze: bool = False, connection=None):
         elif final_dtype.lower() == "binary(16)":
             data = uuid_module.UUID(bytes=data)
 
-        # Build decode key with config if connection is available
+        # Build decode key with config if connection is available. The
+        # underscore key stays for codecs written against it; `context` carries
+        # the same config to codecs that declare one -- see #1550.
         decode_key = None
+        decode_context = None
         if connection is not None:
             decode_key = {"_config": connection._config}
+            decode_context = {"config": connection._config}
 
         # Apply decoders in reverse order: innermost first, then outermost
         for codec in reversed(type_chain):
-            data = codec.decode(data, key=decode_key)
+            if "context" in inspect.signature(codec.decode).parameters:
+                data = codec.decode(data, key=decode_key, context=decode_context)
+            else:
+                data = codec.decode(data, key=decode_key)
 
         # Squeeze arrays if requested
         if squeeze and isinstance(data, np.ndarray):

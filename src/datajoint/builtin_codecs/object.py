@@ -81,6 +81,7 @@ class ObjectCodec(SchemaCodec):
         value: Any,
         *,
         key: dict | None = None,
+        context: dict | None = None,
         store_name: str | None = None,
     ) -> dict:
         """
@@ -105,8 +106,8 @@ class ObjectCodec(SchemaCodec):
         from pathlib import Path
 
         # Extract context using inherited helper
-        schema, table, field, primary_key = self._extract_context(key)
-        config = (key or {}).get("_config")
+        schema, table, field, primary_key = self._extract_context(key, context)
+        config = self._codec_config(key, context)
 
         # Check for pre-computed metadata (from staged insert)
         if isinstance(value, dict) and "path" in value:
@@ -177,7 +178,7 @@ class ObjectCodec(SchemaCodec):
 
         return metadata
 
-    def decode(self, stored: dict, *, key: dict | None = None) -> Any:
+    def decode(self, stored: dict, *, key: dict | None = None, context: dict | None = None) -> Any:
         """
         Create ObjectRef handle for lazy access.
 
@@ -195,7 +196,7 @@ class ObjectCodec(SchemaCodec):
         """
         from ..objectref import ObjectRef
 
-        config = (key or {}).get("_config")
+        config = self._codec_config(key, context)
         backend = self._get_backend(stored.get("store"), config=config)
         return ObjectRef.from_json(stored, backend=backend)
 

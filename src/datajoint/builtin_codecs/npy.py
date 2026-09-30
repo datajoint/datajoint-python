@@ -312,6 +312,7 @@ class NpyCodec(SchemaCodec):
         value: Any,
         *,
         key: dict | None = None,
+        context: dict | None = None,
         store_name: str | None = None,
     ) -> dict:
         """
@@ -337,8 +338,8 @@ class NpyCodec(SchemaCodec):
         import numpy as np
 
         # Extract context using inherited helper
-        schema, table, field, primary_key = self._extract_context(key)
-        config = (key or {}).get("_config")
+        schema, table, field, primary_key = self._extract_context(key, context)
+        config = self._codec_config(key, context)
 
         # Build schema-addressed storage path
         path, _ = self._build_path(schema, table, field, primary_key, ext=".npy", store_name=store_name, config=config)
@@ -360,7 +361,7 @@ class NpyCodec(SchemaCodec):
             "shape": list(value.shape),
         }
 
-    def decode(self, stored: dict, *, key: dict | None = None) -> NpyRef:
+    def decode(self, stored: dict, *, key: dict | None = None, context: dict | None = None) -> NpyRef:
         """
         Create lazy NpyRef from stored metadata.
 
@@ -376,6 +377,6 @@ class NpyCodec(SchemaCodec):
         NpyRef
             Lazy array reference with metadata access and numpy integration.
         """
-        config = (key or {}).get("_config")
+        config = self._codec_config(key, context)
         backend = self._get_backend(stored.get("store"), config=config)
         return NpyRef(stored, backend)

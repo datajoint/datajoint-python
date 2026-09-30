@@ -57,7 +57,9 @@ class HashCodec(Codec):
             raise DataJointError("<hash> requires @ (in-store storage only)")
         return "json"
 
-    def encode(self, value: bytes, *, key: dict | None = None, store_name: str | None = None) -> dict:
+    def encode(
+        self, value: bytes, *, key: dict | None = None, context: dict | None = None, store_name: str | None = None
+    ) -> dict:
         """
         Store content and return metadata.
 
@@ -78,10 +80,10 @@ class HashCodec(Codec):
         from ..hash_registry import put_hash
 
         schema_name = (key or {}).get("_schema", "unknown")
-        config = (key or {}).get("_config")
+        config = self._codec_config(key, context)
         return put_hash(value, schema_name=schema_name, store_name=store_name, config=config)
 
-    def decode(self, stored: dict, *, key: dict | None = None) -> bytes:
+    def decode(self, stored: dict, *, key: dict | None = None, context: dict | None = None) -> bytes:
         """
         Retrieve content using stored metadata.
 
@@ -99,7 +101,7 @@ class HashCodec(Codec):
         """
         from ..hash_registry import get_hash
 
-        config = (key or {}).get("_config")
+        config = self._codec_config(key, context)
         return get_hash(stored, config=config)
 
     def validate(self, value: Any) -> None:

@@ -1421,6 +1421,15 @@ class Table(QueryExpression):
                 "_field": name,
                 "_config": self.connection._config,
             }
+            # The same four facts, named without underscores, for codecs that
+            # declare `context`. The underscore keys above stay in `key` so that
+            # codecs written against them keep working -- see #1550.
+            codec_context = {
+                "schema": self.database,
+                "table": self.table_name,
+                "field": name,
+                "config": self.connection._config,
+            }
             # Add primary key values from row if available
             if row is not None:
                 for pk_name in self.primary_key:
@@ -1429,14 +1438,18 @@ class Table(QueryExpression):
 
             # Apply encoders from outermost to innermost
             for attr_type in type_chain:
-                # Pass store_name to encoders that support it (check via introspection)
+                # Pass store_name and context to encoders that declare them (via
+                # introspection). A codec written before either existed keeps its
+                # old signature and is called exactly as it was.
                 import inspect
 
                 sig = inspect.signature(attr_type.encode)
+                kwargs = {}
                 if "store_name" in sig.parameters:
-                    value = attr_type.encode(value, key=context, store_name=resolved_store)
-                else:
-                    value = attr_type.encode(value, key=context)
+                    kwargs["store_name"] = resolved_store
+                if "context" in sig.parameters:
+                    kwargs["context"] = codec_context
+                value = attr_type.encode(value, key=context, **kwargs)
 
         # Handle NULL values
         if value is None or (attr.numeric and (value == "" or np.isnan(float(value)))):

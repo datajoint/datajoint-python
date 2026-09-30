@@ -74,7 +74,9 @@ class FilepathCodec(Codec):
             )
         return "json"
 
-    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> dict:
+    def encode(
+        self, value: Any, *, key: dict | None = None, context: dict | None = None, store_name: str | None = None
+    ) -> dict:
         """
         Store path reference as JSON metadata.
 
@@ -104,7 +106,7 @@ class FilepathCodec(Codec):
 
         from ..hash_registry import get_store_backend
 
-        config = (key or {}).get("_config")
+        config = self._codec_config(key, context)
         if config is None:
             from ..settings import config  # type: ignore[assignment]
         assert config is not None
@@ -168,7 +170,7 @@ class FilepathCodec(Codec):
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-    def decode(self, stored: dict, *, key: dict | None = None) -> Any:
+    def decode(self, stored: dict, *, key: dict | None = None, context: dict | None = None) -> Any:
         """
         Create ObjectRef handle for lazy access.
 
@@ -187,7 +189,7 @@ class FilepathCodec(Codec):
         from ..objectref import ObjectRef
         from ..hash_registry import get_store_backend
 
-        config = (key or {}).get("_config")
+        config = self._codec_config(key, context)
         store_name = stored.get("store")
         backend = get_store_backend(store_name, config=config)
         return ObjectRef.from_json(stored, backend=backend)
