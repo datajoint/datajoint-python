@@ -1438,16 +1438,16 @@ class Table(QueryExpression):
 
             # Apply encoders from outermost to innermost
             for attr_type in type_chain:
-                # Pass store_name and context to encoders that declare them (via
-                # introspection). A codec written before either existed keeps its
-                # old signature and is called exactly as it was.
-                import inspect
+                # Offer store_name and context only to encoders that declare
+                # them, so a codec written before either existed is called
+                # exactly as it was. The check is cached per codec class.
+                from .codecs import _accepts_kwarg
 
-                sig = inspect.signature(attr_type.encode)
+                encode_fn = type(attr_type).encode
                 kwargs = {}
-                if "store_name" in sig.parameters:
+                if _accepts_kwarg(encode_fn, "store_name"):
                     kwargs["store_name"] = resolved_store
-                if "context" in sig.parameters:
+                if _accepts_kwarg(encode_fn, "context"):
                     kwargs["context"] = codec_context
                 value = attr_type.encode(value, key=context, **kwargs)
 

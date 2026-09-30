@@ -38,6 +38,7 @@ class MyTable(dj.Manual):
 
 from __future__ import annotations
 
+import functools
 import inspect
 import json
 import logging
@@ -602,6 +603,28 @@ def lookup_codec(codec_spec: str) -> tuple[Codec, str | None]:
 # =============================================================================
 
 
+@functools.lru_cache(maxsize=None)
+def _accepts_kwarg(func, name: str) -> bool:
+    """
+    Whether ``func`` declares a keyword parameter ``name``.
+
+    Used to offer optional arguments -- ``store_name``, ``context`` -- only to
+    codecs whose signature declares them, so a codec written before either
+    existed is called exactly as it was.
+
+    Cached on the underlying function: ``inspect.signature`` costs several
+    times more than a small ``encode`` call, and this runs per attribute per
+    row. Pass the unbound function (``type(codec).encode``), which is stable
+    per class, rather than a bound method, which is not.
+
+    Introspection rather than calling and catching ``TypeError``: an ``encode``
+    body serializes and uploads, so a ``TypeError`` raised inside it would be
+    indistinguishable from an unexpected-keyword error at the call site, and
+    retrying would both mask the real failure and repeat the upload.
+    """
+    return name in inspect.signature(func).parameters
+
+
 def decode_attribute(attr, data, squeeze: bool = False, connection=None):
     """
     Decode raw database value using attribute's codec or native type handling.
@@ -668,7 +691,7 @@ def decode_attribute(attr, data, squeeze: bool = False, connection=None):
 
         # Apply decoders in reverse order: innermost first, then outermost
         for codec in reversed(type_chain):
-            if "context" in inspect.signature(codec.decode).parameters:
+            if _accepts_kwarg(type(codec).decode, "context"):
                 data = codec.decode(data, key=decode_key, context=decode_context)
             else:
                 data = codec.decode(data, key=decode_key)

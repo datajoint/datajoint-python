@@ -122,3 +122,19 @@ def test_builtin_codecs_declare_context():
         for method in ("encode", "decode"):
             params = inspect.signature(getattr(cls, method)).parameters
             assert "context" in params, f"{cls.__name__}.{method} does not accept context"
+
+
+def test_capability_check_is_cached_per_class():
+    """inspect.signature costs more than a small encode; it must not run per row."""
+    from datajoint.codecs import _accepts_kwarg
+
+    _accepts_kwarg.cache_clear()
+    assert _accepts_kwarg(ModernCodec.encode, "context") is True
+    assert _accepts_kwarg(LegacyCodec.encode, "context") is False
+    before = _accepts_kwarg.cache_info()
+    for _ in range(1000):
+        _accepts_kwarg(ModernCodec.encode, "context")
+        _accepts_kwarg(LegacyCodec.encode, "context")
+    after = _accepts_kwarg.cache_info()
+    assert after.misses == before.misses, "signature was re-inspected after caching"
+    assert after.hits - before.hits == 2000
