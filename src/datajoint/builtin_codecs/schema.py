@@ -38,10 +38,13 @@ class SchemaCodec(Codec, register=False):
     silently rather than raising.
 
     Since 2.3.4 that config arrives in an explicit ``context`` argument rather
-    than hidden among the primary key values. Accept ``context=None`` in
-    ``encode``/``decode`` and pass it to the helpers. The old underscore keys in
-    ``key`` still work and are still populated, with a ``DeprecationWarning``
-    when ``_extract_context`` has to fall back to them; they are removed in 2.4.
+    than hidden among the primary key values. **Declare ``context=None`` in
+    ``encode`` and ``decode`` and pass it to the helpers**, as the example below
+    does.
+
+    The old underscore keys in ``key`` still work and are still populated, so a
+    codec written before 2.3.4 keeps running — but reading them raises a
+    ``DeprecationWarning`` and they are removed in 2.4.
 
     Comparison with Hash-addressed:
         - **Schema-addressed** (this): Path from schema structure, no dedup

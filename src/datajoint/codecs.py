@@ -16,10 +16,10 @@ class GraphCodec(dj.Codec):
     def get_dtype(self, is_store: bool) -> str:
         return "<blob>"
 
-    def encode(self, graph, *, key=None, store_name=None):
+    def encode(self, graph, *, key=None, context=None, store_name=None):
         return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
 
-    def decode(self, stored, *, key=None):
+    def decode(self, stored, *, key=None, context=None):
         import networkx as nx
         G = nx.Graph()
         G.add_nodes_from(stored['nodes'])
@@ -81,10 +81,10 @@ class Codec(ABC):
     ...     def get_dtype(self, is_store: bool) -> str:
     ...         return "<blob>"
     ...
-    ...     def encode(self, graph, *, key=None, store_name=None):
+    ...     def encode(self, graph, *, key=None, context=None, store_name=None):
     ...         return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
     ...
-    ...     def decode(self, stored, *, key=None):
+    ...     def decode(self, stored, *, key=None, context=None):
     ...         import networkx as nx
     ...         G = nx.Graph()
     ...         G.add_nodes_from(stored['nodes'])
@@ -181,10 +181,15 @@ class Codec(ABC):
 
         Notes
         -----
-        Implementations may also accept ``context`` (a dict carrying ``schema``,
-        ``table``, ``field`` and ``config``); DataJoint passes it only to codecs
-        whose signature declares it, so adding it is optional and omitting it
-        keeps a codec working unchanged. See :meth:`_codec_config`.
+        **Declare ``context`` as well**: ``encode(self, value, *, key=None,
+        context=None, store_name=None)``. It carries ``schema``, ``table``,
+        ``field`` and ``config`` — the calling connection's configuration, which
+        :meth:`_codec_config` reads and which store resolution needs.
+
+        Before 2.3.4 those four arrived inside ``key`` under underscore-prefixed
+        names. That path still works and DataJoint still populates it, so a codec
+        written against it keeps running — but it is deprecated and removed in
+        2.4. Write new codecs against ``context``.
         """
         ...
 
@@ -207,7 +212,8 @@ class Codec(ABC):
 
         Notes
         -----
-        Implementations may also accept ``context``; see :meth:`encode`.
+        **Declare ``context`` as well**: ``decode(self, stored, *, key=None,
+        context=None)``. See :meth:`encode`.
         """
         ...
 
