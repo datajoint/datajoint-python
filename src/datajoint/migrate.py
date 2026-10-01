@@ -595,12 +595,25 @@ def check_migration_status(schema: Schema) -> dict:
 # Job Metadata Migration
 # =============================================================================
 
-# Hidden job metadata columns added by config.jobs.add_job_metadata
-JOB_METADATA_COLUMNS = [
-    ("_job_start_time", "datetime(3) DEFAULT NULL"),
-    ("_job_duration", "float DEFAULT NULL"),
-    ("_job_version", "varchar(64) DEFAULT ''"),
-]
+
+def _job_metadata_ddl(adapter) -> list[tuple[str, str, str]]:
+    """Compile the job-metadata columns the way a fresh declaration does.
+
+    Returns ``(name, column_sql, comment)`` per column.  Going through
+    ``compile_attribute`` rather than a hand-written string is what makes a
+    retrofitted column identical to a declared one: the same backend type
+    mapping -- ``datetime(3)`` on MySQL, ``timestamp(3)`` on PostgreSQL -- and
+    the same ``:type:`` marker.
+    """
+    from .declare import JOB_METADATA_DEFINITION, compile_attribute
+
+    return [
+        (name, column_sql, comment)
+        for name, column_sql, _store, comment in (
+            compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=adapter)
+            for line in JOB_METADATA_DEFINITION
+        )
+    ]
 
 
 def _get_existing_columns(connection, database: str, table_name: str) -> set[str]:
@@ -713,8 +726,9 @@ def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
             continue
 
         # Check which columns need to be added
+        adapter = connection.adapter
         existing_columns = _get_existing_columns(connection, database, table_name)
-        columns_to_add = [(name, definition) for name, definition in JOB_METADATA_COLUMNS if name not in existing_columns]
+        columns_to_add = [column for column in _job_metadata_ddl(adapter) if column[0] not in existing_columns]
 
         if not columns_to_add:
             result["details"].append(
@@ -734,13 +748,20 @@ def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
             "sql_statements": [],
         }
 
-        for col_name, col_definition in columns_to_add:
-            sql = f"ALTER TABLE `{database}`.`{table_name}` ADD COLUMN `{col_name}` {col_definition}"
-            table_detail["sql_statements"].append(sql)
+        qualified = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier(table_name)}"
+        for col_name, column_sql, comment in columns_to_add:
+            statements = [f"ALTER TABLE {qualified} ADD COLUMN {column_sql}"]
+            # PostgreSQL keeps comments out of the column definition, so without
+            # this the retrofitted column reads back with no original_type.
+            comment_ddl = adapter.column_comment_ddl(qualified, col_name, comment)
+            if comment_ddl:
+                statements.append(comment_ddl)
+            table_detail["sql_statements"].extend(statements)
 
             if not dry_run:
                 try:
-                    connection.query(sql)
+                    for statement in statements:
+                        connection.query(statement)
                     logger.info(f"Added column {col_name} to {database}.{table_name}")
                 except Exception as e:
                     logger.error(f"Failed to add column {col_name} to {database}.{table_name}: {e}")
