@@ -7,9 +7,9 @@ different place.
 The framework declares its own hidden columns -- `_job_start_time`,
 `_singleton`, `_prov` -- in the same DataJoint notation a user writes, so the
 grammar has to be able to spell them. What must stay forbidden is a *user*
-declaring one, and that check sits where a user's definition enters:
-`_reject_user_hidden_attributes`, called from `declare()` before the framework
-appends anything of its own.
+declaring one, and that check sits in `prepare_declare`'s line loop, which
+iterates nothing but the user's lines: the framework's own are compiled after
+the loop and never pass through it.
 
 Keeping the two separate is what lets platform columns go through one path while
 `heading`'s visible/hidden split keeps meaning what it says.
@@ -17,13 +17,19 @@ Keeping the two separate is what lets platform columns go through one path while
 
 import pytest
 
-from datajoint.declare import (
-    _append_platform_attributes,
-    _reject_user_hidden_attributes,
-    attribute_parser,
-    compile_attribute,
-)
+from datajoint.adapters.mysql import MySQLAdapter
+from datajoint.declare import attribute_parser, compile_attribute, prepare_declare
 from datajoint.errors import DataJointError
+
+
+def parse(definition, table_name=None, config=None):
+    """Run a definition through the real entry point."""
+    return prepare_declare(definition, {}, MySQLAdapter(), table_name=table_name, config=config)
+
+
+def attribute_names(definition, table_name=None, config=None):
+    _comment, _pk, attribute_sql, *_rest = parse(definition, table_name, config)
+    return [sql.split()[0].strip("`") for sql in attribute_sql]
 
 
 @pytest.mark.parametrize(
@@ -36,32 +42,43 @@ from datajoint.errors import DataJointError
 )
 def test_user_definition_rejects_leading_underscore(line):
     """The user-facing guarantee, checked on the path a user actually takes."""
-    definition = f"id : int32\n---\n{line}"
     with pytest.raises(DataJointError, match="reserved for platform-managed"):
-        _reject_user_hidden_attributes(definition)
+        parse(f"id : int32\n---\n{line}")
 
 
 def test_rejection_message_is_unchanged():
     """#1433's point was the message, not only the failure."""
     with pytest.raises(DataJointError) as exc:
-        _reject_user_hidden_attributes("id : int32\n---\n_hidden : bool")
+        parse("id : int32\n---\n_hidden : bool")
     message = str(exc.value)
     assert "starts with an underscore" in message
     assert "_job_start_time" in message and "_singleton" in message
     assert "proj()" in message
 
 
+def test_rejection_reads_the_parsed_name_not_the_line():
+    """A name is what the grammar says it is, not what the text starts with."""
+    with pytest.raises(DataJointError, match="starts with an underscore"):
+        parse("id : int32\n---\n  _spaced : int32")
+
+
 def test_ordinary_definitions_pass():
     """A name with an interior underscore is ordinary and must not trip the check."""
-    _reject_user_hidden_attributes("subject_id : int32\n---\nspecies_name : varchar(32)")
+    assert attribute_names("subject_id : int32\n---\nspecies_name : varchar(32)") == [
+        "subject_id",
+        "species_name",
+    ]
 
 
-def test_foreign_keys_and_comments_are_not_attribute_lines():
-    _reject_user_hidden_attributes("# _not_an_attribute\n-> Parent\n---\nvalue : int32")
+def test_comments_and_indexes_are_not_attribute_lines():
+    assert attribute_names("# _not_an_attribute\nid : int32\n---\nvalue : int32\nindex (value)") == [
+        "id",
+        "value",
+    ]
 
 
 def test_grammar_accepts_what_policy_forbids():
-    """The parser must spell a hidden name; refusing is policy, applied earlier."""
+    """The parser must spell a hidden name; refusing is policy, applied later."""
     parsed = attribute_parser.parse_string("_prov = null : json#", parse_all=True)
     assert parsed["name"] == "_prov"
 
@@ -75,8 +92,6 @@ def test_grammar_accepts_what_policy_forbids():
 )
 def test_framework_can_compile_its_own_columns(line, expect_in_sql):
     """The framework's own declarations go through the ordinary compile path."""
-    from datajoint.adapters.mysql import MySQLAdapter
-
     name, sql, _store, comment = compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=MySQLAdapter())
     assert name.startswith("_")
     assert expect_in_sql in sql
@@ -104,22 +119,32 @@ class _Config:
         ("~~analysis", [], ["_prov", "_job_start_time"]),  # job table
     ],
 )
-def test_platform_attributes_appended_per_tier(table_name, expected, unexpected):
+def test_platform_attributes_added_per_tier(table_name, expected, unexpected):
     """Each tier gets exactly the hidden columns it should, and no others."""
-    augmented = _append_platform_attributes("id : int32\n---\nvalue : int32", table_name, _Config)
+    names = attribute_names("id : int32\n---\nvalue : int32", table_name, _Config)
     for name in expected:
-        assert name in augmented, f"{table_name} should receive {name}"
+        assert name in names, f"{table_name} should receive {name}"
     for name in unexpected:
-        assert name not in augmented, f"{table_name} should not receive {name}"
+        assert name not in names, f"{table_name} should not receive {name}"
 
 
-def test_appended_lines_survive_the_user_check():
-    """The guard runs before appending, so the framework's lines are never judged."""
-    definition = "id : int32\n---\nvalue : int32"
-    _reject_user_hidden_attributes(definition)
-    augmented = _append_platform_attributes(definition, "subject", _Config)
-    assert "_prov" in augmented
-    # And the augmented text would now fail the user check -- which is exactly why
-    # the check runs first rather than over the final string.
-    with pytest.raises(DataJointError):
-        _reject_user_hidden_attributes(augmented)
+def test_platform_attributes_are_secondary():
+    """They are nullable, so landing in the key section would be rejected.
+
+    Compiling them after the parse is what settles this: a definition whose
+    attributes are all primary key has no separator to sit behind, and does not
+    need one.
+    """
+    _comment, primary_key, *_rest = parse("id : int32", "subject", _Config)
+    assert primary_key == ["id"]
+    assert attribute_names("id : int32", "subject", _Config) == ["id", "_prov"]
+
+
+def test_no_tier_means_no_secondary_attributes():
+    """`alter` passes no table name, and compares two definitions that declare none."""
+    assert attribute_names("id : int32\n---\nvalue : int32") == ["id", "value"]
+
+
+def test_the_check_never_judges_the_framework_s_own_lines():
+    """The guard is inside the loop; platform attributes are added after it."""
+    assert "_prov" in attribute_names("id : int32\n---\nvalue : int32", "subject", _Config)

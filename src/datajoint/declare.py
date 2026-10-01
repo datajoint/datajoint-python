@@ -337,11 +337,68 @@ def compile_foreign_key(
         fk_index_candidates.append(fk_attrs)
 
 
+# =============================================================================
+# Platform-managed attributes
+#
+# Written in DataJoint notation and compiled by the same `compile_attribute` as
+# any user attribute, so the backend type mapping, the `:type:` comment and the
+# column-comment bookkeeping all come from the one path that owns them.
+# `prepare_declare` decides which table gets which and splices them into the
+# parse; nothing here is ever read from, or written back into, a definition
+# string a user wrote.
+# =============================================================================
+
+#: Primary key for a table that declares none of its own.
+SINGLETON_DEFINITION = "_singleton = 1 : bool # singleton primary key"
+
+#: Per-row execution record on the auto-populated tiers.
+JOB_METADATA_DEFINITION = (
+    "_job_start_time = null : datetime(3) # when computation began",
+    "_job_duration = null : float32 # computation duration in seconds",
+    '_job_version = "" : varchar(64) # code version',
+)
+
+#: Extrinsic provenance on Entry tables, where rows arrive from outside.
+PROV_DEFINITION = "_prov = null : json # extrinsic provenance for a row that entered from outside"
+
+
+def _tier_attributes(table_name: str | None, config) -> list[str]:
+    """The platform-managed attributes a tier receives, in DataJoint notation.
+
+    Empty without a table name, which is how ``alter`` compares two definitions
+    on equal terms: neither side declares these, so neither side grows them.
+    """
+    if table_name is None:
+        return []
+
+    from .user_tables import Computed, Imported, Manual, is_tier
+
+    if config is None:
+        from . import settings
+
+        config = settings.config
+
+    attributes = []
+    if config.jobs.add_job_metadata and (is_tier(table_name, Computed) or is_tier(table_name, Imported)):
+        attributes.extend(JOB_METADATA_DEFINITION)
+    if config.provenance.capture and is_tier(table_name, Manual):
+        attributes.append(PROV_DEFINITION)
+    return attributes
+
+
 def prepare_declare(
-    definition: str, context: dict, adapter
+    definition: str, context: dict, adapter, *, table_name: str | None = None, config=None
 ) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]], dict[str, str]]:
     """
     Parse a table definition into its components.
+
+    The platform-managed attributes are added here too, after the user's lines
+    are parsed and through the same :func:`compile_attribute`.  Doing it here
+    rather than by splicing lines into the definition text is what lets each one
+    be decided from what it actually depends on: ``_singleton`` on the primary
+    key the parse produced, the rest on the tier.  It also leaves the loop below
+    iterating user lines only, so that is where a user-declared hidden attribute
+    is refused.
 
     Parameters
     ----------
@@ -351,6 +408,13 @@ def prepare_declare(
         Namespace for resolving foreign key references.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    table_name : str, optional
+        Stripped table name, which carries the tier.  Given one, the tier's
+        secondary platform attributes are added; ``alter`` passes none, since it
+        compares two definitions and neither side declares them.
+    config : Config, optional
+        Configuration object, read for ``jobs.add_job_metadata`` and
+        ``provenance.capture``.  Falls back to the global config.
 
     Returns
     -------
@@ -405,6 +469,17 @@ def prepare_declare(
             compile_index(re.sub(r"\s*#.*$", "", line), index_sql, adapter)
         else:
             name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
+            if name.startswith("_"):
+                # Policy, not grammar: the parser accepts the name so that the
+                # framework can declare its own columns in the same notation.
+                # Only user lines reach here -- the platform's are compiled below.
+                raise DataJointError(
+                    f'Attribute name in line "{line}" starts with an underscore. '
+                    "Names with leading underscore are reserved for platform-managed "
+                    "columns (e.g. _job_start_time, _singleton). Use a regular "
+                    "attribute name; if you need to control visibility at the call "
+                    "site, use proj()."
+                )
             if store:
                 external_stores.append(store)
             if in_key and name not in primary_key:
@@ -415,18 +490,30 @@ def prepare_declare(
                 if comment:
                     column_comments[name] = comment
 
-    # A table that declares no primary key of its own gets the sentinel, which
-    # is what makes it hold at most one row. Decided here rather than by reading
-    # the definition text, because only the parse knows what a line contributed:
-    # `index (...)` adds no attribute, `-> Parent` may add several, and either
-    # can sit in the key section.
-    if not primary_key:
-        name, sql, _store, comment = compile_attribute(SINGLETON_DEFINITION, True, foreign_key_sql, context, adapter)
-        primary_key.append(name)
-        attributes.insert(0, name)
-        attribute_sql.insert(0, sql)
+    def platform_attribute(line: str, in_key: bool = False) -> tuple[str, str]:
+        """Compile one of the framework's own attributes; the caller places it."""
+        name, sql, _store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
+        if in_key:
+            primary_key.append(name)
         if comment:
             column_comments[name] = comment
+        return name, sql
+
+    # A table that declares no primary key of its own gets the sentinel, which is
+    # what makes it hold at most one row. Only the parse knows whether it does:
+    # `index (...)` contributes no attribute, `-> Parent` may contribute several,
+    # and either can sit in the key section.
+    if not primary_key:
+        name, sql = platform_attribute(SINGLETON_DEFINITION, in_key=True)
+        attributes.insert(0, name)
+        attribute_sql.insert(0, sql)
+
+    # The rest follow from the tier. They are nullable, so compiling them once the
+    # key is settled is also what keeps them out of it.
+    for line in _tier_attributes(table_name, config):
+        name, sql = platform_attribute(line)
+        attributes.append(name)
+        attribute_sql.append(sql)
 
     # Foreign-key support indexes (PostgreSQL; #1512). Now that the whole
     # definition is parsed, emit an index on each candidate foreign key's columns
@@ -465,84 +552,6 @@ def prepare_declare(
         fk_attribute_map,
         column_comments,
     )
-
-
-# =============================================================================
-# Platform-managed attributes
-#
-# Written in DataJoint notation and compiled by the same machinery as any user
-# attribute, so the backend type mapping, the `:type:` comment and the
-# column-comment bookkeeping all come from the one path that owns them.
-#
-# Which table gets which is decided in two places, because the two questions are
-# answered at different times: `_append_platform_attributes` splices the
-# secondary ones in by tier before the parse, while `_singleton` depends on what
-# the parse finds and is added by `prepare_declare`.
-# =============================================================================
-
-#: Primary key for a table that declares none of its own.
-SINGLETON_DEFINITION = "_singleton = 1 : bool # singleton primary key"
-
-#: Per-row execution record on the auto-populated tiers.
-JOB_METADATA_DEFINITION = (
-    "_job_start_time = null : datetime(3) # when computation began",
-    "_job_duration = null : float32 # computation duration in seconds",
-    '_job_version = "" : varchar(64) # code version',
-)
-
-#: Extrinsic provenance on Entry tables, where rows arrive from outside.
-PROV_DEFINITION = "_prov = null : json # extrinsic provenance for a row that entered from outside"
-
-
-def _reject_user_hidden_attributes(definition) -> None:
-    """Refuse a user-declared attribute whose name begins with an underscore.
-
-    Policy, not grammar: the parser accepts such a name so that the framework can
-    declare its own columns in the same notation. Only a definition written by a
-    user passes through here.
-    """
-    lines = definition.split("\n") if isinstance(definition, str) else definition
-    for line in lines:
-        # No need to skip blanks, comments, `---` or foreign keys: none of them
-        # begins with an underscore, so the one test below already passes them.
-        if line.strip().startswith("_"):
-            raise DataJointError(
-                f'Attribute name in line "{line}" starts with an underscore. '
-                "Names with leading underscore are reserved for platform-managed "
-                "columns (e.g. _job_start_time, _singleton). Use a regular "
-                "attribute name; if you need to control visibility at the call "
-                "site, use proj()."
-            )
-
-
-def _append_platform_attributes(definition, table_name: str, config) -> str:
-    """Add the framework's own hidden attributes to a table definition.
-
-    They are written in DataJoint notation and parsed by the same machinery as
-    any user attribute, so the backend type mapping, the ``:type:`` comment and
-    the column-comment bookkeeping all come from the one path that owns them.
-
-    These are all secondary, so they follow every user attribute behind a
-    ``---`` added unconditionally -- only the first separator moves the parser
-    out of the key section, so a second one costs nothing, and without it a
-    definition whose attributes are all primary key would take a nullable hidden
-    column as a nullable key attribute and be rejected.
-
-    ``_singleton`` is not here: it *is* the primary key, so whether a table
-    needs one is known only after the definition is parsed.  ``prepare_declare``
-    adds it.
-    """
-    from .user_tables import Computed, Imported, Manual, is_tier
-
-    secondary = []
-    if config.jobs.add_job_metadata and (is_tier(table_name, Computed) or is_tier(table_name, Imported)):
-        secondary.extend(JOB_METADATA_DEFINITION)
-
-    if config.provenance.capture and is_tier(table_name, Manual):
-        secondary.append(PROV_DEFINITION)
-
-    lines = list(definition) if not isinstance(definition, str) else definition.split("\n")
-    return "\n".join(lines + ["---"] + secondary) if secondary else "\n".join(lines)
 
 
 def declare(
@@ -596,9 +605,6 @@ def declare(
 
         config = _config
 
-    _reject_user_hidden_attributes(definition)
-    definition = _append_platform_attributes(definition, table_name, config)
-
     (
         table_comment,
         primary_key,
@@ -608,7 +614,7 @@ def declare(
         external_stores,
         fk_attribute_map,
         column_comments,
-    ) = prepare_declare(definition, context, adapter)
+    ) = prepare_declare(definition, context, adapter, table_name=table_name, config=config)
 
     pre_ddl = []  # DDL to run BEFORE CREATE TABLE (e.g., CREATE TYPE for enums)
     post_ddl = []  # DDL to run AFTER CREATE TABLE (e.g., COMMENT ON)
