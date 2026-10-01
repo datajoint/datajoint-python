@@ -12,6 +12,7 @@ import re
 
 import pyparsing as pp
 
+from . import provenance
 from .codecs import lookup_codec
 from .condition import translate_attribute
 from .errors import DataJointError
@@ -533,7 +534,8 @@ def declare(
     from .user_tables import Manual
 
     if config.provenance.capture and re.fullmatch(Manual.tier_regexp, table_name):
-        attribute_sql.extend(adapter.provenance_columns())
+        attribute_sql.append(provenance.column_definition(adapter))
+        column_comments[provenance.PROV_ATTRIBUTE] = provenance.PROV_COMMENT
 
     if not primary_key:
         # Singleton table: add hidden sentinel attribute

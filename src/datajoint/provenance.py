@@ -89,6 +89,27 @@ def _jsonable(value):
     return str(value)
 
 
+#: Recorded in the column comment so `heading` reads the declared core type back
+#: as ``original_type``, exactly as it does for a user-declared attribute.
+PROV_COMMENT = ":json:extrinsic provenance for a row that entered from outside"
+
+
+def column_definition(adapter):
+    """Return the DDL fragment declaring ``_prov``, in DataJoint's type system.
+
+    Built from ``core_type_to_sql("json")`` and ``format_column_definition``
+    rather than hand-written per backend, so the json/jsonb choice stays in the
+    one place that already owns it and a new adapter needs nothing added.
+    """
+    return adapter.format_column_definition(
+        name=PROV_ATTRIBUTE,
+        sql_type=adapter.core_type_to_sql("json"),
+        nullable=True,
+        default="DEFAULT NULL",
+        comment=PROV_COMMENT,
+    )
+
+
 def build_payload(connection, config=None):
     """Assemble the provenance record for rows inserted on this connection.
 

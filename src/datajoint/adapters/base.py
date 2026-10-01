@@ -1340,25 +1340,6 @@ class DatabaseAdapter(ABC):
         """
         ...
 
-    @abstractmethod
-    def provenance_columns(self) -> list[str]:
-        """
-        Return the hidden extrinsic-provenance column for Entry tables.
-
-        Returns
-        -------
-        list[str]
-            List of column definition strings (fully formatted with quotes).
-
-        Examples
-        --------
-        MySQL:
-            ["`_prov` json DEFAULT NULL"]
-        PostgreSQL:
-            ['"_prov" jsonb DEFAULT NULL']
-        """
-        ...
-
     # =========================================================================
     # Error Translation
     # =========================================================================
