@@ -474,6 +474,34 @@ class TestSingletonTables:
         assert result["max_workers"] == 4
         assert result["debug_mode"] == 0  # bool stored as tinyint
 
+    def test_singleton_with_an_index(self, schema_any):
+        """An index line is not an attribute, and must not suppress `_singleton`.
+
+        Whether a table needs the sentinel is decided after the parse, from the
+        primary key it produced, rather than by reading the definition text.
+        Deciding it from the text had to guess what each line contributes, and
+        read an `index (...)` line in the key section as an attribute -- which
+        left the table with no primary key and a `PRIMARY KEY ()` the server
+        rejects.
+        """
+
+        @schema_any
+        class IndexedConfig(dj.Lookup):
+            definition = """
+            index (label)
+            ---
+            label : varchar(32)
+            """
+
+        IndexedConfig.heading.attributes  # trigger the lazy load
+        assert "_singleton" in IndexedConfig.heading._attributes
+        assert IndexedConfig.heading.primary_key == []
+
+        IndexedConfig.insert1({"label": "only"})
+        assert IndexedConfig.fetch1()["label"] == "only"
+        with pytest.raises(dj.errors.DuplicateError):
+            IndexedConfig.insert1({"label": "second"})
+
     def test_singleton_describe(self, schema_any):
         """Describe should show the singleton nature."""
 
