@@ -505,12 +505,14 @@ def _append_platform_attributes(definition, table_name: str, config) -> str:
     any user attribute, so the backend type mapping, the ``:type:`` comment and
     the column-comment bookkeeping all come from the one path that owns them.
 
-    Placement matters. Job metadata and provenance are secondary, so they go
-    after every user attribute and need a ``---`` ahead of them -- without one,
-    a definition whose attributes are all primary key would take a nullable
-    hidden column as a nullable key attribute and be rejected. ``_singleton`` is
-    the exception: it *is* the primary key, so it goes into the key section of a
-    table that declares none of its own.
+    Job metadata and provenance are secondary, so they follow every user
+    attribute behind a ``---`` added unconditionally -- only the first separator
+    moves the parser out of the key section, so a second one costs nothing, and
+    without it a definition whose attributes are all primary key would take a
+    nullable hidden column as a nullable key attribute and be rejected.
+
+    ``_singleton`` is the exception: it *is* the primary key, so it goes in the
+    key section of a table that declares none of its own.
     """
     from .user_tables import Computed, Imported, Manual, is_tier
 
@@ -520,9 +522,6 @@ def _append_platform_attributes(definition, table_name: str, config) -> str:
         stripped = line.strip()
         return bool(stripped) and not stripped.startswith("#") and not stripped.startswith("---")
 
-    separator = next((i for i, line in enumerate(lines) if line.strip().startswith("---")), None)
-    key_lines = lines[:separator] if separator is not None else lines
-
     secondary = []
     if config.jobs.add_job_metadata and (is_tier(table_name, Computed) or is_tier(table_name, Imported)):
         secondary.extend(JOB_METADATA_DEFINITION)
@@ -530,15 +529,18 @@ def _append_platform_attributes(definition, table_name: str, config) -> str:
     if config.provenance.capture and is_tier(table_name, Manual):
         secondary.append(PROV_DEFINITION)
 
-    # A table that declares no primary key of its own gets the sentinel.
-    singleton = [] if any(is_attribute(line) for line in key_lines) else [SINGLETON_DEFINITION]
+    # `_singleton` is the primary key, so it goes in the key section -- before the
+    # first separator, or at the end when the definition has none.
+    separator = next((i for i, line in enumerate(lines) if line.strip().startswith("---")), len(lines))
+    if not any(is_attribute(line) for line in lines[:separator]):
+        lines.insert(separator, SINGLETON_DEFINITION)
 
-    if not singleton and not secondary:
-        return definition if isinstance(definition, str) else "\n".join(lines)
+    if not secondary:
+        return "\n".join(lines)
 
-    if separator is None:
-        return "\n".join(key_lines + singleton + ["---"] + secondary)
-    return "\n".join(lines[:separator] + singleton + lines[separator:] + secondary)
+    # Open a section for them unconditionally. A second `---` costs nothing:
+    # only the first moves the parser out of the key section.
+    return "\n".join(lines + ["---"] + secondary)
 
 
 def declare(
