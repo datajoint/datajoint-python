@@ -397,7 +397,11 @@ class Heading:
             return adapter.quote_identifier(name) if adapter else f'"{name}"'
 
         def render_field(name):
-            attr = self.attributes[name]
+            # `attributes` hides underscore-prefixed names, so a caller that asks
+            # for one by name -- copying `_prov` through an INSERT ... SELECT --
+            # falls back to the full set. Default field lists are unaffected:
+            # they are built from `attributes` and never contain hidden names.
+            attr = self.attributes.get(name) or self._attributes[name]
             if attr.attribute_expression is None:
                 return quote(name)
             else:

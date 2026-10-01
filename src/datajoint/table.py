@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas
 
+from . import provenance
 from .condition import make_condition
 from .declare import alter, declare
 from .dependencies import extract_master
@@ -877,6 +878,12 @@ class Table(QueryExpression):
                 except StopIteration:
                     pass
             fields = list(name for name in rows.heading if name in self.heading)
+            # Carry provenance across rather than leaving the copies NULL. A row
+            # copied from another table did not originate here, so the source's
+            # record is the true one; re-stamping it with this moment would claim
+            # an origin that is not where the data came from.
+            if self._has_prov_attribute() and provenance.PROV_ATTRIBUTE in (rows.heading._attributes or {}):
+                fields.append(provenance.PROV_ATTRIBUTE)
             quoted_fields = ",".join(self.adapter.quote_identifier(f) for f in fields)
 
             # Duplicate handling (backend-agnostic)
@@ -921,6 +928,7 @@ class Table(QueryExpression):
         # collects the field list from first row (passed by reference)
         field_list = []
         rows = list(self.__make_row_to_insert(row, field_list, ignore_extra_fields) for row in rows)
+        self._attach_provenance(rows, field_list)
         if rows:
             try:
                 # Handle empty field_list (all-defaults insert)
@@ -946,6 +954,46 @@ class Table(QueryExpression):
                 raise err.suggest("To ignore extra fields in insert, set ignore_extra_fields=True")
             except DuplicateError as err:
                 raise err.suggest("To ignore duplicate entries in insert, set skip_duplicates=True")
+
+    def _has_prov_attribute(self):
+        """Whether this table carries the hidden extrinsic-provenance attribute."""
+        self.heading.attributes  # force lazy load; hidden attributes are filtered out of it
+        all_attrs = self.heading._attributes
+        return all_attrs is not None and provenance.PROV_ATTRIBUTE in all_attrs
+
+    def _attach_provenance(self, rows, field_list):
+        """Append the framework-owned `_prov` value to every row of an insert.
+
+        No author supplies this: the content comes from configuration, from the
+        connection, and -- inside a `make()` -- from the ingesting table and key.
+        Rows are modified in place, and `field_list` gains the attribute so the
+        column list matches.
+        """
+        if not rows or not self.connection._config.provenance.capture:
+            return
+        if not self._has_prov_attribute():
+            # Declared before capture was enabled.  datajoint.deploy.add_prov_column
+            # adds the slot to such a table.
+            return
+        try:
+            payload = provenance.build_payload(self.connection, self.connection._config)
+            value = provenance.serialize(payload) if payload is not None else None
+        except Exception as error:
+            # Recording where a row came from must never stop it being written.
+            # `source` is deployment-supplied and typed `dict[str, Any]`, so this
+            # is reachable from configuration alone; the validator on that field
+            # catches the common case at assignment, and this covers the rest.
+            logger.warning(
+                f"Provenance not recorded for insert into {self.full_table_name}: " f"{error.__class__.__name__}: {error}"
+            )
+            return
+        if value is None:
+            return
+        for row in rows:
+            row["names"] = list(row["names"]) + [provenance.PROV_ATTRIBUTE]
+            row["placeholders"] = list(row["placeholders"]) + ["%s"]
+            row["values"] = list(row["values"]) + [value]
+        field_list.append(provenance.PROV_ATTRIBUTE)
 
     def insert_dataframe(self, df, index_as_pk=None, **insert_kwargs):
         """

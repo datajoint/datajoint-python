@@ -521,6 +521,20 @@ def declare(
             job_metadata_sql = adapter.job_metadata_columns()
             attribute_sql.extend(job_metadata_sql)
 
+    # Add the hidden extrinsic-provenance slot to Entry tables, where rows enter
+    # from outside the pipeline.  Computed and Imported tables have no use for
+    # it -- their provenance is entailed by the foreign-key graph -- and a part
+    # inherits its master's.
+    # Matched against the Manual tier itself, not by excluding the other tiers'
+    # prefixes: enumerating exclusions makes every tier added later an Entry
+    # table by default, which is how job tables (`~`) first acquired the slot.
+    # Imported here rather than at module scope: user_tables imports table,
+    # which imports this module.
+    from .user_tables import Manual
+
+    if config.provenance.capture and re.fullmatch(Manual.tier_regexp, table_name):
+        attribute_sql.extend(adapter.provenance_columns())
+
     if not primary_key:
         # Singleton table: add hidden sentinel attribute
         primary_key = ["_singleton"]

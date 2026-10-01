@@ -12,7 +12,8 @@ The boundary between the two:
   ``add_job_metadata_columns``, ``rebuild_lineage``.
 - :mod:`datajoint.deploy` — configure an environment for a consumer's
   requirements (CDC tools, replication, role grants, performance tuning).
-  Cadence: re-runnable, idempotent. Examples: :func:`set_replica_identity`.
+  Cadence: re-runnable, idempotent. Examples: :func:`set_replica_identity`,
+  :func:`add_prov_column`.
 
 Functions in this module should be safe to call repeatedly from a deploy hook
 without accumulating side effects.
@@ -182,4 +183,115 @@ def set_replica_identity(
         if not dry_run:
             connection.query(ddl)
             result["tables_modified"] += 1
+    return result
+
+
+def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
+    """
+    Add the hidden ``_prov`` attribute to Entry (``dj.Manual``) tables that lack it.
+
+    Capture defaults on, so tables declared from 2.3.4 onward already carry the
+    slot.  Two populations do not: tables declared before 2.3.4, and tables
+    declared while ``config.provenance.capture`` was off.  Inserts into those
+    record nothing, silently, and this brings them in line.
+
+    It belongs here rather than in :mod:`datajoint.migrate` because it is not a
+    one-shot correction of legacy state.  It is idempotent — a table that already
+    has the column is reported and left alone — and it stays useful for as long
+    as capture can be turned off, which outlives the migration module.
+
+    Parameters
+    ----------
+    target : Schema, Table class, or Table instance
+        Given a Schema, every Entry table in it is processed.
+    dry_run : bool, optional
+        If True, report what would change without altering anything. Default True.
+
+    Returns
+    -------
+    dict
+        ``tables_analyzed``, ``tables_modified``, ``columns_added``, ``ddl``,
+        and ``details`` — a per-table list of dicts.
+
+    Examples
+    --------
+    >>> from datajoint.deploy import add_prov_column
+    >>> add_prov_column(schema, dry_run=True)["ddl"]
+    >>> add_prov_column(schema, dry_run=False)["tables_modified"]
+
+    Notes
+    -----
+    - Only Entry tables are touched.  Computed and Imported tables have no use
+      for the slot — their provenance is entailed by the foreign-key graph — and
+      a part table inherits its master's.
+    - Rows already present keep ``NULL``.  Provenance is recorded at insert and
+      is never reconstructed after the fact.
+    """
+    import re
+
+    from . import provenance
+    from .schemas import _Schema
+    from .table import Table
+    from .user_tables import Manual
+
+    if isinstance(target, _Schema):
+        connection = target.connection
+        if connection is None or not target.database:
+            raise DataJointError("Schema is not activated. Call schema.activate(...) before add_prov_column().")
+        database = target.database
+        table_names = list(target.list_tables())
+    elif isinstance(target, type) and issubclass(target, Table):
+        instance = target()
+        connection = instance.connection
+        if connection is None:
+            raise DataJointError(f"Table {target.__name__} has no active connection.")
+        database, table_names = instance.database, [instance.table_name]
+    elif isinstance(target, Table):
+        connection = target.connection
+        if connection is None:
+            raise DataJointError(f"Table {type(target).__name__} has no active connection.")
+        database, table_names = target.database, [target.table_name]
+    else:
+        raise DataJointError(f"target must be a Schema or Table class/instance; got {type(target).__name__}")
+
+    if not database:
+        raise DataJointError("Cannot add the provenance column: the target has no database.")
+
+    adapter = connection.adapter
+    column_sql = adapter.provenance_columns()[0]
+
+    result: dict[str, Any] = {
+        "tables_analyzed": 0,
+        "tables_modified": 0,
+        "columns_added": 0,
+        "ddl": [],
+        "details": [],
+    }
+
+    for table_name in table_names:
+        if not re.fullmatch(Manual.tier_regexp, table_name):
+            continue
+        result["tables_analyzed"] += 1
+
+        existing = {
+            row[0]
+            for row in connection.query(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
+                args=(database, table_name),
+            ).fetchall()
+        }
+        if provenance.PROV_ATTRIBUTE in existing:
+            result["details"].append({"table": f"{database}.{table_name}", "status": "already_present"})
+            continue
+
+        ddl = (
+            f"ALTER TABLE {adapter.quote_identifier(database)}.{adapter.quote_identifier(table_name)} ADD COLUMN {column_sql}"
+        )
+        result["ddl"].append(ddl)
+        result["details"].append({"table": f"{database}.{table_name}", "status": "pending" if dry_run else "added"})
+        if not dry_run:
+            connection.query(ddl)
+        result["tables_modified"] += 1
+        result["columns_added"] += 1
+
     return result
