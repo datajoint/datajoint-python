@@ -12,7 +12,6 @@ import re
 
 import pyparsing as pp
 
-from . import provenance
 from .codecs import lookup_codec
 from .condition import translate_attribute
 from .errors import DataJointError
@@ -157,7 +156,10 @@ def build_attribute_parser() -> pp.ParserElement:
     """
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
+    # A leading underscore is permitted by the grammar so the framework can
+    # declare its own columns in this notation. Whether a *user* may is policy,
+    # enforced in prepare_declare where a user's definition is parsed.
+    attribute_name = pp.Word(pp.srange("[a-z_]"), pp.srange("[a-z0-9_]")).set_results_name("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
         ^ pp.QuotedString("<", end_quote_char=">", unquote_results=False)
@@ -452,6 +454,84 @@ def prepare_declare(
     )
 
 
+#: Primary key for a table that declares none of its own.
+SINGLETON_DEFINITION = "_singleton = 1 : bool # singleton primary key"
+
+
+def _reject_user_hidden_attributes(definition) -> None:
+    """Refuse a user-declared attribute whose name begins with an underscore.
+
+    Policy, not grammar: the parser accepts such a name so that the framework can
+    declare its own columns in the same notation. Only a definition written by a
+    user passes through here.
+    """
+    lines = definition.split("\n") if isinstance(definition, str) else definition
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("---"):
+            continue
+        if is_foreign_key(stripped):
+            continue
+        if stripped.startswith("_"):
+            raise DataJointError(
+                f'Attribute name in line "{line}" starts with an underscore. '
+                "Names with leading underscore are reserved for platform-managed "
+                "columns (e.g. _job_start_time, _singleton). Use a regular "
+                "attribute name; if you need to control visibility at the call "
+                "site, use proj()."
+            )
+
+
+def _append_platform_attributes(definition, table_name: str, config) -> str:
+    """Add the framework's own hidden attributes to a table definition.
+
+    They are written in DataJoint notation and parsed by the same machinery as
+    any user attribute, so the backend type mapping, the ``:type:`` comment and
+    the column-comment bookkeeping all come from the one path that owns them.
+
+    Placement matters. Job metadata and provenance are secondary, so they go
+    after every user attribute and need a ``---`` ahead of them -- without one,
+    a definition whose attributes are all primary key would take a nullable
+    hidden column as a nullable key attribute and be rejected. ``_singleton`` is
+    the exception: it *is* the primary key, so it goes into the key section of a
+    table that declares none of its own.
+    """
+    from .jobs import JOB_METADATA_DEFINITION
+    from .provenance import PROV_DEFINITION
+    from .user_tables import Manual
+
+    lines = list(definition) if not isinstance(definition, str) else definition.split("\n")
+
+    def is_attribute(line: str) -> bool:
+        stripped = line.strip()
+        return bool(stripped) and not stripped.startswith("#") and not stripped.startswith("---")
+
+    separator = next((i for i, line in enumerate(lines) if line.strip().startswith("---")), None)
+    key_lines = lines[:separator] if separator is not None else lines
+
+    secondary = []
+    # Computed (__) and Imported (_) tables, but not a part (__ in the middle).
+    is_computed = table_name.startswith("__") and "__" not in table_name[2:]
+    is_imported = table_name.startswith("_") and not table_name.startswith("__")
+    if config.jobs.add_job_metadata and (is_computed or is_imported):
+        secondary.extend(JOB_METADATA_DEFINITION)
+
+    # Entry tables, where rows enter from outside. Matched against the Manual
+    # tier itself rather than by excluding the other tiers' prefixes.
+    if config.provenance.capture and re.fullmatch(Manual.tier_regexp, table_name):
+        secondary.append(PROV_DEFINITION)
+
+    # A table that declares no primary key of its own gets the sentinel.
+    singleton = [] if any(is_attribute(line) for line in key_lines) else [SINGLETON_DEFINITION]
+
+    if not singleton and not secondary:
+        return definition if isinstance(definition, str) else "\n".join(lines)
+
+    if separator is None:
+        return "\n".join(key_lines + singleton + ["---"] + secondary)
+    return "\n".join(lines[:separator] + singleton + lines[separator:] + secondary)
+
+
 def declare(
     full_table_name: str, definition: str, context: dict, adapter, *, config=None
 ) -> tuple[str, list[str], list[str], dict[str, tuple[str, str]], list[str], list[str]]:
@@ -498,6 +578,14 @@ def declare(
             )
         )
 
+    if config is None:
+        from .settings import config as _config
+
+        config = _config
+
+    _reject_user_hidden_attributes(definition)
+    definition = _append_platform_attributes(definition, table_name, config)
+
     (
         table_comment,
         primary_key,
@@ -508,53 +596,6 @@ def declare(
         fk_attribute_map,
         column_comments,
     ) = prepare_declare(definition, context, adapter)
-
-    # Add hidden job metadata for Computed/Imported tables (not parts)
-    if config is None:
-        from .settings import config as _config
-
-        config = _config
-    if config.jobs.add_job_metadata:
-        # Check if this is a Computed (__) or Imported (_) table, but not a Part (contains __ in middle)
-        is_computed = table_name.startswith("__") and "__" not in table_name[2:]
-        is_imported = table_name.startswith("_") and not table_name.startswith("__")
-        if is_computed or is_imported:
-            # Deferred import: jobs imports table, which imports this module.
-            from .jobs import JOB_METADATA_SPEC, job_metadata_column_definitions
-
-            attribute_sql.extend(job_metadata_column_definitions(adapter))
-            for name, core_type, _default, comment in JOB_METADATA_SPEC:
-                column_comments[name] = f":{core_type}:{comment}"
-
-    # Add the hidden extrinsic-provenance slot to Entry tables, where rows enter
-    # from outside the pipeline.  Computed and Imported tables have no use for
-    # it -- their provenance is entailed by the foreign-key graph -- and a part
-    # inherits its master's.
-    # Matched against the Manual tier itself, not by excluding the other tiers'
-    # prefixes: enumerating exclusions makes every tier added later an Entry
-    # table by default, which is how job tables (`~`) first acquired the slot.
-    # Imported here rather than at module scope: user_tables imports table,
-    # which imports this module.
-    from .user_tables import Manual
-
-    if config.provenance.capture and re.fullmatch(Manual.tier_regexp, table_name):
-        attribute_sql.append(provenance.column_definition(adapter))
-        column_comments[provenance.PROV_ATTRIBUTE] = provenance.PROV_COMMENT
-
-    if not primary_key:
-        # Singleton table: add hidden sentinel attribute
-        primary_key = ["_singleton"]
-        singleton_comment = ":bool:singleton primary key"
-        sql_type = adapter.core_type_to_sql("bool")
-        singleton_sql = adapter.format_column_definition(
-            name="_singleton",
-            sql_type=sql_type,
-            nullable=False,
-            default="NOT NULL DEFAULT TRUE",
-            comment=singleton_comment,
-        )
-        attribute_sql.insert(0, singleton_sql)
-        column_comments["_singleton"] = singleton_comment
 
     pre_ddl = []  # DDL to run BEFORE CREATE TABLE (e.g., CREATE TYPE for enums)
     post_ddl = []  # DDL to run AFTER CREATE TABLE (e.g., COMMENT ON)
@@ -964,14 +1005,6 @@ def compile_attribute(
     DataJointError
         If syntax is invalid, primary key is nullable, or blob has invalid default.
     """
-    if line.lstrip().startswith("_"):
-        raise DataJointError(
-            f'Attribute name in line "{line}" starts with an underscore. '
-            "Names with leading underscore are reserved for platform-managed "
-            "columns (e.g. _job_start_time, _singleton). Use a regular "
-            "attribute name; if you need to control visibility at the call "
-            "site, use proj()."
-        )
     try:
         match = attribute_parser.parse_string(line + "#", parse_all=True)
     except pp.ParseException as err:

@@ -205,13 +205,11 @@ def test_capture_off_declares_no_column_and_migration_adds_it(connection_test, p
         # idempotent
         assert add_prov_column(Legacy, dry_run=False)["columns_added"] == 0
 
-        # No manual _init_from_database(): add_prov_column invalidates the cached
-        # heading, and the next access reloads it -- the same way the insert path
-        # does. Reaching for _init_from_database() here is what previously hid
-        # that inserts kept recording nothing until the process reconnected.
-        heading = Legacy().heading
-        heading.attributes  # force the lazy reload, as _has_prov_attribute does
-        assert provenance.PROV_ATTRIBUTE in heading._attributes
+        # add_prov_column is a deploy-time operation and does not reach into the
+        # in-process cache; the schema is reloaded before anything writes through
+        # it. Reload here for the same reason a deployment would.
+        Legacy().heading._init_from_database()
+        assert provenance.PROV_ATTRIBUTE in Legacy().heading._attributes
 
         # the pre-existing row keeps NULL; a new row carries a record
         Legacy.insert1({"legacy_id": 2, "note": "after"})

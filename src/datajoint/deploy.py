@@ -186,30 +186,6 @@ def set_replica_identity(
     return result
 
 
-def _refresh_heading(target, table_name: str) -> None:
-    """Drop a cached heading so a freshly added column is visible in-process.
-
-    `Heading` loads from the database once and memoizes. After an ALTER the
-    cached copy is stale, and for `_prov` that is silent: `_has_prov_attribute`
-    reports False and inserts record nothing.
-    """
-    from .schemas import _Schema
-
-    candidates = []
-    if isinstance(target, _Schema):
-        context = getattr(target, "context", None) or {}
-        candidates = [cls for cls in context.values() if hasattr(cls, "table_name") and cls.table_name == table_name]
-    else:
-        candidates = [target]
-
-    for candidate in candidates:
-        instance = candidate() if isinstance(candidate, type) else candidate
-        heading = getattr(instance, "_heading", None) or getattr(type(instance), "_heading", None)
-        if heading is not None:
-            heading._attributes = None
-            heading._table_status = None
-
-
 def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
     """
     Add the hidden ``_prov`` attribute to Entry (``dj.Manual``) tables that lack it.
@@ -250,6 +226,11 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
       a part table inherits its master's.
     - Rows already present keep ``NULL``.  Provenance is recorded at insert and
       is never reconstructed after the fact.
+    - **Takes effect on the next schema load.**  A ``Heading`` is read from the
+      database once and memoized, so a table already in use keeps its pre-ALTER
+      attributes for the life of the process and its inserts go on recording
+      nothing.  This is a deploy-time operation: run it before the workers that
+      will write through it, as with :func:`set_replica_identity`.
     """
     import re
 
@@ -282,7 +263,7 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
         raise DataJointError("Cannot add the provenance column: the target has no database.")
 
     adapter = connection.adapter
-    column_sql = provenance.column_definition(adapter)
+    column_sql, _prov_comment = provenance.column_definition(adapter)
 
     # `tables_modified` and `columns_added` count work actually done, as
     # set_replica_identity does; a dry run reports through `ddl` and `details`.
@@ -317,11 +298,6 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
         result["details"].append({"table": f"{database}.{table_name}", "status": "pending" if dry_run else "added"})
         if not dry_run:
             connection.query(ddl)
-            # Invalidate the cached heading: without this the table keeps its
-            # pre-ALTER attributes for the life of the process, `_prov` stays
-            # invisible to the insert path, and every insert silently records
-            # nothing until something reconnects.
-            _refresh_heading(target, table_name)
             result["tables_modified"] += 1
             result["columns_added"] += 1
 

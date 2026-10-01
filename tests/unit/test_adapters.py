@@ -475,16 +475,20 @@ class TestDDLMethods:
         assert result is None
 
     def test_job_metadata_columns_mysql(self, adapter):
-        """Job metadata columns, now built from the DataJoint type system."""
-        from datajoint.jobs import job_metadata_column_definitions
+        """Job metadata is declared in DataJoint notation, compiled like any attribute."""
+        from datajoint.declare import compile_attribute
+        from datajoint.jobs import JOB_METADATA_DEFINITION
 
-        result = job_metadata_column_definitions(adapter)
-        assert len(result) == 3
-        assert "_job_start_time" in result[0] and "datetime(3)" in result[0]
-        assert "_job_duration" in result[1] and "float" in result[1]
-        assert "_job_version" in result[2] and "varchar(64)" in result[2]
-        # The declared core type is recorded so `heading` can read it back.
-        assert ":datetime(3):" in result[0]
+        compiled = [
+            compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=adapter)
+            for line in JOB_METADATA_DEFINITION
+        ]
+        names = [c[0] for c in compiled]
+        sql = [c[1] for c in compiled]
+        assert names == ["_job_start_time", "_job_duration", "_job_version"]
+        assert "datetime(3)" in sql[0] and ":datetime(3):" in sql[0]
+        assert "float" in sql[1]
+        assert "varchar(64)" in sql[2]
 
 
 class TestPostgreSQLDDLMethods:
@@ -550,21 +554,21 @@ class TestPostgreSQLDDLMethods:
             postgres_adapter.replica_identity_ddl('"schema"."table"', "nothing")
 
     def test_job_metadata_columns_postgres(self, postgres_adapter):
-        """Job metadata columns, now built from the DataJoint type system.
+        """Precision is the point: a bare `timestamp` gave PostgreSQL microseconds.
 
-        The precision is the point: the hand-written form declared a bare
-        `timestamp`, giving PostgreSQL its default microsecond precision while
-        MySQL got `datetime(3)`. Routing through `core_type_to_sql` keeps the
-        two backends on the same declared type -- see #1566.
+        The hand-written column declared `timestamp`, so PostgreSQL applied its
+        default precision while MySQL got `datetime(3)`. Compiling the DataJoint
+        type keeps the two backends on the same declared precision -- #1566.
         """
-        from datajoint.jobs import job_metadata_column_definitions
+        from datajoint.declare import compile_attribute
+        from datajoint.jobs import JOB_METADATA_DEFINITION
 
-        result = job_metadata_column_definitions(postgres_adapter)
-        assert len(result) == 3
-        assert "_job_start_time" in result[0]
-        assert "timestamp(3)" in result[0], "millisecond precision must match MySQL's datetime(3)"
-        assert "_job_duration" in result[1] and "real" in result[1]
-        assert "_job_version" in result[2] and "varchar(64)" in result[2]
-        # PostgreSQL carries no inline comment; it is applied via COMMENT ON
-        # from `column_comments`, so the fragment must not contain one.
-        assert "COMMENT" not in result[0].upper()
+        sql = [
+            compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=postgres_adapter)[1]
+            for line in JOB_METADATA_DEFINITION
+        ]
+        assert "timestamp(3)" in sql[0], "must match MySQL's datetime(3)"
+        assert "real" in sql[1]
+        assert "varchar(64)" in sql[2]
+        # PostgreSQL carries no inline comment; it is applied via COMMENT ON.
+        assert "COMMENT" not in sql[0].upper()
