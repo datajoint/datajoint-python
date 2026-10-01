@@ -5,6 +5,7 @@ goes into the payload, and that the payload is JSON-serializable.
 """
 
 import json
+import re
 
 import pytest
 
@@ -46,8 +47,14 @@ def config():
     ],
 )
 def test_is_entry_table(table_name, expected):
-    """Only Entry tables get the slot; parts inherit their master's."""
-    assert provenance.is_entry_table(table_name) is expected
+    """Only Entry tables get the slot; parts inherit their master's.
+
+    Exercises the predicate `declare` and `deploy` use: a match against the
+    Manual tier itself, rather than a list of prefixes to exclude.
+    """
+    from datajoint.user_tables import Manual
+
+    assert bool(re.fullmatch(Manual.tier_regexp, table_name)) is expected
 
 
 def test_payload_is_none_without_anything_to_say(config):
@@ -138,18 +145,19 @@ def test_entry_test_follows_the_tier_definition_not_a_prefix_list():
     `Manual.tier_regexp` inverts that: a name is an Entry table only if the
     library says it is.
     """
-    import re
-
     from datajoint.user_tables import Computed, Imported, Lookup, Manual, Part
 
-    assert provenance.is_entry_table("subject")
+    def grants_prov(name):
+        return re.fullmatch(Manual.tier_regexp, name) is not None
+
+    assert grants_prov("subject")
     for tier in (Lookup, Imported, Computed, Part):
         sample = {Lookup: "#param", Imported: "_ingest", Computed: "__analysis", Part: "subject__detail"}[tier]
         assert re.fullmatch(tier.tier_regexp, sample), f"{sample} is not a {tier.__name__}"
-        assert not provenance.is_entry_table(sample)
+        assert not grants_prov(sample)
     # The job prefix belongs to no user tier at all, which is how it slipped through.
     assert not any(re.fullmatch(t.tier_regexp, "~~analysis") for t in (Manual, Lookup, Imported, Computed, Part))
-    assert not provenance.is_entry_table("~~analysis")
+    assert not grants_prov("~~analysis")
 
 
 def test_serialize_survives_a_deployment_supplied_source(config):

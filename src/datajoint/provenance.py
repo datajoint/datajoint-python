@@ -29,7 +29,6 @@ import contextlib
 import contextvars
 import datetime
 import json
-import re
 from typing import Any
 
 #: Name of the hidden attribute.  Hidden attributes are excluded from
@@ -88,23 +87,6 @@ def _jsonable(value):
     if isinstance(value, bytes):
         return value.hex()
     return str(value)
-
-
-def is_entry_table(table_name):
-    """Whether a stripped table name denotes an Entry (``dj.Manual``) table.
-
-    Matched against ``Manual.tier_regexp``, the definition the rest of the
-    library uses, rather than by excluding the prefixes of the other tiers.
-    Enumerating prefixes means every tier added later is an Entry table until
-    someone remembers this function -- which is how job tables (``~``) first
-    acquired the slot.
-
-    A part table carries its master's name and ``__`` before its own, so it
-    fails the match and inherits its master's provenance, which is what we want.
-    """
-    from .user_tables import Manual
-
-    return re.fullmatch(Manual.tier_regexp, table_name) is not None
 
 
 def build_payload(connection, config=None):

@@ -878,6 +878,12 @@ class Table(QueryExpression):
                 except StopIteration:
                     pass
             fields = list(name for name in rows.heading if name in self.heading)
+            # Carry provenance across rather than leaving the copies NULL. A row
+            # copied from another table did not originate here, so the source's
+            # record is the true one; re-stamping it with this moment would claim
+            # an origin that is not where the data came from.
+            if self._has_prov_attribute() and provenance.PROV_ATTRIBUTE in (rows.heading._attributes or {}):
+                fields.append(provenance.PROV_ATTRIBUTE)
             quoted_fields = ",".join(self.adapter.quote_identifier(f) for f in fields)
 
             # Duplicate handling (backend-agnostic)

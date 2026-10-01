@@ -246,3 +246,26 @@ def test_job_tables_do_not_get_prov(schema_prov):
             ).fetchall()
         }
         assert provenance.PROV_ATTRIBUTE not in columns, f"{name} carries {provenance.PROV_ATTRIBUTE}"
+
+
+def test_insert_from_query_carries_provenance_across(schema_prov):
+    """`insert(QueryExpression)` builds INSERT ... SELECT and used to leave NULL.
+
+    A copied row did not originate in the destination, so the source's record is
+    the true one; re-stamping it here would claim an origin that is not where
+    the data came from.
+    """
+    schema, t = schema_prov
+    t["Subject"].insert1({"subject_id": 40, "species": "mouse"})
+    (original,) = _raw_prov(t["Subject"]() & "subject_id = 40")
+    assert original is not None
+
+    class SubjectCopy(dj.Manual):
+        definition = t["Subject"].definition
+
+    schema(SubjectCopy)
+    SubjectCopy.insert(t["Subject"]() & "subject_id = 40")
+
+    (copied,) = _raw_prov(SubjectCopy())
+    assert copied is not None, "copied row lost its provenance"
+    assert copied == original, "copied row was re-stamped instead of carrying its origin"

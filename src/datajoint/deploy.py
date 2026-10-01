@@ -227,9 +227,12 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
     - Rows already present keep ``NULL``.  Provenance is recorded at insert and
       is never reconstructed after the fact.
     """
+    import re
+
     from . import provenance
     from .schemas import _Schema
     from .table import Table
+    from .user_tables import Manual
 
     if isinstance(target, _Schema):
         connection = target.connection
@@ -266,7 +269,7 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
     }
 
     for table_name in table_names:
-        if not provenance.is_entry_table(table_name):
+        if not re.fullmatch(Manual.tier_regexp, table_name):
             continue
         result["tables_analyzed"] += 1
 
