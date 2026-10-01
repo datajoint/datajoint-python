@@ -519,8 +519,12 @@ def declare(
         is_computed = table_name.startswith("__") and "__" not in table_name[2:]
         is_imported = table_name.startswith("_") and not table_name.startswith("__")
         if is_computed or is_imported:
-            job_metadata_sql = adapter.job_metadata_columns()
-            attribute_sql.extend(job_metadata_sql)
+            # Deferred import: jobs imports table, which imports this module.
+            from .jobs import JOB_METADATA_SPEC, job_metadata_column_definitions
+
+            attribute_sql.extend(job_metadata_column_definitions(adapter))
+            for name, core_type, _default, comment in JOB_METADATA_SPEC:
+                column_comments[name] = f":{core_type}:{comment}"
 
     # Add the hidden extrinsic-provenance slot to Entry tables, where rows enter
     # from outside the pipeline.  Computed and Imported tables have no use for

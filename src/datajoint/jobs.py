@@ -24,6 +24,31 @@ TRUNCATION_APPENDIX = "...truncated"
 logger = logging.getLogger(__name__.split(".")[0])
 
 
+#: Job metadata columns, as (name, DataJoint core type, default clause, comment).
+#: Declared through the adapter's type system rather than as hand-written SQL so
+#: the backend mapping lives in the one place that owns it -- `datetime(3)`
+#: becomes `timestamp(3)` on PostgreSQL, which the hand-written form dropped.
+JOB_METADATA_SPEC = (
+    ("_job_start_time", "datetime(3)", "DEFAULT NULL", "when computation began"),
+    ("_job_duration", "float32", "DEFAULT NULL", "computation duration in seconds"),
+    ("_job_version", "varchar(64)", "DEFAULT ''", "code version"),
+)
+
+
+def job_metadata_column_definitions(adapter) -> list[str]:
+    """Return the DDL fragments declaring the hidden job-metadata columns."""
+    return [
+        adapter.format_column_definition(
+            name=name,
+            sql_type=adapter.core_type_to_sql(core_type),
+            nullable=True,
+            default=default,
+            comment=f":{core_type}:{comment}",
+        )
+        for name, core_type, default, comment in JOB_METADATA_SPEC
+    ]
+
+
 def _get_job_version(config=None) -> str:
     """
     Get version string based on config settings.

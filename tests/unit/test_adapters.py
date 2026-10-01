@@ -410,7 +410,6 @@ class TestAdapterInterface:
             "table_comment_ddl",
             "column_comment_ddl",
             "enum_type_ddl",
-            "job_metadata_columns",
             "translate_error",
             "validate_native_type",
         ]
@@ -476,15 +475,16 @@ class TestDDLMethods:
         assert result is None
 
     def test_job_metadata_columns_mysql(self, adapter):
-        """Test MySQL job metadata columns."""
-        result = adapter.job_metadata_columns()
+        """Job metadata columns, now built from the DataJoint type system."""
+        from datajoint.jobs import job_metadata_column_definitions
+
+        result = job_metadata_column_definitions(adapter)
         assert len(result) == 3
-        assert "_job_start_time" in result[0]
-        assert "datetime(3)" in result[0]
-        assert "_job_duration" in result[1]
-        assert "float" in result[1]
-        assert "_job_version" in result[2]
-        assert "varchar(64)" in result[2]
+        assert "_job_start_time" in result[0] and "datetime(3)" in result[0]
+        assert "_job_duration" in result[1] and "float" in result[1]
+        assert "_job_version" in result[2] and "varchar(64)" in result[2]
+        # The declared core type is recorded so `heading` can read it back.
+        assert ":datetime(3):" in result[0]
 
 
 class TestPostgreSQLDDLMethods:
@@ -550,12 +550,21 @@ class TestPostgreSQLDDLMethods:
             postgres_adapter.replica_identity_ddl('"schema"."table"', "nothing")
 
     def test_job_metadata_columns_postgres(self, postgres_adapter):
-        """Test PostgreSQL job metadata columns."""
-        result = postgres_adapter.job_metadata_columns()
+        """Job metadata columns, now built from the DataJoint type system.
+
+        The precision is the point: the hand-written form declared a bare
+        `timestamp`, giving PostgreSQL its default microsecond precision while
+        MySQL got `datetime(3)`. Routing through `core_type_to_sql` keeps the
+        two backends on the same declared type -- see #1566.
+        """
+        from datajoint.jobs import job_metadata_column_definitions
+
+        result = job_metadata_column_definitions(postgres_adapter)
         assert len(result) == 3
         assert "_job_start_time" in result[0]
-        assert "timestamp" in result[0]
-        assert "_job_duration" in result[1]
-        assert "real" in result[1]
-        assert "_job_version" in result[2]
-        assert "varchar(64)" in result[2]
+        assert "timestamp(3)" in result[0], "millisecond precision must match MySQL's datetime(3)"
+        assert "_job_duration" in result[1] and "real" in result[1]
+        assert "_job_version" in result[2] and "varchar(64)" in result[2]
+        # PostgreSQL carries no inline comment; it is applied via COMMENT ON
+        # from `column_comments`, so the fragment must not contain one.
+        assert "COMMENT" not in result[0].upper()
