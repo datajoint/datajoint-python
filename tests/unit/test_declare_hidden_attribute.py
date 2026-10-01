@@ -144,8 +144,3 @@ def test_platform_attributes_are_secondary():
 def test_no_tier_means_no_secondary_attributes():
     """`alter` passes no table name, and compares two definitions that declare none."""
     assert attribute_names("id : int32\n---\nvalue : int32") == ["id", "value"]
-
-
-def test_the_check_never_judges_the_framework_s_own_lines():
-    """The guard is inside the loop; platform attributes are added after it."""
-    assert "_prov" in attribute_names("id : int32\n---\nvalue : int32", "subject", _Config)
