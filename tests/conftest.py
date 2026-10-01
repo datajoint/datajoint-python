@@ -174,8 +174,13 @@ def minio_container():
 
     from testcontainers.minio import MinioContainer
 
+    # MinIO withdrew its public images: `minio/minio` on Docker Hub is gone
+    # entirely (any tag, not just `latest`) and `quay.io/minio/minio` now
+    # requires authentication. Chainguard publishes a maintained build that
+    # needs no credentials and is drop-in for this fixture. Overridable so a
+    # deployment can point at its own mirror without editing tests.
     container = MinioContainer(
-        image="minio/minio:latest",
+        image=os.environ.get("DJ_TEST_MINIO_IMAGE", "cgr.dev/chainguard/minio:latest"),
         access_key="datajoint",
         secret_key="datajoint",
     )
