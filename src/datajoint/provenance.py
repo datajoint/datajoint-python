@@ -89,25 +89,6 @@ def _jsonable(value):
     return str(value)
 
 
-#: The attribute, in DataJoint definition notation -- parsed by the same
-#: machinery as any user attribute.
-PROV_DEFINITION = "_prov = null : json # extrinsic provenance for a row that entered from outside"
-
-
-def column_definition(adapter):
-    """Return (DDL fragment, comment) declaring ``_prov``.
-
-    Used by ``deploy.add_prov_column`` to ALTER an existing table; declaration
-    appends :data:`PROV_DEFINITION` to the table definition instead.
-    """
-    from .declare import compile_attribute
-
-    _name, sql, _store, comment = compile_attribute(
-        PROV_DEFINITION, in_key=False, foreign_key_sql=[], context={}, adapter=adapter
-    )
-    return sql, comment
-
-
 def build_payload(connection, config=None):
     """Assemble the provenance record for rows inserted on this connection.
 

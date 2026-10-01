@@ -477,7 +477,7 @@ class TestDDLMethods:
     def test_job_metadata_columns_mysql(self, adapter):
         """Job metadata is declared in DataJoint notation, compiled like any attribute."""
         from datajoint.declare import compile_attribute
-        from datajoint.jobs import JOB_METADATA_DEFINITION
+        from datajoint.declare import JOB_METADATA_DEFINITION
 
         compiled = [
             compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=adapter)
@@ -561,7 +561,7 @@ class TestPostgreSQLDDLMethods:
         type keeps the two backends on the same declared precision -- #1566.
         """
         from datajoint.declare import compile_attribute
-        from datajoint.jobs import JOB_METADATA_DEFINITION
+        from datajoint.declare import JOB_METADATA_DEFINITION
 
         sql = [
             compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=postgres_adapter)[1]

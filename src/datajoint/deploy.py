@@ -235,6 +235,7 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
     import re
 
     from . import provenance
+    from .declare import PROV_DEFINITION, compile_attribute
     from .schemas import _Schema
     from .table import Table
     from .user_tables import Manual
@@ -263,7 +264,11 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
         raise DataJointError("Cannot add the provenance column: the target has no database.")
 
     adapter = connection.adapter
-    column_sql, _prov_comment = provenance.column_definition(adapter)
+    # Compiled by the same path that declares it on a new table, so a retrofitted
+    # column is identical to a freshly declared one.
+    _name, column_sql, _store, prov_comment = compile_attribute(
+        PROV_DEFINITION, in_key=False, foreign_key_sql=[], context={}, adapter=adapter
+    )
 
     # `tables_modified` and `columns_added` count work actually done, as
     # set_replica_identity does; a dry run reports through `ddl` and `details`.
@@ -294,10 +299,23 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
         ddl = (
             f"ALTER TABLE {adapter.quote_identifier(database)}.{adapter.quote_identifier(table_name)} ADD COLUMN {column_sql}"
         )
-        result["ddl"].append(ddl)
+        statements = [ddl]
+        # On PostgreSQL the comment is not part of the column definition; without
+        # this the retrofitted column loses the `:type:` marker that a freshly
+        # declared one carries, and reads back with no original_type.
+        comment_ddl = adapter.column_comment_ddl(
+            f"{adapter.quote_identifier(database)}.{adapter.quote_identifier(table_name)}",
+            provenance.PROV_ATTRIBUTE,
+            prov_comment,
+        )
+        if comment_ddl:
+            statements.append(comment_ddl)
+
+        result["ddl"].extend(statements)
         result["details"].append({"table": f"{database}.{table_name}", "status": "pending" if dry_run else "added"})
         if not dry_run:
-            connection.query(ddl)
+            for statement in statements:
+                connection.query(statement)
             result["tables_modified"] += 1
             result["columns_added"] += 1
 

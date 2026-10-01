@@ -24,16 +24,6 @@ TRUNCATION_APPENDIX = "...truncated"
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-#: Job metadata columns, in DataJoint definition notation. Parsed by the same
-#: machinery as any user attribute, so the backend type mapping and the `:type:`
-#: comment come from the one place that owns them.
-JOB_METADATA_DEFINITION = (
-    "_job_start_time = null : datetime(3) # when computation began",
-    "_job_duration = null : float32 # computation duration in seconds",
-    '_job_version = "" : varchar(64) # code version',
-)
-
-
 def _get_job_version(config=None) -> str:
     """
     Get version string based on config settings.

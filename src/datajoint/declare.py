@@ -454,8 +454,27 @@ def prepare_declare(
     )
 
 
+# =============================================================================
+# Platform-managed attributes
+#
+# Written in DataJoint notation and appended to a table definition before it is
+# parsed, so the ordinary machinery supplies the backend type mapping, the
+# `:type:` comment and the column-comment bookkeeping. `_append_platform_attributes`
+# below decides which tier receives which.
+# =============================================================================
+
 #: Primary key for a table that declares none of its own.
 SINGLETON_DEFINITION = "_singleton = 1 : bool # singleton primary key"
+
+#: Per-row execution record on the auto-populated tiers.
+JOB_METADATA_DEFINITION = (
+    "_job_start_time = null : datetime(3) # when computation began",
+    "_job_duration = null : float32 # computation duration in seconds",
+    '_job_version = "" : varchar(64) # code version',
+)
+
+#: Extrinsic provenance on Entry tables, where rows arrive from outside.
+PROV_DEFINITION = "_prov = null : json # extrinsic provenance for a row that entered from outside"
 
 
 def _reject_user_hidden_attributes(definition) -> None:
@@ -467,12 +486,9 @@ def _reject_user_hidden_attributes(definition) -> None:
     """
     lines = definition.split("\n") if isinstance(definition, str) else definition
     for line in lines:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or stripped.startswith("---"):
-            continue
-        if is_foreign_key(stripped):
-            continue
-        if stripped.startswith("_"):
+        # No need to skip blanks, comments, `---` or foreign keys: none of them
+        # begins with an underscore, so the one test below already passes them.
+        if line.strip().startswith("_"):
             raise DataJointError(
                 f'Attribute name in line "{line}" starts with an underscore. '
                 "Names with leading underscore are reserved for platform-managed "
@@ -496,9 +512,7 @@ def _append_platform_attributes(definition, table_name: str, config) -> str:
     the exception: it *is* the primary key, so it goes into the key section of a
     table that declares none of its own.
     """
-    from .jobs import JOB_METADATA_DEFINITION
-    from .provenance import PROV_DEFINITION
-    from .user_tables import Manual
+    from .user_tables import Computed, Imported, Manual
 
     lines = list(definition) if not isinstance(definition, str) else definition.split("\n")
 
@@ -506,19 +520,24 @@ def _append_platform_attributes(definition, table_name: str, config) -> str:
         stripped = line.strip()
         return bool(stripped) and not stripped.startswith("#") and not stripped.startswith("---")
 
+    def is_tier(tier) -> bool:
+        """Match the tier's own definition rather than re-deriving it from prefixes.
+
+        Enumerating prefixes here is what let job tables (`~`) acquire `_prov`
+        once already, and it silently miscategorises any tier added later. Each
+        `tier_regexp` also excludes parts by construction, since a part's name
+        carries its master's and fails the master's own pattern.
+        """
+        return re.fullmatch(tier.tier_regexp, table_name) is not None
+
     separator = next((i for i, line in enumerate(lines) if line.strip().startswith("---")), None)
     key_lines = lines[:separator] if separator is not None else lines
 
     secondary = []
-    # Computed (__) and Imported (_) tables, but not a part (__ in the middle).
-    is_computed = table_name.startswith("__") and "__" not in table_name[2:]
-    is_imported = table_name.startswith("_") and not table_name.startswith("__")
-    if config.jobs.add_job_metadata and (is_computed or is_imported):
+    if config.jobs.add_job_metadata and (is_tier(Computed) or is_tier(Imported)):
         secondary.extend(JOB_METADATA_DEFINITION)
 
-    # Entry tables, where rows enter from outside. Matched against the Manual
-    # tier itself rather than by excluding the other tiers' prefixes.
-    if config.provenance.capture and re.fullmatch(Manual.tier_regexp, table_name):
+    if config.provenance.capture and is_tier(Manual):
         secondary.append(PROV_DEFINITION)
 
     # A table that declares no primary key of its own gets the sentinel.
