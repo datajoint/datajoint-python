@@ -278,6 +278,11 @@ Compute = Computed
 user_table_classes = (Manual, Lookup, Computed, Imported, Part)
 
 
+def is_tier(table_name: str, tier) -> bool:
+    """Whether a stripped table name belongs to ``tier``."""
+    return re.fullmatch(tier.tier_regexp, table_name) is not None
+
+
 def _get_tier(table_name):
     """given the table name, return the user table class."""
     # Handle both MySQL backticks and PostgreSQL double quotes
@@ -290,6 +295,6 @@ def _get_tier(table_name):
     else:
         return None
     try:
-        return next(tier for tier in user_table_classes if re.fullmatch(tier.tier_regexp, extracted_name))
+        return next(tier for tier in user_table_classes if is_tier(extracted_name, tier))
     except StopIteration:
         return None

@@ -617,16 +617,10 @@ def _get_existing_columns(connection, database: str, table_name: str) -> set[str
 
 
 def _is_autopopulated_table(table_name: str) -> bool:
-    """Check if a table name indicates a Computed or Imported table."""
-    # Computed tables start with __ (but not part tables which have __ in middle)
-    # Imported tables start with _ (but not __)
-    if table_name.startswith("__"):
-        # Computed table if no __ after the prefix
-        return "__" not in table_name[2:]
-    elif table_name.startswith("_"):
-        # Imported table
-        return True
-    return False
+    """Whether a table name denotes a Computed or Imported table."""
+    from .user_tables import Computed, Imported, is_tier
+
+    return is_tier(table_name, Computed) or is_tier(table_name, Imported)
 
 
 def add_job_metadata_columns(target, dry_run: bool = True) -> dict:

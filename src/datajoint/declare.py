@@ -512,7 +512,7 @@ def _append_platform_attributes(definition, table_name: str, config) -> str:
     the exception: it *is* the primary key, so it goes into the key section of a
     table that declares none of its own.
     """
-    from .user_tables import Computed, Imported, Manual
+    from .user_tables import Computed, Imported, Manual, is_tier
 
     lines = list(definition) if not isinstance(definition, str) else definition.split("\n")
 
@@ -520,24 +520,14 @@ def _append_platform_attributes(definition, table_name: str, config) -> str:
         stripped = line.strip()
         return bool(stripped) and not stripped.startswith("#") and not stripped.startswith("---")
 
-    def is_tier(tier) -> bool:
-        """Match the tier's own definition rather than re-deriving it from prefixes.
-
-        Enumerating prefixes here is what let job tables (`~`) acquire `_prov`
-        once already, and it silently miscategorises any tier added later. Each
-        `tier_regexp` also excludes parts by construction, since a part's name
-        carries its master's and fails the master's own pattern.
-        """
-        return re.fullmatch(tier.tier_regexp, table_name) is not None
-
     separator = next((i for i, line in enumerate(lines) if line.strip().startswith("---")), None)
     key_lines = lines[:separator] if separator is not None else lines
 
     secondary = []
-    if config.jobs.add_job_metadata and (is_tier(Computed) or is_tier(Imported)):
+    if config.jobs.add_job_metadata and (is_tier(table_name, Computed) or is_tier(table_name, Imported)):
         secondary.extend(JOB_METADATA_DEFINITION)
 
-    if config.provenance.capture and is_tier(Manual):
+    if config.provenance.capture and is_tier(table_name, Manual):
         secondary.append(PROV_DEFINITION)
 
     # A table that declares no primary key of its own gets the sentinel.

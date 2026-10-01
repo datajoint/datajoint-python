@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 from .heading import Heading
 from .jobs import Job
 from .table import FreeTable, lookup_class_name
-from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
+from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier, is_tier
 from .utils import to_camel_case, user_choice
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -377,9 +377,9 @@ class _Schema:
             class_name = to_camel_case(table_name)
             if class_name not in into:
                 try:
-                    cls = next(cls for cls in master_classes if re.fullmatch(cls.tier_regexp, table_name))
+                    cls = next(cls for cls in master_classes if is_tier(table_name, cls))
                 except StopIteration:
-                    if re.fullmatch(Part.tier_regexp, table_name):
+                    if is_tier(table_name, Part):
                         part_tables.append(table_name)
                 else:
                     # declare and decorate master table classes

@@ -232,13 +232,12 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
       nothing.  This is a deploy-time operation: run it before the workers that
       will write through it, as with :func:`set_replica_identity`.
     """
-    import re
 
     from . import provenance
     from .declare import PROV_DEFINITION, compile_attribute
     from .schemas import _Schema
     from .table import Table
-    from .user_tables import Manual
+    from .user_tables import Manual, is_tier
 
     if isinstance(target, _Schema):
         connection = target.connection
@@ -281,7 +280,7 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
     }
 
     for table_name in table_names:
-        if not re.fullmatch(Manual.tier_regexp, table_name):
+        if not is_tier(table_name, Manual):
             continue
         result["tables_analyzed"] += 1
 
