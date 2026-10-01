@@ -29,6 +29,7 @@ import contextlib
 import contextvars
 import datetime
 import json
+import re
 from typing import Any
 
 #: Name of the hidden attribute.  Hidden attributes are excluded from
@@ -92,12 +93,18 @@ def _jsonable(value):
 def is_entry_table(table_name):
     """Whether a stripped table name denotes an Entry (``dj.Manual``) table.
 
-    Entry tables carry no tier prefix.  ``#`` marks Lookup, ``_`` Imported and
-    ``__`` Computed, while a part table carries ``__`` between its master's name
-    and its own.  A part inherits its master's provenance and gets no slot of
-    its own.
+    Matched against ``Manual.tier_regexp``, the definition the rest of the
+    library uses, rather than by excluding the prefixes of the other tiers.
+    Enumerating prefixes means every tier added later is an Entry table until
+    someone remembers this function -- which is how job tables (``~``) first
+    acquired the slot.
+
+    A part table carries its master's name and ``__`` before its own, so it
+    fails the match and inherits its master's provenance, which is what we want.
     """
-    return not table_name.startswith(("_", "#")) and "__" not in table_name
+    from .user_tables import Manual
+
+    return re.fullmatch(Manual.tier_regexp, table_name) is not None
 
 
 def build_payload(connection, config=None):
@@ -141,5 +148,11 @@ def build_payload(connection, config=None):
 
 
 def serialize(payload):
-    """Render a payload for the ``json`` column."""
-    return json.dumps(payload)
+    """Render a payload for the ``json`` column.
+
+    ``default=str`` because ``config.provenance.source`` is deployment-supplied
+    and typed ``dict[str, Any]``: a ``date`` or a ``Path`` in it would otherwise
+    raise from inside every insert into every Entry table, with an error naming
+    neither provenance nor the setting that caused it.
+    """
+    return json.dumps(payload, default=str)

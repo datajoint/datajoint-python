@@ -326,7 +326,7 @@ class ProvenanceSettings(BaseSettings):
         default=True,
         description="Add the hidden `_prov` attribute to Entry (dj.Manual) tables at declaration "
         "and fill it on insert. Tables declared while this is False never receive the column; "
-        "use datajoint.migrate.add_prov_column to add it to an existing table.",
+        "use datajoint.deploy.add_prov_column to add it to an existing table.",
     )
     source: dict[str, Any] = Field(
         default_factory=dict,
@@ -335,6 +335,24 @@ class ProvenanceSettings(BaseSettings):
         "DJ_PROVENANCE_SOURCE (as JSON), the config file, or the secrets directory. "
         "No author supplies this at the insert call site.",
     )
+
+    @field_validator("source")
+    @classmethod
+    def _source_must_be_json_serializable(cls, value: dict) -> dict:
+        """Reject a source that cannot be recorded, at the point it is set.
+
+        Every insert into an Entry table serializes this. Without the check the
+        failure surfaces from inside an unrelated insert, naming neither
+        provenance nor the setting responsible.
+        """
+        try:
+            json.dumps(value, default=str)
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f"provenance.source must be JSON-serializable; it is recorded on every row "
+                f"entering an Entry table. {error.__class__.__name__}: {error}"
+            ) from error
+        return value
 
 
 class Config(BaseSettings):

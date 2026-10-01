@@ -966,13 +966,23 @@ class Table(QueryExpression):
         if not rows or not self.connection._config.provenance.capture:
             return
         if not self._has_prov_attribute():
-            # Declared before capture was enabled.  datajoint.migrate.add_prov_column
+            # Declared before capture was enabled.  datajoint.deploy.add_prov_column
             # adds the slot to such a table.
             return
-        payload = provenance.build_payload(self.connection, self.connection._config)
-        if payload is None:
+        try:
+            payload = provenance.build_payload(self.connection, self.connection._config)
+            value = provenance.serialize(payload) if payload is not None else None
+        except Exception as error:
+            # Recording where a row came from must never stop it being written.
+            # `source` is deployment-supplied and typed `dict[str, Any]`, so this
+            # is reachable from configuration alone; the validator on that field
+            # catches the common case at assignment, and this covers the rest.
+            logger.warning(
+                f"Provenance not recorded for insert into {self.full_table_name}: " f"{error.__class__.__name__}: {error}"
+            )
             return
-        value = provenance.serialize(payload)
+        if value is None:
+            return
         for row in rows:
             row["names"] = list(row["names"]) + [provenance.PROV_ATTRIBUTE]
             row["placeholders"] = list(row["placeholders"]) + ["%s"]

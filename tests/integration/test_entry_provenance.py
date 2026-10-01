@@ -219,3 +219,30 @@ def test_capture_off_declares_no_column_and_migration_adds_it(connection_test, p
     finally:
         schema.drop()
         dj.config.provenance.capture = original
+
+
+def test_job_tables_do_not_get_prov(schema_prov):
+    """Regression for the #1555 review: `~` passed the old prefix test.
+
+    The job table is only materialised by a refresh, so a plain populate() does
+    not surface this -- which is how it survived the first round of tests.
+    """
+    schema, t = schema_prov
+    t["RecordingFile"].insert1({"file_id": 11, "path": "/data/b.tif"})
+    t["Ingest"].jobs.refresh()
+    t["Ingest"].populate(reserve_jobs=True)
+
+    conn = t["Ingest"]().connection
+    tables = [r[0] for r in conn.query(f"SHOW TABLES IN `{schema.database}`").fetchall()]
+    job_tables = [name for name in tables if name.startswith("~")]
+    assert job_tables, "no job table was created; the test would pass vacuously"
+
+    for name in job_tables:
+        columns = {
+            r[0]
+            for r in conn.query(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS " "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
+                args=(schema.database, name),
+            ).fetchall()
+        }
+        assert provenance.PROV_ATTRIBUTE not in columns, f"{name} carries {provenance.PROV_ATTRIBUTE}"

@@ -40,6 +40,9 @@ def config():
         ("subject__detail", False),  # Part of an Entry master
         ("__analysis__unit", False),  # Part of a Computed master
         ("_ingest__row", False),  # Part of an Imported master
+        ("~jobs", False),  # job table
+        ("~~analysis", False),  # per-table job queue
+        ("~lineage", False),  # lineage table
     ],
 )
 def test_is_entry_table(table_name, expected):
@@ -125,3 +128,50 @@ def test_settings_come_from_the_environment(monkeypatch):
     settings = ProvenanceSettings()
     assert settings.capture is False
     assert settings.source == {"system": "PyRat", "endpoint": "https://x"}
+
+
+def test_entry_test_follows_the_tier_definition_not_a_prefix_list():
+    """Regression for #1555 review: `~` tables were Entry tables.
+
+    Excluding the other tiers' prefixes one by one means any tier added later is
+    an Entry table until someone remembers this function. Matching
+    `Manual.tier_regexp` inverts that: a name is an Entry table only if the
+    library says it is.
+    """
+    import re
+
+    from datajoint.user_tables import Computed, Imported, Lookup, Manual, Part
+
+    assert provenance.is_entry_table("subject")
+    for tier in (Lookup, Imported, Computed, Part):
+        sample = {Lookup: "#param", Imported: "_ingest", Computed: "__analysis", Part: "subject__detail"}[tier]
+        assert re.fullmatch(tier.tier_regexp, sample), f"{sample} is not a {tier.__name__}"
+        assert not provenance.is_entry_table(sample)
+    # The job prefix belongs to no user tier at all, which is how it slipped through.
+    assert not any(re.fullmatch(t.tier_regexp, "~~analysis") for t in (Manual, Lookup, Imported, Computed, Part))
+    assert not provenance.is_entry_table("~~analysis")
+
+
+def test_serialize_survives_a_deployment_supplied_source(config):
+    """`source` is dict[str, Any]; a date in it must not break an insert."""
+    import datetime
+    import pathlib
+
+    payload = {
+        "time": "t",
+        "source": {"when": datetime.date(2026, 1, 1), "where": pathlib.Path("/mnt/raw")},
+    }
+    rendered = json.loads(provenance.serialize(payload))
+    assert rendered["source"] == {"when": "2026-01-01", "where": "/mnt/raw"}
+
+
+def test_source_must_be_serializable_at_assignment():
+    """The error belongs where the setting is made, not inside an unrelated insert."""
+    from pydantic import ValidationError
+
+    from datajoint.settings import ProvenanceSettings
+
+    cyclic: dict = {}
+    cyclic["self"] = cyclic
+    with pytest.raises(ValidationError, match="JSON-serializable"):
+        ProvenanceSettings(source=cyclic)
