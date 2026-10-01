@@ -7,9 +7,10 @@ different place.
 The framework declares its own hidden columns -- `_job_start_time`,
 `_singleton`, `_prov` -- in the same DataJoint notation a user writes, so the
 grammar has to be able to spell them. What must stay forbidden is a *user*
-declaring one, and that check sits in `prepare_declare`'s line loop, which
-iterates nothing but the user's lines: the framework's own are compiled after
-the loop and never pass through it.
+declaring one, and that check is a branch of `prepare_declare`'s line loop,
+which reaches it only after blanks, comments, `---`, foreign keys and indexes
+have each been dispatched -- and which iterates nothing but the user's lines,
+the framework's own being added after the loop.
 
 Keeping the two separate is what lets platform columns go through one path while
 `heading`'s visible/hidden split keeps meaning what it says.
@@ -56,10 +57,10 @@ def test_rejection_message_is_unchanged():
     assert "proj()" in message
 
 
-def test_rejection_reads_the_parsed_name_not_the_line():
-    """A name is what the grammar says it is, not what the text starts with."""
+def test_indented_declarations_are_refused_too():
+    """Definitions arrive indented from a class body; lines are stripped first."""
     with pytest.raises(DataJointError, match="starts with an underscore"):
-        parse("id : int32\n---\n  _spaced : int32")
+        parse("        id : int32\n        ---\n        _indented : int32")
 
 
 def test_ordinary_definitions_pass():
