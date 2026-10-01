@@ -165,12 +165,15 @@ def test_serialize_survives_a_deployment_supplied_source(config):
     import datetime
     import pathlib
 
+    where = pathlib.Path("/mnt/raw")
     payload = {
         "time": "t",
-        "source": {"when": datetime.date(2026, 1, 1), "where": pathlib.Path("/mnt/raw")},
+        "source": {"when": datetime.date(2026, 1, 1), "where": where},
     }
     rendered = json.loads(provenance.serialize(payload))
-    assert rendered["source"] == {"when": "2026-01-01", "where": "/mnt/raw"}
+    # Compare against str(Path), not a literal: the separator is platform-specific
+    # and the contract under test is that the value is stringified at all.
+    assert rendered["source"] == {"when": "2026-01-01", "where": str(where)}
 
 
 def test_source_must_be_serializable_at_assignment():
