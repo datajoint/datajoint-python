@@ -1469,6 +1469,15 @@ class Table(QueryExpression):
                 "_field": name,
                 "_config": self.connection._config,
             }
+            # The same four facts, named without underscores, for codecs that
+            # declare `context`. The underscore keys above stay in `key` so that
+            # codecs written against them keep working -- see #1550.
+            codec_context = {
+                "schema": self.database,
+                "table": self.table_name,
+                "field": name,
+                "config": self.connection._config,
+            }
             # Add primary key values from row if available
             if row is not None:
                 for pk_name in self.primary_key:
@@ -1477,14 +1486,18 @@ class Table(QueryExpression):
 
             # Apply encoders from outermost to innermost
             for attr_type in type_chain:
-                # Pass store_name to encoders that support it (check via introspection)
-                import inspect
+                # Offer store_name and context only to encoders that declare
+                # them, so a codec written before either existed is called
+                # exactly as it was. The check is cached per codec class.
+                from .codecs import _accepts_kwarg
 
-                sig = inspect.signature(attr_type.encode)
-                if "store_name" in sig.parameters:
-                    value = attr_type.encode(value, key=context, store_name=resolved_store)
-                else:
-                    value = attr_type.encode(value, key=context)
+                encode_fn = type(attr_type).encode
+                kwargs = {}
+                if _accepts_kwarg(encode_fn, "store_name"):
+                    kwargs["store_name"] = resolved_store
+                if _accepts_kwarg(encode_fn, "context"):
+                    kwargs["context"] = codec_context
+                value = attr_type.encode(value, key=context, **kwargs)
 
         # Handle NULL values
         if value is None or (attr.numeric and (value == "" or np.isnan(float(value)))):
