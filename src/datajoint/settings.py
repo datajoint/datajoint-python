@@ -323,9 +323,11 @@ class ProvenanceSettings(BaseSettings):
     )
 
     capture: bool = Field(
-        default=True,
+        default=False,
         description="Add the hidden `_prov` attribute to Entry (dj.Manual) tables at declaration "
-        "and fill it on insert. Tables declared while this is False never receive the column; "
+        "and fill it on insert. Off by default, matching jobs.add_job_metadata: enabling it changes "
+        "the DDL of every Entry table declared afterwards, which is a deployment's decision rather "
+        "than a library default. Tables declared while this is False never receive the column; "
         "use datajoint.deploy.add_prov_column to add it to an existing table.",
     )
     source: dict[str, Any] = Field(

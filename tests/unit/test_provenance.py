@@ -120,9 +120,14 @@ def test_payload_survives_unserializable_key_values(config):
     assert rendered["context"]["key"]["who"] == "12345678-1234-5678-1234-567812345678"
 
 
-def test_settings_defaults_to_capturing():
-    """A slot nobody can rely on is a slot nobody codes against."""
-    assert Config().provenance.capture is True
+def test_settings_default_to_not_capturing():
+    """Off by default, like `jobs.add_job_metadata`.
+
+    Capture changes the DDL of every Entry table declared afterwards. A library
+    default that does that would make an upgrade to 2.3.4 alter what a schema
+    declares, so the deployment turns it on.
+    """
+    assert Config().provenance.capture is False
     assert Config().provenance.source == {}
 
 
