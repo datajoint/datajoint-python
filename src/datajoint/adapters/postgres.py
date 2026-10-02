@@ -1349,34 +1349,6 @@ class PostgreSQLAdapter(DatabaseAdapter):
             self._pending_enum_types = {}
         return ddl_statements
 
-    def job_metadata_columns(self) -> list[str]:
-        """
-        Return PostgreSQL-specific job metadata column definitions.
-
-        Examples
-        --------
-        >>> adapter.job_metadata_columns()
-        ['"_job_start_time" timestamp DEFAULT NULL',
-         '"_job_duration" real DEFAULT NULL',
-         '"_job_version" varchar(64) DEFAULT \\'\\'']
-        """
-        return [
-            '"_job_start_time" timestamp DEFAULT NULL',
-            '"_job_duration" real DEFAULT NULL',
-            "\"_job_version\" varchar(64) DEFAULT ''",
-        ]
-
-    def provenance_columns(self) -> list[str]:
-        """
-        Return the PostgreSQL extrinsic-provenance column definition.
-
-        Examples
-        --------
-        >>> adapter.provenance_columns()
-        ['"_prov" jsonb DEFAULT NULL']
-        """
-        return ['"_prov" jsonb DEFAULT NULL']
-
     # =========================================================================
     # Error Translation
     # =========================================================================

@@ -156,7 +156,10 @@ def build_attribute_parser() -> pp.ParserElement:
     """
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
+    # A leading underscore is permitted by the grammar so the framework can
+    # declare its own columns in this notation. Whether a *user* may is policy,
+    # enforced in prepare_declare where a user's definition is parsed.
+    attribute_name = pp.Word(pp.srange("[a-z_]"), pp.srange("[a-z0-9_]")).set_results_name("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
         ^ pp.QuotedString("<", end_quote_char=">", unquote_results=False)
@@ -334,11 +337,51 @@ def compile_foreign_key(
         fk_index_candidates.append(fk_attrs)
 
 
+# =============================================================================
+# Platform-managed attributes
+#
+# Written in DataJoint notation and compiled by the same `compile_attribute` as
+# any user attribute, so the backend type mapping, the `:type:` comment and the
+# column-comment bookkeeping all come from the one path that owns them.
+# =============================================================================
+
+#: Primary key for a table that declares none of its own.
+SINGLETON_DEFINITION = "_singleton = 1 : bool # singleton primary key"
+
+#: Per-row execution record on the auto-populated tiers.
+JOB_METADATA_DEFINITION = (
+    "_job_start_time = null : datetime(3) # when computation began",
+    "_job_duration = null : float32 # computation duration in seconds",
+    '_job_version = "" : varchar(64) # code version',
+)
+
+#: Extrinsic provenance on Entry tables, where rows arrive from outside.
+PROV_DEFINITION = "_prov = null : json # extrinsic provenance for a row that entered from outside"
+
+
+def _tier_attributes(table_name: str | None, config) -> tuple[str, ...]:
+    """The platform-managed attributes a tier receives, in DataJoint notation."""
+    from .user_tables import Computed, Imported, Manual, is_tier
+
+    if table_name is None:  # `alter` compares two definitions; neither declares these
+        return ()
+    if config.jobs.add_job_metadata and (is_tier(table_name, Computed) or is_tier(table_name, Imported)):
+        return JOB_METADATA_DEFINITION
+    if config.provenance.capture and is_tier(table_name, Manual):
+        return (PROV_DEFINITION,)
+    return ()
+
+
 def prepare_declare(
-    definition: str, context: dict, adapter
+    definition: str, context: dict, adapter, *, table_name: str | None = None, config=None
 ) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]], dict[str, str]]:
     """
     Parse a table definition into its components.
+
+    The platform-managed attributes are added here too, once the user's lines are
+    parsed and by the same ``add_attribute``.  That is what lets ``_singleton``
+    be decided from the primary key the parse produced, and leaves the loop
+    iterating user lines only, where a user-declared hidden one is refused.
 
     Parameters
     ----------
@@ -348,6 +391,13 @@ def prepare_declare(
         Namespace for resolving foreign key references.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    table_name : str, optional
+        Stripped table name, which carries the tier.  Given one, the tier's
+        platform attributes are added and ``config`` is required; ``alter``
+        passes neither, since it compares two definitions and neither side
+        declares them.
+    config : Config, optional
+        Read for ``jobs.add_job_metadata`` and ``provenance.capture``.
 
     Returns
     -------
@@ -380,6 +430,18 @@ def prepare_declare(
     column_comments = {}  # column_name -> comment (for PostgreSQL COMMENT ON)
     fk_index_candidates = []  # PostgreSQL: FK column-lists that may need a support index (#1512)
 
+    def add_attribute(line: str, in_key: bool) -> None:
+        name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
+        if store:
+            external_stores.append(store)
+        if in_key and name not in primary_key:
+            primary_key.append(name)
+        if name not in attributes:
+            attributes.append(name)
+            attribute_sql.append(sql)
+            if comment:
+                column_comments[name] = comment
+
     for line in definition:
         if not line or line.startswith("#"):  # ignore additional comments
             pass
@@ -400,17 +462,27 @@ def prepare_declare(
             )
         elif re.match(r"^(unique\s+)?index\s*\(.*\)\s*(#.*)?$", line, re.I):  # index
             compile_index(re.sub(r"\s*#.*$", "", line), index_sql, adapter)
+        elif line.startswith("_"):
+            # Policy, not grammar: the parser accepts the name so that the
+            # framework can declare its own columns in the same notation. Only
+            # user lines reach here -- the platform's are added after the loop.
+            raise DataJointError(
+                f'Attribute name in line "{line}" starts with an underscore. '
+                "Names with leading underscore are reserved for platform-managed "
+                "columns (e.g. _job_start_time, _singleton). Use a regular "
+                "attribute name; if you need to control visibility at the call "
+                "site, use proj()."
+            )
         else:
-            name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
-            if store:
-                external_stores.append(store)
-            if in_key and name not in primary_key:
-                primary_key.append(name)
-            if name not in attributes:
-                attributes.append(name)
-                attribute_sql.append(sql)
-                if comment:
-                    column_comments[name] = comment
+            add_attribute(line, in_key)
+
+    # A table that declares no primary key of its own gets the sentinel, which is
+    # what makes it hold at most one row. Only the parse knows whether it does:
+    # `index (...)` contributes no attribute and `-> Parent` may contribute many.
+    if not primary_key:
+        add_attribute(SINGLETON_DEFINITION, True)
+    for line in _tier_attributes(table_name, config):
+        add_attribute(line, False)
 
     # Foreign-key support indexes (PostgreSQL; #1512). Now that the whole
     # definition is parsed, emit an index on each candidate foreign key's columns
@@ -485,7 +557,7 @@ def declare(
     Raises
     ------
     DataJointError
-        If table name exceeds max length or has no primary key.
+        If the table name exceeds the backend's max length.
     """
     # Parse table name using adapter (handles backend-specific quoting)
     schema_name, table_name = adapter.split_full_table_name(full_table_name)
@@ -497,6 +569,11 @@ def declare(
             )
         )
 
+    if config is None:
+        from .settings import config as _config
+
+        config = _config
+
     (
         table_comment,
         primary_key,
@@ -506,49 +583,7 @@ def declare(
         external_stores,
         fk_attribute_map,
         column_comments,
-    ) = prepare_declare(definition, context, adapter)
-
-    # Add hidden job metadata for Computed/Imported tables (not parts)
-    if config is None:
-        from .settings import config as _config
-
-        config = _config
-    if config.jobs.add_job_metadata:
-        # Check if this is a Computed (__) or Imported (_) table, but not a Part (contains __ in middle)
-        is_computed = table_name.startswith("__") and "__" not in table_name[2:]
-        is_imported = table_name.startswith("_") and not table_name.startswith("__")
-        if is_computed or is_imported:
-            job_metadata_sql = adapter.job_metadata_columns()
-            attribute_sql.extend(job_metadata_sql)
-
-    # Add the hidden extrinsic-provenance slot to Entry tables, where rows enter
-    # from outside the pipeline.  Computed and Imported tables have no use for
-    # it -- their provenance is entailed by the foreign-key graph -- and a part
-    # inherits its master's.
-    # Matched against the Manual tier itself, not by excluding the other tiers'
-    # prefixes: enumerating exclusions makes every tier added later an Entry
-    # table by default, which is how job tables (`~`) first acquired the slot.
-    # Imported here rather than at module scope: user_tables imports table,
-    # which imports this module.
-    from .user_tables import Manual
-
-    if config.provenance.capture and re.fullmatch(Manual.tier_regexp, table_name):
-        attribute_sql.extend(adapter.provenance_columns())
-
-    if not primary_key:
-        # Singleton table: add hidden sentinel attribute
-        primary_key = ["_singleton"]
-        singleton_comment = ":bool:singleton primary key"
-        sql_type = adapter.core_type_to_sql("bool")
-        singleton_sql = adapter.format_column_definition(
-            name="_singleton",
-            sql_type=sql_type,
-            nullable=False,
-            default="NOT NULL DEFAULT TRUE",
-            comment=singleton_comment,
-        )
-        attribute_sql.insert(0, singleton_sql)
-        column_comments["_singleton"] = singleton_comment
+    ) = prepare_declare(definition, context, adapter, table_name=table_name, config=config)
 
     pre_ddl = []  # DDL to run BEFORE CREATE TABLE (e.g., CREATE TYPE for enums)
     post_ddl = []  # DDL to run AFTER CREATE TABLE (e.g., COMMENT ON)
@@ -958,14 +993,6 @@ def compile_attribute(
     DataJointError
         If syntax is invalid, primary key is nullable, or blob has invalid default.
     """
-    if line.lstrip().startswith("_"):
-        raise DataJointError(
-            f'Attribute name in line "{line}" starts with an underscore. '
-            "Names with leading underscore are reserved for platform-managed "
-            "columns (e.g. _job_start_time, _singleton). Use a regular "
-            "attribute name; if you need to control visibility at the call "
-            "site, use proj()."
-        )
     try:
         match = attribute_parser.parse_string(line + "#", parse_all=True)
     except pp.ParseException as err:

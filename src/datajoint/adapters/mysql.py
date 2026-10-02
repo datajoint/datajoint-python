@@ -996,34 +996,6 @@ class MySQLAdapter(DatabaseAdapter):
         """
         return None  # MySQL uses inline enum
 
-    def job_metadata_columns(self) -> list[str]:
-        """
-        Return MySQL-specific job metadata column definitions.
-
-        Examples
-        --------
-        >>> adapter.job_metadata_columns()
-        ["`_job_start_time` datetime(3) DEFAULT NULL",
-         "`_job_duration` float DEFAULT NULL",
-         "`_job_version` varchar(64) DEFAULT ''"]
-        """
-        return [
-            "`_job_start_time` datetime(3) DEFAULT NULL",
-            "`_job_duration` float DEFAULT NULL",
-            "`_job_version` varchar(64) DEFAULT ''",
-        ]
-
-    def provenance_columns(self) -> list[str]:
-        """
-        Return the MySQL extrinsic-provenance column definition.
-
-        Examples
-        --------
-        >>> adapter.provenance_columns()
-        ["`_prov` json DEFAULT NULL"]
-        """
-        return ["`_prov` json DEFAULT NULL"]
-
     # =========================================================================
     # Error Translation
     # =========================================================================

@@ -1317,48 +1317,6 @@ class DatabaseAdapter(ABC):
         """
         ...
 
-    @abstractmethod
-    def job_metadata_columns(self) -> list[str]:
-        """
-        Return job metadata column definitions for Computed/Imported tables.
-
-        Returns
-        -------
-        list[str]
-            List of column definition strings (fully formatted with quotes).
-
-        Examples
-        --------
-        MySQL:
-            ["`_job_start_time` datetime(3) DEFAULT NULL",
-             "`_job_duration` float DEFAULT NULL",
-             "`_job_version` varchar(64) DEFAULT ''"]
-        PostgreSQL:
-            ['"_job_start_time" timestamp DEFAULT NULL',
-             '"_job_duration" real DEFAULT NULL',
-             '"_job_version" varchar(64) DEFAULT \'\'']
-        """
-        ...
-
-    @abstractmethod
-    def provenance_columns(self) -> list[str]:
-        """
-        Return the hidden extrinsic-provenance column for Entry tables.
-
-        Returns
-        -------
-        list[str]
-            List of column definition strings (fully formatted with quotes).
-
-        Examples
-        --------
-        MySQL:
-            ["`_prov` json DEFAULT NULL"]
-        PostgreSQL:
-            ['"_prov" jsonb DEFAULT NULL']
-        """
-        ...
-
     # =========================================================================
     # Error Translation
     # =========================================================================

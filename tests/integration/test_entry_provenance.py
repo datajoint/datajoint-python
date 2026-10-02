@@ -195,7 +195,9 @@ def test_capture_off_declares_no_column_and_migration_adds_it(connection_test, p
         Legacy.insert1({"legacy_id": 1, "note": "before"})
 
         preview = add_prov_column(Legacy, dry_run=True)
-        assert preview["columns_added"] == 1 and preview["ddl"]
+        # A dry run reports through `ddl`; the counters record work actually done.
+        assert preview["ddl"] and preview["columns_added"] == 0
+        assert preview["details"][0]["status"] == "pending"
 
         applied = add_prov_column(Legacy, dry_run=False)
         assert applied["columns_added"] == 1
@@ -203,6 +205,9 @@ def test_capture_off_declares_no_column_and_migration_adds_it(connection_test, p
         # idempotent
         assert add_prov_column(Legacy, dry_run=False)["columns_added"] == 0
 
+        # add_prov_column is a deploy-time operation and does not reach into the
+        # in-process cache; the schema is reloaded before anything writes through
+        # it. Reload here for the same reason a deployment would.
         Legacy().heading._init_from_database()
         assert provenance.PROV_ATTRIBUTE in Legacy().heading._attributes
 
