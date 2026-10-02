@@ -190,10 +190,10 @@ def add_prov_column(target: "TargetType", dry_run: bool = True) -> dict:
     """
     Add the hidden ``_prov`` attribute to Entry (``dj.Manual``) tables that lack it.
 
-    Capture defaults on, so tables declared from 2.3.4 onward already carry the
-    slot.  Two populations do not: tables declared before 2.3.4, and tables
-    declared while ``config.provenance.capture`` was off.  Inserts into those
-    record nothing, silently, and this brings them in line.
+    Capture defaults off, so a table carries the slot only if it was declared
+    while ``config.provenance.capture`` was on.  Every other table -- declared
+    before 2.3.4, or before the deployment enabled capture -- records nothing on
+    insert, silently, and this brings it in line.
 
     It belongs here rather than in :mod:`datajoint.migrate` because it is not a
     one-shot correction of legacy state.  It is idempotent — a table that already
