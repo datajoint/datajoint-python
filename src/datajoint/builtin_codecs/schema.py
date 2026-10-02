@@ -43,8 +43,10 @@ class SchemaCodec(Codec, register=False):
     does.
 
     The old underscore keys in ``key`` still work and are still populated, so a
-    codec written before 2.3.4 keeps running — but reading them raises a
-    ``DeprecationWarning`` and they are removed in 2.4.
+    codec written before 2.3.4 keeps running. They are removed in 2.4.
+    ``_extract_context`` warns when it falls back to them; ``_codec_config`` and
+    a direct ``key["_config"]`` do not, so the warning is a prompt rather than a
+    complete inventory of what still reads them.
 
     Comparison with Hash-addressed:
         - **Schema-addressed** (this): Path from schema structure, no dedup

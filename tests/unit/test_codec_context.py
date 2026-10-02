@@ -138,3 +138,35 @@ def test_capability_check_is_cached_per_class():
     after = _accepts_kwarg.cache_info()
     assert after.misses == before.misses, "signature was re-inspected after caching"
     assert after.hits - before.hits == 2000
+
+
+def test_builtin_codecs_read_the_schema_from_context():
+    """A built-in must not reach past `context` for something `context` carries.
+
+    `HashCodec.encode` read the schema from `key["_schema"]` while reading the
+    config from `context`. A caller that passes `context` with a key holding only
+    primary-key values -- which is every caller once 2.4 removes the underscore
+    keys -- stored its content under `unknown/`, silently and in the wrong place.
+    """
+    from datajoint.builtin_codecs.hash import HashCodec
+
+    stored = {}
+
+    def fake_put_hash(value, *, schema_name, store_name=None, config=None):
+        stored["schema_name"] = schema_name
+        return {"hash": "h", "path": f"{schema_name}/h", "schema": schema_name, "store": store_name, "size": 0}
+
+    import datajoint.hash_registry as hash_registry
+
+    original = hash_registry.put_hash
+    hash_registry.put_hash = fake_put_hash
+    try:
+        HashCodec().encode(b"x", key={"subject_id": 1}, context={"schema": "lab", "config": None})
+        assert stored["schema_name"] == "lab", "context['schema'] must win over the key"
+
+        # and the pre-2.3.4 caller is unaffected
+        stored.clear()
+        HashCodec().encode(b"x", key={"_schema": "legacy_lab", "subject_id": 1})
+        assert stored["schema_name"] == "legacy_lab"
+    finally:
+        hash_registry.put_hash = original

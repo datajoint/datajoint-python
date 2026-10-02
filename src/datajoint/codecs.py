@@ -213,7 +213,10 @@ class Codec(ABC):
         Notes
         -----
         **Declare ``context`` as well**: ``decode(self, stored, *, key=None,
-        context=None)``. See :meth:`encode`.
+        context=None)``. On this path it carries ``config`` only — the stored
+        metadata already holds the location, so ``schema``, ``table`` and
+        ``field`` are not resolved again. Pass it to :meth:`_codec_config` for
+        the same reason :meth:`encode` does.
         """
         ...
 
