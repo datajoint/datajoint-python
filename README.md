@@ -1,6 +1,6 @@
-# DataJoint for Python
+# DataJoint Library for Python
 
-DataJoint is a framework for scientific data pipelines based on the **Relational Workflow Model** — a paradigm where your database schema is an executable specification of your workflow.
+The **DataJoint Library** is a framework for scientific data pipelines based on the **Relational Workflow Model** — a paradigm where your database schema is an executable specification of your workflow.
 
 - **Tables represent workflow steps** — Each table is a step in your pipeline
 - **Foreign keys encode dependencies** — Parent tables must be populated before child tables
