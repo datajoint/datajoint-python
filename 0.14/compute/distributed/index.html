@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3599,20 +3599,20 @@ record from being processed during subsequent auto-population calls.
 Inspecting the job record for failure details can proceed much like any other DataJoint
 query.</p>
 <p>For example, given the above table, errors can be inspected as follows:</p>
-<div class="highlight"><pre><span></span><code><span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">jobs</span> <span class="o">&amp;</span> <span class="s1">&#39;status=&quot;error&quot;&#39;</span> <span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">jobs</span> <span class="o">&amp;</span> <span class="s1">'status="error"'</span> <span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span>
-<span class="p">[</span><span class="n">OrderedDict</span><span class="p">([(</span><span class="s1">&#39;table_name&#39;</span><span class="p">,</span> <span class="s1">&#39;__job_results&#39;</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;key_hash&#39;</span><span class="p">,</span> <span class="s1">&#39;c81e728d9d4c2f636f067f89cc14862c&#39;</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="mi">2</span><span class="p">,)],</span>
-                         <span class="n">dtype</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;O&#39;</span><span class="p">)])),</span>
-               <span class="p">(</span><span class="s1">&#39;error_message&#39;</span><span class="p">,</span> <span class="s1">&#39;KeyboardInterrupt&#39;</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;error_stack&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="s1">&#39;datajoint@localhost&#39;</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;host&#39;</span><span class="p">,</span> <span class="s1">&#39;localhost&#39;</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;pid&#39;</span><span class="p">,</span> <span class="mi">15571</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;connection_id&#39;</span><span class="p">,</span> <span class="mi">59</span><span class="p">),</span>
-               <span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2017</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">53</span><span class="p">))])]</span>
+<span class="p">[</span><span class="n">OrderedDict</span><span class="p">([(</span><span class="s1">'table_name'</span><span class="p">,</span> <span class="s1">'__job_results'</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'key_hash'</span><span class="p">,</span> <span class="s1">'c81e728d9d4c2f636f067f89cc14862c'</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'status'</span><span class="p">,</span> <span class="s1">'error'</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'key'</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="mi">2</span><span class="p">,)],</span>
+                         <span class="n">dtype</span><span class="o">=</span><span class="p">[(</span><span class="s1">'id'</span><span class="p">,</span> <span class="s1">'O'</span><span class="p">)])),</span>
+               <span class="p">(</span><span class="s1">'error_message'</span><span class="p">,</span> <span class="s1">'KeyboardInterrupt'</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'error_stack'</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'user'</span><span class="p">,</span> <span class="s1">'datajoint@localhost'</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'host'</span><span class="p">,</span> <span class="s1">'localhost'</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'pid'</span><span class="p">,</span> <span class="mi">15571</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'connection_id'</span><span class="p">,</span> <span class="mi">59</span><span class="p">),</span>
+               <span class="p">(</span><span class="s1">'timestamp'</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2017</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">53</span><span class="p">))])]</span>
 </code></pre></div>
 <p>This particular error occurred when processing the record with ID <code>2</code>, resulted from a
 <code>KeyboardInterrupt</code>, and has no additional
@@ -3620,7 +3620,7 @@ error trace.</p>
 <p>After any system or code errors have been resolved, the table can simply be cleaned of
 errors and the computation rerun.</p>
 <p>For example:</p>
-<div class="highlight"><pre><span></span><code><span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">jobs</span> <span class="o">&amp;</span> <span class="s1">&#39;status=&quot;error&quot;&#39;</span> <span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">jobs</span> <span class="o">&amp;</span> <span class="s1">'status="error"'</span> <span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
 </code></pre></div>
 <p>In some cases, it may be preferable to inspect the jobs table records using populate
 keys.
@@ -3628,7 +3628,7 @@ Since job keys are hashed and stored as a blob in the jobs table to support the 
 types of keys, we need to query using the key hash instead of simply using the raw key
 data.</p>
 <p>This can be done by using <code>dj.key_hash</code> to convert the key as follows:</p>
-<div class="highlight"><pre><span></span><code><span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">jk</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;table_name&#39;</span><span class="p">:</span> <span class="n">JobResults</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="s1">&#39;key_hash&#39;</span> <span class="p">:</span> <span class="n">dj</span><span class="o">.</span><span class="n">key_hash</span><span class="p">({</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">})}</span>
+<div class="highlight"><pre><span></span><code><span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">]:</span> <span class="n">jk</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'table_name'</span><span class="p">:</span> <span class="n">JobResults</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="s1">'key_hash'</span> <span class="p">:</span> <span class="n">dj</span><span class="o">.</span><span class="n">key_hash</span><span class="p">({</span><span class="s1">'id'</span><span class="p">:</span> <span class="mi">2</span><span class="p">})}</span>
 
 <span class="n">In</span> <span class="p">[</span><span class="mi">5</span><span class="p">]:</span> <span class="n">schema</span><span class="o">.</span><span class="n">jobs</span> <span class="o">&amp;</span> <span class="n">jk</span>
 <span class="n">Out</span><span class="p">[</span><span class="mi">5</span><span class="p">]:</span>
@@ -3661,14 +3661,14 @@ the user, along with the option to kill processes. By default, output is ordered
 ascending connection ID. To change the output order of dj.kill(), an additional
 order_by argument can be provided.</p>
 <p>For example, to sort the output by hostname in descending order:</p>
-<div class="highlight"><pre><span></span><code><span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">dj</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;host desc&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">dj</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">'host desc'</span><span class="p">)</span>
 <span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span>
      <span class="n">ID</span> <span class="n">USER</span>         <span class="n">HOST</span>          <span class="n">STATE</span>         <span class="n">TIME</span>    <span class="n">INFO</span>
 <span class="o">+--+</span> <span class="o">+----------+</span> <span class="o">+-----------+</span> <span class="o">+-----------+</span> <span class="o">+-----+</span>
      <span class="mi">33</span> <span class="n">chris</span>        <span class="n">localhost</span><span class="p">:</span><span class="mi">54840</span>                 <span class="mi">1261</span>  <span class="kc">None</span>
      <span class="mi">17</span> <span class="n">chris</span>        <span class="n">localhost</span><span class="p">:</span><span class="mi">54587</span>                 <span class="mi">3246</span>  <span class="kc">None</span>
      <span class="mi">4</span> <span class="n">event_scheduler</span> <span class="n">localhost</span>    <span class="n">Waiting</span> <span class="n">on</span> <span class="n">empty</span> <span class="n">queue</span>  <span class="mi">187180</span>  <span class="kc">None</span>
-<span class="n">process</span> <span class="n">to</span> <span class="n">kill</span> <span class="ow">or</span> <span class="s2">&quot;q&quot;</span> <span class="n">to</span> <span class="n">quit</span> <span class="o">&gt;</span> <span class="n">q</span>
+<span class="n">process</span> <span class="n">to</span> <span class="n">kill</span> <span class="ow">or</span> <span class="s2">"q"</span> <span class="n">to</span> <span class="n">quit</span> <span class="o">&gt;</span> <span class="n">q</span>
 </code></pre></div>
 
 
@@ -3804,7 +3804,7 @@ order_by argument can be provided.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

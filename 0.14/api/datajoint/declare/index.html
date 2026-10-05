@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3701,13 +3701,13 @@ declare the corresponding mysql tables.</p>
 <span class="normal">149</span>
 <span class="normal">150</span>
 <span class="normal">151</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_foreign_key</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 
 <span class="sd">    :param line: a line from the table definition</span>
 <span class="sd">    :return: true if the line appears to be a foreign key definition</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">arrow_position</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;-&gt;&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">arrow_position</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">in</span> <span class="n">line</span><span class="p">[:</span><span class="n">arrow_position</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">#&#39;&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="n">arrow_position</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">"-&gt;"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">arrow_position</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">in</span> <span class="n">line</span><span class="p">[:</span><span class="n">arrow_position</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="s2">"</span><span class="se">\"</span><span class="s2">#'"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3939,7 +3939,7 @@ of primary key attributes thus far -- to be updated by the function</p>
 <span class="normal">234</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compile_foreign_key</span><span class="p">(</span>
     <span class="n">line</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">attributes</span><span class="p">,</span> <span class="n">primary_key</span><span class="p">,</span> <span class="n">attr_sql</span><span class="p">,</span> <span class="n">foreign_key_sql</span><span class="p">,</span> <span class="n">index_sql</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    :param line: a line from a table definition</span>
 <span class="sd">    :param context: namespace containing referenced objects</span>
 <span class="sd">    :param attributes: list of attribute names already in the declaration -- to be updated by this function</span>
@@ -3948,7 +3948,7 @@ of primary key attributes thus far -- to be updated by the function</p>
 <span class="sd">    :param attr_sql: list of sql statements defining attributes -- to be updated by this function.</span>
 <span class="sd">    :param foreign_key_sql: list of sql statements specifying foreign key constraints -- to be updated by this function.</span>
 <span class="sd">    :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Parse and validate</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.expression</span><span class="w"> </span><span class="kn">import</span> <span class="n">QueryExpression</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">Table</span>
@@ -3956,24 +3956,24 @@ of primary key attributes thus far -- to be updated by the function</p>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">foreign_key_parser</span><span class="o">.</span><span class="n">parseString</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
     <span class="k">except</span> <span class="n">pp</span><span class="o">.</span><span class="n">ParseException</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s1">&#39;Parsing error in line &quot;</span><span class="si">%s</span><span class="s1">&quot;. </span><span class="si">%s</span><span class="s1">.&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">err</span><span class="p">))</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s1">'Parsing error in line "</span><span class="si">%s</span><span class="s1">". </span><span class="si">%s</span><span class="s1">.'</span> <span class="o">%</span> <span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">err</span><span class="p">))</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">ref</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">ref_table</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Foreign key reference </span><span class="si">%s</span><span class="s2"> could not be resolved&quot;</span> <span class="o">%</span> <span class="n">result</span><span class="o">.</span><span class="n">ref_table</span>
+            <span class="s2">"Foreign key reference </span><span class="si">%s</span><span class="s2"> could not be resolved"</span> <span class="o">%</span> <span class="n">result</span><span class="o">.</span><span class="n">ref_table</span>
         <span class="p">)</span>
 
     <span class="n">options</span> <span class="o">=</span> <span class="p">[</span><span class="n">opt</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">options</span><span class="p">]</span>
     <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>  <span class="c1"># check for invalid options</span>
-        <span class="k">if</span> <span class="n">opt</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;NULLABLE&quot;</span><span class="p">,</span> <span class="s2">&quot;UNIQUE&quot;</span><span class="p">}:</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s1">&#39;Invalid foreign key option &quot;</span><span class="si">{opt}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="o">=</span><span class="n">opt</span><span class="p">))</span>
-    <span class="n">is_nullable</span> <span class="o">=</span> <span class="s2">&quot;NULLABLE&quot;</span> <span class="ow">in</span> <span class="n">options</span>
-    <span class="n">is_unique</span> <span class="o">=</span> <span class="s2">&quot;UNIQUE&quot;</span> <span class="ow">in</span> <span class="n">options</span>
+        <span class="k">if</span> <span class="n">opt</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"NULLABLE"</span><span class="p">,</span> <span class="s2">"UNIQUE"</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s1">'Invalid foreign key option "</span><span class="si">{opt}</span><span class="s1">"'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="o">=</span><span class="n">opt</span><span class="p">))</span>
+    <span class="n">is_nullable</span> <span class="o">=</span> <span class="s2">"NULLABLE"</span> <span class="ow">in</span> <span class="n">options</span>
+    <span class="n">is_unique</span> <span class="o">=</span> <span class="s2">"UNIQUE"</span> <span class="ow">in</span> <span class="n">options</span>
     <span class="k">if</span> <span class="n">is_nullable</span> <span class="ow">and</span> <span class="n">primary_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s1">&#39;Primary dependencies cannot be nullable in line &quot;</span><span class="si">{line}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">line</span><span class="o">=</span><span class="n">line</span><span class="p">)</span>
+            <span class="s1">'Primary dependencies cannot be nullable in line "</span><span class="si">{line}</span><span class="s1">"'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">line</span><span class="o">=</span><span class="n">line</span><span class="p">)</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">Table</span><span class="p">):</span>
@@ -3987,7 +3987,7 @@ of primary key attributes thus far -- to be updated by the function</p>
         <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">support</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">)</span>
     <span class="p">):</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s1">&#39;Dependency &quot;</span><span class="si">%s</span><span class="s1">&quot; is not supported (yet). Use a base table or its projection.&#39;</span>
+            <span class="s1">'Dependency "</span><span class="si">%s</span><span class="s1">" is not supported (yet). Use a base table or its projection.'</span>
             <span class="o">%</span> <span class="n">result</span><span class="o">.</span><span class="n">ref_table</span>
         <span class="p">)</span>
 
@@ -3998,14 +3998,14 @@ of primary key attributes thus far -- to be updated by the function</p>
             <span class="k">if</span> <span class="n">primary_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">primary_key</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
             <span class="n">attr_sql</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="n">ref</span><span class="o">.</span><span class="n">heading</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span><span class="o">.</span><span class="n">sql</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;NOT NULL &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">is_nullable</span><span class="p">))</span>
+                <span class="n">ref</span><span class="o">.</span><span class="n">heading</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span><span class="o">.</span><span class="n">sql</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"NOT NULL "</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">is_nullable</span><span class="p">))</span>
             <span class="p">)</span>
 
     <span class="c1"># declare the foreign key</span>
     <span class="n">foreign_key_sql</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-        <span class="s2">&quot;FOREIGN KEY (`</span><span class="si">{fk}</span><span class="s2">`) REFERENCES </span><span class="si">{ref}</span><span class="s2"> (`</span><span class="si">{pk}</span><span class="s2">`) ON UPDATE CASCADE ON DELETE RESTRICT&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-            <span class="n">fk</span><span class="o">=</span><span class="s2">&quot;`,`&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">primary_key</span><span class="p">),</span>
-            <span class="n">pk</span><span class="o">=</span><span class="s2">&quot;`,`&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">heading</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">original_name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ref</span><span class="o">.</span><span class="n">primary_key</span><span class="p">),</span>
+        <span class="s2">"FOREIGN KEY (`</span><span class="si">{fk}</span><span class="s2">`) REFERENCES </span><span class="si">{ref}</span><span class="s2"> (`</span><span class="si">{pk}</span><span class="s2">`) ON UPDATE CASCADE ON DELETE RESTRICT"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">fk</span><span class="o">=</span><span class="s2">"`,`"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">primary_key</span><span class="p">),</span>
+            <span class="n">pk</span><span class="o">=</span><span class="s2">"`,`"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">heading</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">original_name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ref</span><span class="o">.</span><span class="n">primary_key</span><span class="p">),</span>
             <span class="n">ref</span><span class="o">=</span><span class="n">ref</span><span class="o">.</span><span class="n">support</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
         <span class="p">)</span>
     <span class="p">)</span>
@@ -4013,8 +4013,8 @@ of primary key attributes thus far -- to be updated by the function</p>
     <span class="c1"># declare unique index</span>
     <span class="k">if</span> <span class="n">is_unique</span><span class="p">:</span>
         <span class="n">index_sql</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="s2">&quot;UNIQUE INDEX (</span><span class="si">{attrs}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                <span class="n">attrs</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">attr</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">ref</span><span class="o">.</span><span class="n">primary_key</span><span class="p">)</span>
+            <span class="s2">"UNIQUE INDEX (</span><span class="si">{attrs}</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">attrs</span><span class="o">=</span><span class="s2">","</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">"`</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="n">attr</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">ref</span><span class="o">.</span><span class="n">primary_key</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -4178,18 +4178,18 @@ of primary key attributes thus far -- to be updated by the function</p>
 <span class="normal">340</span>
 <span class="normal">341</span>
 <span class="normal">342</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">declare</span><span class="p">(</span><span class="n">full_table_name</span><span class="p">,</span> <span class="n">definition</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Parse declaration and generate the SQL CREATE TABLE code</span>
 
 <span class="sd">    :param full_table_name: full name of the table</span>
 <span class="sd">    :param definition: DataJoint table definition</span>
 <span class="sd">    :param context: dictionary of objects that might be referred to in the table</span>
 <span class="sd">    :return: SQL CREATE TABLE statement, list of external stores used</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">table_name</span> <span class="o">=</span> <span class="n">full_table_name</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+<span class="sd">    """</span>
+    <span class="n">table_name</span> <span class="o">=</span> <span class="n">full_table_name</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">table_name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_TABLE_NAME_LENGTH</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Table name `</span><span class="si">{name}</span><span class="s2">` exceeds the max length of </span><span class="si">{max_length}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"Table name `</span><span class="si">{name}</span><span class="s2">` exceeds the max length of </span><span class="si">{max_length}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="n">MAX_TABLE_NAME_LENGTH</span>
             <span class="p">)</span>
         <span class="p">)</span>
@@ -4203,31 +4203,31 @@ of primary key attributes thus far -- to be updated by the function</p>
         <span class="n">external_stores</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">=</span> <span class="n">prepare_declare</span><span class="p">(</span><span class="n">definition</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;add_hidden_timestamp&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"add_hidden_timestamp"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
         <span class="n">metadata_attr_sql</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s2">&quot;`_</span><span class="si">{full_table_name}</span><span class="s2">_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP&quot;</span>
+            <span class="s2">"`_</span><span class="si">{full_table_name}</span><span class="s2">_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"</span>
         <span class="p">]</span>
         <span class="n">attribute_sql</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
             <span class="n">attr</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">full_table_name</span><span class="o">=</span><span class="n">sha1</span><span class="p">(</span>
-                    <span class="n">full_table_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+                    <span class="n">full_table_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"`"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)</span>
                 <span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">metadata_attr_sql</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">primary_key</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Table must have a primary key&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Table must have a primary key"</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="p">(</span>
-        <span class="s2">&quot;CREATE TABLE IF NOT EXISTS </span><span class="si">%s</span><span class="s2"> (</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">full_table_name</span>
-        <span class="o">+</span> <span class="s2">&quot;,</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="s2">"CREATE TABLE IF NOT EXISTS </span><span class="si">%s</span><span class="s2"> (</span><span class="se">\n</span><span class="s2">"</span> <span class="o">%</span> <span class="n">full_table_name</span>
+        <span class="o">+</span> <span class="s2">",</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
             <span class="n">attribute_sql</span>
-            <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;PRIMARY KEY (`&quot;</span> <span class="o">+</span> <span class="s2">&quot;`,`&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">primary_key</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;`)&quot;</span><span class="p">]</span>
+            <span class="o">+</span> <span class="p">[</span><span class="s2">"PRIMARY KEY (`"</span> <span class="o">+</span> <span class="s2">"`,`"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">primary_key</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"`)"</span><span class="p">]</span>
             <span class="o">+</span> <span class="n">foreign_key_sql</span>
             <span class="o">+</span> <span class="n">index_sql</span>
         <span class="p">)</span>
-        <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">) ENGINE=InnoDB, COMMENT &quot;</span><span class="si">%s</span><span class="s1">&quot;&#39;</span> <span class="o">%</span> <span class="n">table_comment</span>
+        <span class="o">+</span> <span class="s1">'</span><span class="se">\n</span><span class="s1">) ENGINE=InnoDB, COMMENT "</span><span class="si">%s</span><span class="s1">"'</span> <span class="o">%</span> <span class="n">table_comment</span>
     <span class="p">),</span> <span class="n">external_stores</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -4375,12 +4375,12 @@ of primary key attributes thus far -- to be updated by the function</p>
 <span class="normal">448</span>
 <span class="normal">449</span>
 <span class="normal">450</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">alter</span><span class="p">(</span><span class="n">definition</span><span class="p">,</span> <span class="n">old_definition</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    :param definition: new table definition</span>
 <span class="sd">    :param old_definition: current table definition</span>
 <span class="sd">    :param context: the context in which to evaluate foreign key definitions</span>
 <span class="sd">    :return: string SQL ALTER command, list of new stores used for external storage</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="p">(</span>
         <span class="n">table_comment</span><span class="p">,</span>
         <span class="n">primary_key</span><span class="p">,</span>
@@ -4401,15 +4401,15 @@ of primary key attributes thus far -- to be updated by the function</p>
     <span class="c1"># analyze differences between declarations</span>
     <span class="n">sql</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">primary_key</span> <span class="o">!=</span> <span class="n">primary_key_</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;table.alter cannot alter the primary key (yet).&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"table.alter cannot alter the primary key (yet)."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">foreign_key_sql</span> <span class="o">!=</span> <span class="n">foreign_key_sql_</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;table.alter cannot alter foreign keys (yet).&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"table.alter cannot alter foreign keys (yet)."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">index_sql</span> <span class="o">!=</span> <span class="n">index_sql_</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;table.alter cannot alter indexes (yet)&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"table.alter cannot alter indexes (yet)"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">attribute_sql</span> <span class="o">!=</span> <span class="n">attribute_sql_</span><span class="p">:</span>
         <span class="n">sql</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_make_attribute_alter</span><span class="p">(</span><span class="n">attribute_sql</span><span class="p">,</span> <span class="n">attribute_sql_</span><span class="p">,</span> <span class="n">primary_key</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">table_comment</span> <span class="o">!=</span> <span class="n">table_comment_</span><span class="p">:</span>
-        <span class="n">sql</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;COMMENT=&quot;</span><span class="si">%s</span><span class="s1">&quot;&#39;</span> <span class="o">%</span> <span class="n">table_comment</span><span class="p">)</span>
+        <span class="n">sql</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">'COMMENT="</span><span class="si">%s</span><span class="s1">"'</span> <span class="o">%</span> <span class="n">table_comment</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">sql</span><span class="p">,</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">external_stores</span> <span class="k">if</span> <span class="n">e</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">external_stores_</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -4552,44 +4552,44 @@ of primary key attributes thus far -- to be updated by the function</p>
 <span class="normal">512</span>
 <span class="normal">513</span>
 <span class="normal">514</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">substitute_special_type</span><span class="p">(</span><span class="n">match</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">foreign_key_sql</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    :param match: dict containing with keys &quot;type&quot; and &quot;comment&quot; -- will be modified in place</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    :param match: dict containing with keys "type" and "comment" -- will be modified in place</span>
 <span class="sd">    :param category: attribute type category from TYPE_PATTERN</span>
 <span class="sd">    :param foreign_key_sql: list of foreign key declarations to add to</span>
 <span class="sd">    :param context: context for looking up user-defined attribute_type adapters</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;UUID&quot;</span><span class="p">:</span>
-        <span class="k">match</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">UUID_DATA_TYPE</span>
-    <span class="k">elif</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;INTERNAL_ATTACH&quot;</span><span class="p">:</span>
-        <span class="k">match</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;LONGBLOB&quot;</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">"UUID"</span><span class="p">:</span>
+        <span class="k">match</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="n">UUID_DATA_TYPE</span>
+    <span class="k">elif</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">"INTERNAL_ATTACH"</span><span class="p">:</span>
+        <span class="k">match</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"LONGBLOB"</span>
     <span class="k">elif</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">EXTERNAL_TYPES</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;FILEPATH&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_support_filepath_types</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">"FILEPATH"</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_support_filepath_types</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">                </span><span class="sd">"""</span>
 <span class="sd">            The filepath data type is disabled until complete validation.</span>
 <span class="sd">            To turn it on as experimental feature, set the environment variable</span>
 <span class="sd">            {env} = TRUE or upgrade datajoint.</span>
-<span class="sd">            &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+<span class="sd">            """</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">env</span><span class="o">=</span><span class="n">FILEPATH_FEATURE_SWITCH</span>
                 <span class="p">)</span>
             <span class="p">)</span>
-        <span class="k">match</span><span class="p">[</span><span class="s2">&quot;store&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">match</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">UUID_DATA_TYPE</span>
+        <span class="k">match</span><span class="p">[</span><span class="s2">"store"</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"@"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">match</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="n">UUID_DATA_TYPE</span>
         <span class="n">foreign_key_sql</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="s2">&quot;FOREIGN KEY (`</span><span class="si">{name}</span><span class="s2">`) REFERENCES `{{database}}`.`</span><span class="si">{external_table_root}</span><span class="s2">_</span><span class="si">{store}</span><span class="s2">` (`hash`) &quot;</span>
-            <span class="s2">&quot;ON UPDATE RESTRICT ON DELETE RESTRICT&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"FOREIGN KEY (`</span><span class="si">{name}</span><span class="s2">`) REFERENCES `{{database}}`.`</span><span class="si">{external_table_root}</span><span class="s2">_</span><span class="si">{store}</span><span class="s2">` (`hash`) "</span>
+            <span class="s2">"ON UPDATE RESTRICT ON DELETE RESTRICT"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">external_table_root</span><span class="o">=</span><span class="n">EXTERNAL_TABLE_ROOT</span><span class="p">,</span> <span class="o">**</span><span class="n">match</span>
             <span class="p">)</span>
         <span class="p">)</span>
-    <span class="k">elif</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;ADAPTED&quot;</span><span class="p">:</span>
-        <span class="n">adapter</span> <span class="o">=</span> <span class="n">get_adapter</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
-        <span class="k">match</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">attribute_type</span>
-        <span class="n">category</span> <span class="o">=</span> <span class="n">match_type</span><span class="p">(</span><span class="n">match</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
+    <span class="k">elif</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">"ADAPTED"</span><span class="p">:</span>
+        <span class="n">adapter</span> <span class="o">=</span> <span class="n">get_adapter</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">match</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
+        <span class="k">match</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">attribute_type</span>
+        <span class="n">category</span> <span class="o">=</span> <span class="n">match_type</span><span class="p">(</span><span class="n">match</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
         <span class="k">if</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">SPECIAL_TYPES</span><span class="p">:</span>
             <span class="c1"># recursive redefinition from user-defined datatypes.</span>
             <span class="n">substitute_special_type</span><span class="p">(</span><span class="n">match</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">foreign_key_sql</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Unknown special type&quot;</span>
+        <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">"Unknown special type"</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4789,7 +4789,7 @@ of primary key attributes thus far -- to be updated by the function</p>
 <span class="normal">589</span>
 <span class="normal">590</span>
 <span class="normal">591</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compile_attribute</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">in_key</span><span class="p">,</span> <span class="n">foreign_key_sql</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Convert attribute definition from DataJoint format to SQL</span>
 
 <span class="sd">    :param line: attribution line</span>
@@ -4797,72 +4797,72 @@ of primary key attributes thus far -- to be updated by the function</p>
 <span class="sd">    :param foreign_key_sql: the list of foreign key declarations to add to</span>
 <span class="sd">    :param context: context in which to look up user-defined attribute type adapterss</span>
 <span class="sd">    :returns: (name, sql, is_external) -- attribute name and sql code for its declaration</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">match</span> <span class="o">=</span> <span class="n">attribute_parser</span><span class="o">.</span><span class="n">parseString</span><span class="p">(</span><span class="n">line</span> <span class="o">+</span> <span class="s2">&quot;#&quot;</span><span class="p">,</span> <span class="n">parseAll</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">attribute_parser</span><span class="o">.</span><span class="n">parseString</span><span class="p">(</span><span class="n">line</span> <span class="o">+</span> <span class="s2">"#"</span><span class="p">,</span> <span class="n">parseAll</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">except</span> <span class="n">pp</span><span class="o">.</span><span class="n">ParseException</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Declaration error in position </span><span class="si">{pos}</span><span class="s2"> in line:</span><span class="se">\n</span><span class="s2">  </span><span class="si">{line}</span><span class="se">\n</span><span class="si">{msg}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"Declaration error in position </span><span class="si">{pos}</span><span class="s2"> in line:</span><span class="se">\n</span><span class="s2">  </span><span class="si">{line}</span><span class="se">\n</span><span class="si">{msg}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">line</span><span class="o">=</span><span class="n">err</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pos</span><span class="o">=</span><span class="n">err</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">msg</span><span class="o">=</span><span class="n">err</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="p">)</span>
-    <span class="k">match</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="s2">&quot;default&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">match</span><span class="p">:</span>
-        <span class="k">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">match</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"#"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"default"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">match</span><span class="p">:</span>
+        <span class="k">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">""</span>
     <span class="n">match</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">match</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-    <span class="k">match</span><span class="p">[</span><span class="s2">&quot;nullable&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;null&quot;</span>
+    <span class="k">match</span><span class="p">[</span><span class="s2">"nullable"</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"null"</span>
 
-    <span class="k">if</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;nullable&quot;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">match</span><span class="p">[</span><span class="s2">"nullable"</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">in_key</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s1">&#39;Primary key attributes cannot be nullable in line &quot;</span><span class="si">%s</span><span class="s1">&quot;&#39;</span> <span class="o">%</span> <span class="n">line</span>
+                <span class="s1">'Primary key attributes cannot be nullable in line "</span><span class="si">%s</span><span class="s1">"'</span> <span class="o">%</span> <span class="n">line</span>
             <span class="p">)</span>
-        <span class="k">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;DEFAULT NULL&quot;</span>  <span class="c1"># nullable attributes default to null</span>
+        <span class="k">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"DEFAULT NULL"</span>  <span class="c1"># nullable attributes default to null</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]:</span>
             <span class="n">quote</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="k">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;(&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">CONSTANT_LITERALS</span>
-                <span class="ow">and</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&#39;&quot;</span>
+                <span class="k">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"("</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">CONSTANT_LITERALS</span>
+                <span class="ow">and</span> <span class="n">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="s2">"</span><span class="se">\"</span><span class="s2">'"</span>
             <span class="p">)</span>
-            <span class="k">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="s2">&quot;NOT NULL DEFAULT &quot;</span> <span class="o">+</span> <span class="p">(</span><span class="s1">&#39;&quot;</span><span class="si">%s</span><span class="s1">&quot;&#39;</span> <span class="k">if</span> <span class="n">quote</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">%</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span>
+            <span class="k">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">"NOT NULL DEFAULT "</span> <span class="o">+</span> <span class="p">(</span><span class="s1">'"</span><span class="si">%s</span><span class="s1">"'</span> <span class="k">if</span> <span class="n">quote</span> <span class="k">else</span> <span class="s2">"</span><span class="si">%s</span><span class="s2">"</span><span class="p">)</span> <span class="o">%</span> <span class="n">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;NOT NULL&quot;</span>
+            <span class="k">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"NOT NULL"</span>
 
-    <span class="k">match</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-        <span class="s1">&#39;&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&quot;&#39;</span>
+    <span class="k">match</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+        <span class="s1">'"'</span><span class="p">,</span> <span class="s1">'</span><span class="se">\\</span><span class="s1">"'</span>
     <span class="p">)</span>  <span class="c1"># escape double quotes in comment</span>
 
-    <span class="k">if</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">match</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">":"</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s1">&#39;An attribute comment must not start with a colon in comment &quot;</span><span class="si">{comment}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s1">'An attribute comment must not start with a colon in comment "</span><span class="si">{comment}</span><span class="s1">"'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="o">**</span><span class="n">match</span>
             <span class="p">)</span>
         <span class="p">)</span>
 
-    <span class="n">category</span> <span class="o">=</span> <span class="n">match_type</span><span class="p">(</span><span class="n">match</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
+    <span class="n">category</span> <span class="o">=</span> <span class="n">match_type</span><span class="p">(</span><span class="n">match</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">SPECIAL_TYPES</span><span class="p">:</span>
-        <span class="k">match</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;:</span><span class="si">{type}</span><span class="s2">:</span><span class="si">{comment}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="k">match</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">":</span><span class="si">{type}</span><span class="s2">:</span><span class="si">{comment}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="o">**</span><span class="n">match</span>
         <span class="p">)</span>  <span class="c1"># insert custom type into comment</span>
         <span class="n">substitute_special_type</span><span class="p">(</span><span class="n">match</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">foreign_key_sql</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">SERIALIZED_TYPES</span> <span class="ow">and</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span>
-        <span class="s2">&quot;DEFAULT NULL&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;NOT NULL&quot;</span><span class="p">,</span>
+    <span class="k">if</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">SERIALIZED_TYPES</span> <span class="ow">and</span> <span class="n">match</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span>
+        <span class="s2">"DEFAULT NULL"</span><span class="p">,</span>
+        <span class="s2">"NOT NULL"</span><span class="p">,</span>
     <span class="p">}:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;The default value for a blob or attachment attributes can only be NULL in:</span><span class="se">\n</span><span class="si">{line}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"The default value for a blob or attachment attributes can only be NULL in:</span><span class="se">\n</span><span class="si">{line}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">line</span><span class="o">=</span><span class="n">line</span>
             <span class="p">)</span>
         <span class="p">)</span>
 
     <span class="n">sql</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;`</span><span class="si">{name}</span><span class="s2">` </span><span class="si">{type}</span><span class="s2"> </span><span class="si">{default}</span><span class="s2">&quot;</span>
-        <span class="o">+</span> <span class="p">(</span><span class="s1">&#39; COMMENT &quot;</span><span class="si">{comment}</span><span class="s1">&quot;&#39;</span> <span class="k">if</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="s2">"`</span><span class="si">{name}</span><span class="s2">` </span><span class="si">{type}</span><span class="s2"> </span><span class="si">{default}</span><span class="s2">"</span>
+        <span class="o">+</span> <span class="p">(</span><span class="s1">' COMMENT "</span><span class="si">{comment}</span><span class="s1">"'</span> <span class="k">if</span> <span class="n">match</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
     <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">match</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span> <span class="n">sql</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;store&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">match</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">sql</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"store"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5011,7 +5011,7 @@ of primary key attributes thus far -- to be updated by the function</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

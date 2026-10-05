@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3485,15 +3485,15 @@ locally for faster retrieval.</p>
 <p>To enable queries, set the query cache local path in <code>dj.config</code>, create the directory,
 and activate the query caching.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># set the query cache path</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;query_cache&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~/dj_query_cache&#39;</span><span class="p">)</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">'query_cache'</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">'~/dj_query_cache'</span><span class="p">)</span>
 
 <span class="c1"># access the active connection object for the tables</span>
 <span class="n">conn</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">conn</span><span class="p">()</span> <span class="c1"># if queries co-located with tables</span>
 <span class="n">conn</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">connection</span> <span class="c1"># if schema co-located with tables</span>
 <span class="n">conn</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">connection</span> <span class="c1"># most flexible</span>
 
-<span class="c1"># activate query caching for a namespace called &#39;main&#39;</span>
-<span class="n">conn</span><span class="o">.</span><span class="n">set_query_cache</span><span class="p">(</span><span class="n">query_cache</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">)</span>
+<span class="c1"># activate query caching for a namespace called 'main'</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">set_query_cache</span><span class="p">(</span><span class="n">query_cache</span><span class="o">=</span><span class="s1">'main'</span><span class="p">)</span>
 </code></pre></div>
 <p>The <code>query_cache</code> argument is an arbitrary string serving to differentiate cache
 states; setting a new value will effectively start a new cache, triggering retrieval of
@@ -3643,7 +3643,7 @@ updating the database in violation of data integrity.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

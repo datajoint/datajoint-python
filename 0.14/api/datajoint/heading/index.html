@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3769,35 +3769,35 @@
 <span class="normal">82</span>
 <span class="normal">83</span>
 <span class="normal">84</span>
-<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Attribute</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;_Attribute&quot;</span><span class="p">,</span> <span class="n">default_attribute_properties</span><span class="p">)):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Attribute</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">"_Attribute"</span><span class="p">,</span> <span class="n">default_attribute_properties</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Properties of a table column (attribute)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">todict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert namedtuple to dict.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Convert namedtuple to dict."""</span>
         <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">))</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">sql_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;:return: datatype (as string) in database. In most cases, it is the same as self.type&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">""":return: datatype (as string) in database. In most cases, it is the same as self.type"""</span>
         <span class="k">return</span> <span class="n">UUID_DATA_TYPE</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">sql_comment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;:return: full comment for the SQL declaration. Includes custom type specification&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">(</span><span class="s2">&quot;:uuid:&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">comment</span>
+<span class="w">        </span><span class="sd">""":return: full comment for the SQL declaration. Includes custom type specification"""</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s2">":uuid:"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">comment</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">sql</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Convert primary key attribute tuple into its SQL CREATE TABLE clause.</span>
 <span class="sd">        Default values are not reflected.</span>
 <span class="sd">        This is used for declaring foreign keys in referencing tables</span>
 
 <span class="sd">        :return: SQL code for attribute declaration</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="s1">&#39;`</span><span class="si">{name}</span><span class="s1">` </span><span class="si">{type}</span><span class="s1"> NOT NULL COMMENT &quot;</span><span class="si">{comment}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="s1">'`</span><span class="si">{name}</span><span class="s1">` </span><span class="si">{type}</span><span class="s1"> NOT NULL COMMENT "</span><span class="si">{comment}</span><span class="s1">"'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sql_type</span><span class="p">,</span> <span class="n">comment</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sql_comment</span>
         <span class="p">)</span>
 
@@ -3805,8 +3805,8 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">original_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_expression</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_expression</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_expression</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_expression</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_expression</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -3839,7 +3839,7 @@
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">53</span>
 <span class="normal">54</span>
 <span class="normal">55</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">todict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert namedtuple to dict.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Convert namedtuple to dict."""</span>
     <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -4484,25 +4484,25 @@ the attribute names and the values are Attributes.</p>
 <span class="normal">531</span>
 <span class="normal">532</span>
 <span class="normal">533</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Heading</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Local class for table headings.</span>
 <span class="sd">    Heading contains the property attributes, which is an dict in which the keys are</span>
 <span class="sd">    the attribute names and the values are Attributes.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_specs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table_info</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 
 <span class="sd">        :param attribute_specs: a list of dicts with the same keys as Attribute</span>
 <span class="sd">        :param table_info: a dict with information to load the heading from the database</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">table_info</span> <span class="o">=</span> <span class="n">table_info</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_table_status</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_attributes</span> <span class="o">=</span> <span class="p">(</span>
             <span class="kc">None</span>
             <span class="k">if</span> <span class="n">attribute_specs</span> <span class="ow">is</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="nb">dict</span><span class="p">((</span><span class="n">q</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span> <span class="n">Attribute</span><span class="p">(</span><span class="o">**</span><span class="n">q</span><span class="p">))</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">attribute_specs</span><span class="p">)</span>
+            <span class="k">else</span> <span class="nb">dict</span><span class="p">((</span><span class="n">q</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">Attribute</span><span class="p">(</span><span class="o">**</span><span class="n">q</span><span class="p">))</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">attribute_specs</span><span class="p">)</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -4553,24 +4553,24 @@ the attribute names and the values are Attributes.</p>
         <span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;shortcut to the attribute&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""shortcut to the attribute"""</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return:  heading representation in DataJoint declaration format but without foreign key expansion</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">in_key</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="n">ret</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="s2">""</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_table_status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">ret</span> <span class="o">+=</span> <span class="s2">&quot;# &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_status</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="n">ret</span> <span class="o">+=</span> <span class="s2">"# "</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_status</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">]</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
         <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">in_key</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">in_key</span><span class="p">:</span>
-                <span class="n">ret</span> <span class="o">+=</span> <span class="s2">&quot;---</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="n">ret</span> <span class="o">+=</span> <span class="s2">"---</span><span class="se">\n</span><span class="s2">"</span>
                 <span class="n">in_key</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="n">ret</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="si">%-20s</span><span class="s2"> : </span><span class="si">%-28s</span><span class="s2"> # </span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
-                <span class="n">v</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">default</span><span class="p">),</span>
-                <span class="s2">&quot;</span><span class="si">%s%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="s2">&quot;auto_increment&quot;</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">autoincrement</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">ret</span> <span class="o">+=</span> <span class="s2">"</span><span class="si">%-20s</span><span class="s2"> : </span><span class="si">%-28s</span><span class="s2"> # </span><span class="si">%s</span><span class="se">\n</span><span class="s2">"</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">"</span><span class="si">%s</span><span class="s2">=</span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">default</span><span class="p">),</span>
+                <span class="s2">"</span><span class="si">%s%s</span><span class="s2">"</span> <span class="o">%</span> <span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="s2">"auto_increment"</span> <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">autoincrement</span> <span class="k">else</span> <span class="s2">""</span><span class="p">),</span>
                 <span class="n">v</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">ret</span>
@@ -4581,23 +4581,23 @@ the attribute names and the values are Attributes.</p>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">as_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        represent the heading as a numpy dtype</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span>
             <span class="nb">dict</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">dtype</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">as_sql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">include_aliases</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        represent heading as the SQL SELECT clause.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="s2">","</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
             <span class="p">(</span>
-                <span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span>
+                <span class="s2">"`</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="n">name</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span> <span class="ow">is</span> <span class="kc">None</span>
                 <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span>
-                <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; as `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span> <span class="k">if</span> <span class="n">include_aliases</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="o">+</span> <span class="p">(</span><span class="s2">" as `</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="n">name</span> <span class="k">if</span> <span class="n">include_aliases</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">fields</span>
         <span class="p">)</span>
@@ -4606,28 +4606,28 @@ the attribute names and the values are Attributes.</p>
         <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_init_from_database</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;initialize heading from an existing database table.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""initialize heading from an existing database table."""</span>
         <span class="n">conn</span><span class="p">,</span> <span class="n">database</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">table_info</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;conn&quot;</span><span class="p">,</span> <span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;table_name&quot;</span><span class="p">,</span> <span class="s2">&quot;context&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">table_info</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"conn"</span><span class="p">,</span> <span class="s2">"database"</span><span class="p">,</span> <span class="s2">"table_name"</span><span class="p">,</span> <span class="s2">"context"</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">info</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s1">&#39;SHOW TABLE STATUS FROM `</span><span class="si">{database}</span><span class="s1">` WHERE name=&quot;</span><span class="si">{table_name}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s1">'SHOW TABLE STATUS FROM `</span><span class="si">{database}</span><span class="s1">` WHERE name="</span><span class="si">{table_name}</span><span class="s1">"'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">database</span>
             <span class="p">),</span>
             <span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s2">&quot;~log&quot;</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not create the ~log table&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s2">"~log"</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Could not create the ~log table"</span><span class="p">)</span>
                 <span class="k">return</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The table `</span><span class="si">{database}</span><span class="s2">`.`</span><span class="si">{table_name}</span><span class="s2">` is not defined.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"The table `</span><span class="si">{database}</span><span class="s2">`.`</span><span class="si">{table_name}</span><span class="s2">` is not defined."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">database</span>
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_table_status</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
         <span class="n">cur</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s2">&quot;SHOW FULL COLUMNS FROM `</span><span class="si">{table_name}</span><span class="s2">` IN `</span><span class="si">{database}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"SHOW FULL COLUMNS FROM `</span><span class="si">{table_name}</span><span class="s2">` IN `</span><span class="si">{database}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="n">database</span>
             <span class="p">),</span>
             <span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -4636,15 +4636,15 @@ the attribute names and the values are Attributes.</p>
         <span class="n">attributes</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
 
         <span class="n">rename_map</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;Field&quot;</span><span class="p">:</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;type&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Null&quot;</span><span class="p">:</span> <span class="s2">&quot;nullable&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Default&quot;</span><span class="p">:</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Key&quot;</span><span class="p">:</span> <span class="s2">&quot;in_key&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Comment&quot;</span><span class="p">:</span> <span class="s2">&quot;comment&quot;</span><span class="p">,</span>
+            <span class="s2">"Field"</span><span class="p">:</span> <span class="s2">"name"</span><span class="p">,</span>
+            <span class="s2">"Type"</span><span class="p">:</span> <span class="s2">"type"</span><span class="p">,</span>
+            <span class="s2">"Null"</span><span class="p">:</span> <span class="s2">"nullable"</span><span class="p">,</span>
+            <span class="s2">"Default"</span><span class="p">:</span> <span class="s2">"default"</span><span class="p">,</span>
+            <span class="s2">"Key"</span><span class="p">:</span> <span class="s2">"in_key"</span><span class="p">,</span>
+            <span class="s2">"Comment"</span><span class="p">:</span> <span class="s2">"comment"</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="n">fields_to_drop</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Privileges&quot;</span><span class="p">,</span> <span class="s2">&quot;Collation&quot;</span><span class="p">)</span>
+        <span class="n">fields_to_drop</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"Privileges"</span><span class="p">,</span> <span class="s2">"Collation"</span><span class="p">)</span>
 
         <span class="c1"># rename and drop attributes</span>
         <span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span>
@@ -4656,196 +4656,196 @@ the attribute names and the values are Attributes.</p>
             <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">attributes</span>
         <span class="p">]</span>
         <span class="n">numeric_types</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;double&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;double&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;tinyint&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;tinyint&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;smallint&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;smallint&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;mediumint&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;mediumint&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;bigint&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
-            <span class="p">(</span><span class="s2">&quot;bigint&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"float"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"float"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"double"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"double"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"tinyint"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"tinyint"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"smallint"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"smallint"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"mediumint"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"mediumint"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"int"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"int"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"bigint"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">"bigint"</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="n">sql_literals</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CURRENT_TIMESTAMP&quot;</span><span class="p">]</span>
+        <span class="n">sql_literals</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"CURRENT_TIMESTAMP"</span><span class="p">]</span>
 
         <span class="c1"># additional attribute properties</span>
         <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>
             <span class="n">attr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-                <span class="n">in_key</span><span class="o">=</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;in_key&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;PRI&quot;</span><span class="p">),</span>
+                <span class="n">in_key</span><span class="o">=</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"in_key"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"PRI"</span><span class="p">),</span>
                 <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span>
-                <span class="n">nullable</span><span class="o">=</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;nullable&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;YES&quot;</span><span class="p">,</span>
+                <span class="n">nullable</span><span class="o">=</span><span class="n">attr</span><span class="p">[</span><span class="s2">"nullable"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"YES"</span><span class="p">,</span>
                 <span class="n">autoincrement</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span>
-                    <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;auto_increment&quot;</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;Extra&quot;</span><span class="p">],</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
+                    <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"auto_increment"</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"Extra"</span><span class="p">],</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">)</span>
                 <span class="p">),</span>
                 <span class="n">numeric</span><span class="o">=</span><span class="nb">any</span><span class="p">(</span>
-                    <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
-                    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;DECIMAL&quot;</span><span class="p">,</span> <span class="s2">&quot;INTEGER&quot;</span><span class="p">,</span> <span class="s2">&quot;FLOAT&quot;</span><span class="p">)</span>
+                    <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
+                    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"DECIMAL"</span><span class="p">,</span> <span class="s2">"INTEGER"</span><span class="p">,</span> <span class="s2">"FLOAT"</span><span class="p">)</span>
                 <span class="p">),</span>
                 <span class="n">string</span><span class="o">=</span><span class="nb">any</span><span class="p">(</span>
-                    <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
-                    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ENUM&quot;</span><span class="p">,</span> <span class="s2">&quot;TEMPORAL&quot;</span><span class="p">,</span> <span class="s2">&quot;STRING&quot;</span><span class="p">)</span>
+                    <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
+                    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"ENUM"</span><span class="p">,</span> <span class="s2">"TEMPORAL"</span><span class="p">,</span> <span class="s2">"STRING"</span><span class="p">)</span>
                 <span class="p">),</span>
-                <span class="n">is_blob</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">&quot;INTERNAL_BLOB&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])),</span>
+                <span class="n">is_blob</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">"INTERNAL_BLOB"</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])),</span>
                 <span class="n">uuid</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                <span class="n">json</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">&quot;JSON&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])),</span>
+                <span class="n">json</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">"JSON"</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])),</span>
                 <span class="n">is_attachment</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">is_filepath</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">adapter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">is_external</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">attribute_expression</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">is_hidden</span><span class="o">=</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">),</span>
+                <span class="n">is_hidden</span><span class="o">=</span><span class="n">attr</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"_"</span><span class="p">),</span>
             <span class="p">)</span>
 
-            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;INTEGER&quot;</span><span class="p">,</span> <span class="s2">&quot;FLOAT&quot;</span><span class="p">)):</span>
-                <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
-                    <span class="sa">r</span><span class="s2">&quot;\(\d+\)&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span> <span class="n">count</span><span class="o">=</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"INTEGER"</span><span class="p">,</span> <span class="s2">"FLOAT"</span><span class="p">)):</span>
+                <span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+                    <span class="sa">r</span><span class="s2">"\(\d+\)"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">],</span> <span class="n">count</span><span class="o">=</span><span class="mi">1</span>
                 <span class="p">)</span>  <span class="c1"># strip size off integers and floats</span>
-            <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;unsupported&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;is_blob&quot;</span><span class="p">],</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;numeric&quot;</span><span class="p">],</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;numeric&quot;</span><span class="p">])</span>
+            <span class="n">attr</span><span class="p">[</span><span class="s2">"unsupported"</span><span class="p">]</span> <span class="o">=</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"is_blob"</span><span class="p">],</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"numeric"</span><span class="p">],</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"numeric"</span><span class="p">])</span>
             <span class="p">)</span>
-            <span class="n">attr</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;Extra&quot;</span><span class="p">)</span>
+            <span class="n">attr</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"Extra"</span><span class="p">)</span>
 
             <span class="c1"># process custom DataJoint types</span>
-            <span class="n">special</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;:(?P&lt;type&gt;[^:]+):(?P&lt;comment&gt;.*)&quot;</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;comment&quot;</span><span class="p">])</span>
+            <span class="n">special</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">":(?P&lt;type&gt;[^:]+):(?P&lt;comment&gt;.*)"</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"comment"</span><span class="p">])</span>
             <span class="k">if</span> <span class="n">special</span><span class="p">:</span>
                 <span class="n">special</span> <span class="o">=</span> <span class="n">special</span><span class="o">.</span><span class="n">groupdict</span><span class="p">()</span>
                 <span class="n">attr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">special</span><span class="p">)</span>
             <span class="c1"># process adapted attribute types</span>
-            <span class="k">if</span> <span class="n">special</span> <span class="ow">and</span> <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">&quot;ADAPTED&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]):</span>
-                <span class="k">assert</span> <span class="n">context</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Declaration context is not set&quot;</span>
-                <span class="n">adapter_name</span> <span class="o">=</span> <span class="n">special</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">special</span> <span class="ow">and</span> <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">"ADAPTED"</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]):</span>
+                <span class="k">assert</span> <span class="n">context</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"Declaration context is not set"</span>
+                <span class="n">adapter_name</span> <span class="o">=</span> <span class="n">special</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">attr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">adapter</span><span class="o">=</span><span class="n">get_adapter</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">adapter_name</span><span class="p">))</span>
                 <span class="k">except</span> <span class="n">DataJointError</span><span class="p">:</span>
                     <span class="c1"># if no adapter, then delay the error until the first invocation</span>
                     <span class="n">attr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">adapter</span><span class="o">=</span><span class="n">AttributeAdapter</span><span class="p">())</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">attr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;adapter&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_type</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">TYPE_PATTERN</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                    <span class="n">attr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">attr</span><span class="p">[</span><span class="s2">"adapter"</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_type</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">TYPE_PATTERN</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
                         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                            <span class="s2">&quot;Invalid attribute type &#39;</span><span class="si">{type}</span><span class="s2">&#39; in adapter object &lt;</span><span class="si">{adapter_name}</span><span class="s2">&gt;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="s2">"Invalid attribute type '</span><span class="si">{type}</span><span class="s2">' in adapter object &lt;</span><span class="si">{adapter_name}</span><span class="s2">&gt;."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                                 <span class="n">adapter_name</span><span class="o">=</span><span class="n">adapter_name</span><span class="p">,</span> <span class="o">**</span><span class="n">attr</span>
                             <span class="p">)</span>
                         <span class="p">)</span>
                     <span class="n">special</span> <span class="o">=</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span>
-                        <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">NATIVE_TYPES</span>
+                        <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">NATIVE_TYPES</span>
                     <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">special</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">category</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
-                        <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">SPECIAL_TYPES</span> <span class="k">if</span> <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
+                        <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">SPECIAL_TYPES</span> <span class="k">if</span> <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
                     <span class="p">)</span>
                 <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;external&quot;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"external"</span><span class="p">):</span>
                         <span class="n">url</span> <span class="o">=</span> <span class="p">(</span>
-                            <span class="s2">&quot;https://docs.datajoint.io/python/admin/5-blob-config.html&quot;</span>
-                            <span class="s2">&quot;#migration-between-datajoint-v0-11-and-v0-12&quot;</span>
+                            <span class="s2">"https://docs.datajoint.io/python/admin/5-blob-config.html"</span>
+                            <span class="s2">"#migration-between-datajoint-v0-11-and-v0-12"</span>
                         <span class="p">)</span>
                         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                            <span class="s2">&quot;Legacy datatype `</span><span class="si">{type}</span><span class="s2">`. Migrate your external stores to &quot;</span>
-                            <span class="s2">&quot;datajoint 0.12: </span><span class="si">{url}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="o">**</span><span class="n">attr</span><span class="p">)</span>
+                            <span class="s2">"Legacy datatype `</span><span class="si">{type}</span><span class="s2">`. Migrate your external stores to "</span>
+                            <span class="s2">"datajoint 0.12: </span><span class="si">{url}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="o">**</span><span class="n">attr</span><span class="p">)</span>
                         <span class="p">)</span>
                     <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                        <span class="s2">&quot;Unknown attribute type `</span><span class="si">{type}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">attr</span><span class="p">)</span>
+                        <span class="s2">"Unknown attribute type `</span><span class="si">{type}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">attr</span><span class="p">)</span>
                     <span class="p">)</span>
-                <span class="k">if</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;FILEPATH&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_support_filepath_types</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">category</span> <span class="o">==</span> <span class="s2">"FILEPATH"</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_support_filepath_types</span><span class="p">():</span>
                     <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-<span class="w">                        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">                        </span><span class="sd">"""</span>
 <span class="sd">                        The filepath data type is disabled until complete validation.</span>
 <span class="sd">                        To turn it on as experimental feature, set the environment variable</span>
 <span class="sd">                        {env} = TRUE or upgrade datajoint.</span>
-<span class="sd">                        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+<span class="sd">                        """</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                             <span class="n">env</span><span class="o">=</span><span class="n">FILEPATH_FEATURE_SWITCH</span>
                         <span class="p">)</span>
                     <span class="p">)</span>
                 <span class="n">attr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
                     <span class="n">unsupported</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                    <span class="n">is_attachment</span><span class="o">=</span><span class="n">category</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;INTERNAL_ATTACH&quot;</span><span class="p">,</span> <span class="s2">&quot;EXTERNAL_ATTACH&quot;</span><span class="p">),</span>
-                    <span class="n">is_filepath</span><span class="o">=</span><span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;FILEPATH&quot;</span><span class="p">,</span>
+                    <span class="n">is_attachment</span><span class="o">=</span><span class="n">category</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"INTERNAL_ATTACH"</span><span class="p">,</span> <span class="s2">"EXTERNAL_ATTACH"</span><span class="p">),</span>
+                    <span class="n">is_filepath</span><span class="o">=</span><span class="n">category</span> <span class="o">==</span> <span class="s2">"FILEPATH"</span><span class="p">,</span>
                     <span class="c1"># INTERNAL_BLOB is not a custom type but is included for completeness</span>
-                    <span class="n">is_blob</span><span class="o">=</span><span class="n">category</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;INTERNAL_BLOB&quot;</span><span class="p">,</span> <span class="s2">&quot;EXTERNAL_BLOB&quot;</span><span class="p">),</span>
-                    <span class="n">uuid</span><span class="o">=</span><span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;UUID&quot;</span><span class="p">,</span>
+                    <span class="n">is_blob</span><span class="o">=</span><span class="n">category</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"INTERNAL_BLOB"</span><span class="p">,</span> <span class="s2">"EXTERNAL_BLOB"</span><span class="p">),</span>
+                    <span class="n">uuid</span><span class="o">=</span><span class="n">category</span> <span class="o">==</span> <span class="s2">"UUID"</span><span class="p">,</span>
                     <span class="n">is_external</span><span class="o">=</span><span class="n">category</span> <span class="ow">in</span> <span class="n">EXTERNAL_TYPES</span><span class="p">,</span>
                     <span class="n">store</span><span class="o">=</span><span class="p">(</span>
-                        <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"@"</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
                         <span class="k">if</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">EXTERNAL_TYPES</span>
                         <span class="k">else</span> <span class="kc">None</span>
                     <span class="p">),</span>
                 <span class="p">)</span>
 
-            <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;in_key&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"in_key"</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span>
                 <span class="p">(</span>
-                    <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;is_blob&quot;</span><span class="p">],</span>
-                    <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;is_attachment&quot;</span><span class="p">],</span>
-                    <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;is_filepath&quot;</span><span class="p">],</span>
-                    <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;json&quot;</span><span class="p">],</span>
+                    <span class="n">attr</span><span class="p">[</span><span class="s2">"is_blob"</span><span class="p">],</span>
+                    <span class="n">attr</span><span class="p">[</span><span class="s2">"is_attachment"</span><span class="p">],</span>
+                    <span class="n">attr</span><span class="p">[</span><span class="s2">"is_filepath"</span><span class="p">],</span>
+                    <span class="n">attr</span><span class="p">[</span><span class="s2">"json"</span><span class="p">],</span>
                 <span class="p">)</span>
             <span class="p">):</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;Json, Blob, attachment, or filepath attributes are not allowed in the primary key&quot;</span>
+                    <span class="s2">"Json, Blob, attachment, or filepath attributes are not allowed in the primary key"</span>
                 <span class="p">)</span>
 
             <span class="k">if</span> <span class="p">(</span>
-                <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;string&quot;</span><span class="p">]</span>
-                <span class="ow">and</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-                <span class="ow">and</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sql_literals</span>
+                <span class="n">attr</span><span class="p">[</span><span class="s2">"string"</span><span class="p">]</span>
+                <span class="ow">and</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sql_literals</span>
             <span class="p">):</span>
-                <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;&quot;</span><span class="si">%s</span><span class="s1">&quot;&#39;</span> <span class="o">%</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span>
+                <span class="n">attr</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'"</span><span class="si">%s</span><span class="s1">"'</span> <span class="o">%</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span>
 
-            <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;nullable&quot;</span><span class="p">]:</span>  <span class="c1"># nullable fields always default to null</span>
-                <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;null&quot;</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"nullable"</span><span class="p">]:</span>  <span class="c1"># nullable fields always default to null</span>
+                <span class="n">attr</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"null"</span>
 
             <span class="c1"># fill out dtype. All floats and non-nullable integers are turned into specific dtypes</span>
-            <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;dtype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">object</span>
-            <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;numeric&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;adapter&quot;</span><span class="p">]:</span>
-                <span class="n">is_integer</span> <span class="o">=</span> <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">&quot;INTEGER&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
-                <span class="n">is_float</span> <span class="o">=</span> <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">&quot;FLOAT&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>
-                <span class="k">if</span> <span class="n">is_integer</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;nullable&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">is_float</span><span class="p">:</span>
-                    <span class="n">is_unsigned</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s2">&quot;sunsigned&quot;</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">))</span>
-                    <span class="n">t</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\(.*\)&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span>  <span class="c1"># remove parentheses</span>
-                    <span class="n">t</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot; unsigned$&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>  <span class="c1"># remove unsigned</span>
+            <span class="n">attr</span><span class="p">[</span><span class="s2">"dtype"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">object</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"numeric"</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"adapter"</span><span class="p">]:</span>
+                <span class="n">is_integer</span> <span class="o">=</span> <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">"INTEGER"</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
+                <span class="n">is_float</span> <span class="o">=</span> <span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="s2">"FLOAT"</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">is_integer</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"nullable"</span><span class="p">]</span> <span class="ow">or</span> <span class="n">is_float</span><span class="p">:</span>
+                    <span class="n">is_unsigned</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s2">"sunsigned"</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">],</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">I</span><span class="p">))</span>
+                    <span class="n">t</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\(.*\)"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span>  <span class="c1"># remove parentheses</span>
+                    <span class="n">t</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">" unsigned$"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>  <span class="c1"># remove unsigned</span>
                     <span class="k">assert</span> <span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">is_unsigned</span><span class="p">)</span> <span class="ow">in</span> <span class="n">numeric_types</span><span class="p">,</span> <span class="p">(</span>
-                        <span class="s2">&quot;dtype not found for type </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">t</span>
+                        <span class="s2">"dtype not found for type </span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="n">t</span>
                     <span class="p">)</span>
-                    <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;dtype&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_types</span><span class="p">[(</span><span class="n">t</span><span class="p">,</span> <span class="n">is_unsigned</span><span class="p">)]</span>
+                    <span class="n">attr</span><span class="p">[</span><span class="s2">"dtype"</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_types</span><span class="p">[(</span><span class="n">t</span><span class="p">,</span> <span class="n">is_unsigned</span><span class="p">)]</span>
 
-            <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;adapter&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">"adapter"</span><span class="p">]:</span>
                 <span class="c1"># restore adapted type name</span>
-                <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adapter_name</span>
+                <span class="n">attr</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="n">adapter_name</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_attributes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(((</span><span class="n">q</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span> <span class="n">Attribute</span><span class="p">(</span><span class="o">**</span><span class="n">q</span><span class="p">))</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_attributes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(((</span><span class="n">q</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">Attribute</span><span class="p">(</span><span class="o">**</span><span class="n">q</span><span class="p">))</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">))</span>
 
         <span class="c1"># Read and tabulate secondary indexes</span>
         <span class="n">keys</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">conn</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s2">&quot;SHOW KEYS FROM `</span><span class="si">{db}</span><span class="s2">`.`</span><span class="si">{tab}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">database</span><span class="p">,</span> <span class="n">tab</span><span class="o">=</span><span class="n">table_name</span><span class="p">),</span>
+            <span class="s2">"SHOW KEYS FROM `</span><span class="si">{db}</span><span class="s2">`.`</span><span class="si">{tab}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">database</span><span class="p">,</span> <span class="n">tab</span><span class="o">=</span><span class="n">table_name</span><span class="p">),</span>
             <span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">):</span>
-            <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;Key_name&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;PRIMARY&quot;</span><span class="p">:</span>
-                <span class="n">keys</span><span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;Key_name&quot;</span><span class="p">]][</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;Seq_in_index&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-                    <span class="n">column</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;Column_name&quot;</span><span class="p">]</span>
-                    <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;Expression&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">),</span>
-                    <span class="n">unique</span><span class="o">=</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;Non_unique&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span>
-                    <span class="n">nullable</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;Null&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;yes&quot;</span><span class="p">,</span>
+            <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">"Key_name"</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">"PRIMARY"</span><span class="p">:</span>
+                <span class="n">keys</span><span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="s2">"Key_name"</span><span class="p">]][</span><span class="n">item</span><span class="p">[</span><span class="s2">"Seq_in_index"</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">column</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="s2">"Column_name"</span><span class="p">]</span>
+                    <span class="ow">or</span> <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'Expression'</span><span class="p">]</span><span class="si">}</span><span class="s2">)"</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\'"</span><span class="p">,</span> <span class="s2">"'"</span><span class="p">),</span>
+                    <span class="n">unique</span><span class="o">=</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"Non_unique"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">nullable</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="s2">"Null"</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"yes"</span><span class="p">,</span>
                 <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">indexes</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="nb">tuple</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;column&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">keys</span><span class="p">())):</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">unique</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;unique&quot;</span><span class="p">],</span>
-                <span class="n">nullable</span><span class="o">=</span><span class="nb">any</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">&quot;nullable&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">"column"</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">keys</span><span class="p">())):</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">unique</span><span class="o">=</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">"unique"</span><span class="p">],</span>
+                <span class="n">nullable</span><span class="o">=</span><span class="nb">any</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">"nullable"</span><span class="p">]</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">keys</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">select_list</span><span class="p">,</span> <span class="n">rename_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">compute_map</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        derive a new heading by selecting, renaming, or computing attributes.</span>
 <span class="sd">        In relational algebra these operators are known as project, rename, and extend.</span>
 
@@ -4853,7 +4853,7 @@ the attribute names and the values are Attributes.</p>
 <span class="sd">        :param rename_map:  dictionary of renamed attributes: keys=new names, values=old names</span>
 <span class="sd">        :param compute_map: a direction of computed attributes</span>
 <span class="sd">        This low-level method performs no error checking.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">rename_map</span> <span class="o">=</span> <span class="n">rename_map</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="n">compute_map</span> <span class="o">=</span> <span class="n">compute_map</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="n">copy_attrs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
@@ -4865,7 +4865,7 @@ the attribute names and the values are Attributes.</p>
                     <span class="nb">dict</span><span class="p">(</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">old_name</span><span class="p">]</span><span class="o">.</span><span class="n">todict</span><span class="p">(),</span>
                         <span class="n">name</span><span class="o">=</span><span class="n">new_name</span><span class="p">,</span>
-                        <span class="n">attribute_expression</span><span class="o">=</span><span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">old_name</span><span class="p">,</span>
+                        <span class="n">attribute_expression</span><span class="o">=</span><span class="s2">"`</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="n">old_name</span><span class="p">,</span>
                     <span class="p">)</span>
                     <span class="k">for</span> <span class="n">new_name</span><span class="p">,</span> <span class="n">old_name</span> <span class="ow">in</span> <span class="n">rename_map</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                     <span class="k">if</span> <span class="n">old_name</span> <span class="o">==</span> <span class="n">name</span>
@@ -4878,10 +4878,10 @@ the attribute names and the values are Attributes.</p>
         <span class="k">return</span> <span class="n">Heading</span><span class="p">(</span><span class="n">chain</span><span class="p">(</span><span class="n">copy_attrs</span><span class="p">,</span> <span class="n">compute_attrs</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Join two headings into a new one.</span>
 <span class="sd">        It assumes that self and other are headings that share no common dependent attributes.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">Heading</span><span class="p">(</span>
             <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">todict</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span><span class="p">]</span>
             <span class="o">+</span> <span class="p">[</span>
@@ -4902,10 +4902,10 @@ the attribute names and the values are Attributes.</p>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">set_primary_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">primary_key</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Create a new heading with the specified primary key.</span>
 <span class="sd">        This low-level method performs no error checking.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">Heading</span><span class="p">(</span>
             <span class="n">chain</span><span class="p">(</span>
                 <span class="p">(</span>
@@ -4921,10 +4921,10 @@ the attribute names and the values are Attributes.</p>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">make_subquery_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Create a new heading with removed attribute sql_expressions.</span>
 <span class="sd">        Used by subqueries, which resolve the sql_expressions.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">Heading</span><span class="p">(</span>
             <span class="nb">dict</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">todict</span><span class="p">(),</span> <span class="n">attribute_expression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
@@ -4998,15 +4998,15 @@ the attribute names and the values are Attributes.</p>
 <span class="normal">203</span>
 <span class="normal">204</span>
 <span class="normal">205</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">as_sql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">include_aliases</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    represent heading as the SQL SELECT clause.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="s2">","</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
         <span class="p">(</span>
-            <span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span>
+            <span class="s2">"`</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="n">name</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span> <span class="ow">is</span> <span class="kc">None</span>
             <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span>
-            <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; as `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span> <span class="k">if</span> <span class="n">include_aliases</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="o">+</span> <span class="p">(</span><span class="s2">" as `</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="n">name</span> <span class="k">if</span> <span class="n">include_aliases</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">fields</span>
     <span class="p">)</span>
@@ -5131,7 +5131,7 @@ This low-level method performs no error checking.</p>
 <span class="normal">478</span>
 <span class="normal">479</span>
 <span class="normal">480</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">select_list</span><span class="p">,</span> <span class="n">rename_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">compute_map</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    derive a new heading by selecting, renaming, or computing attributes.</span>
 <span class="sd">    In relational algebra these operators are known as project, rename, and extend.</span>
 
@@ -5139,7 +5139,7 @@ This low-level method performs no error checking.</p>
 <span class="sd">    :param rename_map:  dictionary of renamed attributes: keys=new names, values=old names</span>
 <span class="sd">    :param compute_map: a direction of computed attributes</span>
 <span class="sd">    This low-level method performs no error checking.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">rename_map</span> <span class="o">=</span> <span class="n">rename_map</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="n">compute_map</span> <span class="o">=</span> <span class="n">compute_map</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="n">copy_attrs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
@@ -5151,7 +5151,7 @@ This low-level method performs no error checking.</p>
                 <span class="nb">dict</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">old_name</span><span class="p">]</span><span class="o">.</span><span class="n">todict</span><span class="p">(),</span>
                     <span class="n">name</span><span class="o">=</span><span class="n">new_name</span><span class="p">,</span>
-                    <span class="n">attribute_expression</span><span class="o">=</span><span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">old_name</span><span class="p">,</span>
+                    <span class="n">attribute_expression</span><span class="o">=</span><span class="s2">"`</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="n">old_name</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="k">for</span> <span class="n">new_name</span><span class="p">,</span> <span class="n">old_name</span> <span class="ow">in</span> <span class="n">rename_map</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">old_name</span> <span class="o">==</span> <span class="n">name</span>
@@ -5213,10 +5213,10 @@ It assumes that self and other are headings that share no common dependent attri
 <span class="normal">502</span>
 <span class="normal">503</span>
 <span class="normal">504</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Join two headings into a new one.</span>
 <span class="sd">    It assumes that self and other are headings that share no common dependent attributes.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="n">Heading</span><span class="p">(</span>
         <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">todict</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span><span class="p">]</span>
         <span class="o">+</span> <span class="p">[</span>
@@ -5281,10 +5281,10 @@ This low-level method performs no error checking.</p>
 <span class="normal">521</span>
 <span class="normal">522</span>
 <span class="normal">523</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_primary_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">primary_key</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Create a new heading with the specified primary key.</span>
 <span class="sd">    This low-level method performs no error checking.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="n">Heading</span><span class="p">(</span>
         <span class="n">chain</span><span class="p">(</span>
             <span class="p">(</span>
@@ -5335,10 +5335,10 @@ Used by subqueries, which resolve the sql_expressions.</p>
 <span class="normal">531</span>
 <span class="normal">532</span>
 <span class="normal">533</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make_subquery_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Create a new heading with removed attribute sql_expressions.</span>
 <span class="sd">    Used by subqueries, which resolve the sql_expressions.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="n">Heading</span><span class="p">(</span>
         <span class="nb">dict</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">todict</span><span class="p">(),</span> <span class="n">attribute_expression</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
@@ -5500,7 +5500,7 @@ Used by subqueries, which resolve the sql_expressions.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

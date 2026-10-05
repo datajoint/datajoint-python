@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3641,7 +3641,7 @@ For example, the following is the definition of a table containing database user
 <span class="o">---</span>
 <span class="n">first_name</span> <span class="p">:</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
 <span class="n">last_name</span>  <span class="p">:</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
-<span class="n">role</span> <span class="p">:</span> <span class="n">enum</span><span class="p">(</span><span class="s1">&#39;admin&#39;</span><span class="p">,</span> <span class="s1">&#39;contributor&#39;</span><span class="p">,</span> <span class="s1">&#39;viewer&#39;</span><span class="p">)</span>
+<span class="n">role</span> <span class="p">:</span> <span class="n">enum</span><span class="p">(</span><span class="s1">'admin'</span><span class="p">,</span> <span class="s1">'contributor'</span><span class="p">,</span> <span class="s1">'viewer'</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="entity-integrity">Entity integrity<a class="headerlink" href="#entity-integrity" title="Permanent link">&para;</a></h2>
 <p>The primary key defines and enforces the desired property of databases known as
@@ -3737,11 +3737,11 @@ do so programmatically within a transaction to avoid collisions.</p>
 <code>Scan</code> whose primary key is <code>(animal_id, session, scan_idx)</code>.
 You must already have the values for <code>animal_id</code> and <code>session</code> in the dictionary <code>key</code>.
 Then you can do the following:</p>
-<div class="highlight"><pre><span></span><code><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Scan</span> <span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="nb">next</span><span class="o">=</span><span class="s1">&#39;max(scan_idx)+1&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Scan</span> <span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="nb">next</span><span class="o">=</span><span class="s1">'max(scan_idx)+1'</span><span class="p">)</span>
 
 <span class="c1"># or</span>
 
-<span class="n">Session</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Scan</span><span class="p">,</span> <span class="nb">next</span><span class="o">=</span><span class="s1">&#39;max(scan_idx)+1&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">key</span>
+<span class="n">Session</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Scan</span><span class="p">,</span> <span class="nb">next</span><span class="o">=</span><span class="s1">'max(scan_idx)+1'</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">key</span>
 </code></pre></div>
 <p>Note that the first option uses a <a href="../../../query/universals/">universal set</a>.</p>
 
@@ -3878,7 +3878,7 @@ Then you can do the following:</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

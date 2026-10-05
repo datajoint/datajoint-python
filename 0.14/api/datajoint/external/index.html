@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3769,9 +3769,9 @@
 <span class="normal">31</span>
 <span class="normal">32</span>
 <span class="normal">33</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">subfold</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">folds</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    subfolding for external storage: e.g.  subfold(&#39;aBCdefg&#39;, (2, 3))  --&gt;  [&#39;ab&#39;,&#39;cde&#39;]</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    subfolding for external storage: e.g.  subfold('aBCdefg', (2, 3))  --&gt;  ['ab','cde']</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="p">(</span>
         <span class="p">(</span><span class="n">name</span><span class="p">[:</span> <span class="n">folds</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">lower</span><span class="p">(),)</span> <span class="o">+</span> <span class="n">subfold</span><span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="n">folds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">:],</span> <span class="n">folds</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
         <span class="k">if</span> <span class="n">folds</span>
@@ -4291,10 +4291,10 @@ Declare as ExternalTable(connection, database)</p>
 <span class="normal">507</span>
 <span class="normal">508</span>
 <span class="normal">509</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExternalTable</span><span class="p">(</span><span class="n">Table</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    The table tracking externally stored objects.</span>
 <span class="sd">    Declare as ExternalTable(connection, database)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="n">database</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">store</span> <span class="o">=</span> <span class="n">store</span>
@@ -4314,14 +4314,14 @@ Declare as ExternalTable(connection, database)</p>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_declared</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">declare</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_s3</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;location&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"location"</span><span class="p">])</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
             <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-                <span class="s2">&quot;Inaccessible local directory </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;location&quot;</span><span class="p">]</span>
+                <span class="s2">"Inaccessible local directory </span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"location"</span><span class="p">]</span>
             <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">definition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">"""</span>
 <span class="s2">        # external storage tracking</span>
 <span class="s2">        hash  : uuid    #  hash of contents (blob), of filename + contents (attach), or relative filepath (filepath)</span>
 <span class="s2">        ---</span>
@@ -4330,11 +4330,11 @@ Declare as ExternalTable(connection, database)</p>
 <span class="s2">        filepath=null : varchar(1000)  # relative filepath or attachment filename</span>
 <span class="s2">        contents_hash=null : uuid      # used for the filepath datatype</span>
 <span class="s2">        timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp</span>
-<span class="s2">        &quot;&quot;&quot;</span>
+<span class="s2">        """</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">table_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">EXTERNAL_TABLE_ROOT</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">EXTERNAL_TABLE_ROOT</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="si">}</span><span class="s2">"</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">s3</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -4345,100 +4345,100 @@ Declare as ExternalTable(connection, database)</p>
     <span class="c1"># - low-level operations - private</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_make_external_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">relative_filepath</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;resolve the complete external path based on the relative path&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""resolve the complete external path based on the relative path"""</span>
         <span class="c1"># Strip root</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
-            <span class="n">posix_path</span> <span class="o">=</span> <span class="n">PurePosixPath</span><span class="p">(</span><span class="n">PureWindowsPath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;location&quot;</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
+            <span class="n">posix_path</span> <span class="o">=</span> <span class="n">PurePosixPath</span><span class="p">(</span><span class="n">PureWindowsPath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"location"</span><span class="p">]))</span>
             <span class="n">location_path</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">Path</span><span class="p">(</span><span class="o">*</span><span class="n">posix_path</span><span class="o">.</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;location&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span>
-                <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">case</span> <span class="ow">in</span> <span class="n">posix_path</span><span class="o">.</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">))</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"location"</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">case</span> <span class="ow">in</span> <span class="n">posix_path</span><span class="o">.</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"</span><span class="se">\\</span><span class="s2">"</span><span class="p">,</span> <span class="s2">":"</span><span class="p">))</span>
                 <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">posix_path</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="n">PurePosixPath</span><span class="p">(</span><span class="n">location_path</span><span class="p">,</span> <span class="n">relative_filepath</span><span class="p">)</span>
         <span class="c1"># Preserve root</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">PurePosixPath</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;location&quot;</span><span class="p">]),</span> <span class="n">relative_filepath</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">PurePosixPath</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"location"</span><span class="p">]),</span> <span class="n">relative_filepath</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="kc">False</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_make_uuid_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;create external path based on the uuid hash&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_uuid_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">""</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""create external path based on the uuid hash"""</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span>
             <span class="n">PurePosixPath</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span>
-                <span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">subfold</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">hex</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;subfolding&quot;</span><span class="p">])),</span>
+                <span class="s2">"/"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">subfold</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">hex</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"subfolding"</span><span class="p">])),</span>
                 <span class="n">uuid</span><span class="o">.</span><span class="n">hex</span><span class="p">,</span>
             <span class="p">)</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_upload_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local_path</span><span class="p">,</span> <span class="n">external_path</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">fput</span><span class="p">(</span><span class="n">local_path</span><span class="p">,</span> <span class="n">external_path</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span><span class="p">:</span>
             <span class="n">safe_copy</span><span class="p">(</span><span class="n">local_path</span><span class="p">,</span> <span class="n">external_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_download_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_path</span><span class="p">,</span> <span class="n">download_path</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">fget</span><span class="p">(</span><span class="n">external_path</span><span class="p">,</span> <span class="n">download_path</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span><span class="p">:</span>
             <span class="n">safe_copy</span><span class="p">(</span><span class="n">external_path</span><span class="p">,</span> <span class="n">download_path</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_upload_buffer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">external_path</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">external_path</span><span class="p">,</span> <span class="n">buffer</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span><span class="p">:</span>
             <span class="n">safe_write</span><span class="p">(</span><span class="n">external_path</span><span class="p">,</span> <span class="n">buffer</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_download_buffer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_path</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">external_path</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">external_path</span><span class="p">)</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
             <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">MissingExternalFile</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Missing external file </span><span class="si">{</span><span class="n">external_path</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">"Missing external file </span><span class="si">{</span><span class="n">external_path</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
         <span class="k">assert</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_remove_external_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_path</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">remove_object</span><span class="p">(</span><span class="n">external_path</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">Path</span><span class="p">(</span><span class="n">external_path</span><span class="p">)</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
             <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
                 <span class="k">pass</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_filepath</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: True if the external file is accessible</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">external_filepath</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">external_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
         <span class="k">assert</span> <span class="kc">False</span>
 
     <span class="c1"># --- BLOBS ----</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blob</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        put a binary string (blob) in external store</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">uuid</span> <span class="o">=</span> <span class="n">uuid_from_buffer</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_upload_buffer</span><span class="p">(</span><span class="n">blob</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">))</span>
         <span class="c1"># insert tracking info</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s2">&quot;INSERT INTO </span><span class="si">{tab}</span><span class="s2"> (hash, size) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">{size}</span><span class="s2">) ON DUPLICATE KEY &quot;</span>
-            <span class="s2">&quot;UPDATE timestamp=CURRENT_TIMESTAMP&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"INSERT INTO </span><span class="si">{tab}</span><span class="s2"> (hash, size) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">{size}</span><span class="s2">) ON DUPLICATE KEY "</span>
+            <span class="s2">"UPDATE timestamp=CURRENT_TIMESTAMP"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">tab</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">full_table_name</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span>
             <span class="p">),</span>
             <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">bytes</span><span class="p">,),</span>
@@ -4446,14 +4446,14 @@ Declare as ExternalTable(connection, database)</p>
         <span class="k">return</span> <span class="n">uuid</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        get an object from external store.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">uuid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="c1"># attempt to get object from cache</span>
         <span class="n">blob</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">cache_folder</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">cache_folder</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cache"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">cache_folder</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">cache_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cache_folder</span><span class="p">,</span> <span class="o">*</span><span class="n">subfold</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">hex</span><span class="p">,</span> <span class="n">CACHE_SUBFOLDING</span><span class="p">))</span>
@@ -4469,8 +4469,8 @@ Declare as ExternalTable(connection, database)</p>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">SUPPORT_MIGRATED_BLOBS</span><span class="p">:</span>
                     <span class="k">raise</span>
                 <span class="c1"># blobs migrated from datajoint 0.11 are stored at explicitly defined filepaths</span>
-                <span class="n">relative_filepath</span><span class="p">,</span> <span class="n">contents_hash</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span>
-                    <span class="s2">&quot;filepath&quot;</span><span class="p">,</span> <span class="s2">&quot;contents_hash&quot;</span>
+                <span class="n">relative_filepath</span><span class="p">,</span> <span class="n">contents_hash</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span>
+                    <span class="s2">"filepath"</span><span class="p">,</span> <span class="s2">"contents_hash"</span>
                 <span class="p">)</span>
                 <span class="k">if</span> <span class="n">relative_filepath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">raise</span>
@@ -4486,15 +4486,15 @@ Declare as ExternalTable(connection, database)</p>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">upload_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local_path</span><span class="p">):</span>
         <span class="n">attachment_name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_path</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
-        <span class="n">uuid</span> <span class="o">=</span> <span class="n">uuid_from_file</span><span class="p">(</span><span class="n">local_path</span><span class="p">,</span> <span class="n">init_string</span><span class="o">=</span><span class="n">attachment_name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\0</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">attachment_name</span><span class="p">)</span>
+        <span class="n">uuid</span> <span class="o">=</span> <span class="n">uuid_from_file</span><span class="p">(</span><span class="n">local_path</span><span class="p">,</span> <span class="n">init_string</span><span class="o">=</span><span class="n">attachment_name</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\0</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">attachment_name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_upload_file</span><span class="p">(</span><span class="n">local_path</span><span class="p">,</span> <span class="n">external_path</span><span class="p">)</span>
         <span class="c1"># insert tracking info</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">            </span><span class="sd">"""</span>
 <span class="sd">        INSERT INTO {tab} (hash, size, attachment_name)</span>
-<span class="sd">        VALUES (%s, {size}, &quot;{attachment_name}&quot;)</span>
-<span class="sd">        ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP&quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+<span class="sd">        VALUES (%s, {size}, "{attachment_name}")</span>
+<span class="sd">        ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP"""</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">tab</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">full_table_name</span><span class="p">,</span>
                 <span class="n">size</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">local_path</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span>
                 <span class="n">attachment_name</span><span class="o">=</span><span class="n">attachment_name</span><span class="p">,</span>
@@ -4504,29 +4504,29 @@ Declare as ExternalTable(connection, database)</p>
         <span class="k">return</span> <span class="n">uuid</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_attachment_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s2">&quot;attachment_name&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s2">"attachment_name"</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">download_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">attachment_name</span><span class="p">,</span> <span class="n">download_path</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;save attachment from memory buffer into the save_path&quot;&quot;&quot;</span>
-        <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">attachment_name</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">"""save attachment from memory buffer into the save_path"""</span>
+        <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">attachment_name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_download_file</span><span class="p">(</span><span class="n">external_path</span><span class="p">,</span> <span class="n">download_path</span><span class="p">)</span>
 
     <span class="c1"># --- FILEPATH ---</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">upload_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local_filepath</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Raise exception if an external entry already exists with a different contents checksum.</span>
 <span class="sd">        Otherwise, copy (with overwrite) file to remote and</span>
 <span class="sd">        If an external entry exists with the same checksum, then no copying should occur</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">local_filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">relative_filepath</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
-                <span class="n">local_filepath</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;stage&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+                <span class="n">local_filepath</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"stage"</span><span class="p">])</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The path </span><span class="si">{path}</span><span class="s2"> is not in stage </span><span class="si">{stage}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"The path </span><span class="si">{path}</span><span class="s2"> is not in stage </span><span class="si">{stage}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">path</span><span class="o">=</span><span class="n">local_filepath</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span>
                 <span class="p">)</span>
             <span class="p">)</span>
@@ -4536,30 +4536,30 @@ Declare as ExternalTable(connection, database)</p>
 
         <span class="c1"># Check if checksum should be skipped based on file size limit</span>
         <span class="n">file_size</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
-        <span class="n">size_limit</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filepath_checksum_size_limit_insert&quot;</span><span class="p">)</span>
+        <span class="n">size_limit</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filepath_checksum_size_limit_insert"</span><span class="p">)</span>
         <span class="n">skip_checksum</span> <span class="o">=</span> <span class="n">size_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">file_size</span> <span class="o">&gt;</span> <span class="n">size_limit</span>
 
         <span class="k">if</span> <span class="n">skip_checksum</span><span class="p">:</span>
             <span class="n">contents_hash</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Skipping checksum for &#39;</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">&#39; (</span><span class="si">{</span><span class="n">file_size</span><span class="si">}</span><span class="s2"> bytes &gt; </span><span class="si">{</span><span class="n">size_limit</span><span class="si">}</span><span class="s2"> byte limit)&quot;</span>
+                <span class="sa">f</span><span class="s2">"Skipping checksum for '</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">' (</span><span class="si">{</span><span class="n">file_size</span><span class="si">}</span><span class="s2"> bytes &gt; </span><span class="si">{</span><span class="n">size_limit</span><span class="si">}</span><span class="s2"> byte limit)"</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">contents_hash</span> <span class="o">=</span> <span class="n">uuid_from_file</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span>
 
         <span class="c1"># check if the remote file already exists and verify that it matches</span>
-        <span class="n">check_hash</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;contents_hash&quot;</span><span class="p">)</span>
+        <span class="n">check_hash</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"contents_hash"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">check_hash</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
-            <span class="c1"># the tracking entry exists, check that it&#39;s the same file as before</span>
+            <span class="c1"># the tracking entry exists, check that it's the same file as before</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_checksum</span> <span class="ow">and</span> <span class="n">contents_hash</span> <span class="o">!=</span> <span class="n">check_hash</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;A different version of &#39;</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">&#39; has already been placed.&quot;</span>
+                    <span class="sa">f</span><span class="s2">"A different version of '</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">' has already been placed."</span>
                 <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># upload the file and create its tracking entry</span>
             <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span><span class="n">relative_filepath</span><span class="p">)</span>
             <span class="n">already_uploaded</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
                 <span class="n">stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">external_path</span><span class="p">))</span>
                 <span class="k">if</span> <span class="n">stat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">stat</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">file_size</span><span class="p">:</span>
                     <span class="c1"># Verify contents_hash from S3 metadata when available</span>
@@ -4567,28 +4567,28 @@ Declare as ExternalTable(connection, database)</p>
                         <span class="n">already_uploaded</span> <span class="o">=</span> <span class="kc">True</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">remote_meta</span> <span class="o">=</span> <span class="p">{</span>
-                            <span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;x-amz-meta-&quot;</span><span class="p">):</span> <span class="n">v</span>
+                            <span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"x-amz-meta-"</span><span class="p">):</span> <span class="n">v</span>
                             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">stat</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                         <span class="p">}</span>
-                        <span class="n">remote_hash</span> <span class="o">=</span> <span class="n">remote_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contents_hash&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                        <span class="n">remote_hash</span> <span class="o">=</span> <span class="n">remote_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"contents_hash"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
                         <span class="k">if</span> <span class="n">remote_hash</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">contents_hash</span><span class="p">):</span>
                             <span class="n">already_uploaded</span> <span class="o">=</span> <span class="kc">True</span>
                     <span class="k">if</span> <span class="n">already_uploaded</span><span class="p">:</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;File already exists on S3 with matching size&quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">skip_checksum</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39; and checksum&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;, skipping upload: &#39;</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                            <span class="sa">f</span><span class="s2">"File already exists on S3 with matching size"</span>
+                            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">''</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">skip_checksum</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">' and checksum'</span><span class="si">}</span><span class="s2">"</span>
+                            <span class="sa">f</span><span class="s2">", skipping upload: '</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">'"</span>
                         <span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">already_uploaded</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_upload_file</span><span class="p">(</span>
                     <span class="n">local_filepath</span><span class="p">,</span>
                     <span class="n">external_path</span><span class="p">,</span>
                     <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
-                        <span class="s2">&quot;contents_hash&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">contents_hash</span><span class="p">)</span> <span class="k">if</span> <span class="n">contents_hash</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                        <span class="s2">"contents_hash"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">contents_hash</span><span class="p">)</span> <span class="k">if</span> <span class="n">contents_hash</span> <span class="k">else</span> <span class="s2">""</span>
                     <span class="p">},</span>
                 <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-                <span class="s2">&quot;INSERT INTO </span><span class="si">{tab}</span><span class="s2"> (hash, size, filepath, contents_hash) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">{size}</span><span class="s2">, &#39;</span><span class="si">{filepath}</span><span class="s2">&#39;, </span><span class="si">%s</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"INSERT INTO </span><span class="si">{tab}</span><span class="s2"> (hash, size, filepath, contents_hash) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">{size}</span><span class="s2">, '</span><span class="si">{filepath}</span><span class="s2">', </span><span class="si">%s</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">tab</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">full_table_name</span><span class="p">,</span>
                     <span class="n">size</span><span class="o">=</span><span class="n">file_size</span><span class="p">,</span>
                     <span class="n">filepath</span><span class="o">=</span><span class="n">relative_filepath</span><span class="p">,</span>
@@ -4598,29 +4598,29 @@ Declare as ExternalTable(connection, database)</p>
         <span class="k">return</span> <span class="n">uuid</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">download_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath_hash</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        sync a file from external store to the local stage</span>
 
 <span class="sd">        :param filepath_hash: The hash (UUID) of the relative_path</span>
 <span class="sd">        :return: hash (UUID) of the contents of the downloaded file or Nones</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_need_checksum</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">,</span> <span class="n">expected_size</span><span class="p">):</span>
-            <span class="n">limit</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filepath_checksum_size_limit&quot;</span><span class="p">)</span>
+            <span class="n">limit</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filepath_checksum_size_limit"</span><span class="p">)</span>
             <span class="n">actual_size</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
             <span class="k">if</span> <span class="n">expected_size</span> <span class="o">!=</span> <span class="n">actual_size</span><span class="p">:</span>
                 <span class="c1"># this should never happen without outside interference</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">&#39; downloaded but size did not match.&quot;</span>
+                    <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">' downloaded but size did not match."</span>
                 <span class="p">)</span>
             <span class="k">return</span> <span class="n">limit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">actual_size</span> <span class="o">&lt;</span> <span class="n">limit</span>
 
         <span class="k">if</span> <span class="n">filepath_hash</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">relative_filepath</span><span class="p">,</span> <span class="n">contents_hash</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">filepath_hash</span><span class="p">}</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s2">&quot;filepath&quot;</span><span class="p">,</span> <span class="s2">&quot;contents_hash&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">)</span>
+                <span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">filepath_hash</span><span class="p">}</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s2">"filepath"</span><span class="p">,</span> <span class="s2">"contents_hash"</span><span class="p">,</span> <span class="s2">"size"</span><span class="p">)</span>
             <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span><span class="n">relative_filepath</span><span class="p">)</span>
-            <span class="n">local_filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;stage&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">absolute</span><span class="p">()</span> <span class="o">/</span> <span class="n">relative_filepath</span>
+            <span class="n">local_filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"stage"</span><span class="p">])</span><span class="o">.</span><span class="n">absolute</span><span class="p">()</span> <span class="o">/</span> <span class="n">relative_filepath</span>
 
             <span class="n">file_exists</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span>
                 <span class="ow">not</span> <span class="n">_need_checksum</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
@@ -4635,11 +4635,11 @@ Declare as ExternalTable(connection, database)</p>
                 <span class="p">):</span>
                     <span class="c1"># this should never happen without outside interference</span>
                     <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">&#39; downloaded but did not pass checksum.&quot;</span>
+                        <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">' downloaded but did not pass checksum."</span>
                     <span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">_need_checksum</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Skipped checksum for file with hash: </span><span class="si">{</span><span class="n">contents_hash</span><span class="si">}</span><span class="s2">, and path: </span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">"Skipped checksum for file with hash: </span><span class="si">{</span><span class="n">contents_hash</span><span class="si">}</span><span class="s2">, and path: </span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span>
             <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">),</span> <span class="n">contents_hash</span>
 
@@ -4647,17 +4647,17 @@ Declare as ExternalTable(connection, database)</p>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">references</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: generator of referencing table names and their referencing columns</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="p">{</span><span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">elem</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
             <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        SELECT concat(&#39;`&#39;, table_schema, &#39;`.`&#39;, table_name, &#39;`&#39;) as referencing_table, column_name</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">        SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table, column_name</span>
 <span class="sd">        FROM information_schema.key_column_usage</span>
-<span class="sd">        WHERE referenced_table_name=&quot;{tab}&quot; and referenced_table_schema=&quot;{db}&quot;</span>
-<span class="sd">        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+<span class="sd">        WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"</span>
+<span class="sd">        """</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">tab</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span>
                 <span class="p">),</span>
                 <span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -4665,49 +4665,49 @@ Declare as ExternalTable(connection, database)</p>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">fetch_external_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        generate complete external filepaths from the query.</span>
 <span class="sd">        Each element is a tuple: (uuid, path)</span>
 
 <span class="sd">        :param fetch_kwargs: keyword arguments to pass to fetch</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">fetch_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">paths</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;hash&quot;</span><span class="p">,</span> <span class="s2">&quot;attachment_name&quot;</span><span class="p">,</span> <span class="s2">&quot;filepath&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;attachment_name&quot;</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"hash"</span><span class="p">,</span> <span class="s2">"attachment_name"</span><span class="p">,</span> <span class="s2">"filepath"</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">"attachment_name"</span><span class="p">]:</span>
                 <span class="c1"># attachments</span>
-                <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;hash&quot;</span><span class="p">],</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;attachment_name&quot;</span><span class="p">])</span>
-            <span class="k">elif</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;filepath&quot;</span><span class="p">]:</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">],</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">item</span><span class="p">[</span><span class="s2">"attachment_name"</span><span class="p">])</span>
+            <span class="k">elif</span> <span class="n">item</span><span class="p">[</span><span class="s2">"filepath"</span><span class="p">]:</span>
                 <span class="c1"># external filepaths</span>
-                <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;filepath&quot;</span><span class="p">])</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"filepath"</span><span class="p">])</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># blobs</span>
-                <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;hash&quot;</span><span class="p">])</span>
-            <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;hash&quot;</span><span class="p">],</span> <span class="n">path</span><span class="p">))</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">])</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">item</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">],</span> <span class="n">path</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">paths</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">unused</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        query expression for unused hashes</span>
 
 <span class="sd">        :return: self restricted to elements that are not in use by any tables in the schema</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span> <span class="o">-</span> <span class="p">[</span>
-            <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s2">&quot;referencing_table&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
-                <span class="nb">hash</span><span class="o">=</span><span class="n">ref</span><span class="p">[</span><span class="s2">&quot;column_name&quot;</span><span class="p">]</span>
+            <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s2">"referencing_table"</span><span class="p">])</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
+                <span class="nb">hash</span><span class="o">=</span><span class="n">ref</span><span class="p">[</span><span class="s2">"column_name"</span><span class="p">]</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">references</span>
         <span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">used</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        query expression for used hashes</span>
 
 <span class="sd">        :return: self restricted to elements that in use by tables in the schema</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span> <span class="o">&amp;</span> <span class="p">[</span>
-            <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s2">&quot;referencing_table&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
-                <span class="nb">hash</span><span class="o">=</span><span class="n">ref</span><span class="p">[</span><span class="s2">&quot;column_name&quot;</span><span class="p">]</span>
+            <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s2">"referencing_table"</span><span class="p">])</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
+                <span class="nb">hash</span><span class="o">=</span><span class="n">ref</span><span class="p">[</span><span class="s2">"column_name"</span><span class="p">]</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">references</span>
         <span class="p">]</span>
@@ -4720,7 +4720,7 @@ Declare as ExternalTable(connection, database)</p>
         <span class="n">display_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">errors_as_string</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 
 <span class="sd">        :param delete_external_files: True or False. If False, only the tracking info is removed from the external</span>
 <span class="sd">                store table but the external files remain intact. If True, then the external files themselves are deleted too.</span>
@@ -4728,11 +4728,11 @@ Declare as ExternalTable(connection, database)</p>
 <span class="sd">        :param limit: (integer) limit the number of items to delete</span>
 <span class="sd">        :param display_progress: if True, display progress as files are cleaned up</span>
 <span class="sd">        :return: if deleting external files, returns errors</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">delete_external_files</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The delete_external_files argument must be set to either &quot;</span>
-                <span class="s2">&quot;True or False in delete()&quot;</span>
+                <span class="s2">"The delete_external_files argument must be set to either "</span>
+                <span class="s2">"True or False in delete()"</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">delete_external_files</span><span class="p">:</span>
@@ -4744,10 +4744,10 @@ Declare as ExternalTable(connection, database)</p>
             <span class="c1"># delete items one by one, close to transaction-safe</span>
             <span class="n">error_list</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">external_path</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
-                <span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+                <span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">delete_quick</span><span class="p">()</span>
+                        <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">delete_quick</span><span class="p">()</span>
                     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                         <span class="k">pass</span>  <span class="c1"># if delete failed, do not remove the external file</span>
                     <span class="k">else</span><span class="p">:</span>
@@ -4824,12 +4824,12 @@ Declare as ExternalTable(connection, database)</p>
 <span class="normal">169</span>
 <span class="normal">170</span>
 <span class="normal">171</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_filepath</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    :return: True if the external file is accessible</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">external_filepath</span><span class="p">)</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"file"</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">external_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
     <span class="k">assert</span> <span class="kc">False</span>
 </code></pre></div></td></tr></table></div>
@@ -4874,15 +4874,15 @@ Declare as ExternalTable(connection, database)</p>
 <span class="normal">187</span>
 <span class="normal">188</span>
 <span class="normal">189</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blob</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    put a binary string (blob) in external store</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">uuid</span> <span class="o">=</span> <span class="n">uuid_from_buffer</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_upload_buffer</span><span class="p">(</span><span class="n">blob</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">))</span>
     <span class="c1"># insert tracking info</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-        <span class="s2">&quot;INSERT INTO </span><span class="si">{tab}</span><span class="s2"> (hash, size) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">{size}</span><span class="s2">) ON DUPLICATE KEY &quot;</span>
-        <span class="s2">&quot;UPDATE timestamp=CURRENT_TIMESTAMP&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="s2">"INSERT INTO </span><span class="si">{tab}</span><span class="s2"> (hash, size) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">{size}</span><span class="s2">) ON DUPLICATE KEY "</span>
+        <span class="s2">"UPDATE timestamp=CURRENT_TIMESTAMP"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">tab</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">full_table_name</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span>
         <span class="p">),</span>
         <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">bytes</span><span class="p">,),</span>
@@ -4951,14 +4951,14 @@ Declare as ExternalTable(connection, database)</p>
 <span class="normal">224</span>
 <span class="normal">225</span>
 <span class="normal">226</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    get an object from external store.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">uuid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="c1"># attempt to get object from cache</span>
     <span class="n">blob</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">cache_folder</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">cache_folder</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cache"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">cache_folder</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">cache_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cache_folder</span><span class="p">,</span> <span class="o">*</span><span class="n">subfold</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">hex</span><span class="p">,</span> <span class="n">CACHE_SUBFOLDING</span><span class="p">))</span>
@@ -4974,8 +4974,8 @@ Declare as ExternalTable(connection, database)</p>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">SUPPORT_MIGRATED_BLOBS</span><span class="p">:</span>
                 <span class="k">raise</span>
             <span class="c1"># blobs migrated from datajoint 0.11 are stored at explicitly defined filepaths</span>
-            <span class="n">relative_filepath</span><span class="p">,</span> <span class="n">contents_hash</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span>
-                <span class="s2">&quot;filepath&quot;</span><span class="p">,</span> <span class="s2">&quot;contents_hash&quot;</span>
+            <span class="n">relative_filepath</span><span class="p">,</span> <span class="n">contents_hash</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span>
+                <span class="s2">"filepath"</span><span class="p">,</span> <span class="s2">"contents_hash"</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">relative_filepath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span>
@@ -5017,8 +5017,8 @@ Declare as ExternalTable(connection, database)</p>
 <span class="normal">253</span>
 <span class="normal">254</span>
 <span class="normal">255</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">download_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">attachment_name</span><span class="p">,</span> <span class="n">download_path</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;save attachment from memory buffer into the save_path&quot;&quot;&quot;</span>
-    <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">attachment_name</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">"""save attachment from memory buffer into the save_path"""</span>
+    <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">attachment_name</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_download_file</span><span class="p">(</span><span class="n">external_path</span><span class="p">,</span> <span class="n">download_path</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5132,19 +5132,19 @@ If an external entry exists with the same checksum, then no copying should occur
 <span class="normal">339</span>
 <span class="normal">340</span>
 <span class="normal">341</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">upload_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local_filepath</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Raise exception if an external entry already exists with a different contents checksum.</span>
 <span class="sd">    Otherwise, copy (with overwrite) file to remote and</span>
 <span class="sd">    If an external entry exists with the same checksum, then no copying should occur</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">local_filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">relative_filepath</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
-            <span class="n">local_filepath</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;stage&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+            <span class="n">local_filepath</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"stage"</span><span class="p">])</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;The path </span><span class="si">{path}</span><span class="s2"> is not in stage </span><span class="si">{stage}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"The path </span><span class="si">{path}</span><span class="s2"> is not in stage </span><span class="si">{stage}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">path</span><span class="o">=</span><span class="n">local_filepath</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span>
             <span class="p">)</span>
         <span class="p">)</span>
@@ -5154,30 +5154,30 @@ If an external entry exists with the same checksum, then no copying should occur
 
     <span class="c1"># Check if checksum should be skipped based on file size limit</span>
     <span class="n">file_size</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
-    <span class="n">size_limit</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filepath_checksum_size_limit_insert&quot;</span><span class="p">)</span>
+    <span class="n">size_limit</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filepath_checksum_size_limit_insert"</span><span class="p">)</span>
     <span class="n">skip_checksum</span> <span class="o">=</span> <span class="n">size_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">file_size</span> <span class="o">&gt;</span> <span class="n">size_limit</span>
 
     <span class="k">if</span> <span class="n">skip_checksum</span><span class="p">:</span>
         <span class="n">contents_hash</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Skipping checksum for &#39;</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">&#39; (</span><span class="si">{</span><span class="n">file_size</span><span class="si">}</span><span class="s2"> bytes &gt; </span><span class="si">{</span><span class="n">size_limit</span><span class="si">}</span><span class="s2"> byte limit)&quot;</span>
+            <span class="sa">f</span><span class="s2">"Skipping checksum for '</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">' (</span><span class="si">{</span><span class="n">file_size</span><span class="si">}</span><span class="s2"> bytes &gt; </span><span class="si">{</span><span class="n">size_limit</span><span class="si">}</span><span class="s2"> byte limit)"</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">contents_hash</span> <span class="o">=</span> <span class="n">uuid_from_file</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span>
 
     <span class="c1"># check if the remote file already exists and verify that it matches</span>
-    <span class="n">check_hash</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;contents_hash&quot;</span><span class="p">)</span>
+    <span class="n">check_hash</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"contents_hash"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">check_hash</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
-        <span class="c1"># the tracking entry exists, check that it&#39;s the same file as before</span>
+        <span class="c1"># the tracking entry exists, check that it's the same file as before</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_checksum</span> <span class="ow">and</span> <span class="n">contents_hash</span> <span class="o">!=</span> <span class="n">check_hash</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;A different version of &#39;</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">&#39; has already been placed.&quot;</span>
+                <span class="sa">f</span><span class="s2">"A different version of '</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">' has already been placed."</span>
             <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># upload the file and create its tracking entry</span>
         <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span><span class="n">relative_filepath</span><span class="p">)</span>
         <span class="n">already_uploaded</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"protocol"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"s3"</span><span class="p">:</span>
             <span class="n">stat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">external_path</span><span class="p">))</span>
             <span class="k">if</span> <span class="n">stat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">stat</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">file_size</span><span class="p">:</span>
                 <span class="c1"># Verify contents_hash from S3 metadata when available</span>
@@ -5185,28 +5185,28 @@ If an external entry exists with the same checksum, then no copying should occur
                     <span class="n">already_uploaded</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">remote_meta</span> <span class="o">=</span> <span class="p">{</span>
-                        <span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;x-amz-meta-&quot;</span><span class="p">):</span> <span class="n">v</span>
+                        <span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"x-amz-meta-"</span><span class="p">):</span> <span class="n">v</span>
                         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">stat</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                     <span class="p">}</span>
-                    <span class="n">remote_hash</span> <span class="o">=</span> <span class="n">remote_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contents_hash&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="n">remote_hash</span> <span class="o">=</span> <span class="n">remote_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"contents_hash"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">remote_hash</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">contents_hash</span><span class="p">):</span>
                         <span class="n">already_uploaded</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="k">if</span> <span class="n">already_uploaded</span><span class="p">:</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;File already exists on S3 with matching size&quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">skip_checksum</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39; and checksum&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;, skipping upload: &#39;</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                        <span class="sa">f</span><span class="s2">"File already exists on S3 with matching size"</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">''</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">skip_checksum</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">' and checksum'</span><span class="si">}</span><span class="s2">"</span>
+                        <span class="sa">f</span><span class="s2">", skipping upload: '</span><span class="si">{</span><span class="n">relative_filepath</span><span class="si">}</span><span class="s2">'"</span>
                     <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">already_uploaded</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_upload_file</span><span class="p">(</span>
                 <span class="n">local_filepath</span><span class="p">,</span>
                 <span class="n">external_path</span><span class="p">,</span>
                 <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
-                    <span class="s2">&quot;contents_hash&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">contents_hash</span><span class="p">)</span> <span class="k">if</span> <span class="n">contents_hash</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                    <span class="s2">"contents_hash"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">contents_hash</span><span class="p">)</span> <span class="k">if</span> <span class="n">contents_hash</span> <span class="k">else</span> <span class="s2">""</span>
                 <span class="p">},</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s2">&quot;INSERT INTO </span><span class="si">{tab}</span><span class="s2"> (hash, size, filepath, contents_hash) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">{size}</span><span class="s2">, &#39;</span><span class="si">{filepath}</span><span class="s2">&#39;, </span><span class="si">%s</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"INSERT INTO </span><span class="si">{tab}</span><span class="s2"> (hash, size, filepath, contents_hash) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">{size}</span><span class="s2">, '</span><span class="si">{filepath}</span><span class="s2">', </span><span class="si">%s</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">tab</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">full_table_name</span><span class="p">,</span>
                 <span class="n">size</span><span class="o">=</span><span class="n">file_size</span><span class="p">,</span>
                 <span class="n">filepath</span><span class="o">=</span><span class="n">relative_filepath</span><span class="p">,</span>
@@ -5338,29 +5338,29 @@ If an external entry exists with the same checksum, then no copying should occur
 <span class="normal">385</span>
 <span class="normal">386</span>
 <span class="normal">387</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">download_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath_hash</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    sync a file from external store to the local stage</span>
 
 <span class="sd">    :param filepath_hash: The hash (UUID) of the relative_path</span>
 <span class="sd">    :return: hash (UUID) of the contents of the downloaded file or Nones</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_need_checksum</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">,</span> <span class="n">expected_size</span><span class="p">):</span>
-        <span class="n">limit</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filepath_checksum_size_limit&quot;</span><span class="p">)</span>
+        <span class="n">limit</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filepath_checksum_size_limit"</span><span class="p">)</span>
         <span class="n">actual_size</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
         <span class="k">if</span> <span class="n">expected_size</span> <span class="o">!=</span> <span class="n">actual_size</span><span class="p">:</span>
             <span class="c1"># this should never happen without outside interference</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">&#39; downloaded but size did not match.&quot;</span>
+                <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">' downloaded but size did not match."</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">limit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">actual_size</span> <span class="o">&lt;</span> <span class="n">limit</span>
 
     <span class="k">if</span> <span class="n">filepath_hash</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">relative_filepath</span><span class="p">,</span> <span class="n">contents_hash</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">filepath_hash</span><span class="p">}</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s2">&quot;filepath&quot;</span><span class="p">,</span> <span class="s2">&quot;contents_hash&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">)</span>
+            <span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">filepath_hash</span><span class="p">}</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s2">"filepath"</span><span class="p">,</span> <span class="s2">"contents_hash"</span><span class="p">,</span> <span class="s2">"size"</span><span class="p">)</span>
         <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span><span class="n">relative_filepath</span><span class="p">)</span>
-        <span class="n">local_filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;stage&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">absolute</span><span class="p">()</span> <span class="o">/</span> <span class="n">relative_filepath</span>
+        <span class="n">local_filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">"stage"</span><span class="p">])</span><span class="o">.</span><span class="n">absolute</span><span class="p">()</span> <span class="o">/</span> <span class="n">relative_filepath</span>
 
         <span class="n">file_exists</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span>
             <span class="ow">not</span> <span class="n">_need_checksum</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
@@ -5375,11 +5375,11 @@ If an external entry exists with the same checksum, then no copying should occur
             <span class="p">):</span>
                 <span class="c1"># this should never happen without outside interference</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">&#39; downloaded but did not pass checksum.&quot;</span>
+                    <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">' downloaded but did not pass checksum."</span>
                 <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">_need_checksum</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Skipped checksum for file with hash: </span><span class="si">{</span><span class="n">contents_hash</span><span class="si">}</span><span class="s2">, and path: </span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Skipped checksum for file with hash: </span><span class="si">{</span><span class="n">contents_hash</span><span class="si">}</span><span class="s2">, and path: </span><span class="si">{</span><span class="n">local_filepath</span><span class="si">}</span><span class="s2">"</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">),</span> <span class="n">contents_hash</span>
 </code></pre></div></td></tr></table></div>
@@ -5510,25 +5510,25 @@ Each element is a tuple: (uuid, path)</p>
 <span class="normal">428</span>
 <span class="normal">429</span>
 <span class="normal">430</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fetch_external_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    generate complete external filepaths from the query.</span>
 <span class="sd">    Each element is a tuple: (uuid, path)</span>
 
 <span class="sd">    :param fetch_kwargs: keyword arguments to pass to fetch</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">fetch_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">paths</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;hash&quot;</span><span class="p">,</span> <span class="s2">&quot;attachment_name&quot;</span><span class="p">,</span> <span class="s2">&quot;filepath&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;attachment_name&quot;</span><span class="p">]:</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"hash"</span><span class="p">,</span> <span class="s2">"attachment_name"</span><span class="p">,</span> <span class="s2">"filepath"</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">"attachment_name"</span><span class="p">]:</span>
             <span class="c1"># attachments</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;hash&quot;</span><span class="p">],</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;attachment_name&quot;</span><span class="p">])</span>
-        <span class="k">elif</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;filepath&quot;</span><span class="p">]:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">],</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">item</span><span class="p">[</span><span class="s2">"attachment_name"</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">item</span><span class="p">[</span><span class="s2">"filepath"</span><span class="p">]:</span>
             <span class="c1"># external filepaths</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;filepath&quot;</span><span class="p">])</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_external_filepath</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"filepath"</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># blobs</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;hash&quot;</span><span class="p">])</span>
-        <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;hash&quot;</span><span class="p">],</span> <span class="n">path</span><span class="p">))</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">])</span>
+        <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">item</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">],</span> <span class="n">path</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">paths</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5591,14 +5591,14 @@ Each element is a tuple: (uuid, path)</p>
 <span class="normal">441</span>
 <span class="normal">442</span>
 <span class="normal">443</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">unused</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    query expression for unused hashes</span>
 
 <span class="sd">    :return: self restricted to elements that are not in use by any tables in the schema</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="bp">self</span> <span class="o">-</span> <span class="p">[</span>
-        <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s2">&quot;referencing_table&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
-            <span class="nb">hash</span><span class="o">=</span><span class="n">ref</span><span class="p">[</span><span class="s2">&quot;column_name&quot;</span><span class="p">]</span>
+        <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s2">"referencing_table"</span><span class="p">])</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
+            <span class="nb">hash</span><span class="o">=</span><span class="n">ref</span><span class="p">[</span><span class="s2">"column_name"</span><span class="p">]</span>
         <span class="p">)</span>
         <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">references</span>
     <span class="p">]</span>
@@ -5663,14 +5663,14 @@ Each element is a tuple: (uuid, path)</p>
 <span class="normal">454</span>
 <span class="normal">455</span>
 <span class="normal">456</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">used</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    query expression for used hashes</span>
 
 <span class="sd">    :return: self restricted to elements that in use by tables in the schema</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="bp">self</span> <span class="o">&amp;</span> <span class="p">[</span>
-        <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s2">&quot;referencing_table&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
-            <span class="nb">hash</span><span class="o">=</span><span class="n">ref</span><span class="p">[</span><span class="s2">&quot;column_name&quot;</span><span class="p">]</span>
+        <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">ref</span><span class="p">[</span><span class="s2">"referencing_table"</span><span class="p">])</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
+            <span class="nb">hash</span><span class="o">=</span><span class="n">ref</span><span class="p">[</span><span class="s2">"column_name"</span><span class="p">]</span>
         <span class="p">)</span>
         <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">references</span>
     <span class="p">]</span>
@@ -5858,7 +5858,7 @@ store table but the external files remain intact. If True, then the external fil
     <span class="n">display_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">errors_as_string</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 
 <span class="sd">    :param delete_external_files: True or False. If False, only the tracking info is removed from the external</span>
 <span class="sd">            store table but the external files remain intact. If True, then the external files themselves are deleted too.</span>
@@ -5866,11 +5866,11 @@ store table but the external files remain intact. If True, then the external fil
 <span class="sd">    :param limit: (integer) limit the number of items to delete</span>
 <span class="sd">    :param display_progress: if True, display progress as files are cleaned up</span>
 <span class="sd">    :return: if deleting external files, returns errors</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">delete_external_files</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;The delete_external_files argument must be set to either &quot;</span>
-            <span class="s2">&quot;True or False in delete()&quot;</span>
+            <span class="s2">"The delete_external_files argument must be set to either "</span>
+            <span class="s2">"True or False in delete()"</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">delete_external_files</span><span class="p">:</span>
@@ -5882,10 +5882,10 @@ store table but the external files remain intact. If True, then the external fil
         <span class="c1"># delete items one by one, close to transaction-safe</span>
         <span class="n">error_list</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">external_path</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
-            <span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;hash&quot;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">delete_quick</span><span class="p">()</span>
+                    <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"hash"</span><span class="p">:</span> <span class="n">uuid</span><span class="p">})</span><span class="o">.</span><span class="n">delete_quick</span><span class="p">()</span>
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                     <span class="k">pass</span>  <span class="c1"># if delete failed, do not remove the external file</span>
                 <span class="k">else</span><span class="p">:</span>
@@ -5994,33 +5994,33 @@ store table but the external files remain intact. If True, then the external fil
 <span class="normal">550</span>
 <span class="normal">551</span>
 <span class="normal">552</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExternalMapping</span><span class="p">(</span><span class="n">Mapping</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    The external manager contains all the tables for all external stores for a given schema</span>
 <span class="sd">    :Example:</span>
 <span class="sd">        e = ExternalMapping(schema)</span>
 <span class="sd">        external_table = e[store]</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="n">schema</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tables</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;External file tables for schema `</span><span class="si">{schema}</span><span class="s2">`:</span><span class="se">\n</span><span class="s2">    &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="k">return</span> <span class="s2">"External file tables for schema `</span><span class="si">{schema}</span><span class="s2">`:</span><span class="se">\n</span><span class="s2">    "</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">database</span>
-        <span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">    &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-            <span class="s1">&#39;&quot;</span><span class="si">{store}</span><span class="s1">&quot; </span><span class="si">{protocol}</span><span class="s1">:</span><span class="si">{location}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="o">**</span><span class="n">v</span><span class="o">.</span><span class="n">spec</span><span class="p">)</span>
+        <span class="p">)</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">    "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="s1">'"</span><span class="si">{store}</span><span class="s1">" </span><span class="si">{protocol}</span><span class="s1">:</span><span class="si">{location}</span><span class="s1">'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="o">**</span><span class="n">v</span><span class="o">.</span><span class="n">spec</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">store</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Triggers the creation of an external table.</span>
 <span class="sd">        Should only be used when ready to save or read from external storage.</span>
 
 <span class="sd">        :param store: the name of the store</span>
 <span class="sd">        :return: the ExternalTable object for the store</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">store</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tables</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_tables</span><span class="p">[</span><span class="n">store</span><span class="p">]</span> <span class="o">=</span> <span class="n">ExternalTable</span><span class="p">(</span>
                 <span class="n">connection</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span>
@@ -6193,7 +6193,7 @@ store table but the external files remain intact. If True, then the external fil
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

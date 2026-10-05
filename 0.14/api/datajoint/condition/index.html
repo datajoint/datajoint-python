@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3664,9 +3664,9 @@
 <span class="normal">43</span>
 <span class="normal">44</span>
 <span class="normal">45</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PromiscuousOperand</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A container for an operand to ignore join compatibility</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operand</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">operand</span> <span class="o">=</span> <span class="n">operand</span>
@@ -3744,7 +3744,7 @@ expr2 = expr &amp; cond1 &amp; cond2 &amp; cond3</p>
 <span class="normal">63</span>
 <span class="normal">64</span>
 <span class="normal">65</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AndList</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A list of conditions to by applied to a query expression by logical conjunction: the</span>
 <span class="sd">    conditions are AND-ed. All other collections (lists, sets, other entity sets, etc) are</span>
 <span class="sd">    applied by logical disjunction (OR).</span>
@@ -3753,7 +3753,7 @@ expr2 = expr &amp; cond1 &amp; cond2 &amp; cond3</p>
 <span class="sd">    expr2 = expr &amp; dj.AndList((cond1, cond2, cond3))</span>
 <span class="sd">    is equivalent to</span>
 <span class="sd">    expr2 = expr &amp; cond1 &amp; cond2 &amp; cond3</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restriction</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">restriction</span><span class="p">,</span> <span class="n">AndList</span><span class="p">):</span>
@@ -3842,27 +3842,27 @@ In SQL, this corresponds to ORDER BY ... LIMIT ... OFFSET</p>
 <span class="normal">93</span>
 <span class="normal">94</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Top</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A restriction to the top entities of a query.</span>
 <span class="sd">    In SQL, this corresponds to ORDER BY ... LIMIT ... OFFSET</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">limit</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">order_by</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;KEY&quot;</span>
+    <span class="n">order_by</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">"KEY"</span>
     <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">order_by</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">order_by</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;KEY&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">order_by</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">order_by</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">"KEY"</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">or</span> <span class="mi">0</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Top limit must be an integer&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Top limit must be an integer"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">order_by</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Sequence</span><span class="p">))</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span>
             <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">order_by</span>
         <span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Top order_by attributes must all be strings&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Top order_by attributes must all be strings"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;The offset argument must be an integer&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"The offset argument must be an integer"</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="mi">999999999999</span>  <span class="c1"># arbitrary large number to allow query</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">order_by</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
@@ -3920,7 +3920,7 @@ In SQL, this corresponds to ORDER BY ... LIMIT ... OFFSET</p>
 <span class="normal"> 99</span>
 <span class="normal">100</span>
 <span class="normal">101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Not</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;invert restriction&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""invert restriction"""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restriction</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">restriction</span> <span class="o">=</span> <span class="n">restriction</span>
@@ -4042,7 +4042,7 @@ Raises an exception if not compatible.</p>
 <span class="normal">133</span>
 <span class="normal">134</span>
 <span class="normal">135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assert_join_compatibility</span><span class="p">(</span><span class="n">expr1</span><span class="p">,</span> <span class="n">expr2</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Determine if expressions expr1 and expr2 are join-compatible.  To be join-compatible,</span>
 <span class="sd">    the matching attributes in the two expressions must be in the primary key of one or the</span>
 <span class="sd">    other expression.</span>
@@ -4050,20 +4050,20 @@ Raises an exception if not compatible.</p>
 
 <span class="sd">    :param expr1: A QueryExpression object</span>
 <span class="sd">    :param expr2: A QueryExpression object</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.expression</span><span class="w"> </span><span class="kn">import</span> <span class="n">QueryExpression</span><span class="p">,</span> <span class="n">U</span>
 
     <span class="k">for</span> <span class="n">rel</span> <span class="ow">in</span> <span class="p">(</span><span class="n">expr1</span><span class="p">,</span> <span class="n">expr2</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rel</span><span class="p">,</span> <span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">)):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Object </span><span class="si">%r</span><span class="s2"> is not a QueryExpression and cannot be joined.&quot;</span> <span class="o">%</span> <span class="n">rel</span>
+                <span class="s2">"Object </span><span class="si">%r</span><span class="s2"> is not a QueryExpression and cannot be joined."</span> <span class="o">%</span> <span class="n">rel</span>
             <span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expr1</span><span class="p">,</span> <span class="n">U</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
         <span class="n">expr2</span><span class="p">,</span> <span class="n">U</span>
     <span class="p">):</span>  <span class="c1"># dj.U is always compatible</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Cannot join query expressions on dependent attribute `</span><span class="si">%s</span><span class="s2">`&quot;</span>
+                <span class="s2">"Cannot join query expressions on dependent attribute `</span><span class="si">%s</span><span class="s2">`"</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span>
                     <span class="n">r</span>
                     <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">expr1</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">secondary_attributes</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span>
@@ -4352,7 +4352,7 @@ condition.</p>
 <span class="normal">304</span>
 <span class="normal">305</span>
 <span class="normal">306</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make_condition</span><span class="p">(</span><span class="n">query_expression</span><span class="p">,</span> <span class="n">condition</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Translate the input condition into the equivalent SQL condition (a string)</span>
 
 <span class="sd">    :param query_expression: a dj.QueryExpression object to apply condition</span>
@@ -4360,31 +4360,31 @@ condition.</p>
 <span class="sd">    :param columns: a set passed by reference to collect all column names used in the</span>
 <span class="sd">        condition.</span>
 <span class="sd">    :return: an SQL condition string or a boolean value.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.expression</span><span class="w"> </span><span class="kn">import</span> <span class="n">Aggregation</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">,</span> <span class="n">U</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">prep_value</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;prepare SQL condition&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""prepare SQL condition"""</span>
         <span class="n">key_match</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">translate_attribute</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">key_match</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">k</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;`</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">`&quot;</span>
+        <span class="k">if</span> <span class="n">key_match</span><span class="p">[</span><span class="s2">"path"</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"`</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">`"</span>
         <span class="k">if</span> <span class="p">(</span>
-            <span class="n">query_expression</span><span class="o">.</span><span class="n">heading</span><span class="p">[</span><span class="n">key_match</span><span class="p">[</span><span class="s2">&quot;attr&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">json</span>
-            <span class="ow">and</span> <span class="n">key_match</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="n">query_expression</span><span class="o">.</span><span class="n">heading</span><span class="p">[</span><span class="n">key_match</span><span class="p">[</span><span class="s2">"attr"</span><span class="p">]]</span><span class="o">.</span><span class="n">json</span>
+            <span class="ow">and</span> <span class="n">key_match</span><span class="p">[</span><span class="s2">"path"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
         <span class="p">):</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=&#39;</span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">='</span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">}</span><span class="s2">'"</span>
         <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> IS NULL&quot;</span>
-        <span class="k">if</span> <span class="n">query_expression</span><span class="o">.</span><span class="n">heading</span><span class="p">[</span><span class="n">key_match</span><span class="p">[</span><span class="s2">&quot;attr&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">uuid</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> IS NULL"</span>
+        <span class="k">if</span> <span class="n">query_expression</span><span class="o">.</span><span class="n">heading</span><span class="p">[</span><span class="n">key_match</span><span class="p">[</span><span class="s2">"attr"</span><span class="p">]]</span><span class="o">.</span><span class="n">uuid</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">v</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
                 <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
                     <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                        <span class="s2">&quot;Badly formed UUID </span><span class="si">{v}</span><span class="s2"> in restriction by `</span><span class="si">{k}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
+                        <span class="s2">"Badly formed UUID </span><span class="si">{v}</span><span class="s2"> in restriction by `</span><span class="si">{k}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
                     <span class="p">)</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=X&#39;</span><span class="si">{</span><span class="n">v</span><span class="o">.</span><span class="n">bytes</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=X'</span><span class="si">{</span><span class="n">v</span><span class="o">.</span><span class="n">bytes</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span><span class="si">}</span><span class="s2">'"</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span>
             <span class="n">v</span><span class="p">,</span>
             <span class="p">(</span>
@@ -4395,14 +4395,14 @@ condition.</p>
                 <span class="nb">list</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">):</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s1">=&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s1">="</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">"'</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="n">v</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;%&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%%</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\\\</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s1">=&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"%"</span><span class="p">,</span> <span class="s2">"</span><span class="si">%%</span><span class="s2">"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\\</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\\\\</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s1">="</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">"'</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">"</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">combine_conditions</span><span class="p">(</span><span class="n">negate</span><span class="p">,</span> <span class="n">conditions</span><span class="p">):</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;NOT &#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">negate</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="s1">&#39;)AND(&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">conditions</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">'NOT '</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">negate</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">''</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="s1">')AND('</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">conditions</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
 
     <span class="n">negate</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="k">while</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">Not</span><span class="p">):</span>
@@ -4413,7 +4413,7 @@ condition.</p>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="n">columns</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extract_column_names</span><span class="p">(</span><span class="n">condition</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">combine_conditions</span><span class="p">(</span>
-            <span class="n">negate</span><span class="p">,</span> <span class="n">conditions</span><span class="o">=</span><span class="p">[</span><span class="n">condition</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;%&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%%</span><span class="s2">&quot;</span><span class="p">)]</span>
+            <span class="n">negate</span><span class="p">,</span> <span class="n">conditions</span><span class="o">=</span><span class="p">[</span><span class="n">condition</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"%"</span><span class="p">,</span> <span class="s2">"</span><span class="si">%%</span><span class="s2">"</span><span class="p">)]</span>
         <span class="p">)</span>  <span class="c1"># escape %, see issue #376</span>
 
     <span class="c1"># restrict by AndList</span>
@@ -4442,7 +4442,7 @@ condition.</p>
 
     <span class="c1"># restrict by a mapping/dict -- convert to an AndList of string equality conditions</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Mapping</span><span class="p">):</span>
-        <span class="n">common_attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">condition</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span>
+        <span class="n">common_attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">condition</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span>
             <span class="n">query_expression</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">common_attributes</span><span class="p">:</span>
@@ -4453,7 +4453,7 @@ condition.</p>
             <span class="n">conditions</span><span class="o">=</span><span class="p">[</span>
                 <span class="n">prep_value</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">condition</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">common_attributes</span>  <span class="c1"># handle json indexing</span>
+                <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">common_attributes</span>  <span class="c1"># handle json indexing</span>
             <span class="p">],</span>
         <span class="p">)</span>
 
@@ -4493,9 +4493,9 @@ condition.</p>
             <span class="c1"># without common attributes, any non-empty set matches everything</span>
             <span class="p">(</span><span class="ow">not</span> <span class="n">negate</span> <span class="k">if</span> <span class="n">condition</span> <span class="k">else</span> <span class="n">negate</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">common_attributes</span>
-            <span class="k">else</span> <span class="s2">&quot;(</span><span class="si">{fields}</span><span class="s2">) </span><span class="si">{not_}</span><span class="s2">in (</span><span class="si">{subquery}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                <span class="n">fields</span><span class="o">=</span><span class="s2">&quot;`&quot;</span> <span class="o">+</span> <span class="s2">&quot;`,`&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">common_attributes</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;`&quot;</span><span class="p">,</span>
-                <span class="n">not_</span><span class="o">=</span><span class="s2">&quot;not &quot;</span> <span class="k">if</span> <span class="n">negate</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="k">else</span> <span class="s2">"(</span><span class="si">{fields}</span><span class="s2">) </span><span class="si">{not_}</span><span class="s2">in (</span><span class="si">{subquery}</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">fields</span><span class="o">=</span><span class="s2">"`"</span> <span class="o">+</span> <span class="s2">"`,`"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">common_attributes</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"`"</span><span class="p">,</span>
+                <span class="n">not_</span><span class="o">=</span><span class="s2">"not "</span> <span class="k">if</span> <span class="n">negate</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
                 <span class="n">subquery</span><span class="o">=</span><span class="n">condition</span><span class="o">.</span><span class="n">make_sql</span><span class="p">(</span><span class="n">common_attributes</span><span class="p">),</span>
             <span class="p">)</span>
         <span class="p">)</span>
@@ -4508,7 +4508,7 @@ condition.</p>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">or_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">make_condition</span><span class="p">(</span><span class="n">query_expression</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">columns</span><span class="p">)</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">condition</span><span class="p">]</span>
     <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Invalid restriction type </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">condition</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Invalid restriction type </span><span class="si">%r</span><span class="s2">"</span> <span class="o">%</span> <span class="n">condition</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">or_list</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">or_list</span> <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span>
@@ -4516,7 +4516,7 @@ condition.</p>
         <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">item</span> <span class="ow">is</span> <span class="kc">True</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">or_list</span><span class="p">):</span>  <span class="c1"># if any item is True, entirely True</span>
             <span class="k">return</span> <span class="ow">not</span> <span class="n">negate</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;NOT &#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">negate</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="s1">&#39; OR &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">or_list</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">'NOT '</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">negate</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">''</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="s1">' OR '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">or_list</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
             <span class="k">if</span> <span class="n">or_list</span>
             <span class="k">else</span> <span class="n">negate</span>
         <span class="p">)</span>
@@ -4649,50 +4649,50 @@ This may be MySQL-specific for now.</p>
 <span class="normal">354</span>
 <span class="normal">355</span>
 <span class="normal">356</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">extract_column_names</span><span class="p">(</span><span class="n">sql_expression</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    extract all presumed column names from an sql expression such as the WHERE clause,</span>
 <span class="sd">    for example.</span>
 
 <span class="sd">    :param sql_expression: a string containing an SQL expression</span>
 <span class="sd">    :return: set of extracted column names</span>
 <span class="sd">    This may be MySQL-specific for now.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sql_expression</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
     <span class="n">result</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
     <span class="n">s</span> <span class="o">=</span> <span class="n">sql_expression</span>  <span class="c1"># for terseness</span>
     <span class="c1"># remove escaped quotes</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(</span><span class="se">\\\&quot;</span><span class="s2">)|(</span><span class="se">\\</span><span class="s2">\&#39;)&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"(</span><span class="se">\\\"</span><span class="s2">)|(</span><span class="se">\\</span><span class="s2">\')"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
     <span class="c1"># remove quoted text</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&#39;[^&#39;]*&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;&quot;[^&quot;]*&quot;&#39;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"'[^']*'"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">'"[^"]*"'</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
     <span class="c1"># find all tokens in back quotes and remove them</span>
-    <span class="n">result</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;`([a-z][a-z_0-9]*)`&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;`[a-z][a-z_0-9]*`&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">"`([a-z][a-z_0-9]*)`"</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"`[a-z][a-z_0-9]*`"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
     <span class="c1"># remove space before parentheses</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\s*\(&quot;</span><span class="p">,</span> <span class="s2">&quot;(&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\s*\("</span><span class="p">,</span> <span class="s2">"("</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
     <span class="c1"># remove tokens followed by ( since they must be functions</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(\b[a-z][a-z_0-9]*)\(&quot;</span><span class="p">,</span> <span class="s2">&quot;(&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
-    <span class="n">remaining_tokens</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\b[a-z][a-z_0-9]*\b&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"(\b[a-z][a-z_0-9]*)\("</span><span class="p">,</span> <span class="s2">"("</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="n">remaining_tokens</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\b[a-z][a-z_0-9]*\b"</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
     <span class="c1"># update result removing reserved words</span>
     <span class="n">result</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
         <span class="n">remaining_tokens</span>
         <span class="o">-</span> <span class="p">{</span>
-            <span class="s2">&quot;is&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;in&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;between&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;like&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;and&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;or&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;null&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;not&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;interval&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;second&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;minute&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;hour&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;day&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;month&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;week&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;year&quot;</span><span class="p">,</span>
+            <span class="s2">"is"</span><span class="p">,</span>
+            <span class="s2">"in"</span><span class="p">,</span>
+            <span class="s2">"between"</span><span class="p">,</span>
+            <span class="s2">"like"</span><span class="p">,</span>
+            <span class="s2">"and"</span><span class="p">,</span>
+            <span class="s2">"or"</span><span class="p">,</span>
+            <span class="s2">"null"</span><span class="p">,</span>
+            <span class="s2">"not"</span><span class="p">,</span>
+            <span class="s2">"interval"</span><span class="p">,</span>
+            <span class="s2">"second"</span><span class="p">,</span>
+            <span class="s2">"minute"</span><span class="p">,</span>
+            <span class="s2">"hour"</span><span class="p">,</span>
+            <span class="s2">"day"</span><span class="p">,</span>
+            <span class="s2">"month"</span><span class="p">,</span>
+            <span class="s2">"week"</span><span class="p">,</span>
+            <span class="s2">"year"</span><span class="p">,</span>
         <span class="p">}</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">result</span>
@@ -4844,7 +4844,7 @@ This may be MySQL-specific for now.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

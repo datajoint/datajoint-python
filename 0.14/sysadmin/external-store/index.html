@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3586,7 +3586,7 @@ solutions such as AWS S3.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Motion aligned movies</span>
 <span class="o">-&gt;</span> <span class="n">twophoton</span><span class="o">.</span><span class="n">Scan</span>
 <span class="o">---</span>
-<span class="n">aligned_movie</span> <span class="p">:</span>  <span class="n">blob</span><span class="nd">@external</span>  <span class="c1"># motion-aligned movie in &#39;external&#39; store</span>
+<span class="n">aligned_movie</span> <span class="p">:</span>  <span class="n">blob</span><span class="nd">@external</span>  <span class="c1"># motion-aligned movie in 'external' store</span>
 </code></pre></div>
 <p>All <a href="../../manipulation/insert/">insert</a> and <a href="../../query/fetch/">fetch</a> operations work
 identically for <code>external</code> attributes as they do for <code>blob</code> attributes, with the same
@@ -3597,7 +3597,7 @@ Similar to <code>blobs</code>, <code>external</code> attributes cannot be used i
 <div class="highlight"><pre><span></span><code><span class="c1"># Motion aligned movies</span>
 <span class="o">-&gt;</span> <span class="n">twophoton</span><span class="o">.</span><span class="n">Scan</span>
 <span class="o">---</span>
-<span class="n">aligned_movie</span> <span class="p">:</span>  <span class="n">blob</span><span class="nd">@external</span><span class="o">-</span><span class="n">raw</span>  <span class="c1"># motion-aligned movie in &#39;external-raw&#39; store</span>
+<span class="n">aligned_movie</span> <span class="p">:</span>  <span class="n">blob</span><span class="nd">@external</span><span class="o">-</span><span class="n">raw</span>  <span class="c1"># motion-aligned movie in 'external-raw' store</span>
 </code></pre></div>
 <h2 id="principles-of-operation">Principles of operation<a class="headerlink" href="#principles-of-operation" title="Permanent link">&para;</a></h2>
 <p>External storage is organized to emulate individual attribute values in the relational
@@ -3608,20 +3608,20 @@ in relational storage.</p>
 <li>
 <p>The external storage locations are specified in the DataJoint connection
 configuration with one specification for each store.</p>
-<div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;stores&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-<span class="s1">&#39;external&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>  <span class="c1"># &#39;regular&#39; external storage for this pipeline</span>
-               <span class="n">protocol</span><span class="o">=</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span>
-               <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;s3.amazonaws.com:9000&#39;</span><span class="p">,</span>
-               <span class="n">bucket</span> <span class="o">=</span> <span class="s1">&#39;testbucket&#39;</span><span class="p">,</span>
-               <span class="n">location</span> <span class="o">=</span> <span class="s1">&#39;datajoint-projects/lab1&#39;</span><span class="p">,</span>
-               <span class="n">access_key</span><span class="o">=</span><span class="s1">&#39;1234567&#39;</span><span class="p">,</span>
-               <span class="n">secret_key</span><span class="o">=</span><span class="s1">&#39;foaf1234&#39;</span><span class="p">),</span>
-<span class="s1">&#39;external-raw&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span> <span class="c1"># &#39;raw&#39; storage for this pipeline</span>
-               <span class="n">protocol</span><span class="o">=</span><span class="s1">&#39;file&#39;</span><span class="p">,</span>
-               <span class="n">location</span><span class="o">=</span><span class="s1">&#39;/net/djblobs/myschema&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">'stores'</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+<span class="s1">'external'</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>  <span class="c1"># 'regular' external storage for this pipeline</span>
+               <span class="n">protocol</span><span class="o">=</span><span class="s1">'s3'</span><span class="p">,</span>
+               <span class="n">endpoint</span><span class="o">=</span><span class="s1">'s3.amazonaws.com:9000'</span><span class="p">,</span>
+               <span class="n">bucket</span> <span class="o">=</span> <span class="s1">'testbucket'</span><span class="p">,</span>
+               <span class="n">location</span> <span class="o">=</span> <span class="s1">'datajoint-projects/lab1'</span><span class="p">,</span>
+               <span class="n">access_key</span><span class="o">=</span><span class="s1">'1234567'</span><span class="p">,</span>
+               <span class="n">secret_key</span><span class="o">=</span><span class="s1">'foaf1234'</span><span class="p">),</span>
+<span class="s1">'external-raw'</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span> <span class="c1"># 'raw' storage for this pipeline</span>
+               <span class="n">protocol</span><span class="o">=</span><span class="s1">'file'</span><span class="p">,</span>
+               <span class="n">location</span><span class="o">=</span><span class="s1">'/net/djblobs/myschema'</span><span class="p">)</span>
 <span class="p">}</span>
 <span class="c1"># external object cache - see fetch operation below for details.</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;cache&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;/net/djcache&#39;</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">'cache'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'/net/djcache'</span>
 </code></pre></div>
 </li>
 <li>
@@ -3751,7 +3751,7 @@ connection with TLS (aka SSL, HTTPS). Defaults to <code>False</code>.</li>
 <p>Optionally, for each schema specify the <code>cache</code> folder for local fetch cache.</p>
 <p>This is done by saving the path in the <code>cache</code> key of the DataJoint configuration
 dictionary:</p>
-<div class="highlight"><pre><span></span><code>  <span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;cache&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;/temp/dj-cache&#39;</span>
+<div class="highlight"><pre><span></span><code>  <span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">'cache'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'/temp/dj-cache'</span>
 </code></pre></div>
 </li>
 </ol>
@@ -3766,12 +3766,12 @@ on the <code>~external_&lt;storename&gt;</code> table for the external configura
 <p>Note: Currently, cleanup operations on a schema's external table are not 100%
   transaction safe and so must be run when there is no write activity occurring
   in tables which use a given schema / external store pairing.</p>
-<div class="highlight"><pre><span></span><code><span class="n">schema</span><span class="o">.</span><span class="n">external</span><span class="p">[</span><span class="s1">&#39;external_raw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">delete_external_files</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">schema</span><span class="o">.</span><span class="n">external</span><span class="p">[</span><span class="s1">'external_raw'</span><span class="p">]</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">delete_external_files</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 <p>To remove the tracking entries as well as the underlying files, call <code>delete</code>
 on the external table for the external configuration with the argument
 <code>delete_external_files=True</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="n">schema</span><span class="o">.</span><span class="n">external</span><span class="p">[</span><span class="s1">&#39;external_raw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">delete_external_files</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">schema</span><span class="o">.</span><span class="n">external</span><span class="p">[</span><span class="s1">'external_raw'</span><span class="p">]</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">delete_external_files</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <p>Note: Setting <code>delete_external_files=True</code> will always attempt to delete
   the underlying data file, and so should not typically be used with
@@ -3979,7 +3979,7 @@ wide basis.</li>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3808,9 +3808,9 @@ installed.</p>
 <span class="normal">4</span>
 <span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">datajoint</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dj</span>
 
-<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.host&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{host_address}</span><span class="s2">&quot;</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.user&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{user}</span><span class="s2">&quot;</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.password&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{password}</span><span class="s2">&quot;</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">"database.host"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{host_address}</span><span class="s2">"</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">"database.user"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{user}</span><span class="s2">"</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">"database.password"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{password}</span><span class="s2">"</span>
 </code></pre></div></td></tr></table></div>
 <p>These configuration settings can be saved either locally or system-wide using one
 of the following commands:
@@ -3826,9 +3826,9 @@ directory like so:</p>
 <span class="normal">3</span>
 <span class="normal">4</span>
 <span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;database.host&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{host_address}&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;database.user&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{user}&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;database.password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{password}&quot;</span>
+<span class="w">    </span><span class="nt">"database.host"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{host_address}"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"database.user"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{user}"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"database.password"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{password}"</span>
 <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
 <p>These settings will be loaded whenever a Python instance is launched from this
@@ -3867,30 +3867,30 @@ take precedent over global settings.</p>
 <span class="normal">25</span>
 <span class="normal">26</span>
 <span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">datajoint</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dj</span>
-<span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.user&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_shapes&quot;</span><span class="p">)</span> <span class="c1"># This statement creates the database schema `{username}_shapes` on the server.</span>
+<span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">'database.user'</span><span class="p">]</span><span class="si">}</span><span class="s2">_shapes"</span><span class="p">)</span> <span class="c1"># This statement creates the database schema `{username}_shapes` on the server.</span>
 
 <span class="nd">@schema</span> <span class="c1"># The `@schema` decorator for DataJoint classes creates the table on the server.</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Rectangle</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot; # The table is defined by the the `definition` property.</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">""" # The table is defined by the the `definition` property.</span>
 <span class="s2">    shape_id: int</span>
 <span class="s2">    ---</span>
 <span class="s2">    shape_height: float</span>
 <span class="s2">    shape_width: float</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Area</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Computed</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    -&gt; Rectangle</span>
 <span class="s2">    ---</span>
 <span class="s2">    shape_area: float</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">make</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
         <span class="n">rectangle</span> <span class="o">=</span> <span class="p">(</span><span class="n">Rectangle</span> <span class="o">&amp;</span> <span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">fetch1</span><span class="p">()</span>
         <span class="n">Area</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span>
             <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">shape_id</span><span class="o">=</span><span class="n">rectangle</span><span class="p">[</span><span class="s2">&quot;shape_id&quot;</span><span class="p">],</span>
-                <span class="n">shape_area</span><span class="o">=</span><span class="n">rectangle</span><span class="p">[</span><span class="s2">&quot;shape_height&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">rectangle</span><span class="p">[</span><span class="s2">&quot;shape_width&quot;</span><span class="p">],</span>
+                <span class="n">shape_id</span><span class="o">=</span><span class="n">rectangle</span><span class="p">[</span><span class="s2">"shape_id"</span><span class="p">],</span>
+                <span class="n">shape_area</span><span class="o">=</span><span class="n">rectangle</span><span class="p">[</span><span class="s2">"shape_height"</span><span class="p">]</span> <span class="o">*</span> <span class="n">rectangle</span><span class="p">[</span><span class="s2">"shape_width"</span><span class="p">],</span>
             <span class="p">)</span>
         <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -3920,7 +3920,7 @@ attaches the information about the table to the class, and then returns the clas
 <p>The diagram displays the relationship of the data model in the data pipeline.</p>
 <p>This can be done for an entire schema:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">datajoint</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dj</span>
-<span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="s1">&#39;my_database&#39;</span><span class="p">)</span>
+<span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="s1">'my_database'</span><span class="p">)</span>
 <span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="pipeline" src="../images/shapes_pipeline.svg" /></p>
@@ -3943,11 +3943,11 @@ will reveal a compact version of the output of the <code>.describe()</code> meth
 respectively, in the pipeline.</p>
 <div class="highlight"><pre><span></span><code><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span> <span class="c1"># Plot all the tables directly downstream from `schema.Rectangle`</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="s1">&#39;my_schema&#39;</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span> <span class="c1"># Plot all tables directly downstream of those directly upstream of this schema.</span>
+<div class="highlight"><pre><span></span><code><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="s1">'my_schema'</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span> <span class="c1"># Plot all tables directly downstream of those directly upstream of this schema.</span>
 </code></pre></div>
 <h3 id="save">Save<a class="headerlink" href="#save" title="Permanent link">&para;</a></h3>
 <p>The diagram can be saved as either <code>png</code> or <code>svg</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;my-diagram&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;png&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">'my-diagram'</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">'png'</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="insert-data">Insert data<a class="headerlink" href="#insert-data" title="Permanent link">&para;</a></h2>
 <p>Data entry is as easy as providing the appropriate data structure to a permitted
@@ -3961,26 +3961,26 @@ files.</p>
 <div class="highlight"><pre><span></span><code><span class="n">mouse_id</span><span class="p">:</span> <span class="nb">int</span>            <span class="c1"># unique mouse id</span>
 <span class="o">---</span>
 <span class="n">dob</span><span class="p">:</span> <span class="n">date</span>                <span class="c1"># mouse date of birth</span>
-<span class="n">sex</span><span class="p">:</span> <span class="n">enum</span><span class="p">(</span><span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="s1">&#39;U&#39;</span><span class="p">)</span> <span class="c1"># sex of mouse - Male, Female, or Unknown</span>
+<span class="n">sex</span><span class="p">:</span> <span class="n">enum</span><span class="p">(</span><span class="s1">'M'</span><span class="p">,</span> <span class="s1">'F'</span><span class="p">,</span> <span class="s1">'U'</span><span class="p">)</span> <span class="c1"># sex of mouse - Male, Female, or Unknown</span>
 </code></pre></div>
 <div class="tabbed-set tabbed-alternate" data-tabs="3:4"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><input id="__tabbed_3_4" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Tuple</label><label for="__tabbed_3_2">Dict</label><label for="__tabbed_3_3">Pandas</label><label for="__tabbed_3_4">CSV</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="n">mouse</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;2017-03-01&#39;</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">)</span> <span class="p">)</span> <span class="c1"># Single entry</span>
+<div class="highlight"><pre><span></span><code><span class="n">mouse</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">'2017-03-01'</span><span class="p">,</span> <span class="s1">'M'</span><span class="p">)</span> <span class="p">)</span> <span class="c1"># Single entry</span>
 <span class="n">data</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;2016-11-19&#39;</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;2016-11-20&#39;</span><span class="p">,</span> <span class="s1">&#39;U&#39;</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;2016-12-25&#39;</span><span class="p">,</span> <span class="s1">&#39;F&#39;</span><span class="p">)</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">'2016-11-19'</span><span class="p">,</span> <span class="s1">'M'</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">'2016-11-20'</span><span class="p">,</span> <span class="s1">'U'</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">'2016-12-25'</span><span class="p">,</span> <span class="s1">'F'</span><span class="p">)</span>
 <span class="p">]</span>
 <span class="n">mouse</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="c1"># Multi-entry</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="n">mouse</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span> <span class="nb">dict</span><span class="p">(</span><span class="n">mouse_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dob</span><span class="o">=</span><span class="s1">&#39;2017-03-01&#39;</span><span class="p">,</span> <span class="n">sex</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">)</span> <span class="p">)</span> <span class="c1"># Single entry</span>
+<div class="highlight"><pre><span></span><code><span class="n">mouse</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span> <span class="nb">dict</span><span class="p">(</span><span class="n">mouse_id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dob</span><span class="o">=</span><span class="s1">'2017-03-01'</span><span class="p">,</span> <span class="n">sex</span><span class="o">=</span><span class="s1">'M'</span><span class="p">)</span> <span class="p">)</span> <span class="c1"># Single entry</span>
 <span class="n">data</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="p">{</span><span class="s1">&#39;mouse_id&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;dob&#39;</span><span class="p">:</span><span class="s1">&#39;2016-11-19&#39;</span><span class="p">,</span> <span class="s1">&#39;sex&#39;</span><span class="p">:</span><span class="s1">&#39;M&#39;</span><span class="p">},</span>
-    <span class="p">{</span><span class="s1">&#39;mouse_id&#39;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;dob&#39;</span><span class="p">:</span><span class="s1">&#39;2016-11-20&#39;</span><span class="p">,</span> <span class="s1">&#39;sex&#39;</span><span class="p">:</span><span class="s1">&#39;U&#39;</span><span class="p">},</span>
-    <span class="p">{</span><span class="s1">&#39;mouse_id&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;dob&#39;</span><span class="p">:</span><span class="s1">&#39;2016-12-25&#39;</span><span class="p">,</span> <span class="s1">&#39;sex&#39;</span><span class="p">:</span><span class="s1">&#39;F&#39;</span><span class="p">}</span>
+    <span class="p">{</span><span class="s1">'mouse_id'</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s1">'dob'</span><span class="p">:</span><span class="s1">'2016-11-19'</span><span class="p">,</span> <span class="s1">'sex'</span><span class="p">:</span><span class="s1">'M'</span><span class="p">},</span>
+    <span class="p">{</span><span class="s1">'mouse_id'</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="s1">'dob'</span><span class="p">:</span><span class="s1">'2016-11-20'</span><span class="p">,</span> <span class="s1">'sex'</span><span class="p">:</span><span class="s1">'U'</span><span class="p">},</span>
+    <span class="p">{</span><span class="s1">'mouse_id'</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span> <span class="s1">'dob'</span><span class="p">:</span><span class="s1">'2016-12-25'</span><span class="p">,</span> <span class="s1">'sex'</span><span class="p">:</span><span class="s1">'F'</span><span class="p">}</span>
 <span class="p">]</span>
 <span class="n">mouse</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="c1"># Multi-entry</span>
 </code></pre></div>
@@ -3988,8 +3988,8 @@ files.</p>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
-    <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;2016-11-19&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;2016-11-20&quot;</span><span class="p">,</span> <span class="s2">&quot;U&quot;</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;2016-12-25&quot;</span><span class="p">,</span> <span class="s2">&quot;F&quot;</span><span class="p">]],</span>
-    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mouse_id&quot;</span><span class="p">,</span> <span class="s2">&quot;dob&quot;</span><span class="p">,</span> <span class="s2">&quot;sex&quot;</span><span class="p">],</span>
+    <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"2016-11-19"</span><span class="p">,</span> <span class="s2">"M"</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="s2">"2016-11-20"</span><span class="p">,</span> <span class="s2">"U"</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="s2">"2016-12-25"</span><span class="p">,</span> <span class="s2">"F"</span><span class="p">]],</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"mouse_id"</span><span class="p">,</span> <span class="s2">"dob"</span><span class="p">,</span> <span class="s2">"sex"</span><span class="p">],</span>
 <span class="p">)</span>
 <span class="n">mouse</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 </code></pre></div>
@@ -4003,7 +4003,7 @@ files.</p>
 </code></pre></div>
 <p>We can import as follows:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="n">mouse</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;./mice.csv&#39;</span><span class="p">))</span>
+<span class="n">mouse</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s1">'./mice.csv'</span><span class="p">))</span>
 </code></pre></div>
 </div>
 </div>
@@ -4016,7 +4016,7 @@ files.</p>
 full article <a href="../compute/make/">here</a></p>
 <h2 id="query">Query<a class="headerlink" href="#query" title="Permanent link">&para;</a></h2>
 <p>Let's inspect the results.</p>
-<div class="highlight"><pre><span></span><code><span class="n">Area</span> <span class="o">&amp;</span> <span class="s2">&quot;shape_area &gt;= 8&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="n">Area</span> <span class="o">&amp;</span> <span class="s2">"shape_area &gt;= 8"</span>
 </code></pre></div>
 <table>
 <thead>
@@ -4059,22 +4059,22 @@ useful to use the <code>size_on_disk</code> attribute to determine if running a 
 would be wise. Please note that it is only currently possible to query the size of
 entire tables stored directly in the database at this time.</p>
 <h3 id="separate-variables">Separate variables<a class="headerlink" href="#separate-variables" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">name</span><span class="p">,</span> <span class="n">img</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s1">&#39;mouse_id&#39;</span><span class="p">,</span> <span class="s1">&#39;dob&#39;</span><span class="p">)</span>  <span class="c1"># when query has exactly one entity</span>
-<span class="n">name</span><span class="p">,</span> <span class="n">img</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">&#39;mouse_id&#39;</span><span class="p">,</span> <span class="s1">&#39;dob&#39;</span><span class="p">)</span>   <span class="c1"># [mouse_id, ...] [dob, ...]</span>
+<div class="highlight"><pre><span></span><code><span class="n">name</span><span class="p">,</span> <span class="n">img</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s1">'mouse_id'</span><span class="p">,</span> <span class="s1">'dob'</span><span class="p">)</span>  <span class="c1"># when query has exactly one entity</span>
+<span class="n">name</span><span class="p">,</span> <span class="n">img</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s1">'mouse_id'</span><span class="p">,</span> <span class="s1">'dob'</span><span class="p">)</span>   <span class="c1"># [mouse_id, ...] [dob, ...]</span>
 </code></pre></div>
 <h3 id="primary-key-values">Primary key values<a class="headerlink" href="#primary-key-values" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">keydict</span> <span class="o">=</span> <span class="n">tab</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s2">&quot;KEY&quot;</span><span class="p">)</span>  <span class="c1"># single key dict when tab has exactly one entity</span>
-<span class="n">keylist</span> <span class="o">=</span> <span class="n">tab</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;KEY&quot;</span><span class="p">)</span>   <span class="c1"># list of key dictionaries [{}, ...]</span>
+<div class="highlight"><pre><span></span><code><span class="n">keydict</span> <span class="o">=</span> <span class="n">tab</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">)</span>  <span class="c1"># single key dict when tab has exactly one entity</span>
+<span class="n">keylist</span> <span class="o">=</span> <span class="n">tab</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">)</span>   <span class="c1"># list of key dictionaries [{}, ...]</span>
 </code></pre></div>
 <p><code>KEY</code> can also used when returning attribute values as separate
 variables, such that one of the returned variables contains the entire
 primary keys.</p>
 <h3 id="sorting-results">Sorting results<a class="headerlink" href="#sorting-results" title="Permanent link">&para;</a></h3>
 <p>To sort the result, use the <code>order_by</code> keyword argument.</p>
-<div class="highlight"><pre><span></span><code><span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">&#39;mouse_id&#39;</span><span class="p">)</span>                <span class="c1"># ascending order</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">&#39;mouse_id desc&#39;</span><span class="p">)</span>           <span class="c1"># descending order</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;mouse_id&#39;</span><span class="p">,</span> <span class="s1">&#39;dob&#39;</span><span class="p">))</span>       <span class="c1"># by ID first, dob second</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">&#39;KEY&#39;</span><span class="p">)</span>                     <span class="c1"># sort by the primary key</span>
+<div class="highlight"><pre><span></span><code><span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">'mouse_id'</span><span class="p">)</span>                <span class="c1"># ascending order</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">'mouse_id desc'</span><span class="p">)</span>           <span class="c1"># descending order</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="p">(</span><span class="s1">'mouse_id'</span><span class="p">,</span> <span class="s1">'dob'</span><span class="p">))</span>       <span class="c1"># by ID first, dob second</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">'KEY'</span><span class="p">)</span>                     <span class="c1"># sort by the primary key</span>
 </code></pre></div>
 <p>The <code>order_by</code> argument can be a string specifying the attribute to sort by. By default
 the sort is in ascending order. Use <code>'attr desc'</code> to sort in descending order by
@@ -4084,14 +4084,14 @@ performed on all the attributes jointly in the order specified.</p>
 they appear in the index. Otherwise, this name can be used as any other argument.</p>
 <p>If an attribute happens to be a SQL reserved word, it needs to be enclosed in
 backquotes. For example:</p>
-<div class="highlight"><pre><span></span><code><span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">&#39;`select` desc&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">'`select` desc'</span><span class="p">)</span>
 </code></pre></div>
 <p>The <code>order_by</code> value is eventually passed to the <code>ORDER BY</code>
 <a href="https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html">clause</a>.</p>
 <h3 id="limiting-results">Limiting results<a class="headerlink" href="#limiting-results" title="Permanent link">&para;</a></h3>
 <p>Similar to sorting, the <code>limit</code> and <code>offset</code> arguments can be used to limit the result
 to a subset of entities.</p>
-<div class="highlight"><pre><span></span><code><span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">&#39;mouse_id&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s1">'mouse_id'</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 </code></pre></div>
 <p>Note that an <code>offset</code> cannot be used without specifying a <code>limit</code> as
 well.</p>
@@ -4106,7 +4106,7 @@ constructor. For example:</p>
 </code></pre></div>
 <p>Calling <code>fetch()</code> with the argument <code>format="frame"</code> returns results as
 <code>pandas.DataFrame</code> objects indexed by the table's primary key attributes.</p>
-<div class="highlight"><pre><span></span><code><span class="n">frame</span> <span class="o">=</span> <span class="n">tab</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;frame&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">frame</span> <span class="o">=</span> <span class="n">tab</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">"frame"</span><span class="p">)</span>
 </code></pre></div>
 <p>Returning results as a <code>DataFrame</code> is not possible when fetching a particular subset of
 attributes or when <code>as_dict</code> is set to <code>True</code>.</p>
@@ -4254,7 +4254,7 @@ table definitions to take effect.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["toc.integrate", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

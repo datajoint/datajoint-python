@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3606,18 +3606,18 @@ list the names of database schemas available to you.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">datajoint</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dj</span>
 <span class="n">dj</span><span class="o">.</span><span class="n">list_schemas</span><span class="p">()</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code>*[&#39;dimitri_alter&#39;,&#39;dimitri_attach&#39;,&#39;dimitri_blob&#39;,&#39;dimitri_blobs&#39;,
-&#39;dimitri_nphoton&#39;,&#39;dimitri_schema&#39;,&#39;dimitri_university&#39;,&#39;dimitri_uuid&#39;,
-&#39;university&#39;]*
+<div class="highlight"><pre><span></span><code>*['dimitri_alter','dimitri_attach','dimitri_blob','dimitri_blobs',
+'dimitri_nphoton','dimitri_schema','dimitri_university','dimitri_uuid',
+'university']*
 </code></pre></div>
 <p>Just as with a new schema, we start by creating a schema object to connect to
 the chosen database schema:</p>
-<div class="highlight"><pre><span></span><code><span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="s1">&#39;dimitri_university&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="s1">'dimitri_university'</span><span class="p">)</span>
 </code></pre></div>
 <p>If the schema already exists, <code>dj.Schema</code> is initialized as usual and you may plot
 the schema diagram. But instead of seeing class names, you will see the raw
 table names as they appear in the database.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># let&#39;s plot its diagram</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># let's plot its diagram</span>
 <span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
 </code></pre></div>
 <p><img alt="query object preview" src="../../images/dimitri-ERD.svg" style="align:center" /></p>
@@ -3649,7 +3649,7 @@ equivalent to the Python command:</p>
 <code>VirtualModule</code> class object:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">datajoint</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dj</span>
 
-<span class="n">uni</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">VirtualModule</span><span class="p">(</span><span class="n">module_name</span><span class="o">=</span><span class="s1">&#39;university.py&#39;</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="s1">&#39;dimitri_university&#39;</span><span class="p">)</span>
+<span class="n">uni</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">VirtualModule</span><span class="p">(</span><span class="n">module_name</span><span class="o">=</span><span class="s1">'university.py'</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="s1">'dimitri_university'</span><span class="p">)</span>
 </code></pre></div>
 <p>Now <code>uni</code> behaves as an imported module complete with the schema object and all
 the table classes.</p>
@@ -3669,7 +3669,7 @@ the table classes.</p>
 <p>And <code>dj.VirtualModule</code> takes optional arguments.</p>
 <p>First, <code>create_schema=False</code> assures that an error is raised when the schema
 does not already exist. Set it to <code>True</code> if you want to create an empty schema.</p>
-<div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">VirtualModule</span><span class="p">(</span><span class="s1">&#39;what&#39;</span><span class="p">,</span> <span class="s1">&#39;nonexistent&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">VirtualModule</span><span class="p">(</span><span class="s1">'what'</span><span class="p">,</span> <span class="s1">'nonexistent'</span><span class="p">)</span>
 </code></pre></div>
 <p>Returns</p>
 <div class="highlight"><pre><span></span><code><span class="o">---------------------------------------------------------------------------</span>
@@ -3689,15 +3689,15 @@ to use the <code>spawn_missing_classes</code> function to make the classes avail
 <p>However, you if do decide to create new tables in an existing tables using the
 virtual module, you may do so by using the schema object from the module as the
 decorator for declaring new tables:</p>
-<div class="highlight"><pre><span></span><code><span class="n">uni</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">VirtualModule</span><span class="p">(</span><span class="s1">&#39;university.py&#39;</span><span class="p">,</span> <span class="s1">&#39;dimitri_university&#39;</span><span class="p">,</span> <span class="n">create_tables</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">uni</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">VirtualModule</span><span class="p">(</span><span class="s1">'university.py'</span><span class="p">,</span> <span class="s1">'dimitri_university'</span><span class="p">,</span> <span class="n">create_tables</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="nd">@uni</span><span class="o">.</span><span class="n">schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Example</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    -&gt; uni.Student</span>
 <span class="s2">    ---</span>
 <span class="s2">    example : varchar(255)</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="n">uni</span><span class="p">)</span>
 </code></pre></div>
@@ -3836,7 +3836,7 @@ decorator for declaring new tables:</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

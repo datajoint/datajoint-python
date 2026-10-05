@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3500,16 +3500,16 @@ cities and states.
 A virtual table can fill the role of the nonexistent base table, allowing queries that
 would not be possible otherwise.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># All home cities of students</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;home_city&#39;</span><span class="p">,</span> <span class="s1">&#39;home_state&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">Student</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">'home_city'</span><span class="p">,</span> <span class="s1">'home_state'</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">Student</span>
 
 <span class="c1"># Total number of students from each city</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;home_city&#39;</span><span class="p">,</span> <span class="s1">&#39;home_state&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Student</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">&quot;count(*)&quot;</span><span class="p">)</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">'home_city'</span><span class="p">,</span> <span class="s1">'home_state'</span><span class="p">)</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Student</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">"count(*)"</span><span class="p">)</span>
 
 <span class="c1"># Total number of students from each state</span>
-<span class="n">U</span><span class="p">(</span><span class="s1">&#39;home_state&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Student</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">&quot;count(*)&quot;</span><span class="p">)</span>
+<span class="n">U</span><span class="p">(</span><span class="s1">'home_state'</span><span class="p">)</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Student</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">"count(*)"</span><span class="p">)</span>
 
 <span class="c1"># Total number of students in the database</span>
-<span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Student</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">&quot;count(*)&quot;</span><span class="p">)</span>
+<span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Student</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">"count(*)"</span><span class="p">)</span>
 </code></pre></div>
 <p>The result of aggregation on a universal set is restricted to the entities with matches
 in the aggregated table, such as <code>Student</code> in the example above.
@@ -3652,7 +3652,7 @@ In some cases, defining a new base table can make queries clearer and more seman
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

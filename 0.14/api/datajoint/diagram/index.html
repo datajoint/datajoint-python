@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -4118,7 +4118,7 @@ Only those tables that are loaded in the connection object are displayed</p>
 <span class="normal">475</span>
 <span class="normal">476</span>
 <span class="normal">477</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Diagram</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Schema diagram showing tables and foreign keys between in the form of a directed</span>
 <span class="sd">    acyclic graph (DAG).  The diagram is derived from the connection.dependencies object.</span>
 
@@ -4141,7 +4141,7 @@ Only those tables that are loaded in the connection object are displayed</p>
 
 <span class="sd">    Note that diagram + 1 - 1  may differ from diagram - 1 + 1 and so forth.</span>
 <span class="sd">    Only those tables that are loaded in the connection object are displayed</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 
@@ -4152,7 +4152,7 @@ Only those tables that are loaded in the connection object are displayed</p>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
             <span class="k">return</span>
 
-        <span class="c1"># get the caller&#39;s context</span>
+        <span class="c1"># get the caller's context</span>
         <span class="k">if</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="p">,</span> <span class="o">**</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">)</span>
@@ -4168,7 +4168,7 @@ Only those tables that are loaded in the connection object are displayed</p>
                 <span class="n">connection</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">connection</span>
             <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;Could not find database connection in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">repr</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="s2">"Could not find database connection in </span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="nb">repr</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
                 <span class="p">)</span>
 
         <span class="c1"># initialize graph from dependencies</span>
@@ -4187,39 +4187,39 @@ Only those tables that are loaded in the connection object are displayed</p>
                     <span class="n">database</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">database</span>
                 <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                        <span class="s2">&quot;Cannot plot Diagram for </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">repr</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+                        <span class="s2">"Cannot plot Diagram for </span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="nb">repr</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
                     <span class="p">)</span>
             <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">database</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"`</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="n">database</span><span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_sequence</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sequence</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        The join Diagram for all objects in sequence</span>
 
 <span class="sd">        :param sequence: a sequence (e.g. list, tuple)</span>
 <span class="sd">        :return: Diagram(arg1) + ... + Diagram(argn)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">,</span> <span class="nb">map</span><span class="p">(</span><span class="n">Diagram</span><span class="p">,</span> <span class="n">sequence</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">add_parts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Adds to the diagram the part tables of all master tables already in the diagram</span>
 <span class="sd">        :return:</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">is_part</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">master</span><span class="p">):</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">            </span><span class="sd">"""</span>
 <span class="sd">            :param part:  `database`.`table_name`</span>
 <span class="sd">            :param master:   `database`.`table_name`</span>
 <span class="sd">            :return: True if part is part of master.</span>
-<span class="sd">            &quot;&quot;&quot;</span>
-            <span class="n">part</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">part</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)]</span>
-            <span class="n">master</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">master</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)]</span>
+<span class="sd">            """</span>
+            <span class="n">part</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">part</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)]</span>
+            <span class="n">master</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">master</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)]</span>
             <span class="k">return</span> <span class="p">(</span>
                 <span class="n">master</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">part</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                <span class="ow">and</span> <span class="n">master</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;__&quot;</span> <span class="o">==</span> <span class="n">part</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span> <span class="nb">len</span><span class="p">(</span><span class="n">master</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
+                <span class="ow">and</span> <span class="n">master</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">"__"</span> <span class="o">==</span> <span class="n">part</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span> <span class="nb">len</span><span class="p">(</span><span class="n">master</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
             <span class="p">)</span>
 
         <span class="bp">self</span> <span class="o">=</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># copy</span>
@@ -4231,11 +4231,11 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :param arg: either another Diagram or a positive integer.</span>
 <span class="sd">        :return: Union of the diagrams when arg is another Diagram</span>
 <span class="sd">                 or an expansion downstream when arg is a positive integer.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span> <span class="o">=</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># copy</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">)</span>
@@ -4259,11 +4259,11 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :param arg: either another Diagram or a positive integer.</span>
 <span class="sd">        :return: Difference of the diagrams when arg is another Diagram or</span>
 <span class="sd">                 an expansion upstream when arg is a positive integer.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span> <span class="o">=</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># copy</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="o">.</span><span class="n">difference_update</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">)</span>
@@ -4288,35 +4288,35 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Intersection of two diagrams</span>
 <span class="sd">        :param arg: another Diagram</span>
 <span class="sd">        :return: a new Diagram comprising nodes that are present in both operands.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span> <span class="o">=</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># copy</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="o">.</span><span class="n">intersection_update</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;return nodes in lexicographical topological order&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""return nodes in lexicographical topological order"""</span>
         <span class="k">return</span> <span class="n">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_make_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Make the self.graph - a graph object ready for drawing</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># mark &quot;distinguished&quot; tables, i.e. those that introduce new primary key</span>
+<span class="sd">        """</span>
+        <span class="c1"># mark "distinguished" tables, i.e. those that introduce new primary key</span>
         <span class="c1"># attributes</span>
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">:</span>
             <span class="n">foreign_attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
                 <span class="n">attr</span>
                 <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_edges</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">&quot;attr_map&quot;</span><span class="p">]</span>
-                <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">&quot;primary&quot;</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">"attr_map"</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">"primary"</span><span class="p">]</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">&quot;distinguished&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="s2">&quot;primary_key&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-                <span class="ow">and</span> <span class="n">foreign_attributes</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">&quot;primary_key&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">"distinguished"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">"primary_key"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="ow">and</span> <span class="n">foreign_attributes</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">"primary_key"</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="c1"># include aliased nodes that are sandwiched between two displayed nodes</span>
         <span class="n">gaps</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
@@ -4330,7 +4330,7 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="c1"># construct subgraph and rename nodes to class names</span>
         <span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nodes</span><span class="p">))</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">set_node_attributes</span><span class="p">(</span>
-            <span class="n">graph</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;node_type&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">n</span><span class="p">:</span> <span class="n">_get_tier</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">graph</span><span class="p">}</span>
+            <span class="n">graph</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"node_type"</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">n</span><span class="p">:</span> <span class="n">_get_tier</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">graph</span><span class="p">}</span>
         <span class="p">)</span>
         <span class="c1"># relabel nodes to class names</span>
         <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span>
@@ -4340,38 +4340,38 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="n">new_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">new_names</span><span class="p">)):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Some classes have identical names. The Diagram cannot be plotted.&quot;</span>
+                <span class="s2">"Some classes have identical names. The Diagram cannot be plotted."</span>
             <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">relabel_nodes</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">graph</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_encapsulate_edge_attributes</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Modifies the `nx.Graph`&#39;s edge attribute `attr_map` to be a string representation</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Modifies the `nx.Graph`'s edge attribute `attr_map` to be a string representation</span>
 <span class="sd">        of the attribute map, and encapsulates the string in double quotes.</span>
 <span class="sd">        Changes the graph in place.</span>
 
 <span class="sd">        Implements workaround described in</span>
 <span class="sd">        https://github.com/pydot/pydot/issues/258#issuecomment-795798099</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">,</span> <span class="n">edgedata</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">edges</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-            <span class="k">if</span> <span class="s2">&quot;attr_map&quot;</span> <span class="ow">in</span> <span class="n">edgedata</span><span class="p">:</span>
-                <span class="n">graph</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">][</span><span class="s2">&quot;attr_map&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;&quot;</span><span class="si">{0}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">edgedata</span><span class="p">[</span><span class="s2">&quot;attr_map&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="s2">"attr_map"</span> <span class="ow">in</span> <span class="n">edgedata</span><span class="p">:</span>
+                <span class="n">graph</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">][</span><span class="s2">"attr_map"</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'"</span><span class="si">{0}</span><span class="s1">"'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">edgedata</span><span class="p">[</span><span class="s2">"attr_map"</span><span class="p">])</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_encapsulate_node_names</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Modifies the `nx.Graph`&#39;s node names string representations encapsulated in</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Modifies the `nx.Graph`'s node names string representations encapsulated in</span>
 <span class="sd">        double quotes.</span>
 <span class="sd">        Changes the graph in place.</span>
 
 <span class="sd">        Implements workaround described in</span>
 <span class="sd">        https://github.com/datajoint/datajoint-python/pull/1176</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">relabel_nodes</span><span class="p">(</span>
             <span class="n">graph</span><span class="p">,</span>
-            <span class="p">{</span><span class="n">node</span><span class="p">:</span> <span class="s1">&#39;&quot;</span><span class="si">{0}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">()},</span>
+            <span class="p">{</span><span class="n">node</span><span class="p">:</span> <span class="s1">'"</span><span class="si">{0}</span><span class="s1">"'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">()},</span>
             <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span>
 
@@ -4382,64 +4382,64 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="n">scale</span> <span class="o">=</span> <span class="mf">1.2</span>  <span class="c1"># scaling factor for fonts and boxes</span>
         <span class="n">label_props</span> <span class="o">=</span> <span class="p">{</span>  <span class="c1"># http://matplotlib.org/examples/color/named_colors.html</span>
             <span class="kc">None</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;circle&quot;</span><span class="p">,</span>
-                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#FFFF0040&quot;</span><span class="p">,</span>
-                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span>
+                <span class="n">shape</span><span class="o">=</span><span class="s2">"circle"</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">"#FFFF0040"</span><span class="p">,</span>
+                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">"yellow"</span><span class="p">,</span>
                 <span class="n">fontsize</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">scale</span> <span class="o">*</span> <span class="mi">8</span><span class="p">),</span>
                 <span class="n">size</span><span class="o">=</span><span class="mf">0.4</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span>
                 <span class="n">fixed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">_AliasNode</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;circle&quot;</span><span class="p">,</span>
-                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#FF880080&quot;</span><span class="p">,</span>
-                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">&quot;#FF880080&quot;</span><span class="p">,</span>
+                <span class="n">shape</span><span class="o">=</span><span class="s2">"circle"</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">"#FF880080"</span><span class="p">,</span>
+                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">"#FF880080"</span><span class="p">,</span>
                 <span class="n">fontsize</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">scale</span> <span class="o">*</span> <span class="mi">0</span><span class="p">),</span>
                 <span class="n">size</span><span class="o">=</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span>
                 <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">Manual</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;box&quot;</span><span class="p">,</span>
-                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#00FF0030&quot;</span><span class="p">,</span>
-                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">&quot;darkgreen&quot;</span><span class="p">,</span>
+                <span class="n">shape</span><span class="o">=</span><span class="s2">"box"</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">"#00FF0030"</span><span class="p">,</span>
+                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">"darkgreen"</span><span class="p">,</span>
                 <span class="n">fontsize</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">scale</span> <span class="o">*</span> <span class="mi">10</span><span class="p">),</span>
                 <span class="n">size</span><span class="o">=</span><span class="mf">0.4</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span>
                 <span class="n">fixed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">Lookup</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;plaintext&quot;</span><span class="p">,</span>
-                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#00000020&quot;</span><span class="p">,</span>
-                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+                <span class="n">shape</span><span class="o">=</span><span class="s2">"plaintext"</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">"#00000020"</span><span class="p">,</span>
+                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">"black"</span><span class="p">,</span>
                 <span class="n">fontsize</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">scale</span> <span class="o">*</span> <span class="mi">8</span><span class="p">),</span>
                 <span class="n">size</span><span class="o">=</span><span class="mf">0.4</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span>
                 <span class="n">fixed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">Computed</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;ellipse&quot;</span><span class="p">,</span>
-                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#FF000020&quot;</span><span class="p">,</span>
-                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">&quot;#7F0000A0&quot;</span><span class="p">,</span>
+                <span class="n">shape</span><span class="o">=</span><span class="s2">"ellipse"</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">"#FF000020"</span><span class="p">,</span>
+                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">"#7F0000A0"</span><span class="p">,</span>
                 <span class="n">fontsize</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">scale</span> <span class="o">*</span> <span class="mi">10</span><span class="p">),</span>
                 <span class="n">size</span><span class="o">=</span><span class="mf">0.3</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span>
                 <span class="n">fixed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">Imported</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;ellipse&quot;</span><span class="p">,</span>
-                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#00007F40&quot;</span><span class="p">,</span>
-                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">&quot;#00007FA0&quot;</span><span class="p">,</span>
+                <span class="n">shape</span><span class="o">=</span><span class="s2">"ellipse"</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">"#00007F40"</span><span class="p">,</span>
+                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">"#00007FA0"</span><span class="p">,</span>
                 <span class="n">fontsize</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">scale</span> <span class="o">*</span> <span class="mi">10</span><span class="p">),</span>
                 <span class="n">size</span><span class="o">=</span><span class="mf">0.4</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span>
                 <span class="n">fixed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">Part</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
-                <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;plaintext&quot;</span><span class="p">,</span>
-                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#0000000&quot;</span><span class="p">,</span>
-                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+                <span class="n">shape</span><span class="o">=</span><span class="s2">"plaintext"</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">"#0000000"</span><span class="p">,</span>
+                <span class="n">fontcolor</span><span class="o">=</span><span class="s2">"black"</span><span class="p">,</span>
                 <span class="n">fontsize</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">scale</span> <span class="o">*</span> <span class="mi">8</span><span class="p">),</span>
                 <span class="n">size</span><span class="o">=</span><span class="mf">0.1</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span>
                 <span class="n">fixed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">}</span>
         <span class="n">node_props</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">node</span><span class="p">:</span> <span class="n">label_props</span><span class="p">[</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;node_type&quot;</span><span class="p">]]</span>
+            <span class="n">node</span><span class="p">:</span> <span class="n">label_props</span><span class="p">[</span><span class="n">d</span><span class="p">[</span><span class="s2">"node_type"</span><span class="p">]]</span>
             <span class="k">for</span> <span class="n">node</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">dict</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">}</span>
 
@@ -4447,41 +4447,41 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">_encapsulate_edge_attributes</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
         <span class="n">dot</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">drawing</span><span class="o">.</span><span class="n">nx_pydot</span><span class="o">.</span><span class="n">to_pydot</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">dot</span><span class="o">.</span><span class="n">get_nodes</span><span class="p">():</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_shape</span><span class="p">(</span><span class="s2">&quot;circle&quot;</span><span class="p">)</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_shape</span><span class="p">(</span><span class="s2">"circle"</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">'"'</span><span class="p">)</span>
             <span class="n">props</span> <span class="o">=</span> <span class="n">node_props</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_fontsize</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">&quot;fontsize&quot;</span><span class="p">])</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_fontcolor</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">&quot;fontcolor&quot;</span><span class="p">])</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_shape</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">&quot;shape&quot;</span><span class="p">])</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_fontname</span><span class="p">(</span><span class="s2">&quot;arial&quot;</span><span class="p">)</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_fixedsize</span><span class="p">(</span><span class="s2">&quot;shape&quot;</span> <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">&quot;fixed&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="kc">False</span><span class="p">)</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_width</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">])</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_height</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">])</span>
-            <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">:</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_fontsize</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">"fontsize"</span><span class="p">])</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_fontcolor</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">"fontcolor"</span><span class="p">])</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_shape</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">"shape"</span><span class="p">])</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_fontname</span><span class="p">(</span><span class="s2">"arial"</span><span class="p">)</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_fixedsize</span><span class="p">(</span><span class="s2">"shape"</span> <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">"fixed"</span><span class="p">]</span> <span class="k">else</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_width</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">"size"</span><span class="p">])</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_height</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">"size"</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">:</span>
                 <span class="bp">cls</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
                 <span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">Table</span><span class="p">)</span>
-                <span class="n">description</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span><span class="o">.</span><span class="n">describe</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">description</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span><span class="o">.</span><span class="n">describe</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
                 <span class="n">description</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="p">(</span>
-                        <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">30</span>
-                        <span class="k">if</span> <span class="n">q</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">)</span>
+                        <span class="s2">"-"</span> <span class="o">*</span> <span class="mi">30</span>
+                        <span class="k">if</span> <span class="n">q</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"---"</span><span class="p">)</span>
                         <span class="k">else</span> <span class="p">(</span>
-                            <span class="n">q</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;&amp;#8594;&quot;</span><span class="p">)</span>
-                            <span class="k">if</span> <span class="s2">&quot;-&gt;&quot;</span> <span class="ow">in</span> <span class="n">q</span>
-                            <span class="k">else</span> <span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                            <span class="n">q</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"-&gt;"</span><span class="p">,</span> <span class="s2">"&amp;#8594;"</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="s2">"-&gt;"</span> <span class="ow">in</span> <span class="n">q</span>
+                            <span class="k">else</span> <span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">":"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
                         <span class="p">)</span>
                     <span class="p">)</span>
                     <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">description</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="n">q</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">q</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"#"</span><span class="p">)</span>
                 <span class="p">)</span>
-                <span class="n">node</span><span class="o">.</span><span class="n">set_tooltip</span><span class="p">(</span><span class="s2">&quot;&amp;#13;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">description</span><span class="p">))</span>
+                <span class="n">node</span><span class="o">.</span><span class="n">set_tooltip</span><span class="p">(</span><span class="s2">"&amp;#13;"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">description</span><span class="p">))</span>
             <span class="n">node</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span>
-                <span class="s2">&quot;&lt;&lt;u&gt;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&lt;/u&gt;&gt;&quot;</span>
-                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;distinguished&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;True&quot;</span>
+                <span class="s2">"&lt;&lt;u&gt;"</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">"&lt;/u&gt;&gt;"</span>
+                <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"distinguished"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"True"</span>
                 <span class="k">else</span> <span class="n">name</span>
             <span class="p">)</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_color</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">])</span>
-            <span class="n">node</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s2">&quot;filled&quot;</span><span class="p">)</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_color</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s2">"color"</span><span class="p">])</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s2">"filled"</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">dot</span><span class="o">.</span><span class="n">get_edges</span><span class="p">():</span>
             <span class="c1"># see https://graphviz.org/doc/info/attrs.html</span>
@@ -4490,17 +4490,17 @@ Only those tables that are loaded in the connection object are displayed</p>
             <span class="n">props</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_edge_data</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">props</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;Could not find edge with source &quot;</span>
-                    <span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39; and destination &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+                    <span class="s2">"Could not find edge with source "</span>
+                    <span class="s2">"'</span><span class="si">{}</span><span class="s2">' and destination '</span><span class="si">{}</span><span class="s2">'"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
                 <span class="p">)</span>
-            <span class="n">edge</span><span class="o">.</span><span class="n">set_color</span><span class="p">(</span><span class="s2">&quot;#00000040&quot;</span><span class="p">)</span>
-            <span class="n">edge</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s2">&quot;solid&quot;</span> <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">&quot;primary&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;dashed&quot;</span><span class="p">)</span>
+            <span class="n">edge</span><span class="o">.</span><span class="n">set_color</span><span class="p">(</span><span class="s2">"#00000040"</span><span class="p">)</span>
+            <span class="n">edge</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s2">"solid"</span> <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">"primary"</span><span class="p">]</span> <span class="k">else</span> <span class="s2">"dashed"</span><span class="p">)</span>
             <span class="n">master_part</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">dest</span><span class="p">][</span>
-                <span class="s2">&quot;node_type&quot;</span>
-            <span class="p">]</span> <span class="ow">is</span> <span class="n">Part</span> <span class="ow">and</span> <span class="n">dest</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">src</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+                <span class="s2">"node_type"</span>
+            <span class="p">]</span> <span class="ow">is</span> <span class="n">Part</span> <span class="ow">and</span> <span class="n">dest</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">src</span> <span class="o">+</span> <span class="s2">"."</span><span class="p">)</span>
             <span class="n">edge</span><span class="o">.</span><span class="n">set_weight</span><span class="p">(</span><span class="mi">3</span> <span class="k">if</span> <span class="n">master_part</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">edge</span><span class="o">.</span><span class="n">set_arrowhead</span><span class="p">(</span><span class="s2">&quot;none&quot;</span><span class="p">)</span>
-            <span class="n">edge</span><span class="o">.</span><span class="n">set_penwidth</span><span class="p">(</span><span class="mf">0.75</span> <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">&quot;multi&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">edge</span><span class="o">.</span><span class="n">set_arrowhead</span><span class="p">(</span><span class="s2">"none"</span><span class="p">)</span>
+            <span class="n">edge</span><span class="o">.</span><span class="n">set_penwidth</span><span class="p">(</span><span class="mf">0.75</span> <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">"multi"</span><span class="p">]</span> <span class="k">else</span> <span class="mi">2</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">dot</span>
 
@@ -4516,7 +4516,7 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="k">if</span> <span class="n">plot_active</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">plt</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">make_png</span><span class="p">())</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;pyplot was not imported&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"pyplot was not imported"</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_repr_svg_</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_svg</span><span class="p">()</span><span class="o">.</span><span class="n">_repr_svg_</span><span class="p">()</span>
@@ -4524,29 +4524,29 @@ Only those tables that are loaded in the connection object are displayed</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">draw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">plot_active</span><span class="p">:</span>
             <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">make_image</span><span class="p">())</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">"off"</span><span class="p">)</span>
             <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;pyplot was not imported&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"pyplot was not imported"</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">format</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">filename</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.png&quot;</span><span class="p">):</span>
-                <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;png&quot;</span>
-            <span class="k">elif</span> <span class="n">filename</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.svg&quot;</span><span class="p">):</span>
-                <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;svg&quot;</span>
-        <span class="k">if</span> <span class="nb">format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;png&quot;</span><span class="p">:</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">filename</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">".png"</span><span class="p">):</span>
+                <span class="nb">format</span> <span class="o">=</span> <span class="s2">"png"</span>
+            <span class="k">elif</span> <span class="n">filename</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">".svg"</span><span class="p">):</span>
+                <span class="nb">format</span> <span class="o">=</span> <span class="s2">"svg"</span>
+        <span class="k">if</span> <span class="nb">format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"png"</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">make_png</span><span class="p">()</span><span class="o">.</span><span class="n">getbuffer</span><span class="p">()</span><span class="o">.</span><span class="n">tobytes</span><span class="p">())</span>
-        <span class="k">elif</span> <span class="nb">format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;svg&quot;</span><span class="p">:</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="nb">format</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"svg"</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">make_svg</span><span class="p">()</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Unsupported file format&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Unsupported file format"</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_layout</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">pydot_layout</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;dot&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pydot_layout</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">prog</span><span class="o">=</span><span class="s2">"dot"</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -4642,12 +4642,12 @@ Only those tables that are loaded in the connection object are displayed</p>
 <span class="normal">131</span>
 <span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_sequence</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sequence</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    The join Diagram for all objects in sequence</span>
 
 <span class="sd">    :param sequence: a sequence (e.g. list, tuple)</span>
 <span class="sd">    :return: Diagram(arg1) + ... + Diagram(argn)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">,</span> <span class="nb">map</span><span class="p">(</span><span class="n">Diagram</span><span class="p">,</span> <span class="n">sequence</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -4724,22 +4724,22 @@ Only those tables that are loaded in the connection object are displayed</p>
 <span class="normal">157</span>
 <span class="normal">158</span>
 <span class="normal">159</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_parts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Adds to the diagram the part tables of all master tables already in the diagram</span>
 <span class="sd">    :return:</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">is_part</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">master</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :param part:  `database`.`table_name`</span>
 <span class="sd">        :param master:   `database`.`table_name`</span>
 <span class="sd">        :return: True if part is part of master.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">part</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">part</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)]</span>
-        <span class="n">master</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">master</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)]</span>
+<span class="sd">        """</span>
+        <span class="n">part</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">part</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)]</span>
+        <span class="n">master</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">master</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)]</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="n">master</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">part</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="ow">and</span> <span class="n">master</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;__&quot;</span> <span class="o">==</span> <span class="n">part</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span> <span class="nb">len</span><span class="p">(</span><span class="n">master</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
+            <span class="ow">and</span> <span class="n">master</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">"__"</span> <span class="o">==</span> <span class="n">part</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span> <span class="nb">len</span><span class="p">(</span><span class="n">master</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
         <span class="p">)</span>
 
     <span class="bp">self</span> <span class="o">=</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># copy</span>
@@ -4779,7 +4779,7 @@ Only those tables that are loaded in the connection object are displayed</p>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">228</span>
 <span class="normal">229</span>
 <span class="normal">230</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;return nodes in lexicographical topological order&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""return nodes in lexicographical topological order"""</span>
     <span class="k">return</span> <span class="n">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -4938,7 +4938,7 @@ Only those tables that are loaded in the connection object are displayed</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

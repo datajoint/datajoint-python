@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3552,7 +3552,7 @@ object to retrieve its entire contents as follows:</p>
 applying <a href="../operators/">operators</a> to other query objects.</p>
 <p>For example, the following query retrieves information about all experiments and scans
 for mouse 102 (excluding experiments with no scans):</p>
-<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">Session</span> <span class="o">*</span> <span class="n">experiment</span><span class="o">.</span><span class="n">Scan</span> <span class="o">&amp;</span> <span class="s1">&#39;animal_id = 102&#39;</span>
+<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">Session</span> <span class="o">*</span> <span class="n">experiment</span><span class="o">.</span><span class="n">Scan</span> <span class="o">&amp;</span> <span class="s1">'animal_id = 102'</span>
 </code></pre></div>
 <p>Note that for brevity, query operators can be applied directly to class objects rather
 than instance objects so that <code>experiment.Session</code> may be used in place of
@@ -3585,7 +3585,7 @@ any entities and to <code>False</code> if the query result is empty.</p>
 <p>The <code>len</code> function applied to a query object determines the number of entities returned
 by the query.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># number of sessions since the start of 2018.</span>
-<span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">&#39;session_date &gt;= &quot;2018-01-01&quot;&#39;</span><span class="p">)</span>
+<span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">'session_date &gt;= "2018-01-01"'</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="normalization-in-queries">Normalization in queries<a class="headerlink" href="#normalization-in-queries" title="Permanent link">&para;</a></h2>
 <p>Query objects adhere to entity <a href="../../design/normalization/">entity normalization</a> just
@@ -3729,7 +3729,7 @@ complex query expressions.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

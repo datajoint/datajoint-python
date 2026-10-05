@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3716,36 +3716,36 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
 <span class="normal">93</span>
 <span class="normal">94</span>
 <span class="normal">95</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">kill</span><span class="p">(</span><span class="n">restriction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    view and kill database connections.</span>
 
 <span class="sd">    :param restriction: restriction to be applied to processlist</span>
 <span class="sd">    :param connection: a datajoint.Connection object. Default calls datajoint.conn()</span>
-<span class="sd">    :param order_by: order by a single attribute or the list of attributes. defaults to &#39;id&#39;.</span>
+<span class="sd">    :param order_by: order by a single attribute or the list of attributes. defaults to 'id'.</span>
 
 <span class="sd">    Restrictions are specified as strings and can involve any of the attributes of</span>
 <span class="sd">    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.</span>
 
 <span class="sd">    Examples:</span>
-<span class="sd">        dj.kill(&#39;HOST LIKE &quot;%compute%&quot;&#39;) lists only connections from hosts containing &quot;compute&quot;.</span>
-<span class="sd">        dj.kill(&#39;TIME &gt; 600&#39;) lists only connections in their current state for more than 10 minutes</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        dj.kill('HOST LIKE "%compute%"') lists only connections from hosts containing "compute".</span>
+<span class="sd">        dj.kill('TIME &gt; 600') lists only connections in their current state for more than 10 minutes</span>
+<span class="sd">    """</span>
 
     <span class="k">if</span> <span class="n">connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">connection</span> <span class="o">=</span> <span class="n">conn</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="n">order_by</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">order_by</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-        <span class="n">order_by</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">order_by</span><span class="p">)</span>
+        <span class="n">order_by</span> <span class="o">=</span> <span class="s2">","</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">order_by</span><span class="p">)</span>
 
     <span class="n">query</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;SELECT * FROM information_schema.processlist WHERE id &lt;&gt; CONNECTION_ID()&quot;</span>
-        <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">restriction</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot; AND (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="n">restriction</span><span class="p">)</span>
-        <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; ORDER BY </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">order_by</span> <span class="ow">or</span> <span class="s2">&quot;id&quot;</span><span class="p">))</span>
+        <span class="s2">"SELECT * FROM information_schema.processlist WHERE id &lt;&gt; CONNECTION_ID()"</span>
+        <span class="o">+</span> <span class="p">(</span><span class="s2">""</span> <span class="k">if</span> <span class="n">restriction</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">" AND (</span><span class="si">%s</span><span class="s2">)"</span> <span class="o">%</span> <span class="n">restriction</span><span class="p">)</span>
+        <span class="o">+</span> <span class="p">(</span><span class="s2">" ORDER BY </span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="p">(</span><span class="n">order_by</span> <span class="ow">or</span> <span class="s2">"id"</span><span class="p">))</span>
     <span class="p">)</span>
 
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  ID USER         HOST          STATE         TIME    INFO&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;+--+ +----------+ +-----------+ +-----------+ +-----+&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  ID USER         HOST          STATE         TIME    INFO"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"+--+ +----------+ +-----------+ +-----------+ +-----+"</span><span class="p">)</span>
         <span class="n">cur</span> <span class="o">=</span> <span class="p">(</span>
             <span class="p">{</span><span class="n">k</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">elem</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
             <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -3753,14 +3753,14 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
         <span class="k">for</span> <span class="n">process</span> <span class="ow">in</span> <span class="n">cur</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span>
-                    <span class="s2">&quot;</span><span class="si">{id:&gt;4d}</span><span class="s2"> </span><span class="si">{user:&lt;12s}</span><span class="s2"> </span><span class="si">{host:&lt;12s}</span><span class="s2"> </span><span class="si">{state:&lt;12s}</span><span class="s2"> </span><span class="si">{time:&gt;7d}</span><span class="s2">  </span><span class="si">{info}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="s2">"</span><span class="si">{id:&gt;4d}</span><span class="s2"> </span><span class="si">{user:&lt;12s}</span><span class="s2"> </span><span class="si">{host:&lt;12s}</span><span class="s2"> </span><span class="si">{state:&lt;12s}</span><span class="s2"> </span><span class="si">{time:&gt;7d}</span><span class="s2">  </span><span class="si">{info}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                         <span class="o">**</span><span class="n">process</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
             <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="n">process</span><span class="p">)</span>
-        <span class="n">response</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;process to kill or &quot;q&quot; to quit &gt; &#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">response</span> <span class="o">==</span> <span class="s2">&quot;q&quot;</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">'process to kill or "q" to quit &gt; '</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">response</span> <span class="o">==</span> <span class="s2">"q"</span><span class="p">:</span>
             <span class="k">break</span>
         <span class="k">if</span> <span class="n">response</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -3769,9 +3769,9 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
                 <span class="k">pass</span>  <span class="c1"># ignore non-numeric input</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;kill </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
+                    <span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"kill </span><span class="si">%d</span><span class="s2">"</span> <span class="o">%</span> <span class="n">pid</span><span class="p">)</span>
                 <span class="k">except</span> <span class="n">pymysql</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">InternalError</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Process not found&quot;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">"Process not found"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3878,7 +3878,7 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
 <span class="normal">125</span>
 <span class="normal">126</span>
 <span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">kill_quick</span><span class="p">(</span><span class="n">restriction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Kill database connections without prompting. Returns number of terminated connections.</span>
 
 <span class="sd">    :param restriction: restriction to be applied to processlist</span>
@@ -3888,14 +3888,14 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
 <span class="sd">    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.</span>
 
 <span class="sd">    Examples:</span>
-<span class="sd">        dj.kill(&#39;HOST LIKE &quot;%compute%&quot;&#39;) terminates connections from hosts containing &quot;compute&quot;.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        dj.kill('HOST LIKE "%compute%"') terminates connections from hosts containing "compute".</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">connection</span> <span class="o">=</span> <span class="n">conn</span><span class="p">()</span>
 
     <span class="n">query</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;SELECT * FROM information_schema.processlist WHERE id &lt;&gt; CONNECTION_ID()&quot;</span>
-        <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">restriction</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot; AND (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="n">restriction</span><span class="p">)</span>
+        <span class="s2">"SELECT * FROM information_schema.processlist WHERE id &lt;&gt; CONNECTION_ID()"</span>
+        <span class="o">+</span> <span class="p">(</span><span class="s2">""</span> <span class="k">if</span> <span class="n">restriction</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">" AND (</span><span class="si">%s</span><span class="s2">)"</span> <span class="o">%</span> <span class="n">restriction</span><span class="p">)</span>
     <span class="p">)</span>
 
     <span class="n">cur</span> <span class="o">=</span> <span class="p">(</span>
@@ -3904,7 +3904,7 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
     <span class="p">)</span>
     <span class="n">nkill</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">process</span> <span class="ow">in</span> <span class="n">cur</span><span class="p">:</span>
-        <span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;kill </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">process</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">])</span>
+        <span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"kill </span><span class="si">%d</span><span class="s2">"</span> <span class="o">%</span> <span class="n">process</span><span class="p">[</span><span class="s2">"id"</span><span class="p">])</span>
         <span class="n">nkill</span> <span class="o">+=</span> <span class="mi">1</span>
     <span class="k">return</span> <span class="n">nkill</span>
 </code></pre></div></td></tr></table></div>
@@ -4055,7 +4055,7 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

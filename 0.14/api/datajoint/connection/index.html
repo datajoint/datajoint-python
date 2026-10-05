@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3869,29 +3869,29 @@ the <code>conn</code> function that provides access to a persistent connection i
 <span class="normal">100</span>
 <span class="normal">101</span>
 <span class="normal">102</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">translate_query_error</span><span class="p">(</span><span class="n">client_error</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Take client error and original query and return the corresponding DataJoint exception.</span>
 
 <span class="sd">    :param client_error: the exception raised by the client interface</span>
 <span class="sd">    :param query: sql query with placeholders</span>
 <span class="sd">    :return: an instance of the corresponding subclass of datajoint.errors.DataJointError</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;type: </span><span class="si">{}</span><span class="s2">, args: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">client_error</span><span class="p">),</span> <span class="n">client_error</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
+<span class="sd">    """</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"type: </span><span class="si">{}</span><span class="s2">, args: </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">client_error</span><span class="p">),</span> <span class="n">client_error</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
 
     <span class="n">err</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span> <span class="o">=</span> <span class="n">client_error</span><span class="o">.</span><span class="n">args</span>
 
     <span class="c1"># Loss of connection errors</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;(0, &#39;&#39;)&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">err</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"(0, '')"</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">(</span>
-            <span class="s2">&quot;Server connection lost due to an interface error.&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span>
+            <span class="s2">"Server connection lost due to an interface error."</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">err</span> <span class="o">==</span> <span class="mi">2006</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">(</span><span class="s2">&quot;Connection timed out&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">(</span><span class="s2">"Connection timed out"</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">err</span> <span class="o">==</span> <span class="mi">2013</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">(</span><span class="s2">&quot;Server connection lost&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">(</span><span class="s2">"Server connection lost"</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
     <span class="c1"># Access errors</span>
     <span class="k">if</span> <span class="n">err</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1044</span><span class="p">,</span> <span class="mi">1142</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">AccessError</span><span class="p">(</span><span class="s2">&quot;Insufficient privileges.&quot;</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">query</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">AccessError</span><span class="p">(</span><span class="s2">"Insufficient privileges."</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">query</span><span class="p">)</span>
     <span class="c1"># Integrity errors</span>
     <span class="k">if</span> <span class="n">err</span> <span class="o">==</span> <span class="mi">1062</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">DuplicateError</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
@@ -4086,7 +4086,7 @@ datajoint prompts for the password.</p>
 <span class="normal">137</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">conn</span><span class="p">(</span>
     <span class="n">host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_fun</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_tls</span><span class="o">=</span><span class="kc">None</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Returns a persistent connection object to be shared by multiple modules.</span>
 <span class="sd">    If the connection is not yet established or reset=True, a new connection is set up.</span>
 <span class="sd">    If connection information is not provided, it is taken from config which takes the</span>
@@ -4101,19 +4101,19 @@ datajoint prompts for the password.</p>
 <span class="sd">    :param use_tls: TLS encryption option. Valid options are: True (required), False</span>
 <span class="sd">        (required no TLS), None (TLS preferred, default), dict (Manually specify values per</span>
 <span class="sd">        https://dev.mysql.com/doc/refman/5.7/en/connection-options.html#encrypted-connection-options).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="s2">&quot;connection&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">reset</span><span class="p">:</span>
-        <span class="n">host</span> <span class="o">=</span> <span class="n">host</span> <span class="k">if</span> <span class="n">host</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.host&quot;</span><span class="p">]</span>
-        <span class="n">user</span> <span class="o">=</span> <span class="n">user</span> <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.user&quot;</span><span class="p">]</span>
-        <span class="n">password</span> <span class="o">=</span> <span class="n">password</span> <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.password&quot;</span><span class="p">]</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="s2">"connection"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">reset</span><span class="p">:</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="n">host</span> <span class="k">if</span> <span class="n">host</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">"database.host"</span><span class="p">]</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">user</span> <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">"database.user"</span><span class="p">]</span>
+        <span class="n">password</span> <span class="o">=</span> <span class="n">password</span> <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">"database.password"</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">user</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Please enter DataJoint username: &quot;</span><span class="p">)</span>
+            <span class="n">user</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">"Please enter DataJoint username: "</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">password</span> <span class="o">=</span> <span class="n">getpass</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;Please enter DataJoint password: &quot;</span><span class="p">)</span>
+            <span class="n">password</span> <span class="o">=</span> <span class="n">getpass</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">"Please enter DataJoint password: "</span><span class="p">)</span>
         <span class="n">init_fun</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">init_fun</span> <span class="k">if</span> <span class="n">init_fun</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;connection.init_function&quot;</span><span class="p">]</span>
+            <span class="n">init_fun</span> <span class="k">if</span> <span class="n">init_fun</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">"connection.init_function"</span><span class="p">]</span>
         <span class="p">)</span>
-        <span class="n">use_tls</span> <span class="o">=</span> <span class="n">use_tls</span> <span class="k">if</span> <span class="n">use_tls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.use_tls&quot;</span><span class="p">]</span>
+        <span class="n">use_tls</span> <span class="o">=</span> <span class="n">use_tls</span> <span class="k">if</span> <span class="n">use_tls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s2">"database.use_tls"</span><span class="p">]</span>
         <span class="n">conn</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">Connection</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">init_fun</span><span class="p">,</span> <span class="n">use_tls</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">conn</span><span class="o">.</span><span class="n">connection</span>
 </code></pre></div></td></tr></table></div>
@@ -4175,7 +4175,7 @@ datajoint prompts for the password.</p>
 <span class="normal">159</span>
 <span class="normal">160</span>
 <span class="normal">161</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EmulatedCursor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;acts like a cursor&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""acts like a cursor"""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">data</span>
@@ -4623,7 +4623,7 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
 <span class="normal">433</span>
 <span class="normal">434</span>
 <span class="normal">435</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Connection</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A dj.Connection object manages a connection to a database server.</span>
 <span class="sd">    It also catalogues modules, schemas, tables, and their dependencies (foreign keys).</span>
 
@@ -4635,37 +4635,37 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
 <span class="sd">    :param port: port number</span>
 <span class="sd">    :param init_fun: connection initialization function (SQL)</span>
 <span class="sd">    :param use_tls: TLS encryption option</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init_fun</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_tls</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="n">host_input</span><span class="p">,</span> <span class="n">host</span> <span class="o">=</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">get_host_hook</span><span class="p">(</span><span class="n">host</span><span class="p">))</span>
-        <span class="k">if</span> <span class="s2">&quot;:&quot;</span> <span class="ow">in</span> <span class="n">host</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">":"</span> <span class="ow">in</span> <span class="n">host</span><span class="p">:</span>
             <span class="c1"># the port in the hostname overrides the port argument</span>
-            <span class="n">host</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+            <span class="n">host</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
             <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">port</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">port</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.port&quot;</span><span class="p">]</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"database.port"</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span> <span class="n">passwd</span><span class="o">=</span><span class="n">password</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">use_tls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">&quot;ssl&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">use_tls</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">use_tls</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;ssl&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">"ssl"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">use_tls</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">use_tls</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">"ssl"</span><span class="p">:</span> <span class="p">{}}</span>
             <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">&quot;ssl_input&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">use_tls</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">&quot;host_input&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">host_input</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">"ssl_input"</span><span class="p">]</span> <span class="o">=</span> <span class="n">use_tls</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">"host_input"</span><span class="p">]</span> <span class="o">=</span> <span class="n">host_input</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">init_fun</span> <span class="o">=</span> <span class="n">init_fun</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">connect_host_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_connected</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;DataJoint </span><span class="si">{version}</span><span class="s2"> connected to </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"DataJoint </span><span class="si">{version}</span><span class="s2"> connected to </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">version</span><span class="o">=</span><span class="n">__version__</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span>
                 <span class="p">)</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">connection_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT connection_id()&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT connection_id()"</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">(</span>
-                <span class="s2">&quot;Connection failed </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">)</span>
+                <span class="s2">"Connection failed </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">schemas</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
@@ -4675,58 +4675,58 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">conn_info</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">connected</span> <span class="o">=</span> <span class="s2">&quot;connected&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_connected</span> <span class="k">else</span> <span class="s2">&quot;disconnected&quot;</span>
-        <span class="k">return</span> <span class="s2">&quot;DataJoint connection (</span><span class="si">{connected}</span><span class="s2">) </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">connected</span> <span class="o">=</span> <span class="s2">"connected"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_connected</span> <span class="k">else</span> <span class="s2">"disconnected"</span>
+        <span class="k">return</span> <span class="s2">"DataJoint connection (</span><span class="si">{connected}</span><span class="s2">) </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">connected</span><span class="o">=</span><span class="n">connected</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connect to the database server.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Connect to the database server."""</span>
         <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
-            <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="s2">&quot;.*deprecated.*&quot;</span><span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="s2">".*deprecated.*"</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
                     <span class="n">init_command</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_fun</span><span class="p">,</span>
-                    <span class="n">sql_mode</span><span class="o">=</span><span class="s2">&quot;NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,&quot;</span>
-                    <span class="s2">&quot;STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY&quot;</span><span class="p">,</span>
-                    <span class="n">charset</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;connection.charset&quot;</span><span class="p">],</span>
+                    <span class="n">sql_mode</span><span class="o">=</span><span class="s2">"NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"</span>
+                    <span class="s2">"STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"</span><span class="p">,</span>
+                    <span class="n">charset</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">"connection.charset"</span><span class="p">],</span>
                     <span class="o">**</span><span class="p">{</span>
                         <span class="n">k</span><span class="p">:</span> <span class="n">v</span>
                         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                        <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ssl_input&quot;</span><span class="p">,</span> <span class="s2">&quot;host_input&quot;</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"ssl_input"</span><span class="p">,</span> <span class="s2">"host_input"</span><span class="p">]</span>
                     <span class="p">},</span>
                 <span class="p">)</span>
             <span class="k">except</span> <span class="n">client</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">InternalError</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
                     <span class="n">init_command</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_fun</span><span class="p">,</span>
-                    <span class="n">sql_mode</span><span class="o">=</span><span class="s2">&quot;NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,&quot;</span>
-                    <span class="s2">&quot;STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY&quot;</span><span class="p">,</span>
-                    <span class="n">charset</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;connection.charset&quot;</span><span class="p">],</span>
+                    <span class="n">sql_mode</span><span class="o">=</span><span class="s2">"NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"</span>
+                    <span class="s2">"STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"</span><span class="p">,</span>
+                    <span class="n">charset</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">"connection.charset"</span><span class="p">],</span>
                     <span class="o">**</span><span class="p">{</span>
                         <span class="n">k</span><span class="p">:</span> <span class="n">v</span>
                         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
-                            <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ssl_input&quot;</span><span class="p">,</span> <span class="s2">&quot;host_input&quot;</span><span class="p">]</span>
-                            <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">&quot;ssl&quot;</span>
-                            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">&quot;ssl_input&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span>
+                            <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"ssl_input"</span><span class="p">,</span> <span class="s2">"host_input"</span><span class="p">]</span>
+                            <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">"ssl"</span>
+                            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">"ssl_input"</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span>
                         <span class="p">)</span>
                     <span class="p">},</span>
                 <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">autocommit</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">set_query_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        When query_cache is not None, the connection switches into the query caching mode, which entails:</span>
 <span class="sd">        1. Only SELECT queries are allowed.</span>
-<span class="sd">        2. The results of queries are cached under the path indicated by dj.config[&#39;query_cache&#39;]</span>
+<span class="sd">        2. The results of queries are cached under the path indicated by dj.config['query_cache']</span>
 <span class="sd">        3. query_cache is a string that differentiates different cache states.</span>
 
 <span class="sd">        :param query_cache: a string to initialize the hash for query results</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span> <span class="o">=</span> <span class="n">query_cache</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">purge_query_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Purges all query cache.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Purges all query cache."""</span>
         <span class="k">if</span> <span class="p">(</span>
             <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">),</span> <span class="nb">str</span><span class="p">)</span>
             <span class="ow">and</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">cache_key</span><span class="p">])</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
@@ -4743,12 +4743,12 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
         <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">ping</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ping the connection or raises an exception if the connection is closed.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Ping the connection or raises an exception if the connection is closed."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">ping</span><span class="p">(</span><span class="n">reconnect</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_connected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return true if the object is connected to the database server.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return true if the object is connected to the database server."""</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">ping</span><span class="p">()</span>
         <span class="k">except</span><span class="p">:</span>
@@ -4761,7 +4761,7 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
             <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">suppress_warnings</span><span class="p">:</span>
                     <span class="c1"># suppress all warnings arising from underlying SQL library</span>
-                    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">)</span>
                 <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">client</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">Error</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">translate_query_error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
@@ -4769,7 +4769,7 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
     <span class="k">def</span><span class="w"> </span><span class="nf">query</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(),</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">suppress_warnings</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reconnect</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Execute the specified query and return the tuple generator (cursor).</span>
 
 <span class="sd">        :param query: SQL query</span>
@@ -4778,20 +4778,20 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
 <span class="sd">                        query results as dictionary.</span>
 <span class="sd">        :param suppress_warnings: If True, suppress all warnings arising from underlying query library</span>
 <span class="sd">        :param reconnect: when None, get from config, when True, attempt to reconnect if disconnected</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># check cache first:</span>
         <span class="n">use_query_cache</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">use_query_cache</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\s*(SELECT|SHOW)&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">use_query_cache</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\s*(SELECT|SHOW)"</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Only SELECT queries are allowed when query caching is on.&quot;</span>
+                <span class="s2">"Only SELECT queries are allowed when query caching is on."</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">use_query_cache</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]:</span>
                 <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Provide filepath dj.config[&#39;</span><span class="si">{</span><span class="n">cache_key</span><span class="si">}</span><span class="s2">&#39;] when using query caching.&quot;</span>
+                    <span class="sa">f</span><span class="s2">"Provide filepath dj.config['</span><span class="si">{</span><span class="n">cache_key</span><span class="si">}</span><span class="s2">'] when using query caching."</span>
                 <span class="p">)</span>
             <span class="n">hash_</span> <span class="o">=</span> <span class="n">uuid_from_buffer</span><span class="p">(</span>
-                <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span><span class="p">)</span> <span class="o">+</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;`\$\w+`&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+                <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span><span class="p">)</span> <span class="o">+</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"`\$\w+`"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">query</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
                 <span class="o">+</span> <span class="n">pack</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="n">cache_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">cache_key</span><span class="p">])</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">hash_</span><span class="p">)</span>
@@ -4803,8 +4803,8 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
                 <span class="k">return</span> <span class="n">EmulatedCursor</span><span class="p">(</span><span class="n">unpack</span><span class="p">(</span><span class="n">buffer</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">reconnect</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">reconnect</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.reconnect&quot;</span><span class="p">]</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Executing SQL:&quot;</span> <span class="o">+</span> <span class="n">query</span><span class="p">[:</span><span class="n">query_log_max_length</span><span class="p">])</span>
+            <span class="n">reconnect</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"database.reconnect"</span><span class="p">]</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Executing SQL:"</span> <span class="o">+</span> <span class="n">query</span><span class="p">[:</span><span class="n">query_log_max_length</span><span class="p">])</span>
         <span class="n">cursor_class</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">cursors</span><span class="o">.</span><span class="n">DictCursor</span> <span class="k">if</span> <span class="n">as_dict</span> <span class="k">else</span> <span class="n">client</span><span class="o">.</span><span class="n">cursors</span><span class="o">.</span><span class="n">Cursor</span>
         <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="n">cursor</span><span class="o">=</span><span class="n">cursor_class</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
@@ -4812,14 +4812,14 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
         <span class="k">except</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">reconnect</span><span class="p">:</span>
                 <span class="k">raise</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Reconnecting to MySQL server.&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Reconnecting to MySQL server."</span><span class="p">)</span>
             <span class="n">connect_host_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">cancel_transaction</span><span class="p">()</span>
                 <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">(</span>
-                    <span class="s2">&quot;Connection was lost during a transaction.&quot;</span>
+                    <span class="s2">"Connection was lost during a transaction."</span>
                 <span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Re-executing&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Re-executing"</span><span class="p">)</span>
             <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="n">cursor</span><span class="o">=</span><span class="n">cursor_class</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_execute_query</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">suppress_warnings</span><span class="p">)</span>
 
@@ -4831,52 +4831,52 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
         <span class="k">return</span> <span class="n">cursor</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: the user name and host name provided by the client to the server.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT user()&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT user()"</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
 
     <span class="c1"># ---------- transaction processing</span>
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">in_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: True if there is an open transaction.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_connected</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">start_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Starts a transaction error.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_transaction</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Nested connections are not supported.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;START TRANSACTION WITH CONSISTENT SNAPSHOT&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Nested connections are not supported."</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"START TRANSACTION WITH CONSISTENT SNAPSHOT"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Transaction started&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Transaction started"</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">cancel_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Cancels the current transaction and rolls back all changes made during the transaction.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;ROLLBACK&quot;</span><span class="p">)</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"ROLLBACK"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Transaction cancelled. Rolling back ...&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Transaction cancelled. Rolling back ..."</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">commit_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Commit all changes made during the transaction and close it.</span>
 
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;COMMIT&quot;</span><span class="p">)</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"COMMIT"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Transaction committed and closed.&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Transaction committed and closed."</span><span class="p">)</span>
 
     <span class="c1"># -------- context manager for transactions</span>
     <span class="nd">@property</span>
     <span class="nd">@contextmanager</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Context manager for transactions. Opens an transaction and closes it after the with statement.</span>
 <span class="sd">        If an error is caught during the transaction, the commits are automatically rolled back.</span>
 <span class="sd">        All errors are raised again.</span>
@@ -4885,7 +4885,7 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
 <span class="sd">        &gt;&gt;&gt; import datajoint as dj</span>
 <span class="sd">        &gt;&gt;&gt; with dj.conn().transaction as conn:</span>
 <span class="sd">        &gt;&gt;&gt;     # transaction is open here</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">start_transaction</span><span class="p">()</span>
             <span class="k">yield</span> <span class="bp">self</span>
@@ -4956,34 +4956,34 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
 <span class="normal">252</span>
 <span class="normal">253</span>
 <span class="normal">254</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Connect to the database server.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Connect to the database server."""</span>
     <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="s2">&quot;.*deprecated.*&quot;</span><span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="s2">".*deprecated.*"</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
                 <span class="n">init_command</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_fun</span><span class="p">,</span>
-                <span class="n">sql_mode</span><span class="o">=</span><span class="s2">&quot;NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,&quot;</span>
-                <span class="s2">&quot;STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY&quot;</span><span class="p">,</span>
-                <span class="n">charset</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;connection.charset&quot;</span><span class="p">],</span>
+                <span class="n">sql_mode</span><span class="o">=</span><span class="s2">"NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"</span>
+                <span class="s2">"STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"</span><span class="p">,</span>
+                <span class="n">charset</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">"connection.charset"</span><span class="p">],</span>
                 <span class="o">**</span><span class="p">{</span>
                     <span class="n">k</span><span class="p">:</span> <span class="n">v</span>
                     <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                    <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ssl_input&quot;</span><span class="p">,</span> <span class="s2">&quot;host_input&quot;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"ssl_input"</span><span class="p">,</span> <span class="s2">"host_input"</span><span class="p">]</span>
                 <span class="p">},</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="n">client</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">InternalError</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
                 <span class="n">init_command</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_fun</span><span class="p">,</span>
-                <span class="n">sql_mode</span><span class="o">=</span><span class="s2">&quot;NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,&quot;</span>
-                <span class="s2">&quot;STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY&quot;</span><span class="p">,</span>
-                <span class="n">charset</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;connection.charset&quot;</span><span class="p">],</span>
+                <span class="n">sql_mode</span><span class="o">=</span><span class="s2">"NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"</span>
+                <span class="s2">"STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"</span><span class="p">,</span>
+                <span class="n">charset</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">"connection.charset"</span><span class="p">],</span>
                 <span class="o">**</span><span class="p">{</span>
                     <span class="n">k</span><span class="p">:</span> <span class="n">v</span>
                     <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
-                        <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ssl_input&quot;</span><span class="p">,</span> <span class="s2">&quot;host_input&quot;</span><span class="p">]</span>
-                        <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">&quot;ssl&quot;</span>
-                        <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">&quot;ssl_input&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span>
+                        <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"ssl_input"</span><span class="p">,</span> <span class="s2">"host_input"</span><span class="p">]</span>
+                        <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">"ssl"</span>
+                        <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">[</span><span class="s2">"ssl_input"</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span>
                     <span class="p">)</span>
                 <span class="p">},</span>
             <span class="p">)</span>
@@ -5058,14 +5058,14 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
 <span class="normal">263</span>
 <span class="normal">264</span>
 <span class="normal">265</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_query_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    When query_cache is not None, the connection switches into the query caching mode, which entails:</span>
 <span class="sd">    1. Only SELECT queries are allowed.</span>
-<span class="sd">    2. The results of queries are cached under the path indicated by dj.config[&#39;query_cache&#39;]</span>
+<span class="sd">    2. The results of queries are cached under the path indicated by dj.config['query_cache']</span>
 <span class="sd">    3. query_cache is a string that differentiates different cache states.</span>
 
 <span class="sd">    :param query_cache: a string to initialize the hash for query results</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span> <span class="o">=</span> <span class="n">query_cache</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5103,7 +5103,7 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
 <span class="normal">273</span>
 <span class="normal">274</span>
 <span class="normal">275</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">purge_query_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Purges all query cache.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Purges all query cache."""</span>
     <span class="k">if</span> <span class="p">(</span>
         <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">),</span> <span class="nb">str</span><span class="p">)</span>
         <span class="ow">and</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">cache_key</span><span class="p">])</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
@@ -5141,7 +5141,7 @@ It also catalogues modules, schemas, tables, and their dependencies (foreign key
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">284</span>
 <span class="normal">285</span>
 <span class="normal">286</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">ping</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ping the connection or raises an exception if the connection is closed.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Ping the connection or raises an exception if the connection is closed."""</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">ping</span><span class="p">(</span><span class="n">reconnect</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5353,7 +5353,7 @@ query results as dictionary.</p>
 <span class="normal">370</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">query</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(),</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">suppress_warnings</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reconnect</span><span class="o">=</span><span class="kc">None</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Execute the specified query and return the tuple generator (cursor).</span>
 
 <span class="sd">    :param query: SQL query</span>
@@ -5362,20 +5362,20 @@ query results as dictionary.</p>
 <span class="sd">                    query results as dictionary.</span>
 <span class="sd">    :param suppress_warnings: If True, suppress all warnings arising from underlying query library</span>
 <span class="sd">    :param reconnect: when None, get from config, when True, attempt to reconnect if disconnected</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># check cache first:</span>
     <span class="n">use_query_cache</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">use_query_cache</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\s*(SELECT|SHOW)&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">use_query_cache</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\s*(SELECT|SHOW)"</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Only SELECT queries are allowed when query caching is on.&quot;</span>
+            <span class="s2">"Only SELECT queries are allowed when query caching is on."</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">use_query_cache</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Provide filepath dj.config[&#39;</span><span class="si">{</span><span class="n">cache_key</span><span class="si">}</span><span class="s2">&#39;] when using query caching.&quot;</span>
+                <span class="sa">f</span><span class="s2">"Provide filepath dj.config['</span><span class="si">{</span><span class="n">cache_key</span><span class="si">}</span><span class="s2">'] when using query caching."</span>
             <span class="p">)</span>
         <span class="n">hash_</span> <span class="o">=</span> <span class="n">uuid_from_buffer</span><span class="p">(</span>
-            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span><span class="p">)</span> <span class="o">+</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;`\$\w+`&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_query_cache</span><span class="p">)</span> <span class="o">+</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"`\$\w+`"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">query</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
             <span class="o">+</span> <span class="n">pack</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">cache_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">cache_key</span><span class="p">])</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">hash_</span><span class="p">)</span>
@@ -5387,8 +5387,8 @@ query results as dictionary.</p>
             <span class="k">return</span> <span class="n">EmulatedCursor</span><span class="p">(</span><span class="n">unpack</span><span class="p">(</span><span class="n">buffer</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="n">reconnect</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">reconnect</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.reconnect&quot;</span><span class="p">]</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Executing SQL:&quot;</span> <span class="o">+</span> <span class="n">query</span><span class="p">[:</span><span class="n">query_log_max_length</span><span class="p">])</span>
+        <span class="n">reconnect</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"database.reconnect"</span><span class="p">]</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Executing SQL:"</span> <span class="o">+</span> <span class="n">query</span><span class="p">[:</span><span class="n">query_log_max_length</span><span class="p">])</span>
     <span class="n">cursor_class</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">cursors</span><span class="o">.</span><span class="n">DictCursor</span> <span class="k">if</span> <span class="n">as_dict</span> <span class="k">else</span> <span class="n">client</span><span class="o">.</span><span class="n">cursors</span><span class="o">.</span><span class="n">Cursor</span>
     <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="n">cursor</span><span class="o">=</span><span class="n">cursor_class</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
@@ -5396,14 +5396,14 @@ query results as dictionary.</p>
     <span class="k">except</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">reconnect</span><span class="p">:</span>
             <span class="k">raise</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Reconnecting to MySQL server.&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Reconnecting to MySQL server."</span><span class="p">)</span>
         <span class="n">connect_host_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">cancel_transaction</span><span class="p">()</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">LostConnectionError</span><span class="p">(</span>
-                <span class="s2">&quot;Connection was lost during a transaction.&quot;</span>
+                <span class="s2">"Connection was lost during a transaction."</span>
             <span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Re-executing&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Re-executing"</span><span class="p">)</span>
         <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="n">cursor</span><span class="o">=</span><span class="n">cursor_class</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_execute_query</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">suppress_warnings</span><span class="p">)</span>
 
@@ -5467,10 +5467,10 @@ query results as dictionary.</p>
 <span class="normal">374</span>
 <span class="normal">375</span>
 <span class="normal">376</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    :return: the user name and host name provided by the client to the server.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT user()&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT user()"</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5556,14 +5556,14 @@ query results as dictionary.</p>
 <span class="normal">393</span>
 <span class="normal">394</span>
 <span class="normal">395</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">start_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Starts a transaction error.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_transaction</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Nested connections are not supported.&quot;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;START TRANSACTION WITH CONSISTENT SNAPSHOT&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Nested connections are not supported."</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"START TRANSACTION WITH CONSISTENT SNAPSHOT"</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Transaction started&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Transaction started"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5598,12 +5598,12 @@ query results as dictionary.</p>
 <span class="normal">401</span>
 <span class="normal">402</span>
 <span class="normal">403</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cancel_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Cancels the current transaction and rolls back all changes made during the transaction.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;ROLLBACK&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"ROLLBACK"</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Transaction cancelled. Rolling back ...&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Transaction cancelled. Rolling back ..."</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5639,13 +5639,13 @@ query results as dictionary.</p>
 <span class="normal">410</span>
 <span class="normal">411</span>
 <span class="normal">412</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">commit_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Commit all changes made during the transaction and close it.</span>
 
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;COMMIT&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"COMMIT"</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Transaction committed and closed.&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Transaction committed and closed."</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5842,7 +5842,7 @@ with dj.conn().transaction as conn:
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

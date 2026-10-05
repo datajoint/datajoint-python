@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3588,16 +3588,16 @@ way and saves the result in its <code>filtered_image</code> attribute.</p>
 <p>The class will be defined as follows.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">FilteredImage</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Computed</span><span class="p">):</span>
-     <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+     <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">     # Filtered image</span>
 <span class="s2">     -&gt; Image</span>
 <span class="s2">     ---</span>
 <span class="s2">     filtered_image : longblob</span>
-<span class="s2">     &quot;&quot;&quot;</span>
+<span class="s2">     """</span>
 
      <span class="k">def</span><span class="w"> </span><span class="nf">make</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-          <span class="n">img</span> <span class="o">=</span> <span class="p">(</span><span class="n">test</span><span class="o">.</span><span class="n">Image</span> <span class="o">&amp;</span> <span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">)</span>
-          <span class="n">key</span><span class="p">[</span><span class="s1">&#39;filtered_image&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">myfilter</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+          <span class="n">img</span> <span class="o">=</span> <span class="p">(</span><span class="n">test</span><span class="o">.</span><span class="n">Image</span> <span class="o">&amp;</span> <span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="s1">'image'</span><span class="p">)</span>
+          <span class="n">key</span><span class="p">[</span><span class="s1">'filtered_image'</span><span class="p">]</span> <span class="o">=</span> <span class="n">myfilter</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
           <span class="bp">self</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 </code></pre></div>
 <p>The <code>make</code> method receives one argument: the dict <code>key</code> containing the primary key
@@ -3796,7 +3796,7 @@ that the numbers of remaining and total entities are returned but not printed.</
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

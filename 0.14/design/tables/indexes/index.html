@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3557,11 +3557,11 @@ create additional indexes unless a suitable index already exists.</p>
 by the animal facility.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Mouse</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    mouse_id : int  # lab-specific ID</span>
 <span class="s2">    ---</span>
 <span class="s2">    tag_id : int  # animal facility ID</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 </code></pre></div>
 <p>In this case, searching for a mouse by <code>mouse_id</code> is much faster than by <code>tag_id</code>
 because <code>mouse_id</code> is a primary key, and is therefore indexed.</p>
@@ -3573,12 +3573,12 @@ the table declaration (below the primary key divide).</p>
 <p>Let’s redeclare the table with a unique index on <code>tag_id</code>.</p>
 <p><div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Mouse</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    mouse_id : int  # lab-specific ID</span>
 <span class="s2">    ---</span>
 <span class="s2">    tag_id : int  # animal facility ID</span>
 <span class="s2">    unique index (tag_id)</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 </code></pre></div>
 Now, searches with <code>mouse_id</code> and <code>tag_id</code> are similarly fast.</p>
 <h2 id="indexes-for-tables-with-multiple-primary-keys">Indexes for tables with multiple primary keys<a class="headerlink" href="#indexes-for-tables-with-multiple-primary-keys" title="Permanent link">&para;</a></h2>
@@ -3586,12 +3586,12 @@ Now, searches with <code>mouse_id</code> and <code>tag_id</code> are similarly f
 <code>rat_id</code> in a table <code>Rat</code>.</p>
 <p><div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Rat</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    lab_name : char(16)</span>
 <span class="s2">    rat_id : int unsigned # lab-specific ID</span>
 <span class="s2">    ---</span>
 <span class="s2">    date_of_birth = null : date</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 </code></pre></div>
 Note that despite the fact that <code>rat_id</code> is in the index, searches by <code>rat_id</code> alone are not
 helped by the index because it is not first in the index. This is similar to searching for
@@ -3606,7 +3606,7 @@ full-table scan and is inefficient.</p>
 <code>Rat</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Rat2</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    lab_name : char(16)</span>
 <span class="s2">    rat_id : int unsigned # lab-specific ID</span>
 <span class="s2">    ---</span>
@@ -3614,7 +3614,7 @@ full-table scan and is inefficient.</p>
 
 <span class="s2">    index(rat_id)</span>
 <span class="s2">    index(date_of_birth)</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 </code></pre></div>
 
 
@@ -3750,7 +3750,7 @@ full-table scan and is inefficient.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3825,9 +3825,9 @@
 <span class="normal">161</span>
 <span class="normal">162</span>
 <span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">JobTable</span><span class="p">(</span><span class="n">Table</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A base table with no definition. Allows reserving jobs</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conn</span><span class="p">,</span> <span class="n">database</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="o">=</span> <span class="n">database</span>
@@ -3839,20 +3839,20 @@
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_support</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">full_table_name</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;    # job reservation table for `</span><span class="si">{database}</span><span class="s2">`</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_definition</span> <span class="o">=</span> <span class="s2">"""    # job reservation table for `</span><span class="si">{database}</span><span class="s2">`</span>
 <span class="s2">        table_name  :varchar(255)  # className of the table</span>
 <span class="s2">        key_hash  :char(32)  # key hash</span>
 <span class="s2">        ---</span>
-<span class="s2">        status  :enum(&#39;reserved&#39;,&#39;error&#39;,&#39;ignore&#39;)  # if tuple is missing, the job is available</span>
+<span class="s2">        status  :enum('reserved','error','ignore')  # if tuple is missing, the job is available</span>
 <span class="s2">        key=null  :blob  # structure containing the key</span>
-<span class="s2">        error_message=&quot;&quot;  :varchar(</span><span class="si">{error_message_length}</span><span class="s2">)  # error message returned if failed</span>
+<span class="s2">        error_message=""  :varchar(</span><span class="si">{error_message_length}</span><span class="s2">)  # error message returned if failed</span>
 <span class="s2">        error_stack=null  :mediumblob  # error stack if failed</span>
-<span class="s2">        user=&quot;&quot; :varchar(255) # database user</span>
-<span class="s2">        host=&quot;&quot;  :varchar(255)  # system hostname</span>
+<span class="s2">        user="" :varchar(255) # database user</span>
+<span class="s2">        host=""  :varchar(255)  # system hostname</span>
 <span class="s2">        pid=0  :int unsigned  # system process id</span>
 <span class="s2">        connection_id = 0  : bigint unsigned          # connection_id()</span>
 <span class="s2">        timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp</span>
-<span class="s2">        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+<span class="s2">        """</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">database</span><span class="o">=</span><span class="n">database</span><span class="p">,</span> <span class="n">error_message_length</span><span class="o">=</span><span class="n">ERROR_MESSAGE_LENGTH</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_declared</span><span class="p">:</span>
@@ -3865,29 +3865,29 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">table_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;~jobs&quot;</span>
+        <span class="k">return</span> <span class="s2">"~jobs"</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;bypass interactive prompts and dependencies&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""bypass interactive prompts and dependencies"""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delete_quick</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">drop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;bypass interactive prompts and dependencies&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""bypass interactive prompts and dependencies"""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">drop_quick</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">reserve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Reserve a job for computation.  When a job is reserved, the job table contains an entry for the</span>
 <span class="sd">        job key, identified by its hash. When jobs are completed, the entry is removed.</span>
 
 <span class="sd">        :param table_name: `database`.`table_name`</span>
-<span class="sd">        :param key: the dict of the job&#39;s primary key</span>
+<span class="sd">        :param key: the dict of the job's primary key</span>
 <span class="sd">        :return: True if reserved job successfully. False = the jobs is already taken</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">job</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span>
             <span class="n">key_hash</span><span class="o">=</span><span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-            <span class="n">status</span><span class="o">=</span><span class="s2">&quot;reserved&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="s2">"reserved"</span><span class="p">,</span>
             <span class="n">host</span><span class="o">=</span><span class="n">platform</span><span class="o">.</span><span class="n">node</span><span class="p">(),</span>
             <span class="n">pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span>
             <span class="n">connection_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connection_id</span><span class="p">,</span>
@@ -3902,23 +3902,23 @@
         <span class="k">return</span> <span class="kc">True</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">ignore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Set a job to be ignored for computation.  When a job is ignored, the job table contains an entry for the</span>
-<span class="sd">        job key, identified by its hash, with status &quot;ignore&quot;.</span>
+<span class="sd">        job key, identified by its hash, with status "ignore".</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">        table_name:</span>
 <span class="sd">            Table name (str) - `database`.`table_name`</span>
 <span class="sd">        key:</span>
-<span class="sd">            The dict of the job&#39;s primary key</span>
+<span class="sd">            The dict of the job's primary key</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            True if ignore job successfully. False = the jobs is already taken</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">job</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span>
             <span class="n">key_hash</span><span class="o">=</span><span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-            <span class="n">status</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">,</span>
             <span class="n">host</span><span class="o">=</span><span class="n">platform</span><span class="o">.</span><span class="n">node</span><span class="p">(),</span>
             <span class="n">pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span>
             <span class="n">connection_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connection_id</span><span class="p">,</span>
@@ -3933,25 +3933,25 @@
         <span class="k">return</span> <span class="kc">True</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">complete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Log a completed job.  When a job is completed, its reservation entry is deleted.</span>
 
 <span class="sd">        :param table_name: `database`.`table_name`</span>
-<span class="sd">        :param key: the dict of the job&#39;s primary key</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        :param key: the dict of the job's primary key</span>
+<span class="sd">        """</span>
         <span class="n">job_key</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span> <span class="n">key_hash</span><span class="o">=</span><span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
         <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="n">job_key</span><span class="p">)</span><span class="o">.</span><span class="n">delete_quick</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">error_message</span><span class="p">,</span> <span class="n">error_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Log an error message.  The job reservation is replaced with an error entry.</span>
 <span class="sd">        if an error occurs, leave an entry describing the problem</span>
 
 <span class="sd">        :param table_name: `database`.`table_name`</span>
-<span class="sd">        :param key: the dict of the job&#39;s primary key</span>
+<span class="sd">        :param key: the dict of the job's primary key</span>
 <span class="sd">        :param error_message: string error message</span>
 <span class="sd">        :param error_stack: stack trace</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">error_message</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">ERROR_MESSAGE_LENGTH</span><span class="p">:</span>
             <span class="n">error_message</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">error_message</span><span class="p">[:</span> <span class="n">ERROR_MESSAGE_LENGTH</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">TRUNCATION_APPENDIX</span><span class="p">)]</span>
@@ -3962,7 +3962,7 @@
                 <span class="nb">dict</span><span class="p">(</span>
                     <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span>
                     <span class="n">key_hash</span><span class="o">=</span><span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-                    <span class="n">status</span><span class="o">=</span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
+                    <span class="n">status</span><span class="o">=</span><span class="s2">"error"</span><span class="p">,</span>
                     <span class="n">host</span><span class="o">=</span><span class="n">platform</span><span class="o">.</span><span class="n">node</span><span class="p">(),</span>
                     <span class="n">pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span>
                     <span class="n">connection_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connection_id</span><span class="p">,</span>
@@ -4006,7 +4006,7 @@
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">57</span>
 <span class="normal">58</span>
 <span class="normal">59</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;bypass interactive prompts and dependencies&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""bypass interactive prompts and dependencies"""</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">delete_quick</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -4038,7 +4038,7 @@
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">61</span>
 <span class="normal">62</span>
 <span class="normal">63</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">drop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;bypass interactive prompts and dependencies&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""bypass interactive prompts and dependencies"""</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">drop_quick</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -4160,18 +4160,18 @@ job key, identified by its hash. When jobs are completed, the entry is removed.<
 <span class="normal">87</span>
 <span class="normal">88</span>
 <span class="normal">89</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reserve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Reserve a job for computation.  When a job is reserved, the job table contains an entry for the</span>
 <span class="sd">    job key, identified by its hash. When jobs are completed, the entry is removed.</span>
 
 <span class="sd">    :param table_name: `database`.`table_name`</span>
-<span class="sd">    :param key: the dict of the job&#39;s primary key</span>
+<span class="sd">    :param key: the dict of the job's primary key</span>
 <span class="sd">    :return: True if reserved job successfully. False = the jobs is already taken</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">job</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span>
         <span class="n">key_hash</span><span class="o">=</span><span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-        <span class="n">status</span><span class="o">=</span><span class="s2">&quot;reserved&quot;</span><span class="p">,</span>
+        <span class="n">status</span><span class="o">=</span><span class="s2">"reserved"</span><span class="p">,</span>
         <span class="n">host</span><span class="o">=</span><span class="n">platform</span><span class="o">.</span><span class="n">node</span><span class="p">(),</span>
         <span class="n">pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span>
         <span class="n">connection_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connection_id</span><span class="p">,</span>
@@ -4249,23 +4249,23 @@ key:
 <span class="normal">118</span>
 <span class="normal">119</span>
 <span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">ignore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Set a job to be ignored for computation.  When a job is ignored, the job table contains an entry for the</span>
-<span class="sd">    job key, identified by its hash, with status &quot;ignore&quot;.</span>
+<span class="sd">    job key, identified by its hash, with status "ignore".</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">    table_name:</span>
 <span class="sd">        Table name (str) - `database`.`table_name`</span>
 <span class="sd">    key:</span>
-<span class="sd">        The dict of the job&#39;s primary key</span>
+<span class="sd">        The dict of the job's primary key</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        True if ignore job successfully. False = the jobs is already taken</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">job</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span>
         <span class="n">key_hash</span><span class="o">=</span><span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-        <span class="n">status</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span>
+        <span class="n">status</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">,</span>
         <span class="n">host</span><span class="o">=</span><span class="n">platform</span><span class="o">.</span><span class="n">node</span><span class="p">(),</span>
         <span class="n">pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span>
         <span class="n">connection_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connection_id</span><span class="p">,</span>
@@ -4359,12 +4359,12 @@ key:
 <span class="normal">128</span>
 <span class="normal">129</span>
 <span class="normal">130</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">complete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Log a completed job.  When a job is completed, its reservation entry is deleted.</span>
 
 <span class="sd">    :param table_name: `database`.`table_name`</span>
-<span class="sd">    :param key: the dict of the job&#39;s primary key</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    :param key: the dict of the job's primary key</span>
+<span class="sd">    """</span>
     <span class="n">job_key</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span> <span class="n">key_hash</span><span class="o">=</span><span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
     <span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="n">job_key</span><span class="p">)</span><span class="o">.</span><span class="n">delete_quick</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
@@ -4502,15 +4502,15 @@ if an error occurs, leave an entry describing the problem</p>
 <span class="normal">161</span>
 <span class="normal">162</span>
 <span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">error_message</span><span class="p">,</span> <span class="n">error_stack</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Log an error message.  The job reservation is replaced with an error entry.</span>
 <span class="sd">    if an error occurs, leave an entry describing the problem</span>
 
 <span class="sd">    :param table_name: `database`.`table_name`</span>
-<span class="sd">    :param key: the dict of the job&#39;s primary key</span>
+<span class="sd">    :param key: the dict of the job's primary key</span>
 <span class="sd">    :param error_message: string error message</span>
 <span class="sd">    :param error_stack: stack trace</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">error_message</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">ERROR_MESSAGE_LENGTH</span><span class="p">:</span>
         <span class="n">error_message</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">error_message</span><span class="p">[:</span> <span class="n">ERROR_MESSAGE_LENGTH</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">TRUNCATION_APPENDIX</span><span class="p">)]</span>
@@ -4521,7 +4521,7 @@ if an error occurs, leave an entry describing the problem</p>
             <span class="nb">dict</span><span class="p">(</span>
                 <span class="n">table_name</span><span class="o">=</span><span class="n">table_name</span><span class="p">,</span>
                 <span class="n">key_hash</span><span class="o">=</span><span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-                <span class="n">status</span><span class="o">=</span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="s2">"error"</span><span class="p">,</span>
                 <span class="n">host</span><span class="o">=</span><span class="n">platform</span><span class="o">.</span><span class="n">node</span><span class="p">(),</span>
                 <span class="n">pid</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span>
                 <span class="n">connection_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connection_id</span><span class="p">,</span>
@@ -4690,7 +4690,7 @@ if an error occurs, leave an entry describing the problem</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

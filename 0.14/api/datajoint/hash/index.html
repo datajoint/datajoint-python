@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3598,11 +3598,11 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
 <span class="normal">14</span>
 <span class="normal">15</span>
 <span class="normal">16</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">key_hash</span><span class="p">(</span><span class="n">mapping</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    32-byte hash of the mapping&#39;s key values sorted by the key name.</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    32-byte hash of the mapping's key values sorted by the key name.</span>
 <span class="sd">    This is often used to convert a long primary key value into a shorter hash.</span>
 <span class="sd">    For example, the JobTable in datajoint.jobs uses this function to hash the primary key of autopopulated tables.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">hashed</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">mapping</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
         <span class="n">hashed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
@@ -3622,7 +3622,7 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
 
 
 <h2 id="datajoint.hash.uuid_from_stream" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">uuid_from_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_string</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">uuid_from_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_string</span><span class="o">=</span><span class="s1">''</span><span class="p">)</span></code>
 
 <a href="#datajoint.hash.uuid_from_stream" class="headerlink" title="Permanent link">&para;</a></h2>
 
@@ -3669,12 +3669,12 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
 <span class="normal">28</span>
 <span class="normal">29</span>
 <span class="normal">30</span>
-<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">uuid_from_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_string</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="normal">31</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">uuid_from_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_string</span><span class="o">=</span><span class="s2">""</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    :return: 16-byte digest of stream data</span>
 <span class="sd">    :stream: stream object or open file handle</span>
 <span class="sd">    :init_string: string to initialize the checksum</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">hashed</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="n">init_string</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
     <span class="n">chunk</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="n">chunk_size</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">14</span>
@@ -3830,7 +3830,7 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

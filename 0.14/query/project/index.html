@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3571,14 +3571,14 @@ Any attribute can be renamed, including primary key attributes.</p>
 <em>stimulus</em>, and <em>behavior</em>.
 The primary key attributes are in bold.</p>
 <p>Then</p>
-<div class="highlight"><pre><span></span><code><span class="n">tab</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">animal</span><span class="o">=</span><span class="s1">&#39;mouse&#39;</span><span class="p">,</span> <span class="s1">&#39;stimulus&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">tab</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">animal</span><span class="o">=</span><span class="s1">'mouse'</span><span class="p">,</span> <span class="s1">'stimulus'</span><span class="p">)</span>
 </code></pre></div>
 <p>will have attributes <strong>animal</strong>, <strong>session</strong>, and <em>stimulus</em>.</p>
 <p>Renaming is often used to control the outcome of a <a href="../join/">join</a>.
 For example, let <code>tab</code> have attributes <strong>slice</strong>, and <strong>cell</strong>.
 Then <code>tab * tab</code> will simply yield <code>tab</code>.
 However,</p>
-<div class="highlight"><pre><span></span><code><span class="n">tab</span> <span class="o">*</span> <span class="n">tab</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">other</span><span class="o">=</span><span class="s1">&#39;cell&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">tab</span> <span class="o">*</span> <span class="n">tab</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">other</span><span class="o">=</span><span class="s1">'cell'</span><span class="p">)</span>
 </code></pre></div>
 <p>yields all ordered pairs of all cells in each slice.</p>
 <h2 id="calculations">Calculations<a class="headerlink" href="#calculations" title="Permanent link">&para;</a></h2>
@@ -3587,7 +3587,7 @@ existing ones.</p>
 <p>For example, let <code>tab</code> have attributes <code>mouse</code>, <code>scan</code>, <code>surface_z</code>, and <code>scan_z</code>.
 To obtain the new attribute <code>depth</code> computed as <code>scan_z - surface_z</code> and then to
 restrict to <code>depth &gt; 500</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">tab</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">depth</span><span class="o">=</span><span class="s1">&#39;scan_z-surface_z&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="s1">&#39;depth &gt; 500&#39;</span>
+<div class="highlight"><pre><span></span><code><span class="n">tab</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">depth</span><span class="o">=</span><span class="s1">'scan_z-surface_z'</span><span class="p">)</span> <span class="o">&amp;</span> <span class="s1">'depth &gt; 500'</span>
 </code></pre></div>
 <p>Calculations are passed to SQL and are not parsed by DataJoint.
 For available functions, you may refer to the
@@ -3726,7 +3726,7 @@ For available functions, you may refer to the
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

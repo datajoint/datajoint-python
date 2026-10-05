@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -4100,35 +4100,35 @@ must define the property <code>key_source</code>, and must define the callback m
 <span class="normal">476</span>
 <span class="normal">477</span>
 <span class="normal">478</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AutoPopulate</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    AutoPopulate is a mixin class that adds the method populate() to a Table class.</span>
 <span class="sd">    Auto-populated tables must inherit from both Table and AutoPopulate,</span>
 <span class="sd">    must define the property `key_source`, and must define the callback method `make`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">_key_source</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">_allow_insert</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">key_source</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: the query expression that yields primary key values to be passed,</span>
 <span class="sd">        sequentially, to the ``make`` method when populate() is called.</span>
 <span class="sd">        The default value is the join of the parent tables references from the primary key.</span>
 <span class="sd">        Subclasses may override they key_source to change the scope or the granularity</span>
 <span class="sd">        of the make calls.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_rename_attributes</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">props</span><span class="p">):</span>
             <span class="k">return</span> <span class="p">(</span>
                 <span class="n">table</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
                     <span class="o">**</span><span class="p">{</span>
                         <span class="n">attr</span><span class="p">:</span> <span class="n">ref</span>
-                        <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">props</span><span class="p">[</span><span class="s2">&quot;attr_map&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                        <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">props</span><span class="p">[</span><span class="s2">"attr_map"</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
                         <span class="k">if</span> <span class="n">attr</span> <span class="o">!=</span> <span class="n">ref</span>
                     <span class="p">}</span>
                 <span class="p">)</span>
-                <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">&quot;aliased&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">"aliased"</span><span class="p">]</span>
                 <span class="k">else</span> <span class="n">table</span><span class="o">.</span><span class="n">proj</span><span class="p">()</span>
             <span class="p">)</span>
 
@@ -4138,8 +4138,8 @@ must define the property <code>key_source</code>, and must define the callback m
             <span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">parents</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;A table must have dependencies &quot;</span>
-                    <span class="s2">&quot;from its primary key for auto-populate to work&quot;</span>
+                    <span class="s2">"A table must have dependencies "</span>
+                    <span class="s2">"from its primary key for auto-populate to work"</span>
                 <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_key_source</span> <span class="o">=</span> <span class="n">_rename_attributes</span><span class="p">(</span><span class="o">*</span><span class="n">parents</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
@@ -4147,7 +4147,7 @@ must define the property <code>key_source</code>, and must define the callback m
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key_source</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">make</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        This method must be implemented by derived classes to perform automated computation.</span>
 <span class="sd">        The method must implement the following three steps:</span>
 
@@ -4192,17 +4192,17 @@ must define the property <code>key_source</code>, and must define the callback m
 <span class="sd">        :param kwargs: Keyword arguments passed from populate(make_kwargs=...).</span>
 <span class="sd">            These are passed to make_fetch for the tripartite pattern.</span>
 <span class="sd">        :raises NotImplementedError: If the derived class does not implement the required methods.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
-            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;make_fetch&quot;</span><span class="p">)</span>
-            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;make_insert&quot;</span><span class="p">)</span>
-            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;make_compute&quot;</span><span class="p">)</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"make_fetch"</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"make_insert"</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"make_compute"</span><span class="p">)</span>
         <span class="p">):</span>
             <span class="c1"># user must implement `make`</span>
             <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-                <span class="s2">&quot;Subclasses of AutoPopulate must implement the method `make` &quot;</span>
-                <span class="s2">&quot;or (`make_fetch` + `make_compute` + `make_insert`)&quot;</span>
+                <span class="s2">"Subclasses of AutoPopulate must implement the method `make` "</span>
+                <span class="s2">"or (`make_fetch` + `make_compute` + `make_insert`)"</span>
             <span class="p">)</span>
 
         <span class="c1"># User has implemented `_fetch`, `_compute`, and `_insert` methods instead</span>
@@ -4223,29 +4223,29 @@ must define the property <code>key_source</code>, and must define the callback m
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">target</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: table to be populated.</span>
 <span class="sd">        In the typical case, dj.AutoPopulate is mixed into a dj.Table class by</span>
 <span class="sd">        inheritance and the target is self.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_job_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :param key:  they key returned for the job from the key source</span>
 <span class="sd">        :return: the dict to use to generate the job reservation hash</span>
 <span class="sd">        This method allows subclasses to control the job reservation granularity.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">key</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_jobs_to_do</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restrictions</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: the query yielding the keys to be computed (derived from self.key_source)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">restriction</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Cannot call populate on a restricted table. &quot;</span>
-                <span class="s2">&quot;Instead, pass conditions to populate() as arguments.&quot;</span>
+                <span class="s2">"Cannot call populate on a restricted table. "</span>
+                <span class="s2">"Instead, pass conditions to populate() as arguments."</span>
             <span class="p">)</span>
         <span class="n">todo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">key_source</span>
 
@@ -4254,13 +4254,13 @@ must define the property <code>key_source</code>, and must define the callback m
             <span class="n">todo</span> <span class="o">=</span> <span class="n">todo</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">todo</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Invalid key_source value&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Invalid key_source value"</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># check if target lacks any attributes from the primary key of key_source</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The populate target lacks attribute </span><span class="si">%s</span><span class="s2"> &quot;</span>
-                <span class="s2">&quot;from the primary key of key_source&quot;</span>
+                <span class="s2">"The populate target lacks attribute </span><span class="si">%s</span><span class="s2"> "</span>
+                <span class="s2">"from the primary key of key_source"</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span>
                     <span class="n">name</span>
                     <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">todo</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">primary_key</span>
@@ -4278,14 +4278,14 @@ must define the property <code>key_source</code>, and must define the callback m
         <span class="n">suppress_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">return_exception_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">reserve_jobs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">order</span><span class="o">=</span><span class="s2">&quot;original&quot;</span><span class="p">,</span>
+        <span class="n">order</span><span class="o">=</span><span class="s2">"original"</span><span class="p">,</span>
         <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">max_calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">display_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">processes</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
         <span class="n">make_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        ``table.populate()`` calls ``table.make(key)`` for every primary key in</span>
 <span class="sd">        ``self.key_source`` for which there is not already a tuple in table.</span>
 
@@ -4296,7 +4296,7 @@ must define the property <code>key_source</code>, and must define the callback m
 <span class="sd">        :param suppress_errors: if True, do not terminate execution.</span>
 <span class="sd">        :param return_exception_objects: return error objects instead of just error messages</span>
 <span class="sd">        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion</span>
-<span class="sd">        :param order: &quot;original&quot;|&quot;reverse&quot;|&quot;random&quot;  - the order of execution</span>
+<span class="sd">        :param order: "original"|"reverse"|"random"  - the order of execution</span>
 <span class="sd">        :param limit: if not None, check at most this many keys</span>
 <span class="sd">        :param max_calls: if not None, populate at most this many keys</span>
 <span class="sd">        :param display_progress: if True, report progress_bar</span>
@@ -4306,16 +4306,16 @@ must define the property <code>key_source</code>, and must define the callback m
 <span class="sd">            specified within the pipeline e.g. using a `dj.Lookup` table.</span>
 <span class="sd">        :type make_kwargs: dict, optional</span>
 <span class="sd">        :return: a dict with two keys</span>
-<span class="sd">            &quot;success_count&quot;: the count of successful ``make()`` calls in this ``populate()`` call</span>
-<span class="sd">            &quot;error_list&quot;: the error list that is filled if `suppress_errors` is True</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">            "success_count": the count of successful ``make()`` calls in this ``populate()`` call</span>
+<span class="sd">            "error_list": the error list that is filled if `suppress_errors` is True</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">in_transaction</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Populate cannot be called during a transaction.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Populate cannot be called during a transaction."</span><span class="p">)</span>
 
-        <span class="n">valid_order</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;original&quot;</span><span class="p">,</span> <span class="s2">&quot;reverse&quot;</span><span class="p">,</span> <span class="s2">&quot;random&quot;</span><span class="p">]</span>
+        <span class="n">valid_order</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"original"</span><span class="p">,</span> <span class="s2">"reverse"</span><span class="p">,</span> <span class="s2">"random"</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">order</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_order</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The order argument must be one of </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">valid_order</span><span class="p">)</span>
+                <span class="s2">"The order argument must be one of </span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">valid_order</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="n">jobs</span> <span class="o">=</span> <span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">schemas</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">database</span><span class="p">]</span><span class="o">.</span><span class="n">jobs</span> <span class="k">if</span> <span class="n">reserve_jobs</span> <span class="k">else</span> <span class="kc">None</span>
@@ -4324,31 +4324,31 @@ must define the property <code>key_source</code>, and must define the callback m
         <span class="k">if</span> <span class="n">reserve_jobs</span><span class="p">:</span>
             <span class="c1"># Define a signal handler for SIGTERM</span>
             <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Populate terminated by SIGTERM&quot;</span><span class="p">)</span>
-                <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;SIGTERM received&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Populate terminated by SIGTERM"</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">"SIGTERM received"</span><span class="p">)</span>
 
             <span class="n">old_handler</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">keys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">keys</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_jobs_to_do</span><span class="p">(</span><span class="n">restrictions</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span>
-                <span class="s2">&quot;KEY&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span>
+                <span class="s2">"KEY"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span>
             <span class="p">)</span>
 
-        <span class="c1"># exclude &quot;error&quot;, &quot;ignore&quot; or &quot;reserved&quot; jobs</span>
+        <span class="c1"># exclude "error", "ignore" or "reserved" jobs</span>
         <span class="k">if</span> <span class="n">reserve_jobs</span><span class="p">:</span>
             <span class="n">exclude_key_hashes</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">jobs</span>
-                <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;table_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">}</span>
-                <span class="o">&amp;</span> <span class="s1">&#39;status in (&quot;error&quot;, &quot;ignore&quot;, &quot;reserved&quot;)&#39;</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;key_hash&quot;</span><span class="p">)</span>
+                <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"table_name"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">}</span>
+                <span class="o">&amp;</span> <span class="s1">'status in ("error", "ignore", "reserved")'</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"key_hash"</span><span class="p">)</span>
             <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span> <span class="k">if</span> <span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_key_hashes</span><span class="p">]</span>
 
-        <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;reverse&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">"reverse"</span><span class="p">:</span>
             <span class="n">keys</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
-        <span class="k">elif</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;random&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">"random"</span><span class="p">:</span>
             <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
 
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="si">%d</span><span class="s2"> keys to populate&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Found </span><span class="si">%d</span><span class="s2"> keys to populate"</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">))</span>
 
         <span class="n">keys</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[:</span><span class="n">max_calls</span><span class="p">]</span>
         <span class="n">nkeys</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
@@ -4387,7 +4387,7 @@ must define the property <code>key_source</code>, and must define the callback m
                         <span class="n">processes</span><span class="p">,</span> <span class="n">_initialize_populate</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">populate_kwargs</span><span class="p">)</span>
                     <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">,</span>
                     <span class="p">(</span>
-                        <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processes: &quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">nkeys</span><span class="p">)</span>
+                        <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">"Processes: "</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">nkeys</span><span class="p">)</span>
                         <span class="k">if</span> <span class="n">display_progress</span>
                         <span class="k">else</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">nullcontext</span><span class="p">()</span>
                     <span class="p">)</span> <span class="k">as</span> <span class="n">progress_bar</span><span class="p">,</span>
@@ -4408,14 +4408,14 @@ must define the property <code>key_source</code>, and must define the callback m
             <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">old_handler</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;success_count&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">success_list</span><span class="p">),</span>
-            <span class="s2">&quot;error_list&quot;</span><span class="p">:</span> <span class="n">error_list</span><span class="p">,</span>
+            <span class="s2">"success_count"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">success_list</span><span class="p">),</span>
+            <span class="s2">"error_list"</span><span class="p">:</span> <span class="n">error_list</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_populate1</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">suppress_errors</span><span class="p">,</span> <span class="n">return_exception_objects</span><span class="p">,</span> <span class="n">make_kwargs</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        populates table for one source key, calling self.make inside a transaction.</span>
 <span class="sd">        :param jobs: the jobs table or None if not reserve_jobs</span>
 <span class="sd">        :param key: dict specifying job to populate</span>
@@ -4423,9 +4423,9 @@ must define the property <code>key_source</code>, and must define the callback m
 <span class="sd">        :param return_exception_objects: if True, errors must be returned as objects</span>
 <span class="sd">        :return: (key, error) when suppress_errors=True,</span>
 <span class="sd">            True if successfully invoke one `make()` call, otherwise False</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># use the legacy `_make_tuples` callback.</span>
-        <span class="n">make</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_tuples</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_make_tuples&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">make</span>
+        <span class="n">make</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_tuples</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_make_tuples"</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">make</span>
 
         <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">jobs</span><span class="o">.</span><span class="n">reserve</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
@@ -4444,7 +4444,7 @@ must define the property <code>key_source</code>, and must define the callback m
                 <span class="n">jobs</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
             <span class="k">return</span> <span class="kc">False</span>
 
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">_allow_insert</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">try</span><span class="p">:</span>
@@ -4469,7 +4469,7 @@ must define the property <code>key_source</code>, and must define the callback m
                     <span class="p">]</span>
                 <span class="p">):</span>  <span class="c1"># raise error if fetched data has changed</span>
                     <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                        <span class="s2">&quot;Referential integrity failed! The `make_fetch` data has changed&quot;</span>
+                        <span class="s2">"Referential integrity failed! The `make_fetch` data has changed"</span>
                     <span class="p">)</span>
                 <span class="n">gen</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">computed_result</span><span class="p">)</span>  <span class="c1"># insert</span>
 
@@ -4478,12 +4478,12 @@ must define the property <code>key_source</code>, and must define the callback m
                 <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">cancel_transaction</span><span class="p">()</span>
             <span class="k">except</span> <span class="n">LostConnectionError</span><span class="p">:</span>
                 <span class="k">pass</span>
-            <span class="n">error_message</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{exception}{msg}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">error_message</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{exception}{msg}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">exception</span><span class="o">=</span><span class="n">error</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
-                <span class="n">msg</span><span class="o">=</span><span class="s2">&quot;: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="n">msg</span><span class="o">=</span><span class="s2">": "</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Error making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">error_message</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Error making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">error_message</span><span class="si">}</span><span class="s2">"</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="c1"># show error name and error message (if any)</span>
@@ -4500,7 +4500,7 @@ must define the property <code>key_source</code>, and must define the callback m
                 <span class="k">return</span> <span class="n">key</span><span class="p">,</span> <span class="n">error</span> <span class="k">if</span> <span class="n">return_exception_objects</span> <span class="k">else</span> <span class="n">error_message</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">commit_transaction</span><span class="p">()</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Success making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Success making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">jobs</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
             <span class="k">return</span> <span class="kc">True</span>
@@ -4508,23 +4508,23 @@ must define the property <code>key_source</code>, and must define the callback m
             <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">_allow_insert</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Report the progress of populating the table.</span>
 <span class="sd">        :return: (remaining, total) -- numbers of tuples to be populated</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">todo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jobs_to_do</span><span class="p">(</span><span class="n">restrictions</span><span class="p">)</span>
         <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">todo</span><span class="p">)</span>
         <span class="n">remaining</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">todo</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">display</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">%-20s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
-                <span class="o">+</span> <span class="s2">&quot; Completed </span><span class="si">%d</span><span class="s2"> of </span><span class="si">%d</span><span class="s2"> (</span><span class="si">%2.1f%%</span><span class="s2">)   </span><span class="si">%s</span><span class="s2">&quot;</span>
+                <span class="s2">"</span><span class="si">%-20s</span><span class="s2">"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+                <span class="o">+</span> <span class="s2">" Completed </span><span class="si">%d</span><span class="s2"> of </span><span class="si">%d</span><span class="s2"> (</span><span class="si">%2.1f%%</span><span class="s2">)   </span><span class="si">%s</span><span class="s2">"</span>
                 <span class="o">%</span> <span class="p">(</span>
                     <span class="n">total</span> <span class="o">-</span> <span class="n">remaining</span><span class="p">,</span>
                     <span class="n">total</span><span class="p">,</span>
                     <span class="mi">100</span> <span class="o">-</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">remaining</span> <span class="o">/</span> <span class="p">(</span><span class="n">total</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">),</span>
                     <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span>
-                        <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span>
+                        <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S"</span>
                     <span class="p">),</span>
                 <span class="p">),</span>
             <span class="p">)</span>
@@ -4789,7 +4789,7 @@ These are passed to make_fetch for the tripartite pattern.</p>
 <span class="normal">167</span>
 <span class="normal">168</span>
 <span class="normal">169</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    This method must be implemented by derived classes to perform automated computation.</span>
 <span class="sd">    The method must implement the following three steps:</span>
 
@@ -4834,17 +4834,17 @@ These are passed to make_fetch for the tripartite pattern.</p>
 <span class="sd">    :param kwargs: Keyword arguments passed from populate(make_kwargs=...).</span>
 <span class="sd">        These are passed to make_fetch for the tripartite pattern.</span>
 <span class="sd">    :raises NotImplementedError: If the derived class does not implement the required methods.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
-        <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;make_fetch&quot;</span><span class="p">)</span>
-        <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;make_insert&quot;</span><span class="p">)</span>
-        <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;make_compute&quot;</span><span class="p">)</span>
+        <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"make_fetch"</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"make_insert"</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"make_compute"</span><span class="p">)</span>
     <span class="p">):</span>
         <span class="c1"># user must implement `make`</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-            <span class="s2">&quot;Subclasses of AutoPopulate must implement the method `make` &quot;</span>
-            <span class="s2">&quot;or (`make_fetch` + `make_compute` + `make_insert`)&quot;</span>
+            <span class="s2">"Subclasses of AutoPopulate must implement the method `make` "</span>
+            <span class="s2">"or (`make_fetch` + `make_compute` + `make_insert`)"</span>
         <span class="p">)</span>
 
     <span class="c1"># User has implemented `_fetch`, `_compute`, and `_insert` methods instead</span>
@@ -4928,7 +4928,7 @@ inheritance and the target is self.</p>
 
 
 <h3 id="datajoint.autopopulate.AutoPopulate.populate" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">populate</span><span class="p">(</span><span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">suppress_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">return_exception_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reserve_jobs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;original&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">display_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">processes</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">make_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">populate</span><span class="p">(</span><span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">suppress_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">return_exception_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reserve_jobs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">'original'</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">display_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">processes</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">make_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.autopopulate.AutoPopulate.populate" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -5296,14 +5296,14 @@ specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
     <span class="n">suppress_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">return_exception_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">reserve_jobs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="n">order</span><span class="o">=</span><span class="s2">&quot;original&quot;</span><span class="p">,</span>
+    <span class="n">order</span><span class="o">=</span><span class="s2">"original"</span><span class="p">,</span>
     <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">max_calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">display_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">processes</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="n">make_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    ``table.populate()`` calls ``table.make(key)`` for every primary key in</span>
 <span class="sd">    ``self.key_source`` for which there is not already a tuple in table.</span>
 
@@ -5314,7 +5314,7 @@ specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
 <span class="sd">    :param suppress_errors: if True, do not terminate execution.</span>
 <span class="sd">    :param return_exception_objects: return error objects instead of just error messages</span>
 <span class="sd">    :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion</span>
-<span class="sd">    :param order: &quot;original&quot;|&quot;reverse&quot;|&quot;random&quot;  - the order of execution</span>
+<span class="sd">    :param order: "original"|"reverse"|"random"  - the order of execution</span>
 <span class="sd">    :param limit: if not None, check at most this many keys</span>
 <span class="sd">    :param max_calls: if not None, populate at most this many keys</span>
 <span class="sd">    :param display_progress: if True, report progress_bar</span>
@@ -5324,16 +5324,16 @@ specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
 <span class="sd">        specified within the pipeline e.g. using a `dj.Lookup` table.</span>
 <span class="sd">    :type make_kwargs: dict, optional</span>
 <span class="sd">    :return: a dict with two keys</span>
-<span class="sd">        &quot;success_count&quot;: the count of successful ``make()`` calls in this ``populate()`` call</span>
-<span class="sd">        &quot;error_list&quot;: the error list that is filled if `suppress_errors` is True</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        "success_count": the count of successful ``make()`` calls in this ``populate()`` call</span>
+<span class="sd">        "error_list": the error list that is filled if `suppress_errors` is True</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">in_transaction</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Populate cannot be called during a transaction.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Populate cannot be called during a transaction."</span><span class="p">)</span>
 
-    <span class="n">valid_order</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;original&quot;</span><span class="p">,</span> <span class="s2">&quot;reverse&quot;</span><span class="p">,</span> <span class="s2">&quot;random&quot;</span><span class="p">]</span>
+    <span class="n">valid_order</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"original"</span><span class="p">,</span> <span class="s2">"reverse"</span><span class="p">,</span> <span class="s2">"random"</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">order</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_order</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;The order argument must be one of </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">valid_order</span><span class="p">)</span>
+            <span class="s2">"The order argument must be one of </span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">valid_order</span><span class="p">)</span>
         <span class="p">)</span>
     <span class="n">jobs</span> <span class="o">=</span> <span class="p">(</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">schemas</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">database</span><span class="p">]</span><span class="o">.</span><span class="n">jobs</span> <span class="k">if</span> <span class="n">reserve_jobs</span> <span class="k">else</span> <span class="kc">None</span>
@@ -5342,31 +5342,31 @@ specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
     <span class="k">if</span> <span class="n">reserve_jobs</span><span class="p">:</span>
         <span class="c1"># Define a signal handler for SIGTERM</span>
         <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Populate terminated by SIGTERM&quot;</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;SIGTERM received&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Populate terminated by SIGTERM"</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">"SIGTERM received"</span><span class="p">)</span>
 
         <span class="n">old_handler</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">keys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">keys</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_jobs_to_do</span><span class="p">(</span><span class="n">restrictions</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span>
-            <span class="s2">&quot;KEY&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span>
+            <span class="s2">"KEY"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span>
         <span class="p">)</span>
 
-    <span class="c1"># exclude &quot;error&quot;, &quot;ignore&quot; or &quot;reserved&quot; jobs</span>
+    <span class="c1"># exclude "error", "ignore" or "reserved" jobs</span>
     <span class="k">if</span> <span class="n">reserve_jobs</span><span class="p">:</span>
         <span class="n">exclude_key_hashes</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">jobs</span>
-            <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;table_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">}</span>
-            <span class="o">&amp;</span> <span class="s1">&#39;status in (&quot;error&quot;, &quot;ignore&quot;, &quot;reserved&quot;)&#39;</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;key_hash&quot;</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"table_name"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">}</span>
+            <span class="o">&amp;</span> <span class="s1">'status in ("error", "ignore", "reserved")'</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"key_hash"</span><span class="p">)</span>
         <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span> <span class="k">if</span> <span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_key_hashes</span><span class="p">]</span>
 
-    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;reverse&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">"reverse"</span><span class="p">:</span>
         <span class="n">keys</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
-    <span class="k">elif</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;random&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">"random"</span><span class="p">:</span>
         <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="si">%d</span><span class="s2"> keys to populate&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Found </span><span class="si">%d</span><span class="s2"> keys to populate"</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">))</span>
 
     <span class="n">keys</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[:</span><span class="n">max_calls</span><span class="p">]</span>
     <span class="n">nkeys</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
@@ -5405,7 +5405,7 @@ specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
                     <span class="n">processes</span><span class="p">,</span> <span class="n">_initialize_populate</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">populate_kwargs</span><span class="p">)</span>
                 <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">,</span>
                 <span class="p">(</span>
-                    <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processes: &quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">nkeys</span><span class="p">)</span>
+                    <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">"Processes: "</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">nkeys</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">display_progress</span>
                     <span class="k">else</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">nullcontext</span><span class="p">()</span>
                 <span class="p">)</span> <span class="k">as</span> <span class="n">progress_bar</span><span class="p">,</span>
@@ -5426,8 +5426,8 @@ specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
         <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">old_handler</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">&quot;success_count&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">success_list</span><span class="p">),</span>
-        <span class="s2">&quot;error_list&quot;</span><span class="p">:</span> <span class="n">error_list</span><span class="p">,</span>
+        <span class="s2">"success_count"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">success_list</span><span class="p">),</span>
+        <span class="s2">"error_list"</span><span class="p">:</span> <span class="n">error_list</span><span class="p">,</span>
     <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5500,23 +5500,23 @@ specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
 <span class="normal">476</span>
 <span class="normal">477</span>
 <span class="normal">478</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Report the progress of populating the table.</span>
 <span class="sd">    :return: (remaining, total) -- numbers of tuples to be populated</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">todo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jobs_to_do</span><span class="p">(</span><span class="n">restrictions</span><span class="p">)</span>
     <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">todo</span><span class="p">)</span>
     <span class="n">remaining</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">todo</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">display</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;</span><span class="si">%-20s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
-            <span class="o">+</span> <span class="s2">&quot; Completed </span><span class="si">%d</span><span class="s2"> of </span><span class="si">%d</span><span class="s2"> (</span><span class="si">%2.1f%%</span><span class="s2">)   </span><span class="si">%s</span><span class="s2">&quot;</span>
+            <span class="s2">"</span><span class="si">%-20s</span><span class="s2">"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="o">+</span> <span class="s2">" Completed </span><span class="si">%d</span><span class="s2"> of </span><span class="si">%d</span><span class="s2"> (</span><span class="si">%2.1f%%</span><span class="s2">)   </span><span class="si">%s</span><span class="s2">"</span>
             <span class="o">%</span> <span class="p">(</span>
                 <span class="n">total</span> <span class="o">-</span> <span class="n">remaining</span><span class="p">,</span>
                 <span class="n">total</span><span class="p">,</span>
                 <span class="mi">100</span> <span class="o">-</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">remaining</span> <span class="o">/</span> <span class="p">(</span><span class="n">total</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">),</span>
                 <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span>
-                    <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span>
+                    <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S"</span>
                 <span class="p">),</span>
             <span class="p">),</span>
         <span class="p">)</span>
@@ -5678,7 +5678,7 @@ specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

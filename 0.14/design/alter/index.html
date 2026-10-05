@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3488,37 +3488,37 @@ changes to primary key attributes.</p>
 <p>Let's say we have a table <code>Student</code> with the following attributes:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Student</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    student_id: int</span>
 <span class="s2">    ---</span>
 <span class="s2">    first_name: varchar(40)</span>
 <span class="s2">    last_name: varchar(40)</span>
 <span class="s2">    home_address: varchar(100)</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 </code></pre></div>
 <p>We can modify the table to include a new attribute <code>email</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="o">.</span><span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="o">.</span><span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">student_id: int</span>
 <span class="s2">---</span>
 <span class="s2">first_name: varchar(40)</span>
 <span class="s2">last_name: varchar(40)</span>
 <span class="s2">home_address: varchar(100)</span>
 <span class="s2">email: varchar(100)</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 <span class="n">Student</span><span class="o">.</span><span class="n">alter</span><span class="p">()</span>
 </code></pre></div>
 <p>The <code>alter</code> method will update the table in the database to include the new attribute
 <code>email</code> added by the user in the table's <code>definition</code> property.</p>
 <p>Similarly, you can modify the data type or length of an existing attribute. For example,
 to alter the <code>home_address</code> attribute to have a length of 200 characters:</p>
-<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="o">.</span><span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="o">.</span><span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">student_id: int</span>
 <span class="s2">---</span>
 <span class="s2">first_name: varchar(40)</span>
 <span class="s2">last_name: varchar(40)</span>
 <span class="s2">home_address: varchar(200)</span>
 <span class="s2">email: varchar(100)</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 <span class="n">Student</span><span class="o">.</span><span class="n">alter</span><span class="p">()</span>
 </code></pre></div>
 
@@ -3655,7 +3655,7 @@ to alter the <code>home_address</code> attribute to have a length of 200 charact
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3999,7 +3999,7 @@ constrained.</p>
 <h2 id="top">Top<a class="headerlink" href="#top" title="Permanent link">&para;</a></h2>
 <p>Similar to the universal set operator, the top operator uses <code>dj.Top</code> notation. It is used to
 restrict a query by the given <code>limit</code>, <code>order_by</code>, and <code>offset</code> parameters:</p>
-<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s1">&#39;session_date&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s1">'session_date'</span><span class="p">)</span>
 </code></pre></div>
 <p>The result of this expression returns the first 10 rows of <code>Session</code> and sorts them
 by their <code>session_date</code> in ascending order.</p>
@@ -4036,7 +4036,7 @@ by their <code>session_date</code> in ascending order.</p>
 <h3 id="by-a-mapping">By a mapping<a class="headerlink" href="#by-a-mapping" title="Permanent link">&para;</a></h3>
 <p>For a <a href="../reproduce/table-tiers#manual-tables">Session table</a>, that has the attribute
 <code>session_date</code>, we can restrict to sessions from January 1st, 2022:</p>
-<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s1">&#39;session_date&#39;</span><span class="p">:</span> <span class="s2">&quot;2022-01-01&quot;</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s1">'session_date'</span><span class="p">:</span> <span class="s2">"2022-01-01"</span><span class="p">}</span>
 </code></pre></div>
 <p>If there were any typos (e.g., using <code>sess_date</code> instead of <code>session_date</code>), our query
 will return all of the entities of <code>Session</code>.</p>
@@ -4044,8 +4044,8 @@ will return all of the entities of <code>Session</code>.</p>
 <p>Conditions may include arithmetic operations, functions, range tests, etc. Restriction
 of table <code>A</code> by a string containing an attribute not found in table <code>A</code> produces an
 error.</p>
-<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">&#39;user = &quot;Alice&quot;&#39;</span> <span class="c1"># (1)</span>
-<span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">&#39;session_date &gt;= &quot;2022-01-01&quot;&#39;</span> <span class="c1"># (2)</span>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">'user = "Alice"'</span> <span class="c1"># (1)</span>
+<span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">'session_date &gt;= "2022-01-01"'</span> <span class="c1"># (2)</span>
 </code></pre></div>
 <ol>
 <li>All the sessions performed by Alice</li>
@@ -4059,12 +4059,12 @@ that meet <em>any</em> of the conditions in the collection.</p>
 conditions, one for user and one for date, the query will return any sessions with a
 matching user <em>or</em> date.</p>
 <p>A collection can be a list, a tuple, or a Pandas <code>DataFrame</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="n">cond_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;user = &quot;Alice&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;session_date = &quot;2022-01-01&quot;&#39;</span><span class="p">]</span> <span class="c1"># (1)</span>
-<span class="n">cond_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;user = &quot;Alice&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;session_date = &quot;2022-01-01&quot;&#39;</span><span class="p">)</span> <span class="c1"># (2)</span>
+<div class="highlight"><pre><span></span><code><span class="n">cond_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'user = "Alice"'</span><span class="p">,</span> <span class="s1">'session_date = "2022-01-01"'</span><span class="p">]</span> <span class="c1"># (1)</span>
+<span class="n">cond_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="s1">'user = "Alice"'</span><span class="p">,</span> <span class="s1">'session_date = "2022-01-01"'</span><span class="p">)</span> <span class="c1"># (2)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="n">cond_frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Alice&#39;</span><span class="p">],</span> <span class="s1">&#39;session_date&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;2022-01-01&#39;</span><span class="p">]})</span> <span class="c1"># (3)</span>
+<span class="n">cond_frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">'user'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'Alice'</span><span class="p">],</span> <span class="s1">'session_date'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'2022-01-01'</span><span class="p">]})</span> <span class="c1"># (3)</span>
 
-<span class="n">Session</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">[</span><span class="s1">&#39;user = &quot;Alice&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;session_date = &quot;2022-01-01&quot;&#39;</span><span class="p">]</span>
+<span class="n">Session</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">[</span><span class="s1">'user = "Alice"'</span><span class="p">,</span> <span class="s1">'session_date = "2022-01-01"'</span><span class="p">]</span>
 </code></pre></div>
 <ol>
 <li>A list</li>
@@ -4074,7 +4074,7 @@ matching user <em>or</em> date.</p>
 <p><code>dj.AndList</code> represents logical conjunction(logical AND). Restricting a table by an
 <code>AndList</code> will return all entities that meet <em>all</em> of the conditions in the list. <code>A &amp;
 dj.AndList([c1, c2, c3])</code> is equivalent to <code>A &amp; c1 &amp; c2 &amp; c3</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">AndList</span><span class="p">([</span><span class="s1">&#39;user = &quot;Alice&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;session_date = &quot;2022-01-01&quot;&#39;</span><span class="p">])</span>
+<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">AndList</span><span class="p">([</span><span class="s1">'user = "Alice"'</span><span class="p">,</span> <span class="s1">'session_date = "2022-01-01"'</span><span class="p">])</span>
 </code></pre></div>
 <p>The above will show all the sessions that Alice conducted on the given day.</p>
 <h3 id="by-a-not-object">By a <code>Not</code> object<a class="headerlink" href="#by-a-not-object" title="Permanent link">&para;</a></h3>
@@ -4085,17 +4085,17 @@ dj.AndList([c1, c2, c3])</code> is equivalent to <code>A &amp; c1 &amp; c2 &amp;
 below creates a query object corresponding to all the users named Alice. The <code>Session</code>
 table is then restricted by the query object, returning all the sessions performed by
 Alice.</p>
-<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">User</span> <span class="o">&amp;</span> <span class="s1">&#39;user = &quot;Alice&quot;&#39;</span>
+<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">User</span> <span class="o">&amp;</span> <span class="s1">'user = "Alice"'</span>
 <span class="n">Session</span> <span class="o">&amp;</span> <span class="n">query</span>
 </code></pre></div>
 <h2 id="proj_1">Proj<a class="headerlink" href="#proj_1" title="Permanent link">&para;</a></h2>
 <p>Renaming an attribute in python can be done via keyword arguments:</p>
-<div class="highlight"><pre><span></span><code><span class="n">table</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">new_attr</span><span class="o">=</span><span class="s1">&#39;old_attr&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">table</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">new_attr</span><span class="o">=</span><span class="s1">'old_attr'</span><span class="p">)</span>
 </code></pre></div>
 <p>This can be done in the context of a table definition:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Session</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    # Experiment Session</span>
 <span class="s2">    -&gt; Animal</span>
 <span class="s2">    session             : smallint  # session number for the animal</span>
@@ -4103,21 +4103,21 @@ Alice.</p>
 <span class="s2">    session_datetime    : datetime  # YYYY-MM-DD HH:MM:SS</span>
 <span class="s2">    session_start_time  : float     # seconds relative to session_datetime</span>
 <span class="s2">    session_end_time    : float     # seconds relative to session_datetime</span>
-<span class="s2">    -&gt; User.proj(experimenter=&#39;username&#39;)</span>
-<span class="s2">    -&gt; User.proj(supervisor=&#39;username&#39;)</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    -&gt; User.proj(experimenter='username')</span>
+<span class="s2">    -&gt; User.proj(supervisor='username')</span>
+<span class="s2">    """</span>
 </code></pre></div>
 <p>Or to rename multiple values in a table with the following syntax:
 <code>Table.proj(*existing_attributes,*renamed_attributes)</code></p>
-<div class="highlight"><pre><span></span><code><span class="n">Session</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="s1">&#39;session&#39;</span><span class="p">,</span><span class="s1">&#39;session_date&#39;</span><span class="p">,</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;session_start_time&#39;</span><span class="p">,</span><span class="n">end</span><span class="o">=</span><span class="s1">&#39;session_end_time&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="s1">'session'</span><span class="p">,</span><span class="s1">'session_date'</span><span class="p">,</span><span class="n">start</span><span class="o">=</span><span class="s1">'session_start_time'</span><span class="p">,</span><span class="n">end</span><span class="o">=</span><span class="s1">'session_end_time'</span><span class="p">)</span>
 </code></pre></div>
 <p>Projection can also be used to to compute new attributes from existing ones.</p>
-<div class="highlight"><pre><span></span><code><span class="n">Session</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">duration</span><span class="o">=</span><span class="s1">&#39;session_end_time-session_start_time&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="s1">&#39;duration &gt; 10&#39;</span>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">duration</span><span class="o">=</span><span class="s1">'session_end_time-session_start_time'</span><span class="p">)</span> <span class="o">&amp;</span> <span class="s1">'duration &gt; 10'</span>
 </code></pre></div>
 <h2 id="aggr_1">Aggr<a class="headerlink" href="#aggr_1" title="Permanent link">&para;</a></h2>
 <p>For more complicated calculations, we can use aggregation.</p>
-<div class="highlight"><pre><span></span><code><span class="n">Subject</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span><span class="n">n</span><span class="o">=</span><span class="s2">&quot;count(*)&quot;</span><span class="p">)</span> <span class="c1"># (1)</span>
-<span class="n">Subject</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span><span class="n">average_start</span><span class="o">=</span><span class="s2">&quot;avg(session_start_time)&quot;</span><span class="p">)</span> <span class="c1"># (2)</span>
+<div class="highlight"><pre><span></span><code><span class="n">Subject</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span><span class="n">n</span><span class="o">=</span><span class="s2">"count(*)"</span><span class="p">)</span> <span class="c1"># (1)</span>
+<span class="n">Subject</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span><span class="n">average_start</span><span class="o">=</span><span class="s2">"avg(session_start_time)"</span><span class="p">)</span> <span class="c1"># (2)</span>
 </code></pre></div>
 <ol>
 <li>Number of sessions per subject.</li>
@@ -4128,9 +4128,9 @@ Alice.</p>
 <h2 id="universal-set_1">Universal set<a class="headerlink" href="#universal-set_1" title="Permanent link">&para;</a></h2>
 <p>Universal sets offer the complete list of combinations of attributes.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># All home cities of students</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;laser_wavelength&#39;</span><span class="p">,</span> <span class="s1">&#39;laser_power&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">Scan</span> <span class="c1"># (1)</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;laser_wavelength&#39;</span><span class="p">,</span> <span class="s1">&#39;laser_power&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Scan</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">&quot;count(*)&quot;</span><span class="p">)</span> <span class="c1"># (2)</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">&quot;max(session)&quot;</span><span class="p">)</span> <span class="c1"># (3)</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">'laser_wavelength'</span><span class="p">,</span> <span class="s1">'laser_power'</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">Scan</span> <span class="c1"># (1)</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">'laser_wavelength'</span><span class="p">,</span> <span class="s1">'laser_power'</span><span class="p">)</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Scan</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">"count(*)"</span><span class="p">)</span> <span class="c1"># (2)</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">"max(session)"</span><span class="p">)</span> <span class="c1"># (3)</span>
 </code></pre></div>
 <ol>
 <li>All combinations of wavelength and power.</li>
@@ -4274,7 +4274,7 @@ For an example of this process, see the source code for
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

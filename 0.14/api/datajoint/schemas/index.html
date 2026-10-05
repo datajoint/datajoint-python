@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3831,13 +3831,13 @@ but respects order of attribute declaration as much as possible.</p>
 <span class="normal">31</span>
 <span class="normal">32</span>
 <span class="normal">33</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">ordered_dir</span><span class="p">(</span><span class="n">class_</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    List (most) attributes of the class including inherited ones, similar to `dir` built-in function,</span>
 <span class="sd">    but respects order of attribute declaration as much as possible.</span>
 
 <span class="sd">    :param class_: class to list members for</span>
 <span class="sd">    :return: a list of attributes declared in class_ and its superclasses</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">attr_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">class_</span><span class="o">.</span><span class="n">mro</span><span class="p">()):</span>
         <span class="n">attr_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="vm">__dict__</span> <span class="k">if</span> <span class="n">e</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attr_list</span><span class="p">)</span>
@@ -4335,10 +4335,10 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
 <span class="normal">488</span>
 <span class="normal">489</span>
 <span class="normal">490</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Schema</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A schema object is a decorator for UserTable classes that binds them to their database.</span>
 <span class="sd">    It also specifies the namespace `context` in which other UserTable classes are defined.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -4350,7 +4350,7 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="n">create_tables</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">add_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Associate database schema `schema_name`. If the schema does not exist, attempt to</span>
 <span class="sd">        create it on the server.</span>
 
@@ -4364,7 +4364,7 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
 <span class="sd">        :param create_tables: When False, do not create tables and raise errors when accessing missing tables.</span>
 <span class="sd">        :param add_objects: a mapping with additional objects to make available to the context in which table classes</span>
 <span class="sd">        are declared.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">connection</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="o">=</span> <span class="kc">None</span>
@@ -4390,7 +4390,7 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="n">create_tables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">add_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Associate database schema `schema_name`. If the schema does not exist, attempt to</span>
 <span class="sd">        create it on the server.</span>
 
@@ -4402,16 +4402,16 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
 <span class="sd">            to access missing tables.</span>
 <span class="sd">        :param add_objects: a mapping with additional objects to make available to the context</span>
 <span class="sd">            in which table classes are declared.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">schema_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
                 <span class="k">return</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Please provide a schema_name to activate the schema.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Please provide a schema_name to activate the schema."</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="n">schema_name</span><span class="p">:</span>  <span class="c1"># already activated</span>
                 <span class="k">return</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The schema is already activated for schema </span><span class="si">{db}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"The schema is already activated for schema </span><span class="si">{db}</span><span class="s2">."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span>
                 <span class="p">)</span>
             <span class="p">)</span>
@@ -4429,24 +4429,24 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_schema</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;Database `</span><span class="si">{name}</span><span class="s2">` has not yet been declared. &quot;</span>
-                    <span class="s2">&quot;Set argument create_schema=True to create it.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="s2">"Database `</span><span class="si">{name}</span><span class="s2">` has not yet been declared. "</span>
+                    <span class="s2">"Set argument create_schema=True to create it."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                         <span class="n">name</span><span class="o">=</span><span class="n">schema_name</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
             <span class="c1"># create database</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating schema `</span><span class="si">{name}</span><span class="s2">`.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Creating schema `</span><span class="si">{name}</span><span class="s2">`."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">))</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-                    <span class="s2">&quot;CREATE DATABASE `</span><span class="si">{name}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">)</span>
+                    <span class="s2">"CREATE DATABASE `</span><span class="si">{name}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">)</span>
                 <span class="p">)</span>
             <span class="k">except</span> <span class="n">AccessError</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;Schema `</span><span class="si">{name}</span><span class="s2">` does not exist and could not be created. &quot;</span>
-                    <span class="s2">&quot;Check permissions.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">)</span>
+                    <span class="s2">"Schema `</span><span class="si">{name}</span><span class="s2">` does not exist and could not be created. "</span>
+                    <span class="s2">"Check permissions."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">)</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;created&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"created"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
         <span class="c1"># decorate all tables already decorated</span>
@@ -4459,20 +4459,20 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
                 <span class="n">message</span>
-                <span class="ow">or</span> <span class="s2">&quot;Schema `</span><span class="si">{db}</span><span class="s2">` has not been created.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="s2">"Schema `</span><span class="si">{db}</span><span class="s2">` has not been created."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
             <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Binds the supplied class to a schema. This is intended to be used as a decorator.</span>
 
 <span class="sd">        :param cls: class to decorate.</span>
 <span class="sd">        :param context: supplied when called from spawn_missing_classes</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">context</span> <span class="o">=</span> <span class="n">context</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="ow">or</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_locals</span>
         <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">Part</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The schema decorator should not be applied to Part tables.&quot;</span>
+                <span class="s2">"The schema decorator should not be applied to Part tables."</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_activated</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_decorate_master</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
@@ -4481,11 +4481,11 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="k">return</span> <span class="bp">cls</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_decorate_master</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 
 <span class="sd">        :param cls: the master class to process</span>
-<span class="sd">        :param context: the class&#39; declaration context</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        :param context: the class' declaration context</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_decorate_table</span><span class="p">(</span>
             <span class="bp">cls</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">=</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="bp">cls</span><span class="p">})</span>
         <span class="p">)</span>
@@ -4495,7 +4495,7 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
                 <span class="n">part</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">part</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">Part</span><span class="p">):</span>
                     <span class="n">part</span><span class="o">.</span><span class="n">_master</span> <span class="o">=</span> <span class="bp">cls</span>
-                    <span class="c1"># allow addressing master by name or keyword &#39;master&#39;</span>
+                    <span class="c1"># allow addressing master by name or keyword 'master'</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_decorate_table</span><span class="p">(</span>
                         <span class="n">part</span><span class="p">,</span>
                         <span class="n">context</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
@@ -4504,9 +4504,9 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
                     <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_decorate_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_class</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">assert_declared</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        assign schema properties to the table class and declare the table</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">table_class</span><span class="o">.</span><span class="n">database</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span>
         <span class="n">table_class</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span>
         <span class="n">table_class</span><span class="o">.</span><span class="n">_heading</span> <span class="o">=</span> <span class="n">Heading</span><span class="p">(</span>
@@ -4531,15 +4531,15 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="c1"># add table definition to the doc string</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">table_class</span><span class="o">.</span><span class="n">definition</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="n">table_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">table_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
-                <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Table definition:</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+                <span class="p">(</span><span class="n">table_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+                <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">Table definition:</span><span class="se">\n\n</span><span class="s2">"</span>
                 <span class="o">+</span> <span class="n">table_class</span><span class="o">.</span><span class="n">definition</span>
             <span class="p">)</span>
 
         <span class="c1"># fill values in Lookup tables from their contents property</span>
         <span class="k">if</span> <span class="p">(</span>
             <span class="nb">isinstance</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">Lookup</span><span class="p">)</span>
-            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s2">&quot;contents&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s2">"contents"</span><span class="p">)</span>
             <span class="ow">and</span> <span class="n">is_declared</span>
         <span class="p">):</span>
             <span class="n">contents</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">contents</span><span class="p">)</span>
@@ -4547,8 +4547,8 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
                 <span class="k">if</span> <span class="n">instance</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">has_autoincrement</span><span class="p">:</span>
                     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                         <span class="p">(</span>
-                            <span class="s2">&quot;Contents has changed but cannot be inserted because &quot;</span>
-                            <span class="s2">&quot;</span><span class="si">{table}</span><span class="s2"> has autoincrement.&quot;</span>
+                            <span class="s2">"Contents has changed but cannot be inserted because "</span>
+                            <span class="s2">"</span><span class="si">{table}</span><span class="s2"> has autoincrement."</span>
                         <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">table</span><span class="o">=</span><span class="n">instance</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
                     <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
@@ -4562,32 +4562,32 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;Schema `</span><span class="si">{name}</span><span class="s2">`</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">"Schema `</span><span class="si">{name}</span><span class="s2">`</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">size_on_disk</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: size of the entire schema in bytes</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_assert_exists</span><span class="p">()</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">                </span><span class="sd">"""</span>
 <span class="sd">            SELECT SUM(data_length + index_length)</span>
-<span class="sd">            FROM information_schema.tables WHERE table_schema=&#39;{db}&#39;</span>
-<span class="sd">            &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+<span class="sd">            FROM information_schema.tables WHERE table_schema='{db}'</span>
+<span class="sd">            """</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span>
                 <span class="p">)</span>
             <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">spawn_missing_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Creates the appropriate python user table classes from tables in the schema and places them</span>
 <span class="sd">        in the context.</span>
 
 <span class="sd">        :param context: alternative context to place the missing classes into, e.g. locals()</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_assert_exists</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -4599,9 +4599,9 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
                 <span class="k">del</span> <span class="n">frame</span>
         <span class="n">tables</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SHOW TABLES in `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SHOW TABLES in `</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">lookup_class_name</span><span class="p">(</span>
-                <span class="s2">&quot;`</span><span class="si">{db}</span><span class="s2">`.`</span><span class="si">{tab}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="n">tab</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">context</span><span class="p">,</span> <span class="mi">0</span>
+                <span class="s2">"`</span><span class="si">{db}</span><span class="s2">`.`</span><span class="si">{tab}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="n">tab</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">context</span><span class="p">,</span> <span class="mi">0</span>
             <span class="p">)</span>
             <span class="ow">is</span> <span class="kc">None</span>
         <span class="p">]</span>
@@ -4628,12 +4628,12 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="c1"># attach parts to masters</span>
         <span class="k">for</span> <span class="n">table_name</span> <span class="ow">in</span> <span class="n">part_tables</span><span class="p">:</span>
             <span class="n">groups</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">Part</span><span class="o">.</span><span class="n">tier_regexp</span><span class="p">,</span> <span class="n">table_name</span><span class="p">)</span><span class="o">.</span><span class="n">groupdict</span><span class="p">()</span>
-            <span class="n">class_name</span> <span class="o">=</span> <span class="n">to_camel_case</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="s2">&quot;part&quot;</span><span class="p">])</span>
+            <span class="n">class_name</span> <span class="o">=</span> <span class="n">to_camel_case</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="s2">"part"</span><span class="p">])</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">master_class</span> <span class="o">=</span> <span class="n">context</span><span class="p">[</span><span class="n">to_camel_case</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="s2">&quot;master&quot;</span><span class="p">])]</span>
+                <span class="n">master_class</span> <span class="o">=</span> <span class="n">context</span><span class="p">[</span><span class="n">to_camel_case</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="s2">"master"</span><span class="p">])]</span>
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;The table </span><span class="si">%s</span><span class="s2"> does not follow DataJoint naming conventions&quot;</span>
+                    <span class="s2">"The table </span><span class="si">%s</span><span class="s2"> does not follow DataJoint naming conventions"</span>
                     <span class="o">%</span> <span class="n">table_name</span>
                 <span class="p">)</span>
             <span class="n">part_class</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">class_name</span><span class="p">,</span> <span class="p">(</span><span class="n">Part</span><span class="p">,),</span> <span class="nb">dict</span><span class="p">(</span><span class="n">definition</span><span class="o">=...</span><span class="p">))</span>
@@ -4642,61 +4642,61 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
             <span class="nb">setattr</span><span class="p">(</span><span class="n">master_class</span><span class="p">,</span> <span class="n">class_name</span><span class="p">,</span> <span class="n">part_class</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Drop the associated schema if it exists</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;Schema named `</span><span class="si">{database}</span><span class="s2">` does not exist. Doing nothing.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"Schema named `</span><span class="si">{database}</span><span class="s2">` does not exist. Doing nothing."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span>
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="k">elif</span> <span class="p">(</span>
-            <span class="ow">not</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;safemode&quot;</span><span class="p">]</span>
+            <span class="ow">not</span> <span class="n">config</span><span class="p">[</span><span class="s2">"safemode"</span><span class="p">]</span>
             <span class="ow">or</span> <span class="n">force</span>
             <span class="ow">or</span> <span class="n">user_choice</span><span class="p">(</span>
-                <span class="s2">&quot;Proceed to delete entire schema `</span><span class="si">%s</span><span class="s2">`?&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;no&quot;</span>
+                <span class="s2">"Proceed to delete entire schema `</span><span class="si">%s</span><span class="s2">`?"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">"no"</span>
             <span class="p">)</span>
-            <span class="o">==</span> <span class="s2">&quot;yes&quot;</span>
+            <span class="o">==</span> <span class="s2">"yes"</span>
         <span class="p">):</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Dropping `</span><span class="si">{database}</span><span class="s2">`.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Dropping `</span><span class="si">{database}</span><span class="s2">`."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">))</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-                    <span class="s2">&quot;DROP DATABASE `</span><span class="si">{database}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+                    <span class="s2">"DROP DATABASE `</span><span class="si">{database}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
                 <span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                    <span class="s2">&quot;Schema `</span><span class="si">{database}</span><span class="s2">` was dropped successfully.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="s2">"Schema `</span><span class="si">{database}</span><span class="s2">` was dropped successfully."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                         <span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
             <span class="k">except</span> <span class="n">AccessError</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">AccessError</span><span class="p">(</span>
-                    <span class="s2">&quot;An attempt to drop schema `</span><span class="si">{database}</span><span class="s2">` &quot;</span>
-                    <span class="s2">&quot;has failed. Check permissions.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+                    <span class="s2">"An attempt to drop schema `</span><span class="si">{database}</span><span class="s2">` "</span>
+                    <span class="s2">"has failed. Check permissions."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
                 <span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: true if the associated schema exists on the server</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Schema must be activated first.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Schema must be activated first."</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-                <span class="s2">&quot;SELECT schema_name &quot;</span>
-                <span class="s2">&quot;FROM information_schema.schemata &quot;</span>
-                <span class="s2">&quot;WHERE schema_name = &#39;</span><span class="si">{database}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+                <span class="s2">"SELECT schema_name "</span>
+                <span class="s2">"FROM information_schema.schemata "</span>
+                <span class="s2">"WHERE schema_name = '</span><span class="si">{database}</span><span class="s2">'"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
             <span class="p">)</span><span class="o">.</span><span class="n">rowcount</span>
         <span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">jobs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        schema.jobs provides a view of the job reservation table for the schema</span>
 
 <span class="sd">        :return: jobs table</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_assert_exists</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jobs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_jobs</span> <span class="o">=</span> <span class="n">JobTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
@@ -4708,59 +4708,59 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">python_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Generate the code for a module that recreates the schema.</span>
 <span class="sd">        This method is in preparation for a future release and is not officially supported.</span>
 
 <span class="sd">        :return: a string containing the body of a complete Python module defining this schema.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_assert_exists</span><span class="p">()</span>
         <span class="n">module_count</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
         <span class="c1"># add virtual modules for referenced modules with names vmod0, vmod1, ...</span>
         <span class="n">module_lookup</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span>
-            <span class="k">lambda</span><span class="p">:</span> <span class="s2">&quot;vmod&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">module_count</span><span class="p">))</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="s2">"vmod"</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">module_count</span><span class="p">))</span>
         <span class="p">)</span>
         <span class="n">db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">):</span>
             <span class="n">tier</span> <span class="o">=</span> <span class="n">_get_tier</span><span class="p">(</span><span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
-            <span class="n">class_name</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span>
-            <span class="n">indent</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-            <span class="k">if</span> <span class="n">tier</span> <span class="o">==</span> <span class="s2">&quot;Part&quot;</span><span class="p">:</span>
-                <span class="n">class_name</span> <span class="o">=</span> <span class="n">class_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-                <span class="n">indent</span> <span class="o">+=</span> <span class="s2">&quot;    &quot;</span>
+            <span class="n">class_name</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span>
+            <span class="n">indent</span> <span class="o">=</span> <span class="s2">""</span>
+            <span class="k">if</span> <span class="n">tier</span> <span class="o">==</span> <span class="s2">"Part"</span><span class="p">:</span>
+                <span class="n">class_name</span> <span class="o">=</span> <span class="n">class_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"__"</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">indent</span> <span class="o">+=</span> <span class="s2">"    "</span>
             <span class="n">class_name</span> <span class="o">=</span> <span class="n">to_camel_case</span><span class="p">(</span><span class="n">class_name</span><span class="p">)</span>
 
             <span class="k">def</span><span class="w"> </span><span class="nf">replace</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
                 <span class="n">d</span><span class="p">,</span> <span class="n">tabs</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">s</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-                <span class="k">return</span> <span class="p">(</span><span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="n">db</span> <span class="k">else</span> <span class="p">(</span><span class="n">module_lookup</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-                    <span class="n">to_camel_case</span><span class="p">(</span><span class="n">tab</span><span class="p">)</span> <span class="k">for</span> <span class="n">tab</span> <span class="ow">in</span> <span class="n">tabs</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="p">(</span><span class="s2">""</span> <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="n">db</span> <span class="k">else</span> <span class="p">(</span><span class="n">module_lookup</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">+</span> <span class="s2">"."</span><span class="p">))</span> <span class="o">+</span> <span class="s2">"."</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="n">to_camel_case</span><span class="p">(</span><span class="n">tab</span><span class="p">)</span> <span class="k">for</span> <span class="n">tab</span> <span class="ow">in</span> <span class="n">tabs</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"__"</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"__"</span><span class="p">)</span>
                 <span class="p">)</span>
 
-            <span class="k">return</span> <span class="p">(</span><span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">tier</span> <span class="o">==</span> <span class="s2">&quot;Part&quot;</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">@schema</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">{indent}</span><span class="s2">class </span><span class="si">{class_name}</span><span class="s2">(dj.</span><span class="si">{tier}</span><span class="s2">):</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="s1">&#39;</span><span class="si">{indent}</span><span class="s1">    definition = &quot;&quot;&quot;</span><span class="se">\n</span><span class="s1">&#39;</span>
-                <span class="s1">&#39;</span><span class="si">{indent}</span><span class="s1">    </span><span class="si">{defi}</span><span class="s1">&quot;&quot;&quot;&#39;</span>
+            <span class="k">return</span> <span class="p">(</span><span class="s2">""</span> <span class="k">if</span> <span class="n">tier</span> <span class="o">==</span> <span class="s2">"Part"</span> <span class="k">else</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">@schema</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span>
+                <span class="s2">"</span><span class="si">{indent}</span><span class="s2">class </span><span class="si">{class_name}</span><span class="s2">(dj.</span><span class="si">{tier}</span><span class="s2">):</span><span class="se">\n</span><span class="s2">"</span>
+                <span class="s1">'</span><span class="si">{indent}</span><span class="s1">    definition = """</span><span class="se">\n</span><span class="s1">'</span>
+                <span class="s1">'</span><span class="si">{indent}</span><span class="s1">    </span><span class="si">{defi}</span><span class="s1">"""'</span>
             <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">class_name</span><span class="o">=</span><span class="n">class_name</span><span class="p">,</span>
                 <span class="n">indent</span><span class="o">=</span><span class="n">indent</span><span class="p">,</span>
                 <span class="n">tier</span><span class="o">=</span><span class="n">tier</span><span class="p">,</span>
                 <span class="n">defi</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
-                    <span class="sa">r</span><span class="s2">&quot;`([^`]+)`.`([^`]+)`&quot;</span><span class="p">,</span>
+                    <span class="sa">r</span><span class="s2">"`([^`]+)`.`([^`]+)`"</span><span class="p">,</span>
                     <span class="n">replace</span><span class="p">,</span>
                     <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="n">describe</span><span class="p">(),</span>
-                <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">    &quot;</span> <span class="o">+</span> <span class="n">indent</span><span class="p">),</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">    "</span> <span class="o">+</span> <span class="n">indent</span><span class="p">),</span>
             <span class="p">)</span>
 
         <span class="n">tables</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
-        <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">)</span>
-        <span class="n">python_code</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">)</span>
+        <span class="n">python_code</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
             <span class="p">(</span>
-                <span class="s1">&#39;&quot;&quot;&quot;This module was auto-generated by datajoint from an existing schema&quot;&quot;&quot;&#39;</span><span class="p">,</span>
-                <span class="s2">&quot;import datajoint as dj</span><span class="se">\n\n</span><span class="s2">schema = dj.Schema(&#39;</span><span class="si">{db}</span><span class="s2">&#39;)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">),</span>
-                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-                    <span class="s2">&quot;</span><span class="si">{module}</span><span class="s2"> = dj.VirtualModule(&#39;</span><span class="si">{module}</span><span class="s2">&#39;, &#39;</span><span class="si">{schema_name}</span><span class="s2">&#39;)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s1">'"""This module was auto-generated by datajoint from an existing schema"""'</span><span class="p">,</span>
+                <span class="s2">"import datajoint as dj</span><span class="se">\n\n</span><span class="s2">schema = dj.Schema('</span><span class="si">{db}</span><span class="s2">')"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">),</span>
+                <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="s2">"</span><span class="si">{module}</span><span class="s2"> = dj.VirtualModule('</span><span class="si">{module}</span><span class="s2">', '</span><span class="si">{schema_name}</span><span class="s2">')"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                         <span class="n">module</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="n">k</span>
                     <span class="p">)</span>
                     <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">module_lookup</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
@@ -4770,21 +4770,21 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">python_filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">python_code</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">python_filename</span><span class="p">,</span> <span class="s2">&quot;wt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">python_filename</span><span class="p">,</span> <span class="s2">"wt"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">python_code</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">list_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Return a list of all tables in the schema except tables with ~ in first character such</span>
 <span class="sd">        as ~logs and ~job</span>
 
 <span class="sd">        :return: A list of table names from the database schema.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
         <span class="k">return</span> <span class="p">[</span>
             <span class="n">t</span>
             <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span>
-                <span class="n">table_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+                <span class="n">table_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"`"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">table_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span>
@@ -4993,7 +4993,7 @@ in which table classes are declared.</p>
     <span class="n">create_tables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">add_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Associate database schema `schema_name`. If the schema does not exist, attempt to</span>
 <span class="sd">    create it on the server.</span>
 
@@ -5005,16 +5005,16 @@ in which table classes are declared.</p>
 <span class="sd">        to access missing tables.</span>
 <span class="sd">    :param add_objects: a mapping with additional objects to make available to the context</span>
 <span class="sd">        in which table classes are declared.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">schema_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
             <span class="k">return</span>
-        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Please provide a schema_name to activate the schema.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Please provide a schema_name to activate the schema."</span><span class="p">)</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="n">schema_name</span><span class="p">:</span>  <span class="c1"># already activated</span>
             <span class="k">return</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;The schema is already activated for schema </span><span class="si">{db}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"The schema is already activated for schema </span><span class="si">{db}</span><span class="s2">."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span>
             <span class="p">)</span>
         <span class="p">)</span>
@@ -5032,24 +5032,24 @@ in which table classes are declared.</p>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_schema</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Database `</span><span class="si">{name}</span><span class="s2">` has not yet been declared. &quot;</span>
-                <span class="s2">&quot;Set argument create_schema=True to create it.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"Database `</span><span class="si">{name}</span><span class="s2">` has not yet been declared. "</span>
+                <span class="s2">"Set argument create_schema=True to create it."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">name</span><span class="o">=</span><span class="n">schema_name</span>
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="c1"># create database</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating schema `</span><span class="si">{name}</span><span class="s2">`.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Creating schema `</span><span class="si">{name}</span><span class="s2">`."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">))</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-                <span class="s2">&quot;CREATE DATABASE `</span><span class="si">{name}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">)</span>
+                <span class="s2">"CREATE DATABASE `</span><span class="si">{name}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="n">AccessError</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Schema `</span><span class="si">{name}</span><span class="s2">` does not exist and could not be created. &quot;</span>
-                <span class="s2">&quot;Check permissions.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">)</span>
+                <span class="s2">"Schema `</span><span class="si">{name}</span><span class="s2">` does not exist and could not be created. "</span>
+                <span class="s2">"Check permissions."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">schema_name</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;created&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"created"</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="c1"># decorate all tables already decorated</span>
@@ -5223,12 +5223,12 @@ in the context.</p>
 <span class="normal">339</span>
 <span class="normal">340</span>
 <span class="normal">341</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">spawn_missing_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Creates the appropriate python user table classes from tables in the schema and places them</span>
 <span class="sd">    in the context.</span>
 
 <span class="sd">    :param context: alternative context to place the missing classes into, e.g. locals()</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_assert_exists</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -5240,9 +5240,9 @@ in the context.</p>
             <span class="k">del</span> <span class="n">frame</span>
     <span class="n">tables</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SHOW TABLES in `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SHOW TABLES in `</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">lookup_class_name</span><span class="p">(</span>
-            <span class="s2">&quot;`</span><span class="si">{db}</span><span class="s2">`.`</span><span class="si">{tab}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="n">tab</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">context</span><span class="p">,</span> <span class="mi">0</span>
+            <span class="s2">"`</span><span class="si">{db}</span><span class="s2">`.`</span><span class="si">{tab}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="n">tab</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">context</span><span class="p">,</span> <span class="mi">0</span>
         <span class="p">)</span>
         <span class="ow">is</span> <span class="kc">None</span>
     <span class="p">]</span>
@@ -5269,12 +5269,12 @@ in the context.</p>
     <span class="c1"># attach parts to masters</span>
     <span class="k">for</span> <span class="n">table_name</span> <span class="ow">in</span> <span class="n">part_tables</span><span class="p">:</span>
         <span class="n">groups</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">Part</span><span class="o">.</span><span class="n">tier_regexp</span><span class="p">,</span> <span class="n">table_name</span><span class="p">)</span><span class="o">.</span><span class="n">groupdict</span><span class="p">()</span>
-        <span class="n">class_name</span> <span class="o">=</span> <span class="n">to_camel_case</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="s2">&quot;part&quot;</span><span class="p">])</span>
+        <span class="n">class_name</span> <span class="o">=</span> <span class="n">to_camel_case</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="s2">"part"</span><span class="p">])</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">master_class</span> <span class="o">=</span> <span class="n">context</span><span class="p">[</span><span class="n">to_camel_case</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="s2">&quot;master&quot;</span><span class="p">])]</span>
+            <span class="n">master_class</span> <span class="o">=</span> <span class="n">context</span><span class="p">[</span><span class="n">to_camel_case</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="s2">"master"</span><span class="p">])]</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The table </span><span class="si">%s</span><span class="s2"> does not follow DataJoint naming conventions&quot;</span>
+                <span class="s2">"The table </span><span class="si">%s</span><span class="s2"> does not follow DataJoint naming conventions"</span>
                 <span class="o">%</span> <span class="n">table_name</span>
             <span class="p">)</span>
         <span class="n">part_class</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">class_name</span><span class="p">,</span> <span class="p">(</span><span class="n">Part</span><span class="p">,),</span> <span class="nb">dict</span><span class="p">(</span><span class="n">definition</span><span class="o">=...</span><span class="p">))</span>
@@ -5341,37 +5341,37 @@ in the context.</p>
 <span class="normal">373</span>
 <span class="normal">374</span>
 <span class="normal">375</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Drop the associated schema if it exists</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;Schema named `</span><span class="si">{database}</span><span class="s2">` does not exist. Doing nothing.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"Schema named `</span><span class="si">{database}</span><span class="s2">` does not exist. Doing nothing."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span>
             <span class="p">)</span>
         <span class="p">)</span>
     <span class="k">elif</span> <span class="p">(</span>
-        <span class="ow">not</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;safemode&quot;</span><span class="p">]</span>
+        <span class="ow">not</span> <span class="n">config</span><span class="p">[</span><span class="s2">"safemode"</span><span class="p">]</span>
         <span class="ow">or</span> <span class="n">force</span>
         <span class="ow">or</span> <span class="n">user_choice</span><span class="p">(</span>
-            <span class="s2">&quot;Proceed to delete entire schema `</span><span class="si">%s</span><span class="s2">`?&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;no&quot;</span>
+            <span class="s2">"Proceed to delete entire schema `</span><span class="si">%s</span><span class="s2">`?"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">"no"</span>
         <span class="p">)</span>
-        <span class="o">==</span> <span class="s2">&quot;yes&quot;</span>
+        <span class="o">==</span> <span class="s2">"yes"</span>
     <span class="p">):</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Dropping `</span><span class="si">{database}</span><span class="s2">`.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Dropping `</span><span class="si">{database}</span><span class="s2">`."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">))</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-                <span class="s2">&quot;DROP DATABASE `</span><span class="si">{database}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+                <span class="s2">"DROP DATABASE `</span><span class="si">{database}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                <span class="s2">&quot;Schema `</span><span class="si">{database}</span><span class="s2">` was dropped successfully.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"Schema `</span><span class="si">{database}</span><span class="s2">` was dropped successfully."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span>
                 <span class="p">)</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="n">AccessError</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">AccessError</span><span class="p">(</span>
-                <span class="s2">&quot;An attempt to drop schema `</span><span class="si">{database}</span><span class="s2">` &quot;</span>
-                <span class="s2">&quot;has failed. Check permissions.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
+                <span class="s2">"An attempt to drop schema `</span><span class="si">{database}</span><span class="s2">` "</span>
+                <span class="s2">"has failed. Check permissions."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
             <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5586,59 +5586,59 @@ This method is in preparation for a future release and is not officially support
 <span class="normal">471</span>
 <span class="normal">472</span>
 <span class="normal">473</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">python_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Generate the code for a module that recreates the schema.</span>
 <span class="sd">    This method is in preparation for a future release and is not officially supported.</span>
 
 <span class="sd">    :return: a string containing the body of a complete Python module defining this schema.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_assert_exists</span><span class="p">()</span>
     <span class="n">module_count</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
     <span class="c1"># add virtual modules for referenced modules with names vmod0, vmod1, ...</span>
     <span class="n">module_lookup</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span>
-        <span class="k">lambda</span><span class="p">:</span> <span class="s2">&quot;vmod&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">module_count</span><span class="p">))</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="s2">"vmod"</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">module_count</span><span class="p">))</span>
     <span class="p">)</span>
     <span class="n">db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">):</span>
         <span class="n">tier</span> <span class="o">=</span> <span class="n">_get_tier</span><span class="p">(</span><span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
-        <span class="n">class_name</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span>
-        <span class="n">indent</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">tier</span> <span class="o">==</span> <span class="s2">&quot;Part&quot;</span><span class="p">:</span>
-            <span class="n">class_name</span> <span class="o">=</span> <span class="n">class_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">indent</span> <span class="o">+=</span> <span class="s2">&quot;    &quot;</span>
+        <span class="n">class_name</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"`"</span><span class="p">)</span>
+        <span class="n">indent</span> <span class="o">=</span> <span class="s2">""</span>
+        <span class="k">if</span> <span class="n">tier</span> <span class="o">==</span> <span class="s2">"Part"</span><span class="p">:</span>
+            <span class="n">class_name</span> <span class="o">=</span> <span class="n">class_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"__"</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">indent</span> <span class="o">+=</span> <span class="s2">"    "</span>
         <span class="n">class_name</span> <span class="o">=</span> <span class="n">to_camel_case</span><span class="p">(</span><span class="n">class_name</span><span class="p">)</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">replace</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
             <span class="n">d</span><span class="p">,</span> <span class="n">tabs</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">s</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-            <span class="k">return</span> <span class="p">(</span><span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="n">db</span> <span class="k">else</span> <span class="p">(</span><span class="n">module_lookup</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-                <span class="n">to_camel_case</span><span class="p">(</span><span class="n">tab</span><span class="p">)</span> <span class="k">for</span> <span class="n">tab</span> <span class="ow">in</span> <span class="n">tabs</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">(</span><span class="s2">""</span> <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="n">db</span> <span class="k">else</span> <span class="p">(</span><span class="n">module_lookup</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">+</span> <span class="s2">"."</span><span class="p">))</span> <span class="o">+</span> <span class="s2">"."</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="n">to_camel_case</span><span class="p">(</span><span class="n">tab</span><span class="p">)</span> <span class="k">for</span> <span class="n">tab</span> <span class="ow">in</span> <span class="n">tabs</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"__"</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"__"</span><span class="p">)</span>
             <span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">(</span><span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">tier</span> <span class="o">==</span> <span class="s2">&quot;Part&quot;</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">@schema</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span>
-            <span class="s2">&quot;</span><span class="si">{indent}</span><span class="s2">class </span><span class="si">{class_name}</span><span class="s2">(dj.</span><span class="si">{tier}</span><span class="s2">):</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s1">&#39;</span><span class="si">{indent}</span><span class="s1">    definition = &quot;&quot;&quot;</span><span class="se">\n</span><span class="s1">&#39;</span>
-            <span class="s1">&#39;</span><span class="si">{indent}</span><span class="s1">    </span><span class="si">{defi}</span><span class="s1">&quot;&quot;&quot;&#39;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s2">""</span> <span class="k">if</span> <span class="n">tier</span> <span class="o">==</span> <span class="s2">"Part"</span> <span class="k">else</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">@schema</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span>
+            <span class="s2">"</span><span class="si">{indent}</span><span class="s2">class </span><span class="si">{class_name}</span><span class="s2">(dj.</span><span class="si">{tier}</span><span class="s2">):</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s1">'</span><span class="si">{indent}</span><span class="s1">    definition = """</span><span class="se">\n</span><span class="s1">'</span>
+            <span class="s1">'</span><span class="si">{indent}</span><span class="s1">    </span><span class="si">{defi}</span><span class="s1">"""'</span>
         <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
             <span class="n">class_name</span><span class="o">=</span><span class="n">class_name</span><span class="p">,</span>
             <span class="n">indent</span><span class="o">=</span><span class="n">indent</span><span class="p">,</span>
             <span class="n">tier</span><span class="o">=</span><span class="n">tier</span><span class="p">,</span>
             <span class="n">defi</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
-                <span class="sa">r</span><span class="s2">&quot;`([^`]+)`.`([^`]+)`&quot;</span><span class="p">,</span>
+                <span class="sa">r</span><span class="s2">"`([^`]+)`.`([^`]+)`"</span><span class="p">,</span>
                 <span class="n">replace</span><span class="p">,</span>
                 <span class="n">FreeTable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="n">describe</span><span class="p">(),</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">    &quot;</span> <span class="o">+</span> <span class="n">indent</span><span class="p">),</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">    "</span> <span class="o">+</span> <span class="n">indent</span><span class="p">),</span>
         <span class="p">)</span>
 
     <span class="n">tables</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
-    <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">)</span>
-    <span class="n">python_code</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">)</span>
+    <span class="n">python_code</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
         <span class="p">(</span>
-            <span class="s1">&#39;&quot;&quot;&quot;This module was auto-generated by datajoint from an existing schema&quot;&quot;&quot;&#39;</span><span class="p">,</span>
-            <span class="s2">&quot;import datajoint as dj</span><span class="se">\n\n</span><span class="s2">schema = dj.Schema(&#39;</span><span class="si">{db}</span><span class="s2">&#39;)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">),</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">{module}</span><span class="s2"> = dj.VirtualModule(&#39;</span><span class="si">{module}</span><span class="s2">&#39;, &#39;</span><span class="si">{schema_name}</span><span class="s2">&#39;)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s1">'"""This module was auto-generated by datajoint from an existing schema"""'</span><span class="p">,</span>
+            <span class="s2">"import datajoint as dj</span><span class="se">\n\n</span><span class="s2">schema = dj.Schema('</span><span class="si">{db}</span><span class="s2">')"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">),</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="s2">"</span><span class="si">{module}</span><span class="s2"> = dj.VirtualModule('</span><span class="si">{module}</span><span class="s2">', '</span><span class="si">{schema_name}</span><span class="s2">')"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">module</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">schema_name</span><span class="o">=</span><span class="n">k</span>
                 <span class="p">)</span>
                 <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">module_lookup</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
@@ -5648,7 +5648,7 @@ This method is in preparation for a future release and is not officially support
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">python_filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">python_code</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">python_filename</span><span class="p">,</span> <span class="s2">&quot;wt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">python_filename</span><span class="p">,</span> <span class="s2">"wt"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">python_code</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -5716,17 +5716,17 @@ as ~logs and ~job</p>
 <span class="normal">488</span>
 <span class="normal">489</span>
 <span class="normal">490</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">list_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Return a list of all tables in the schema except tables with ~ in first character such</span>
 <span class="sd">    as ~logs and ~job</span>
 
 <span class="sd">    :return: A list of table names from the database schema.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
     <span class="k">return</span> <span class="p">[</span>
         <span class="n">t</span>
         <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span>
-            <span class="n">table_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+            <span class="n">table_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"`"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">table_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span>
@@ -5819,10 +5819,10 @@ It declares the schema objects and a class for each table.</p>
 <span class="normal">529</span>
 <span class="normal">530</span>
 <span class="normal">531</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">VirtualModule</span><span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A virtual module imitates a Python module representing a DataJoint schema from table definitions in the database.</span>
 <span class="sd">    It declares the schema objects and a class for each table.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -5834,7 +5834,7 @@ It declares the schema objects and a class for each table.</p>
         <span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">add_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Creates a python module with the given name from the name of a schema on the server and</span>
 <span class="sd">        automatically adds classes to it corresponding to the tables in the schema.</span>
 
@@ -5845,7 +5845,7 @@ It declares the schema objects and a class for each table.</p>
 <span class="sd">        :param connection: a dj.Connection object to pass into the schema</span>
 <span class="sd">        :param add_objects: additional objects to add to the module</span>
 <span class="sd">        :return: the python module containing classes from the schema object and the table classes</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">VirtualModule</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">module_name</span><span class="p">)</span>
         <span class="n">_schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">(</span>
             <span class="n">schema_name</span><span class="p">,</span>
@@ -5855,7 +5855,7 @@ It declares the schema objects and a class for each table.</p>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">add_objects</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">add_objects</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="s2">&quot;schema&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_schema</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="s2">"schema"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_schema</span>
         <span class="n">_schema</span><span class="o">.</span><span class="n">spawn_missing_classes</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -5960,16 +5960,16 @@ It declares the schema objects and a class for each table.</p>
 <span class="normal">544</span>
 <span class="normal">545</span>
 <span class="normal">546</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">list_schemas</span><span class="p">(</span><span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    :param connection: a dj.Connection object</span>
 <span class="sd">    :return: list of all accessible schemas on the server</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="p">[</span>
         <span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="p">(</span><span class="n">connection</span> <span class="ow">or</span> <span class="n">conn</span><span class="p">())</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s2">&quot;SELECT schema_name &quot;</span>
-            <span class="s2">&quot;FROM information_schema.schemata &quot;</span>
-            <span class="s1">&#39;WHERE schema_name &lt;&gt; &quot;information_schema&quot;&#39;</span>
+            <span class="s2">"SELECT schema_name "</span>
+            <span class="s2">"FROM information_schema.schemata "</span>
+            <span class="s1">'WHERE schema_name &lt;&gt; "information_schema"'</span>
         <span class="p">)</span>
     <span class="p">]</span>
 </code></pre></div></td></tr></table></div>
@@ -6120,7 +6120,7 @@ It declares the schema objects and a class for each table.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3669,35 +3669,35 @@
 <span class="normal">34</span>
 <span class="normal">35</span>
 <span class="normal">36</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AttributeAdapter</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Base class for adapter objects for user-defined attribute types.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">attribute_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        :return: a supported DataJoint attribute type to use; e.g. &quot;longblob&quot;, &quot;blob@store&quot;</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Undefined attribute adapter&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        :return: a supported DataJoint attribute type to use; e.g. "longblob", "blob@store"</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"Undefined attribute adapter"</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        convert value retrieved from the the attribute in a table into the adapted type</span>
 
 <span class="sd">        :param value: value from the database</span>
 
 <span class="sd">        :return: object of the adapted type</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Undefined attribute adapter&quot;</span><span class="p">)</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"Undefined attribute adapter"</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        convert an object of the adapted type into a value that DataJoint can store in a table attribute</span>
 
 <span class="sd">        :param obj: an object of the adapted type</span>
 <span class="sd">        :return: value to store in the database</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Undefined attribute adapter&quot;</span><span class="p">)</span>
+<span class="sd">        """</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"Undefined attribute adapter"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -3837,14 +3837,14 @@
 <span class="normal">25</span>
 <span class="normal">26</span>
 <span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    convert value retrieved from the the attribute in a table into the adapted type</span>
 
 <span class="sd">    :param value: value from the database</span>
 
 <span class="sd">    :return: object of the adapted type</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Undefined attribute adapter&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"Undefined attribute adapter"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3932,13 +3932,13 @@
 <span class="normal">34</span>
 <span class="normal">35</span>
 <span class="normal">36</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    convert an object of the adapted type into a value that DataJoint can store in a table attribute</span>
 
 <span class="sd">    :param obj: an object of the adapted type</span>
 <span class="sd">    :return: value to store in the database</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Undefined attribute adapter&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"Undefined attribute adapter"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4009,35 +4009,35 @@
 <span class="normal">70</span>
 <span class="normal">71</span>
 <span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_adapter</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">adapter_name</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Extract the AttributeAdapter object by its name from the context and validate.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">_support_adapted_types</span><span class="p">():</span>
-        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Support for Adapted Attribute types is disabled.&quot;</span><span class="p">)</span>
-    <span class="n">adapter_name</span> <span class="o">=</span> <span class="n">adapter_name</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;&gt;&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Support for Adapted Attribute types is disabled."</span><span class="p">)</span>
+    <span class="n">adapter_name</span> <span class="o">=</span> <span class="n">adapter_name</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"&lt;"</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"&gt;"</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">adapter</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">context</span><span class="p">[</span><span class="n">adapter_name</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">adapter_name</span> <span class="ow">in</span> <span class="n">context</span>
-            <span class="k">else</span> <span class="n">type_plugins</span><span class="p">[</span><span class="n">adapter_name</span><span class="p">][</span><span class="s2">&quot;object&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+            <span class="k">else</span> <span class="n">type_plugins</span><span class="p">[</span><span class="n">adapter_name</span><span class="p">][</span><span class="s2">"object"</span><span class="p">]</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute adapter &#39;</span><span class="si">{adapter_name}</span><span class="s2">&#39; is not defined.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"Attribute adapter '</span><span class="si">{adapter_name}</span><span class="s2">' is not defined."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">adapter_name</span><span class="o">=</span><span class="n">adapter_name</span>
             <span class="p">)</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">adapter</span><span class="p">,</span> <span class="n">AttributeAdapter</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute adapter &#39;</span><span class="si">{adapter_name}</span><span class="s2">&#39; must be an instance of datajoint.AttributeAdapter&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"Attribute adapter '</span><span class="si">{adapter_name}</span><span class="s2">' must be an instance of datajoint.AttributeAdapter"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">adapter_name</span><span class="o">=</span><span class="n">adapter_name</span>
             <span class="p">)</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">adapter</span><span class="o">.</span><span class="n">attribute_type</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span>
-        <span class="sa">r</span><span class="s2">&quot;^\w&quot;</span><span class="p">,</span> <span class="n">adapter</span><span class="o">.</span><span class="n">attribute_type</span>
+        <span class="sa">r</span><span class="s2">"^\w"</span><span class="p">,</span> <span class="n">adapter</span><span class="o">.</span><span class="n">attribute_type</span>
     <span class="p">):</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Invalid attribute type </span><span class="si">{type}</span><span class="s2"> in attribute adapter &#39;</span><span class="si">{adapter_name}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"Invalid attribute type </span><span class="si">{type}</span><span class="s2"> in attribute adapter '</span><span class="si">{adapter_name}</span><span class="s2">'"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="nb">type</span><span class="o">=</span><span class="n">adapter</span><span class="o">.</span><span class="n">attribute_type</span><span class="p">,</span> <span class="n">adapter_name</span><span class="o">=</span><span class="n">adapter_name</span>
             <span class="p">)</span>
         <span class="p">)</span>
@@ -4190,7 +4190,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

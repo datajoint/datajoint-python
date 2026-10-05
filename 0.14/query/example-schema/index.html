@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3538,95 +3538,95 @@ Information about students, departments, courses, etc. are organized in multiple
   information.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Student</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">student_id      : int unsigned # university ID</span>
 <span class="s2">---</span>
 <span class="s2">first_name      : varchar(40)</span>
 <span class="s2">last_name       : varchar(40)</span>
-<span class="s2">sex             : enum(&#39;F&#39;, &#39;M&#39;, &#39;U&#39;)</span>
+<span class="s2">sex             : enum('F', 'M', 'U')</span>
 <span class="s2">date_of_birth   : date</span>
 <span class="s2">home_address    : varchar(200) # street address</span>
 <span class="s2">home_city       : varchar(30)</span>
 <span class="s2">home_state      : char(2) # two-letter abbreviation</span>
 <span class="s2">home_zipcode    : char(10)</span>
 <span class="s2">home_phone      : varchar(14)</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Department</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">dept         : char(6) # abbreviated department name, e.g. BIOL</span>
 <span class="s2">---</span>
 <span class="s2">dept_name    : varchar(200) # full department name</span>
 <span class="s2">dept_address : varchar(200) # mailing address</span>
 <span class="s2">dept_phone   : varchar(14)</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">StudentMajor</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">-&gt; Student</span>
 <span class="s2">---</span>
 <span class="s2">-&gt; Department</span>
 <span class="s2">declare_date :  date # when student declared her major</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Course</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">-&gt; Department</span>
 <span class="s2">course      : int unsigned # course number, e.g. 1010</span>
 <span class="s2">---</span>
-<span class="s2">course_name : varchar(200) # e.g. &quot;Cell Biology&quot;</span>
+<span class="s2">course_name : varchar(200) # e.g. "Cell Biology"</span>
 <span class="s2">credits     : decimal(3,1) # number of credits earned by completing the course</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Term</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">term_year : year</span>
-<span class="s2">term      : enum(&#39;Spring&#39;, &#39;Summer&#39;, &#39;Fall&#39;)</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">term      : enum('Spring', 'Summer', 'Fall')</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Section</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">-&gt; Course</span>
 <span class="s2">-&gt; Term</span>
 <span class="s2">section : char(1)</span>
 <span class="s2">---</span>
 <span class="s2">room  :  varchar(12) # building and room code</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">CurrentTerm</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">---</span>
 <span class="s2">-&gt; Term</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Enroll</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">-&gt; Section</span>
 <span class="s2">-&gt; Student</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">LetterGrade</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">grade : char(2)</span>
 <span class="s2">---</span>
 <span class="s2">points : decimal(3,2)</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 <span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Grade</span> <span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">-&gt; Enroll</span>
 <span class="s2">---</span>
 <span class="s2">-&gt; LetterGrade</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 </code></pre></div>
 <h2 id="example-schema-diagram">Example schema diagram<a class="headerlink" href="#example-schema-diagram" title="Permanent link">&para;</a></h2>
 <p><img alt="University example schema" src="../../images/queries_example_diagram.png" style="align:center" /></p>
@@ -3766,7 +3766,7 @@ Tables contain data on students, departments, courses, etc.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

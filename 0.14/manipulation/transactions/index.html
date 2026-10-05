@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3500,9 +3500,9 @@ and its part table <code>Session.Experimenter</code>.</p>
 
 <span class="c1"># insert Session and Session.Experimenter entries in a transaction</span>
 <span class="k">with</span> <span class="n">connection</span><span class="o">.</span><span class="n">transaction</span><span class="p">:</span>
-     <span class="n">key</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;subject_id&#39;</span><span class="p">:</span> <span class="n">animal_id</span><span class="p">,</span> <span class="s1">&#39;session_time&#39;</span><span class="p">:</span> <span class="n">session_time</span><span class="p">}</span>
-     <span class="n">Session</span><span class="o">.</span><span class="n">insert1</span><span class="p">({</span><span class="o">**</span><span class="n">key</span><span class="p">,</span> <span class="s1">&#39;brain_region&#39;</span><span class="p">:</span><span class="n">region</span><span class="p">,</span> <span class="s1">&#39;cortical_layer&#39;</span><span class="p">:</span><span class="n">layer</span><span class="p">})</span>
-     <span class="n">Session</span><span class="o">.</span><span class="n">Experimenter</span><span class="o">.</span><span class="n">insert1</span><span class="p">({</span><span class="o">**</span><span class="n">key</span><span class="p">,</span> <span class="s1">&#39;experimenter&#39;</span><span class="p">:</span> <span class="n">username</span><span class="p">})</span>
+     <span class="n">key</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'subject_id'</span><span class="p">:</span> <span class="n">animal_id</span><span class="p">,</span> <span class="s1">'session_time'</span><span class="p">:</span> <span class="n">session_time</span><span class="p">}</span>
+     <span class="n">Session</span><span class="o">.</span><span class="n">insert1</span><span class="p">({</span><span class="o">**</span><span class="n">key</span><span class="p">,</span> <span class="s1">'brain_region'</span><span class="p">:</span><span class="n">region</span><span class="p">,</span> <span class="s1">'cortical_layer'</span><span class="p">:</span><span class="n">layer</span><span class="p">})</span>
+     <span class="n">Session</span><span class="o">.</span><span class="n">Experimenter</span><span class="o">.</span><span class="n">insert1</span><span class="p">({</span><span class="o">**</span><span class="n">key</span><span class="p">,</span> <span class="s1">'experimenter'</span><span class="p">:</span> <span class="n">username</span><span class="p">})</span>
 </code></pre></div>
 <p>Here, to external observers, both inserts will take effect together upon exiting from
 the <code>with</code> block or will not have any effect at all.
@@ -3642,7 +3642,7 @@ rolled back.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

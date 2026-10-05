@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -4565,7 +4565,7 @@ A subquery is generated when:
 <span class="normal">679</span>
 <span class="normal">680</span>
 <span class="normal">681</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QueryExpression</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    QueryExpression implements query operators to derive new entity set from its input.</span>
 <span class="sd">    A QueryExpression object generates a SELECT statement in SQL.</span>
 <span class="sd">    QueryExpression operators are restrict, join, proj, aggr, and union.</span>
@@ -4584,7 +4584,7 @@ A subquery is generated when:
 <span class="sd">        1. A restriction is applied on any computed or renamed attributes</span>
 <span class="sd">        2. A projection is applied remapping remapped attributes</span>
 <span class="sd">        3. Subclasses: Join, Aggregation, and Union have additional specific rules.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">_restriction</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">_restriction_attributes</span> <span class="o">=</span> <span class="kc">None</span>
@@ -4602,36 +4602,36 @@ A subquery is generated when:
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;a dj.Connection object&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""a dj.Connection object"""</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">support</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;A list of table names or subqueries to from the FROM clause&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""A list of table names or subqueries to from the FROM clause"""</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_support</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_support</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;a dj.Heading object, reflects the effects of the projection operator .proj&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""a dj.Heading object, reflects the effects of the projection operator .proj"""</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_heading</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">original_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;a dj.Heading object reflecting the attributes before projection&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""a dj.Heading object reflecting the attributes before projection"""</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_original_heading</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">restriction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;a AndList object of restrictions applied to input to produce the result&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""a AndList object of restrictions applied to input to produce the result"""</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_restriction</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_restriction</span> <span class="o">=</span> <span class="n">AndList</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_restriction</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">restriction_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;the set of attribute names invoked in the WHERE clause&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""the set of attribute names invoked in the WHERE clause"""</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_restriction_attributes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_restriction_attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_restriction_attributes</span>
@@ -4645,7 +4645,7 @@ A subquery is generated when:
     <span class="k">def</span><span class="w"> </span><span class="nf">from_clause</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">support</span> <span class="o">=</span> <span class="p">(</span>
             <span class="p">(</span>
-                <span class="s2">&quot;(&quot;</span> <span class="o">+</span> <span class="n">src</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;) as `$</span><span class="si">%x</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subquery_alias_count</span><span class="p">)</span>
+                <span class="s2">"("</span> <span class="o">+</span> <span class="n">src</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()</span> <span class="o">+</span> <span class="s2">") as `$</span><span class="si">%x</span><span class="s2">`"</span> <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subquery_alias_count</span><span class="p">)</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">)</span>
                 <span class="k">else</span> <span class="n">src</span>
             <span class="p">)</span>
@@ -4653,41 +4653,41 @@ A subquery is generated when:
         <span class="p">)</span>
         <span class="n">clause</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">support</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">left</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">support</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left</span><span class="p">):</span>
-            <span class="n">clause</span> <span class="o">+=</span> <span class="s2">&quot; NATURAL</span><span class="si">{left}</span><span class="s2"> JOIN </span><span class="si">{clause}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                <span class="n">left</span><span class="o">=</span><span class="s2">&quot; LEFT&quot;</span> <span class="k">if</span> <span class="n">left</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">clause</span><span class="o">=</span><span class="n">s</span>
+            <span class="n">clause</span> <span class="o">+=</span> <span class="s2">" NATURAL</span><span class="si">{left}</span><span class="s2"> JOIN </span><span class="si">{clause}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">left</span><span class="o">=</span><span class="s2">" LEFT"</span> <span class="k">if</span> <span class="n">left</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span> <span class="n">clause</span><span class="o">=</span><span class="n">s</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">clause</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">where_clause</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s2">&quot;&quot;</span>
+            <span class="s2">""</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">restriction</span>
-            <span class="k">else</span> <span class="s2">&quot; WHERE (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="s2">&quot;)AND(&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">restriction</span><span class="p">)</span>
+            <span class="k">else</span> <span class="s2">" WHERE (</span><span class="si">%s</span><span class="s2">)"</span> <span class="o">%</span> <span class="s2">")AND("</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">restriction</span><span class="p">)</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">sorting_clauses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="p">:</span>
-            <span class="k">return</span> <span class="s2">&quot;&quot;</span>
-        <span class="n">clause</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="k">return</span> <span class="s2">""</span>
+        <span class="n">clause</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
             <span class="n">_wrap_attributes</span><span class="p">(</span>
                 <span class="n">_flatten_attribute_list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="o">.</span><span class="n">order_by</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">clause</span><span class="p">:</span>
-            <span class="n">clause</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; ORDER BY </span><span class="si">{</span><span class="n">clause</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">clause</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">" ORDER BY </span><span class="si">{</span><span class="n">clause</span><span class="si">}</span><span class="s2">"</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">clause</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; LIMIT </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="o">.</span><span class="n">limit</span><span class="si">}{</span><span class="sa">f</span><span class="s1">&#39; OFFSET </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="o">.</span><span class="n">offset</span><span class="si">}</span><span class="s1">&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="o">.</span><span class="n">offset</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">clause</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">" LIMIT </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="o">.</span><span class="n">limit</span><span class="si">}{</span><span class="sa">f</span><span class="s1">' OFFSET </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="o">.</span><span class="n">offset</span><span class="si">}</span><span class="s1">'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">_top</span><span class="o">.</span><span class="n">offset</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">''</span><span class="si">}</span><span class="s2">"</span>
 
         <span class="k">return</span> <span class="n">clause</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">make_sql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Make the SQL SELECT statement.</span>
 
 <span class="sd">        :param fields: used to explicitly set the select attributes</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="s2">&quot;SELECT </span><span class="si">{distinct}{fields}</span><span class="s2"> FROM </span><span class="si">{from_}{where}{sorting}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-            <span class="n">distinct</span><span class="o">=</span><span class="s2">&quot;DISTINCT &quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distinct</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="s2">"SELECT </span><span class="si">{distinct}{fields}</span><span class="s2"> FROM </span><span class="si">{from_}{where}{sorting}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">distinct</span><span class="o">=</span><span class="s2">"DISTINCT "</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distinct</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
             <span class="n">fields</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">as_sql</span><span class="p">(</span><span class="n">fields</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">),</span>
             <span class="n">from_</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">from_clause</span><span class="p">(),</span>
             <span class="n">where</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(),</span>
@@ -4696,7 +4696,7 @@ A subquery is generated when:
 
     <span class="c1"># --------- query operators -----------</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">make_subquery</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;create a new SELECT statement where self is the FROM clause&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""create a new SELECT statement where self is the FROM clause"""</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">QueryExpression</span><span class="p">()</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_support</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="p">]</span>
@@ -4704,7 +4704,7 @@ A subquery is generated when:
         <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">restrict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restriction</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Produces a new expression with the new restriction applied.</span>
 <span class="sd">        rel.restrict(restriction)  is equivalent to  rel &amp; restriction.</span>
 <span class="sd">        rel.restrict(Not(restriction))  is equivalent to  rel - restriction</span>
@@ -4718,11 +4718,11 @@ A subquery is generated when:
 
 <span class="sd">        rel &amp; True                          rel</span>
 <span class="sd">        rel &amp; False                         the empty entity set</span>
-<span class="sd">        rel &amp; &#39;TRUE&#39;                        rel</span>
-<span class="sd">        rel &amp; &#39;FALSE&#39;                       the empty entity set</span>
+<span class="sd">        rel &amp; 'TRUE'                        rel</span>
+<span class="sd">        rel &amp; 'FALSE'                       the empty entity set</span>
 <span class="sd">        rel - cond                          rel &amp; Not(cond)</span>
-<span class="sd">        rel - &#39;TRUE&#39;                        rel &amp; False</span>
-<span class="sd">        rel - &#39;FALSE&#39;                       rel</span>
+<span class="sd">        rel - 'TRUE'                        rel &amp; False</span>
+<span class="sd">        rel - 'FALSE'                       rel</span>
 <span class="sd">        rel &amp; AndList((cond1,cond2))        rel &amp; cond1 &amp; cond2</span>
 <span class="sd">        rel &amp; AndList()                     rel</span>
 <span class="sd">        rel &amp; [cond1, cond2]                rel &amp; OrList((cond1, cond2))</span>
@@ -4747,7 +4747,7 @@ A subquery is generated when:
 
 <span class="sd">        :param restriction: a sequence or an array (treated as OR list), another QueryExpression, an SQL condition</span>
 <span class="sd">        string, or an AndList.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">restriction</span><span class="p">,</span> <span class="n">Top</span><span class="p">):</span>
             <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
@@ -4763,13 +4763,13 @@ A subquery is generated when:
         <span class="c1"># check that all attributes in condition are present in the query</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` is not found in query.&quot;</span>
+                <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` is not found in query."</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">attr</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="n">attr</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
             <span class="k">pass</span>  <span class="c1"># all ok</span>
         <span class="c1"># If the new condition uses any new attributes, a subquery is required.</span>
-        <span class="c1"># However, Aggregation&#39;s HAVING statement works fine with aliased attributes.</span>
+        <span class="c1"># However, Aggregation's HAVING statement works fine with aliased attributes.</span>
         <span class="n">need_subquery</span> <span class="o">=</span> <span class="p">(</span>
             <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Union</span><span class="p">)</span>
             <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Aggregation</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">new_attributes</span><span class="p">)</span>
@@ -4790,17 +4790,17 @@ A subquery is generated when:
         <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">restrict</span><span class="p">(</span><span class="n">restriction</span><span class="p">)</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__and__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restriction</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Restriction operator e.g. ``q1 &amp; q2``.</span>
 <span class="sd">        :return: a restricted copy of the input argument</span>
 <span class="sd">        See QueryExpression.restrict for more detail.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">restrict</span><span class="p">(</span><span class="n">restriction</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__xor__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restriction</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Permissive restriction operator ignoring compatibility check  e.g. ``q1 ^ q2``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">restriction</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">restriction</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
             <span class="n">restriction</span> <span class="o">=</span> <span class="n">restriction</span><span class="p">()</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">restriction</span><span class="p">,</span> <span class="n">Not</span><span class="p">):</span>
@@ -4808,56 +4808,56 @@ A subquery is generated when:
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">restrict</span><span class="p">(</span><span class="n">PromiscuousOperand</span><span class="p">(</span><span class="n">restriction</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restriction</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Inverted restriction e.g. ``q1 - q2``.</span>
 <span class="sd">        :return: a restricted copy of the input argument</span>
 <span class="sd">        See QueryExpression.restrict for more detail.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">restrict</span><span class="p">(</span><span class="n">Not</span><span class="p">(</span><span class="n">restriction</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Convert between restriction and inverted restriction e.g. ``-q1``.</span>
 <span class="sd">        :return: target restriction</span>
 <span class="sd">        See QueryExpression.restrict for more detail.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Not</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">restriction</span>
         <span class="k">return</span> <span class="n">Not</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        join of query expressions `self` and `other` e.g. ``q1 * q2``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__matmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Permissive join of query expressions `self` and `other` ignoring compatibility check</span>
 <span class="sd">            e.g. ``q1 @ q2``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
             <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="p">()</span>  <span class="c1"># instantiate</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">semantic_check</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">semantic_check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        create the joined QueryExpression.</span>
 <span class="sd">        a * b  is short for A.join(B)</span>
 <span class="sd">        a @ b  is short for A.join(B, semantic_check=False)</span>
 <span class="sd">        Additionally, left=True will retain the rows of self, effectively performing a left join.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># trigger subqueries if joining on renamed attributes</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">U</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">other</span> <span class="o">*</span> <span class="bp">self</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
             <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="p">()</span>  <span class="c1"># instantiate</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;The argument of join must be a QueryExpression&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"The argument of join must be a QueryExpression"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">semantic_check</span><span class="p">:</span>
             <span class="n">assert_join_compatibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
         <span class="n">join_attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
-        <span class="c1"># needs subquery if self&#39;s FROM clause has common attributes with other&#39;s FROM clause</span>
+        <span class="c1"># needs subquery if self's FROM clause has common attributes with other's FROM clause</span>
         <span class="n">need_subquery1</span> <span class="o">=</span> <span class="n">need_subquery2</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span>
             <span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">original_heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">original_heading</span><span class="o">.</span><span class="n">names</span><span class="p">))</span>
             <span class="o">-</span> <span class="n">join_attributes</span>
@@ -4891,11 +4891,11 @@ A subquery is generated when:
         <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;union e.g. ``q1 + q2``.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""union e.g. ``q1 + q2``."""</span>
         <span class="k">return</span> <span class="n">Union</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">proj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">attributes</span><span class="p">,</span> <span class="o">**</span><span class="n">named_attributes</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Projection operator.</span>
 
 <span class="sd">        :param attributes:  attributes to be included in the result. (The primary key is already included).</span>
@@ -4903,38 +4903,38 @@ A subquery is generated when:
 <span class="sd">        :return: the projected expression.</span>
 <span class="sd">        Primary key attributes cannot be excluded but may be renamed.</span>
 <span class="sd">        If the attribute list contains an Ellipsis ..., then all secondary attributes are included too</span>
-<span class="sd">        Prefixing an attribute name with a dash &#39;-attr&#39; removes the attribute from the list if present.</span>
-<span class="sd">        Keyword arguments can be used to rename attributes as in name=&#39;attr&#39;, duplicate them as in name=&#39;(attr)&#39;, or</span>
+<span class="sd">        Prefixing an attribute name with a dash '-attr' removes the attribute from the list if present.</span>
+<span class="sd">        Keyword arguments can be used to rename attributes as in name='attr', duplicate them as in name='(attr)', or</span>
 <span class="sd">        self.proj(...) or self.proj(Ellipsis) -- include all attributes (return self)</span>
 <span class="sd">        self.proj() -- include only primary key</span>
-<span class="sd">        self.proj(&#39;attr1&#39;, &#39;attr2&#39;)  -- include primary key and attributes attr1 and attr2</span>
-<span class="sd">        self.proj(..., &#39;-attr1&#39;, &#39;-attr2&#39;)  -- include all attributes except attr1 and attr2</span>
-<span class="sd">        self.proj(name1=&#39;attr1&#39;) -- include primary key and &#39;attr1&#39; renamed as name1</span>
-<span class="sd">        self.proj(&#39;attr1&#39;, dup=&#39;(attr1)&#39;) -- include primary key and attribute attr1 twice, with the duplicate &#39;dup&#39;</span>
-<span class="sd">        self.proj(k=&#39;abs(attr1)&#39;) adds the new attribute k with the value computed as an expression (SQL syntax)</span>
+<span class="sd">        self.proj('attr1', 'attr2')  -- include primary key and attributes attr1 and attr2</span>
+<span class="sd">        self.proj(..., '-attr1', '-attr2')  -- include all attributes except attr1 and attr2</span>
+<span class="sd">        self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1</span>
+<span class="sd">        self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup'</span>
+<span class="sd">        self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax)</span>
 <span class="sd">        from other attributes available before the projection.</span>
 <span class="sd">        Each attribute name can only be used once.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">named_attributes</span> <span class="o">=</span> <span class="p">{</span>
             <span class="n">k</span><span class="p">:</span> <span class="n">translate_attribute</span><span class="p">(</span><span class="n">v</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">}</span>
         <span class="c1"># new attributes in parentheses are included again with the new name without removing original</span>
         <span class="n">duplication_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
-            <span class="sa">rf</span><span class="s1">&#39;^\s*\(\s*(?!</span><span class="si">{</span><span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">CONSTANT_LITERALS</span><span class="p">)</span><span class="si">}</span><span class="s1">)(?P&lt;name&gt;[a-zA-Z_]\w*)\s*\)\s*$&#39;</span>
+            <span class="sa">rf</span><span class="s1">'^\s*\(\s*(?!</span><span class="si">{</span><span class="s2">"|"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">CONSTANT_LITERALS</span><span class="p">)</span><span class="si">}</span><span class="s1">)(?P&lt;name&gt;[a-zA-Z_]\w*)\s*\)\s*$'</span>
         <span class="p">)</span>
         <span class="c1"># attributes without parentheses renamed</span>
         <span class="n">rename_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
-            <span class="sa">rf</span><span class="s1">&#39;^\s*(?!</span><span class="si">{</span><span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">CONSTANT_LITERALS</span><span class="p">)</span><span class="si">}</span><span class="s1">)(?P&lt;name&gt;[a-zA-Z_]\w*)\s*$&#39;</span>
+            <span class="sa">rf</span><span class="s1">'^\s*(?!</span><span class="si">{</span><span class="s2">"|"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">CONSTANT_LITERALS</span><span class="p">)</span><span class="si">}</span><span class="s1">)(?P&lt;name&gt;[a-zA-Z_]\w*)\s*$'</span>
         <span class="p">)</span>
         <span class="n">replicate_map</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">k</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">(</span>
                 <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">duplication_pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">m</span>
         <span class="p">}</span>
         <span class="n">rename_map</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">k</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">(</span>
                 <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">rename_pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
             <span class="p">)</span>
@@ -4960,19 +4960,19 @@ A subquery is generated when:
             <span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> is not a valid data type for an attribute in .proj&quot;</span>
+                <span class="s2">"</span><span class="si">%s</span><span class="s2"> is not a valid data type for an attribute in .proj"</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">str</span><span class="p">))</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
             <span class="k">pass</span>  <span class="c1"># normal case</span>
-        <span class="c1"># remove excluded attributes, specified as `-attr&#39;</span>
-        <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">))</span>
+        <span class="c1"># remove excluded attributes, specified as `-attr'</span>
+        <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"-"</span><span class="p">))</span>
         <span class="n">attributes</span><span class="o">.</span><span class="n">difference_update</span><span class="p">(</span><span class="n">excluded</span><span class="p">)</span>
-        <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">)</span>
+        <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"-"</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">)</span>
         <span class="n">attributes</span><span class="o">.</span><span class="n">difference_update</span><span class="p">(</span><span class="n">excluded</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Cannot exclude primary key attribute </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">"Cannot exclude primary key attribute </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
                 <span class="nb">next</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">excluded</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span><span class="p">),</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
@@ -4980,7 +4980,7 @@ A subquery is generated when:
         <span class="c1"># check that all attributes exist in heading</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` not found.&quot;</span>
+                <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` not found."</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
@@ -4990,7 +4990,7 @@ A subquery is generated when:
         <span class="n">mentions</span> <span class="o">=</span> <span class="n">attributes</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">replicate_map</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">rename_map</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Attribute &#39;</span><span class="si">%s</span><span class="s2">&#39; not found.&quot;</span>
+                <span class="s2">"Attribute '</span><span class="si">%s</span><span class="s2">' not found."</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">mentions</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
@@ -4999,7 +4999,7 @@ A subquery is generated when:
         <span class="c1"># check that newly created attributes do not clash with any other selected attributes</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` already exists&quot;</span>
+                <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` already exists"</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span>
                     <span class="n">a</span>
                     <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">rename_map</span>
@@ -5010,7 +5010,7 @@ A subquery is generated when:
             <span class="k">pass</span>  <span class="c1"># all ok</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` already exists&quot;</span>
+                <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` already exists"</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span>
                     <span class="n">a</span>
                     <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">compute_map</span>
@@ -5021,7 +5021,7 @@ A subquery is generated when:
             <span class="k">pass</span>  <span class="c1"># all ok</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` already exists&quot;</span>
+                <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` already exists"</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span>
                     <span class="n">a</span>
                     <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">replicate_map</span>
@@ -5056,15 +5056,15 @@ A subquery is generated when:
         <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">aggr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="o">*</span><span class="n">attributes</span><span class="p">,</span> <span class="n">keep_all_rows</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">named_attributes</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Aggregation of the type U(&#39;attr1&#39;,&#39;attr2&#39;).aggr(group, computation=&quot;QueryExpression&quot;)</span>
-<span class="sd">        has the primary key (&#39;attr1&#39;,&#39;attr2&#39;) and performs aggregation computations for all matching elements of `group`.</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")</span>
+<span class="sd">        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.</span>
 
 <span class="sd">        :param group:  The query expression to be aggregated.</span>
 <span class="sd">        :param keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.</span>
-<span class="sd">        :param named_attributes: computations of the form new_attribute=&quot;sql expression on attributes of group&quot;</span>
+<span class="sd">        :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"</span>
 <span class="sd">        :return: The derived query expression</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">Ellipsis</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>
             <span class="c1"># expand ellipsis to include only attributes from the left table</span>
             <span class="n">attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">attributes</span><span class="p">)</span>
@@ -5086,36 +5086,36 @@ A subquery is generated when:
         <span class="k">return</span> <span class="n">Fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        shortcut to fetch the first few entries from query expression.</span>
-<span class="sd">        Equivalent to fetch(order_by=&quot;KEY&quot;, limit=25)</span>
+<span class="sd">        Equivalent to fetch(order_by="KEY", limit=25)</span>
 
 <span class="sd">        :param limit:  number of entries</span>
 <span class="sd">        :param fetch_kwargs: kwargs for fetch</span>
 <span class="sd">        :return: query result</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s2">&quot;KEY&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s2">"KEY"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">tail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        shortcut to fetch the last few entries from query expression.</span>
-<span class="sd">        Equivalent to fetch(order_by=&quot;KEY DESC&quot;, limit=25)[::-1]</span>
+<span class="sd">        Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]</span>
 
 <span class="sd">        :param limit:  number of entries</span>
 <span class="sd">        :param fetch_kwargs: kwargs for fetch</span>
 <span class="sd">        :return: query result</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s2">&quot;KEY DESC&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s2">"KEY DESC"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;:return: number of elements in the result set e.g. ``len(q1)``.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">""":return: number of elements in the result set e.g. ``len(q1)``."""</span>
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_subquery</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top</span> <span class="k">else</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s2">&quot;SELECT </span><span class="si">{select_}</span><span class="s2"> FROM </span><span class="si">{from_}{where}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"SELECT </span><span class="si">{select_}</span><span class="s2"> FROM </span><span class="si">{from_}{where}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">select_</span><span class="o">=</span><span class="p">(</span>
-                    <span class="s2">&quot;count(*)&quot;</span>
+                    <span class="s2">"count(*)"</span>
                     <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">_left</span><span class="p">)</span>
-                    <span class="k">else</span> <span class="s2">&quot;count(DISTINCT </span><span class="si">{fields}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="k">else</span> <span class="s2">"count(DISTINCT </span><span class="si">{fields}</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                         <span class="n">fields</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">as_sql</span><span class="p">(</span>
                             <span class="n">result</span><span class="o">.</span><span class="n">primary_key</span><span class="p">,</span> <span class="n">include_aliases</span><span class="o">=</span><span class="kc">False</span>
                         <span class="p">)</span>
@@ -5127,55 +5127,55 @@ A subquery is generated when:
         <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        :return: True if the result is not empty. Equivalent to len(self) &gt; 0 but often</span>
 <span class="sd">            faster e.g. ``bool(q1)``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-                <span class="s2">&quot;SELECT EXISTS(SELECT 1 FROM </span><span class="si">{from_}{where}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="s2">"SELECT EXISTS(SELECT 1 FROM </span><span class="si">{from_}{where}</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">from_</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">from_clause</span><span class="p">(),</span> <span class="n">where</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">where_clause</span><span class="p">()</span>
                 <span class="p">)</span>
             <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        returns True if the restriction in item matches any entries in self</span>
 <span class="sd">            e.g. ``restriction in q1``.</span>
 
 <span class="sd">        :param item: any restriction</span>
 <span class="sd">        (item in query_expression) is equivalent to bool(query_expression &amp; item) but may be</span>
 <span class="sd">        executed more efficiently.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span> <span class="o">&amp;</span> <span class="n">item</span><span class="p">)</span>  <span class="c1"># May be optimized e.g. using an EXISTS query</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        returns an iterator-compatible QueryExpression object e.g. ``iter(q1)``.</span>
 
 <span class="sd">        :param self: iterator-compatible QueryExpression object</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_iter_only_key</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">in_key</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_iter_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;KEY&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_iter_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__next__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        returns the next record on an iterator-compatible QueryExpression object</span>
 <span class="sd">            e.g. ``next(q1)``.</span>
 
 <span class="sd">        :param self: A query expression</span>
 <span class="sd">        :type self: :class:`QueryExpression`</span>
 <span class="sd">        :rtype: dict</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_keys</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="c1"># self._iter_keys is missing because __iter__ has not been called.</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                <span class="s2">&quot;A QueryExpression object is not an iterator. &quot;</span>
-                <span class="s2">&quot;Use iter(obj) to create an iterator.&quot;</span>
+                <span class="s2">"A QueryExpression object is not an iterator. "</span>
+                <span class="s2">"Use iter(obj) to create an iterator."</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">StopIteration</span>
@@ -5191,34 +5191,34 @@ A subquery is generated when:
                     <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        See expression.fetch() for input description.</span>
 <span class="sd">        :return: query cursor</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">sql</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="n">as_dict</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        returns the string representation of a QueryExpression object e.g. ``str(q1)``.</span>
 
 <span class="sd">        :param self: A query expression</span>
 <span class="sd">        :type self: :class:`QueryExpression`</span>
 <span class="sd">        :rtype: str</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;loglevel&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;debug&quot;</span>
+            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">"loglevel"</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"debug"</span>
             <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">preview</span><span class="p">()</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">preview</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;:return: a string of preview of the contents of the query.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">""":return: a string of preview of the contents of the query."""</span>
         <span class="k">return</span> <span class="n">preview</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_repr_html_</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;:return: HTML to display table in Jupyter notebook.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">""":return: HTML to display table in Jupyter notebook."""</span>
         <span class="k">return</span> <span class="n">repr_html</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -5454,13 +5454,13 @@ A subquery is generated when:
 <span class="normal">152</span>
 <span class="normal">153</span>
 <span class="normal">154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make_sql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Make the SQL SELECT statement.</span>
 
 <span class="sd">    :param fields: used to explicitly set the select attributes</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="s2">&quot;SELECT </span><span class="si">{distinct}{fields}</span><span class="s2"> FROM </span><span class="si">{from_}{where}{sorting}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-        <span class="n">distinct</span><span class="o">=</span><span class="s2">&quot;DISTINCT &quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distinct</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="s2">"SELECT </span><span class="si">{distinct}{fields}</span><span class="s2"> FROM </span><span class="si">{from_}{where}{sorting}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">distinct</span><span class="o">=</span><span class="s2">"DISTINCT "</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distinct</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
         <span class="n">fields</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">as_sql</span><span class="p">(</span><span class="n">fields</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">),</span>
         <span class="n">from_</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">from_clause</span><span class="p">(),</span>
         <span class="n">where</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(),</span>
@@ -5500,7 +5500,7 @@ A subquery is generated when:
 <span class="normal">161</span>
 <span class="normal">162</span>
 <span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make_subquery</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;create a new SELECT statement where self is the FROM clause&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""create a new SELECT statement where self is the FROM clause"""</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">QueryExpression</span><span class="p">()</span>
     <span class="n">result</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span>
     <span class="n">result</span><span class="o">.</span><span class="n">_support</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="p">]</span>
@@ -5680,7 +5680,7 @@ string, or an AndList.</p>
 <span class="normal">244</span>
 <span class="normal">245</span>
 <span class="normal">246</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">restrict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restriction</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Produces a new expression with the new restriction applied.</span>
 <span class="sd">    rel.restrict(restriction)  is equivalent to  rel &amp; restriction.</span>
 <span class="sd">    rel.restrict(Not(restriction))  is equivalent to  rel - restriction</span>
@@ -5694,11 +5694,11 @@ string, or an AndList.</p>
 
 <span class="sd">    rel &amp; True                          rel</span>
 <span class="sd">    rel &amp; False                         the empty entity set</span>
-<span class="sd">    rel &amp; &#39;TRUE&#39;                        rel</span>
-<span class="sd">    rel &amp; &#39;FALSE&#39;                       the empty entity set</span>
+<span class="sd">    rel &amp; 'TRUE'                        rel</span>
+<span class="sd">    rel &amp; 'FALSE'                       the empty entity set</span>
 <span class="sd">    rel - cond                          rel &amp; Not(cond)</span>
-<span class="sd">    rel - &#39;TRUE&#39;                        rel &amp; False</span>
-<span class="sd">    rel - &#39;FALSE&#39;                       rel</span>
+<span class="sd">    rel - 'TRUE'                        rel &amp; False</span>
+<span class="sd">    rel - 'FALSE'                       rel</span>
 <span class="sd">    rel &amp; AndList((cond1,cond2))        rel &amp; cond1 &amp; cond2</span>
 <span class="sd">    rel &amp; AndList()                     rel</span>
 <span class="sd">    rel &amp; [cond1, cond2]                rel &amp; OrList((cond1, cond2))</span>
@@ -5723,7 +5723,7 @@ string, or an AndList.</p>
 
 <span class="sd">    :param restriction: a sequence or an array (treated as OR list), another QueryExpression, an SQL condition</span>
 <span class="sd">    string, or an AndList.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">restriction</span><span class="p">,</span> <span class="n">Top</span><span class="p">):</span>
         <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
@@ -5739,13 +5739,13 @@ string, or an AndList.</p>
     <span class="c1"># check that all attributes in condition are present in the query</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` is not found in query.&quot;</span>
+            <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` is not found in query."</span>
             <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">attr</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="n">attr</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
         <span class="k">pass</span>  <span class="c1"># all ok</span>
     <span class="c1"># If the new condition uses any new attributes, a subquery is required.</span>
-    <span class="c1"># However, Aggregation&#39;s HAVING statement works fine with aliased attributes.</span>
+    <span class="c1"># However, Aggregation's HAVING statement works fine with aliased attributes.</span>
     <span class="n">need_subquery</span> <span class="o">=</span> <span class="p">(</span>
         <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Union</span><span class="p">)</span>
         <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Aggregation</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">new_attributes</span><span class="p">)</span>
@@ -5840,23 +5840,23 @@ Additionally, left=True will retain the rows of self, effectively performing a l
 <span class="normal">348</span>
 <span class="normal">349</span>
 <span class="normal">350</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">semantic_check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    create the joined QueryExpression.</span>
 <span class="sd">    a * b  is short for A.join(B)</span>
 <span class="sd">    a @ b  is short for A.join(B, semantic_check=False)</span>
 <span class="sd">    Additionally, left=True will retain the rows of self, effectively performing a left join.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># trigger subqueries if joining on renamed attributes</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">U</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">other</span> <span class="o">*</span> <span class="bp">self</span>
     <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
         <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="p">()</span>  <span class="c1"># instantiate</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;The argument of join must be a QueryExpression&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"The argument of join must be a QueryExpression"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">semantic_check</span><span class="p">:</span>
         <span class="n">assert_join_compatibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
     <span class="n">join_attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
-    <span class="c1"># needs subquery if self&#39;s FROM clause has common attributes with other&#39;s FROM clause</span>
+    <span class="c1"># needs subquery if self's FROM clause has common attributes with other's FROM clause</span>
     <span class="n">need_subquery1</span> <span class="o">=</span> <span class="n">need_subquery2</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span>
         <span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">original_heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">original_heading</span><span class="o">.</span><span class="n">names</span><span class="p">))</span>
         <span class="o">-</span> <span class="n">join_attributes</span>
@@ -6155,7 +6155,7 @@ Each attribute name can only be used once.</p>
 <span class="normal">513</span>
 <span class="normal">514</span>
 <span class="normal">515</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">proj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">attributes</span><span class="p">,</span> <span class="o">**</span><span class="n">named_attributes</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Projection operator.</span>
 
 <span class="sd">    :param attributes:  attributes to be included in the result. (The primary key is already included).</span>
@@ -6163,38 +6163,38 @@ Each attribute name can only be used once.</p>
 <span class="sd">    :return: the projected expression.</span>
 <span class="sd">    Primary key attributes cannot be excluded but may be renamed.</span>
 <span class="sd">    If the attribute list contains an Ellipsis ..., then all secondary attributes are included too</span>
-<span class="sd">    Prefixing an attribute name with a dash &#39;-attr&#39; removes the attribute from the list if present.</span>
-<span class="sd">    Keyword arguments can be used to rename attributes as in name=&#39;attr&#39;, duplicate them as in name=&#39;(attr)&#39;, or</span>
+<span class="sd">    Prefixing an attribute name with a dash '-attr' removes the attribute from the list if present.</span>
+<span class="sd">    Keyword arguments can be used to rename attributes as in name='attr', duplicate them as in name='(attr)', or</span>
 <span class="sd">    self.proj(...) or self.proj(Ellipsis) -- include all attributes (return self)</span>
 <span class="sd">    self.proj() -- include only primary key</span>
-<span class="sd">    self.proj(&#39;attr1&#39;, &#39;attr2&#39;)  -- include primary key and attributes attr1 and attr2</span>
-<span class="sd">    self.proj(..., &#39;-attr1&#39;, &#39;-attr2&#39;)  -- include all attributes except attr1 and attr2</span>
-<span class="sd">    self.proj(name1=&#39;attr1&#39;) -- include primary key and &#39;attr1&#39; renamed as name1</span>
-<span class="sd">    self.proj(&#39;attr1&#39;, dup=&#39;(attr1)&#39;) -- include primary key and attribute attr1 twice, with the duplicate &#39;dup&#39;</span>
-<span class="sd">    self.proj(k=&#39;abs(attr1)&#39;) adds the new attribute k with the value computed as an expression (SQL syntax)</span>
+<span class="sd">    self.proj('attr1', 'attr2')  -- include primary key and attributes attr1 and attr2</span>
+<span class="sd">    self.proj(..., '-attr1', '-attr2')  -- include all attributes except attr1 and attr2</span>
+<span class="sd">    self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1</span>
+<span class="sd">    self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup'</span>
+<span class="sd">    self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax)</span>
 <span class="sd">    from other attributes available before the projection.</span>
 <span class="sd">    Each attribute name can only be used once.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">named_attributes</span> <span class="o">=</span> <span class="p">{</span>
         <span class="n">k</span><span class="p">:</span> <span class="n">translate_attribute</span><span class="p">(</span><span class="n">v</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
     <span class="p">}</span>
     <span class="c1"># new attributes in parentheses are included again with the new name without removing original</span>
     <span class="n">duplication_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
-        <span class="sa">rf</span><span class="s1">&#39;^\s*\(\s*(?!</span><span class="si">{</span><span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">CONSTANT_LITERALS</span><span class="p">)</span><span class="si">}</span><span class="s1">)(?P&lt;name&gt;[a-zA-Z_]\w*)\s*\)\s*$&#39;</span>
+        <span class="sa">rf</span><span class="s1">'^\s*\(\s*(?!</span><span class="si">{</span><span class="s2">"|"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">CONSTANT_LITERALS</span><span class="p">)</span><span class="si">}</span><span class="s1">)(?P&lt;name&gt;[a-zA-Z_]\w*)\s*\)\s*$'</span>
     <span class="p">)</span>
     <span class="c1"># attributes without parentheses renamed</span>
     <span class="n">rename_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
-        <span class="sa">rf</span><span class="s1">&#39;^\s*(?!</span><span class="si">{</span><span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">CONSTANT_LITERALS</span><span class="p">)</span><span class="si">}</span><span class="s1">)(?P&lt;name&gt;[a-zA-Z_]\w*)\s*$&#39;</span>
+        <span class="sa">rf</span><span class="s1">'^\s*(?!</span><span class="si">{</span><span class="s2">"|"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">CONSTANT_LITERALS</span><span class="p">)</span><span class="si">}</span><span class="s1">)(?P&lt;name&gt;[a-zA-Z_]\w*)\s*$'</span>
     <span class="p">)</span>
     <span class="n">replicate_map</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="n">k</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="n">k</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">(</span>
             <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">duplication_pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">m</span>
     <span class="p">}</span>
     <span class="n">rename_map</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="n">k</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="n">k</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">(</span>
             <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">rename_pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">)</span>
@@ -6220,19 +6220,19 @@ Each attribute name can only be used once.</p>
         <span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> is not a valid data type for an attribute in .proj&quot;</span>
+            <span class="s2">"</span><span class="si">%s</span><span class="s2"> is not a valid data type for an attribute in .proj"</span>
             <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">str</span><span class="p">))</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
         <span class="k">pass</span>  <span class="c1"># normal case</span>
-    <span class="c1"># remove excluded attributes, specified as `-attr&#39;</span>
-    <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">))</span>
+    <span class="c1"># remove excluded attributes, specified as `-attr'</span>
+    <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"-"</span><span class="p">))</span>
     <span class="n">attributes</span><span class="o">.</span><span class="n">difference_update</span><span class="p">(</span><span class="n">excluded</span><span class="p">)</span>
-    <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">)</span>
+    <span class="n">excluded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"-"</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">)</span>
     <span class="n">attributes</span><span class="o">.</span><span class="n">difference_update</span><span class="p">(</span><span class="n">excluded</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Cannot exclude primary key attribute </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">"Cannot exclude primary key attribute </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
             <span class="nb">next</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">excluded</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span><span class="p">),</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
@@ -6240,7 +6240,7 @@ Each attribute name can only be used once.</p>
     <span class="c1"># check that all attributes exist in heading</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` not found.&quot;</span>
+            <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` not found."</span>
             <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
@@ -6250,7 +6250,7 @@ Each attribute name can only be used once.</p>
     <span class="n">mentions</span> <span class="o">=</span> <span class="n">attributes</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">replicate_map</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">rename_map</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute &#39;</span><span class="si">%s</span><span class="s2">&#39; not found.&quot;</span>
+            <span class="s2">"Attribute '</span><span class="si">%s</span><span class="s2">' not found."</span>
             <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">mentions</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
@@ -6259,7 +6259,7 @@ Each attribute name can only be used once.</p>
     <span class="c1"># check that newly created attributes do not clash with any other selected attributes</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` already exists&quot;</span>
+            <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` already exists"</span>
             <span class="o">%</span> <span class="nb">next</span><span class="p">(</span>
                 <span class="n">a</span>
                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">rename_map</span>
@@ -6270,7 +6270,7 @@ Each attribute name can only be used once.</p>
         <span class="k">pass</span>  <span class="c1"># all ok</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` already exists&quot;</span>
+            <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` already exists"</span>
             <span class="o">%</span> <span class="nb">next</span><span class="p">(</span>
                 <span class="n">a</span>
                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">compute_map</span>
@@ -6281,7 +6281,7 @@ Each attribute name can only be used once.</p>
         <span class="k">pass</span>  <span class="c1"># all ok</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` already exists&quot;</span>
+            <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` already exists"</span>
             <span class="o">%</span> <span class="nb">next</span><span class="p">(</span>
                 <span class="n">a</span>
                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">replicate_map</span>
@@ -6442,15 +6442,15 @@ has the primary key ('attr1','attr2') and performs aggregation computations for 
 <span class="normal">532</span>
 <span class="normal">533</span>
 <span class="normal">534</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">aggr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="o">*</span><span class="n">attributes</span><span class="p">,</span> <span class="n">keep_all_rows</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">named_attributes</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Aggregation of the type U(&#39;attr1&#39;,&#39;attr2&#39;).aggr(group, computation=&quot;QueryExpression&quot;)</span>
-<span class="sd">    has the primary key (&#39;attr1&#39;,&#39;attr2&#39;) and performs aggregation computations for all matching elements of `group`.</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")</span>
+<span class="sd">    has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.</span>
 
 <span class="sd">    :param group:  The query expression to be aggregated.</span>
 <span class="sd">    :param keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.</span>
-<span class="sd">    :param named_attributes: computations of the form new_attribute=&quot;sql expression on attributes of group&quot;</span>
+<span class="sd">    :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"</span>
 <span class="sd">    :return: The derived query expression</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="bp">Ellipsis</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>
         <span class="c1"># expand ellipsis to include only attributes from the left table</span>
         <span class="n">attributes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">attributes</span><span class="p">)</span>
@@ -6564,15 +6564,15 @@ Equivalent to fetch(order_by="KEY", limit=25)</p>
 <span class="normal">554</span>
 <span class="normal">555</span>
 <span class="normal">556</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    shortcut to fetch the first few entries from query expression.</span>
-<span class="sd">    Equivalent to fetch(order_by=&quot;KEY&quot;, limit=25)</span>
+<span class="sd">    Equivalent to fetch(order_by="KEY", limit=25)</span>
 
 <span class="sd">    :param limit:  number of entries</span>
 <span class="sd">    :param fetch_kwargs: kwargs for fetch</span>
 <span class="sd">    :return: query result</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s2">&quot;KEY&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s2">"KEY"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6678,15 +6678,15 @@ Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]</p>
 <span class="normal">565</span>
 <span class="normal">566</span>
 <span class="normal">567</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">tail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    shortcut to fetch the last few entries from query expression.</span>
-<span class="sd">    Equivalent to fetch(order_by=&quot;KEY DESC&quot;, limit=25)[::-1]</span>
+<span class="sd">    Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]</span>
 
 <span class="sd">    :param limit:  number of entries</span>
 <span class="sd">    :param fetch_kwargs: kwargs for fetch</span>
 <span class="sd">    :return: query result</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s2">&quot;KEY DESC&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="s2">"KEY DESC"</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6744,10 +6744,10 @@ Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]</p>
 <span class="normal">657</span>
 <span class="normal">658</span>
 <span class="normal">659</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    See expression.fetch() for input description.</span>
 <span class="sd">    :return: query cursor</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">sql</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="n">as_dict</span><span class="p">)</span>
@@ -6803,7 +6803,7 @@ Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]</p>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">675</span>
 <span class="normal">676</span>
 <span class="normal">677</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">preview</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;:return: a string of preview of the contents of the query.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">""":return: a string of preview of the contents of the query."""</span>
     <span class="k">return</span> <span class="n">preview</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -6935,14 +6935,14 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
 <span class="normal">758</span>
 <span class="normal">759</span>
 <span class="normal">760</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Aggregation</span><span class="p">(</span><span class="n">QueryExpression</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Aggregation.create(arg, group, comp1=&#39;calc1&#39;, ..., compn=&#39;calcn&#39;)  yields an entity set</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Aggregation.create(arg, group, comp1='calc1', ..., compn='calcn')  yields an entity set</span>
 <span class="sd">    with primary key from arg.</span>
 <span class="sd">    The computed arguments comp1, ..., compn use aggregation calculations on the attributes of</span>
 <span class="sd">    group or simple projections and calculations on the attributes of arg.</span>
 <span class="sd">    Aggregation is used QueryExpression.aggr and U.aggr.</span>
 <span class="sd">    Aggregation is a private class in DataJoint, not exposed to users.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">_left_restrict</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># the pre-GROUP BY conditions for the WHERE clause</span>
     <span class="n">_subquery_alias_count</span> <span class="o">=</span> <span class="n">count</span><span class="p">()</span>
@@ -6959,7 +6959,7 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
         <span class="n">result</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">join</span><span class="o">.</span><span class="n">connection</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_heading</span> <span class="o">=</span> <span class="n">join</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">set_primary_key</span><span class="p">(</span>
             <span class="n">arg</span><span class="o">.</span><span class="n">primary_key</span>
-        <span class="p">)</span>  <span class="c1"># use left operand&#39;s primary key</span>
+        <span class="p">)</span>  <span class="c1"># use left operand's primary key</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_support</span> <span class="o">=</span> <span class="n">join</span><span class="o">.</span><span class="n">support</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_left</span> <span class="o">=</span> <span class="n">join</span><span class="o">.</span><span class="n">_left</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_left_restrict</span> <span class="o">=</span> <span class="n">join</span><span class="o">.</span><span class="n">restriction</span>  <span class="c1"># WHERE clause applied before GROUP BY</span>
@@ -6969,9 +6969,9 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">where_clause</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s2">&quot;&quot;</span>
+            <span class="s2">""</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_restrict</span>
-            <span class="k">else</span> <span class="s2">&quot; WHERE (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="s2">&quot;)AND(&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_restrict</span><span class="p">)</span>
+            <span class="k">else</span> <span class="s2">" WHERE (</span><span class="si">%s</span><span class="s2">)"</span> <span class="o">%</span> <span class="s2">")AND("</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_restrict</span><span class="p">)</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">make_sql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -6979,20 +6979,20 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grouping_attributes</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">restriction</span>
         <span class="n">distinct</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">==</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s2">&quot;SELECT </span><span class="si">{distinct}{fields}</span><span class="s2"> FROM </span><span class="si">{from_}{where}{group_by}{sorting}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                <span class="n">distinct</span><span class="o">=</span><span class="s2">&quot;DISTINCT &quot;</span> <span class="k">if</span> <span class="n">distinct</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="s2">"SELECT </span><span class="si">{distinct}{fields}</span><span class="s2"> FROM </span><span class="si">{from_}{where}{group_by}{sorting}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">distinct</span><span class="o">=</span><span class="s2">"DISTINCT "</span> <span class="k">if</span> <span class="n">distinct</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
                 <span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span>
                 <span class="n">from_</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">from_clause</span><span class="p">(),</span>
                 <span class="n">where</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(),</span>
                 <span class="n">group_by</span><span class="o">=</span><span class="p">(</span>
-                    <span class="s2">&quot;&quot;</span>
+                    <span class="s2">""</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span>
                     <span class="k">else</span> <span class="p">(</span>
-                        <span class="s2">&quot; GROUP BY `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="s2">&quot;`,`&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_grouping_attributes</span><span class="p">)</span>
+                        <span class="s2">" GROUP BY `</span><span class="si">%s</span><span class="s2">`"</span> <span class="o">%</span> <span class="s2">"`,`"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_grouping_attributes</span><span class="p">)</span>
                         <span class="o">+</span> <span class="p">(</span>
-                            <span class="s2">&quot;&quot;</span>
+                            <span class="s2">""</span>
                             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">restriction</span>
-                            <span class="k">else</span> <span class="s2">&quot; HAVING (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="s2">&quot;)AND(&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">restriction</span><span class="p">)</span>
+                            <span class="k">else</span> <span class="s2">" HAVING (</span><span class="si">%s</span><span class="s2">)"</span> <span class="o">%</span> <span class="s2">")AND("</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">restriction</span><span class="p">)</span>
                         <span class="p">)</span>
                     <span class="p">)</span>
                 <span class="p">),</span>
@@ -7002,14 +7002,14 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s2">&quot;SELECT count(1) FROM (</span><span class="si">{subquery}</span><span class="s2">) `$</span><span class="si">{alias:x}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"SELECT count(1) FROM (</span><span class="si">{subquery}</span><span class="s2">) `$</span><span class="si">{alias:x}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">subquery</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">make_sql</span><span class="p">(),</span> <span class="n">alias</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subquery_alias_count</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT EXISTS(</span><span class="si">{sql}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sql</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT EXISTS(</span><span class="si">{sql}</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sql</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()))</span>
         <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -7148,9 +7148,9 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
 <span class="normal">847</span>
 <span class="normal">848</span>
 <span class="normal">849</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Union</span><span class="p">(</span><span class="n">QueryExpression</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Union is the private DataJoint class that implements the union operator.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">__count</span> <span class="o">=</span> <span class="n">count</span><span class="p">()</span>
 
@@ -7160,21 +7160,21 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
             <span class="n">arg2</span> <span class="o">=</span> <span class="n">arg2</span><span class="p">()</span>  <span class="c1"># instantiate if a class</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg2</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;A QueryExpression can only be unioned with another QueryExpression&quot;</span>
+                <span class="s2">"A QueryExpression can only be unioned with another QueryExpression"</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">arg1</span><span class="o">.</span><span class="n">connection</span> <span class="o">!=</span> <span class="n">arg2</span><span class="o">.</span><span class="n">connection</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Cannot operate on QueryExpressions originating from different connections.&quot;</span>
+                <span class="s2">"Cannot operate on QueryExpressions originating from different connections."</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">arg1</span><span class="o">.</span><span class="n">primary_key</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">set</span><span class="p">(</span><span class="n">arg2</span><span class="o">.</span><span class="n">primary_key</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The operands of a union must share the same primary key.&quot;</span>
+                <span class="s2">"The operands of a union must share the same primary key."</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">arg1</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">secondary_attributes</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span>
             <span class="n">arg2</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">secondary_attributes</span>
         <span class="p">):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;The operands of a union must not share any secondary attributes.&quot;</span>
+                <span class="s2">"The operands of a union must not share any secondary attributes."</span>
             <span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">arg1</span><span class="o">.</span><span class="n">connection</span>
@@ -7190,7 +7190,7 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
         <span class="p">):</span>
             <span class="c1"># no secondary attributes: use UNION DISTINCT</span>
             <span class="n">fields</span> <span class="o">=</span> <span class="n">arg1</span><span class="o">.</span><span class="n">primary_key</span>
-            <span class="k">return</span> <span class="s2">&quot;SELECT * FROM ((</span><span class="si">{sql1}</span><span class="s2">) UNION (</span><span class="si">{sql2}</span><span class="s2">)) as `_u</span><span class="si">{alias}{sorting}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="k">return</span> <span class="s2">"SELECT * FROM ((</span><span class="si">{sql1}</span><span class="s2">) UNION (</span><span class="si">{sql2}</span><span class="s2">)) as `_u</span><span class="si">{alias}{sorting}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">sql1</span><span class="o">=</span><span class="p">(</span>
                     <span class="n">arg1</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()</span>
                     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">Union</span><span class="p">)</span>
@@ -7209,22 +7209,22 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
         <span class="n">sql1</span> <span class="o">=</span> <span class="n">arg1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">arg2</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">make_sql</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
         <span class="n">sql2</span> <span class="o">=</span> <span class="p">(</span>
             <span class="p">(</span><span class="n">arg2</span> <span class="o">-</span> <span class="n">arg1</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="s2">&quot;NULL&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">arg1</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">secondary_attributes</span><span class="p">})</span>
+            <span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="s2">"NULL"</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">arg1</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">secondary_attributes</span><span class="p">})</span>
             <span class="o">.</span><span class="n">make_sql</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="s2">&quot;(</span><span class="si">{sql1}</span><span class="s2">)  UNION (</span><span class="si">{sql2}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sql1</span><span class="o">=</span><span class="n">sql1</span><span class="p">,</span> <span class="n">sql2</span><span class="o">=</span><span class="n">sql2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">"(</span><span class="si">{sql1}</span><span class="s2">)  UNION (</span><span class="si">{sql2}</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sql1</span><span class="o">=</span><span class="n">sql1</span><span class="p">,</span> <span class="n">sql2</span><span class="o">=</span><span class="n">sql2</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">from_clause</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The union does not use a FROM clause&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""The union does not use a FROM clause"""</span>
         <span class="k">assert</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">where_clause</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The union does not use a WHERE clause&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""The union does not use a WHERE clause"""</span>
         <span class="k">assert</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-            <span class="s2">&quot;SELECT count(1) FROM (</span><span class="si">{subquery}</span><span class="s2">) `$</span><span class="si">{alias:x}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="s2">"SELECT count(1) FROM (</span><span class="si">{subquery}</span><span class="s2">) `$</span><span class="si">{alias:x}</span><span class="s2">`"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                 <span class="n">subquery</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">make_sql</span><span class="p">(),</span>
                 <span class="n">alias</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="n">QueryExpression</span><span class="o">.</span><span class="n">_subquery_alias_count</span><span class="p">),</span>
             <span class="p">)</span>
@@ -7232,7 +7232,7 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT EXISTS(</span><span class="si">{sql}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sql</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT EXISTS(</span><span class="si">{sql}</span><span class="s2">)"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sql</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()))</span>
         <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -7266,7 +7266,7 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">830</span>
 <span class="normal">831</span>
 <span class="normal">832</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">from_clause</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The union does not use a FROM clause&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""The union does not use a FROM clause"""</span>
     <span class="k">assert</span> <span class="kc">False</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -7298,7 +7298,7 @@ Aggregation is a private class in DataJoint, not exposed to users.</p>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">834</span>
 <span class="normal">835</span>
 <span class="normal">836</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">where_clause</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The union does not use a WHERE clause&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""The union does not use a WHERE clause"""</span>
     <span class="k">assert</span> <span class="kc">False</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -7524,10 +7524,10 @@ rename <code>attr</code> in one of the operands.  The expression dj.U('attr') * 
 <span class="normal">967</span>
 <span class="normal">968</span>
 <span class="normal">969</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">U</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    dj.U objects are the universal sets representing all possible values of their attributes.</span>
 <span class="sd">    dj.U objects cannot be queried on their own but are useful for forming some queries.</span>
-<span class="sd">    dj.U(&#39;attr1&#39;, ..., &#39;attrn&#39;) represents the universal set with the primary key attributes attr1 ... attrn.</span>
+<span class="sd">    dj.U('attr1', ..., 'attrn') represents the universal set with the primary key attributes attr1 ... attrn.</span>
 <span class="sd">    The universal set is the set of all possible combinations of values of the attributes.</span>
 <span class="sd">    Without any attributes, dj.U() represents the set with one element that has no attributes.</span>
 
@@ -7537,7 +7537,7 @@ rename <code>attr</code> in one of the operands.  The expression dj.U('attr') * 
 
 <span class="sd">    The following expression yields all unique combinations of contrast and brightness found in the `stimulus` set:</span>
 
-<span class="sd">    &gt;&gt;&gt; dj.U(&#39;contrast&#39;, &#39;brightness&#39;) &amp; stimulus</span>
+<span class="sd">    &gt;&gt;&gt; dj.U('contrast', 'brightness') &amp; stimulus</span>
 
 <span class="sd">    Aggregation:</span>
 
@@ -7546,33 +7546,33 @@ rename <code>attr</code> in one of the operands.  The expression dj.U('attr') * 
 <span class="sd">    The following expression yields one element with one attribute `s` containing the total number of elements in</span>
 <span class="sd">    query expression `expr`:</span>
 
-<span class="sd">    &gt;&gt;&gt; dj.U().aggr(expr, n=&#39;count(*)&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; dj.U().aggr(expr, n='count(*)')</span>
 
 <span class="sd">    The following expressions both yield one element containing the number `n` of distinct values of attribute `attr` in</span>
 <span class="sd">    query expression `expr`.</span>
 
-<span class="sd">    &gt;&gt;&gt; dj.U().aggr(expr, n=&#39;count(distinct attr)&#39;)</span>
-<span class="sd">    &gt;&gt;&gt; dj.U().aggr(dj.U(&#39;attr&#39;).aggr(expr), &#39;n=count(*)&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; dj.U().aggr(expr, n='count(distinct attr)')</span>
+<span class="sd">    &gt;&gt;&gt; dj.U().aggr(dj.U('attr').aggr(expr), 'n=count(*)')</span>
 
 <span class="sd">    The following expression yields one element and one attribute `s` containing the sum of values of attribute `attr`</span>
 <span class="sd">    over entire result set of expression `expr`:</span>
 
-<span class="sd">    &gt;&gt;&gt; dj.U().aggr(expr, s=&#39;sum(attr)&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; dj.U().aggr(expr, s='sum(attr)')</span>
 
 <span class="sd">    The following expression yields the set of all unique combinations of attributes `attr1`, `attr2` and the number of</span>
 <span class="sd">    their occurrences in the result set of query expression `expr`.</span>
 
-<span class="sd">    &gt;&gt;&gt; dj.U(attr1,attr2).aggr(expr, n=&#39;count(*)&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; dj.U(attr1,attr2).aggr(expr, n='count(*)')</span>
 
 <span class="sd">    Joins:</span>
 
-<span class="sd">    If expression `expr` has attributes &#39;attr1&#39; and &#39;attr2&#39;, then expr * dj.U(&#39;attr1&#39;,&#39;attr2&#39;) yields the same result</span>
+<span class="sd">    If expression `expr` has attributes 'attr1' and 'attr2', then expr * dj.U('attr1','attr2') yields the same result</span>
 <span class="sd">    as `expr` but `attr1` and `attr2` are promoted to the the primary key.  This is useful for producing a join on</span>
 <span class="sd">    non-primary key attributes.</span>
 <span class="sd">    For example, if `attr` is in both expr1 and expr2 but not in their primary keys, then expr1 * expr2 will throw</span>
 <span class="sd">    an error because in most cases, it does not make sense to join on non-primary key attributes and users must first</span>
-<span class="sd">    rename `attr` in one of the operands.  The expression dj.U(&#39;attr&#39;) * rel1 * rel2 overrides this constraint.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    rename `attr` in one of the operands.  The expression dj.U('attr') * rel1 * rel2 overrides this constraint.</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">primary_key</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_primary_key</span> <span class="o">=</span> <span class="n">primary_key</span>
@@ -7585,7 +7585,7 @@ rename <code>attr</code> in one of the operands.  The expression dj.U('attr') * 
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
             <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="p">()</span>  <span class="c1"># instantiate if a class</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Set U can only be restricted with a QueryExpression.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Set U can only be restricted with a QueryExpression."</span><span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_distinct</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">result</span><span class="o">.</span><span class="n">_heading</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">set_primary_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span><span class="p">)</span>
@@ -7593,21 +7593,21 @@ rename <code>attr</code> in one of the operands.  The expression dj.U('attr') * 
         <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Joining U with a query expression has the effect of promoting the attributes of U to</span>
 <span class="sd">        the primary key of the other query expression.</span>
 
 <span class="sd">        :param other: the other query expression to join with.</span>
 <span class="sd">        :param left: ignored. dj.U always acts as if left=False</span>
 <span class="sd">        :return: a copy of the other query expression with the primary key extended.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
             <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="p">()</span>  <span class="c1"># instantiate if a class</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Set U can only be joined with a QueryExpression.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Set U can only be joined with a QueryExpression."</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` not found&quot;</span>
+                <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` not found"</span>
                 <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
@@ -7620,21 +7620,21 @@ rename <code>attr</code> in one of the operands.  The expression dj.U('attr') * 
         <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;shorthand for join&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""shorthand for join"""</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">aggr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="o">**</span><span class="n">named_attributes</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Aggregation of the type U(&#39;attr1&#39;,&#39;attr2&#39;).aggr(group, computation=&quot;QueryExpression&quot;)</span>
-<span class="sd">        has the primary key (&#39;attr1&#39;,&#39;attr2&#39;) and performs aggregation computations for all matching elements of `group`.</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")</span>
+<span class="sd">        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.</span>
 
 <span class="sd">        :param group:  The query expression to be aggregated.</span>
-<span class="sd">        :param named_attributes: computations of the form new_attribute=&quot;sql expression on attributes of group&quot;</span>
+<span class="sd">        :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"</span>
 <span class="sd">        :return: The derived query expression</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;keep_all_rows&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"keep_all_rows"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Cannot set keep_all_rows=True when aggregating on a universal set.&quot;</span>
+                <span class="s2">"Cannot set keep_all_rows=True when aggregating on a universal set."</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">Aggregation</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">group</span><span class="p">,</span> <span class="n">keep_all_rows</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
             <span class="o">**</span><span class="n">named_attributes</span>
@@ -7764,21 +7764,21 @@ the primary key of the other query expression.</p>
 <span class="normal">944</span>
 <span class="normal">945</span>
 <span class="normal">946</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Joining U with a query expression has the effect of promoting the attributes of U to</span>
 <span class="sd">    the primary key of the other query expression.</span>
 
 <span class="sd">    :param other: the other query expression to join with.</span>
 <span class="sd">    :param left: ignored. dj.U always acts as if left=False</span>
 <span class="sd">    :return: a copy of the other query expression with the primary key extended.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
         <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="p">()</span>  <span class="c1"># instantiate if a class</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryExpression</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Set U can only be joined with a QueryExpression.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">"Set U can only be joined with a QueryExpression."</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Attribute `</span><span class="si">%s</span><span class="s2">` not found&quot;</span>
+            <span class="s2">"Attribute `</span><span class="si">%s</span><span class="s2">` not found"</span>
             <span class="o">%</span> <span class="nb">next</span><span class="p">(</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">heading</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
@@ -7900,17 +7900,17 @@ has the primary key ('attr1','attr2') and performs aggregation computations for 
 <span class="normal">965</span>
 <span class="normal">966</span>
 <span class="normal">967</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">aggr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="o">**</span><span class="n">named_attributes</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Aggregation of the type U(&#39;attr1&#39;,&#39;attr2&#39;).aggr(group, computation=&quot;QueryExpression&quot;)</span>
-<span class="sd">    has the primary key (&#39;attr1&#39;,&#39;attr2&#39;) and performs aggregation computations for all matching elements of `group`.</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")</span>
+<span class="sd">    has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.</span>
 
 <span class="sd">    :param group:  The query expression to be aggregated.</span>
-<span class="sd">    :param named_attributes: computations of the form new_attribute=&quot;sql expression on attributes of group&quot;</span>
+<span class="sd">    :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"</span>
 <span class="sd">    :return: The derived query expression</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;keep_all_rows&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">named_attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"keep_all_rows"</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-            <span class="s2">&quot;Cannot set keep_all_rows=True when aggregating on a universal set.&quot;</span>
+            <span class="s2">"Cannot set keep_all_rows=True when aggregating on a universal set."</span>
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">Aggregation</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">group</span><span class="p">,</span> <span class="n">keep_all_rows</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
         <span class="o">**</span><span class="n">named_attributes</span>
@@ -8072,7 +8072,7 @@ has the primary key ('attr1','attr2') and performs aggregation computations for 
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

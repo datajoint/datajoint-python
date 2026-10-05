@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3691,14 +3691,14 @@ better fits the context of the dependent table.
 DataJoint provides the following <a href="../../../query/project/">projection</a> syntax to rename
 the primary key attributes when they are included in the new table.</p>
 <p>The dependency</p>
-<div class="highlight"><pre><span></span><code><span class="o">-&gt;</span>  <span class="n">Table</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">new_attr</span><span class="o">=</span><span class="s1">&#39;old_attr&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="o">-&gt;</span>  <span class="n">Table</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">new_attr</span><span class="o">=</span><span class="s1">'old_attr'</span><span class="p">)</span>
 </code></pre></div>
 <p>renames the primary key attribute <code>old_attr</code> of <code>Table</code> as <code>new_attr</code> before
 integrating it into the table definition.
 Any additional primary key attributes will retain their original names.
 For example, the table <code>Experiment</code> may depend on table <code>User</code> but rename the <code>user</code>
 attribute into <code>operator</code> as follows:</p>
-<div class="highlight"><pre><span></span><code><span class="o">-&gt;</span> <span class="n">User</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">operator</span><span class="o">=</span><span class="s1">&#39;user&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="o">-&gt;</span> <span class="n">User</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">operator</span><span class="o">=</span><span class="s1">'user'</span><span class="p">)</span>
 </code></pre></div>
 <p>In the above example, an entity in the dependent table depends on exactly one entity in
 the referenced table.
@@ -3709,8 +3709,8 @@ For example, a table for <code>Synapse</code> may reference the table <code>Cell
 <code>presynaptic</code> and <code>postsynaptic</code>.
 The table definition may appear as</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># synapse between two cells</span>
-<span class="o">-&gt;</span> <span class="n">Cell</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">presynaptic</span><span class="o">=</span><span class="s1">&#39;cell_id&#39;</span><span class="p">)</span>
-<span class="o">-&gt;</span> <span class="n">Cell</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">postsynaptic</span><span class="o">=</span><span class="s1">&#39;cell_id&#39;</span><span class="p">)</span>
+<span class="o">-&gt;</span> <span class="n">Cell</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">presynaptic</span><span class="o">=</span><span class="s1">'cell_id'</span><span class="p">)</span>
+<span class="o">-&gt;</span> <span class="n">Cell</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">postsynaptic</span><span class="o">=</span><span class="s1">'cell_id'</span><span class="p">)</span>
 <span class="o">---</span>
 <span class="n">connection_strength</span> <span class="p">:</span> <span class="n">double</span>  <span class="c1"># (pA) peak synaptic current</span>
 </code></pre></div>
@@ -3724,8 +3724,8 @@ synapse can only be found between cells in the same animal and in the same slice
 <p>Allowing representation of synapses between cells from different slices requires the
 renamimg of <code>slice_id</code> as well:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># synapse between two cells</span>
-<span class="o">-&gt;</span> <span class="n">Cell</span><span class="p">(</span><span class="n">presynaptic_slice</span><span class="o">=</span><span class="s1">&#39;slice_id&#39;</span><span class="p">,</span> <span class="n">presynaptic_cell</span><span class="o">=</span><span class="s1">&#39;cell_id&#39;</span><span class="p">)</span>
-<span class="o">-&gt;</span> <span class="n">Cell</span><span class="p">(</span><span class="n">postsynaptic_slice</span><span class="o">=</span><span class="s1">&#39;slice_id&#39;</span><span class="p">,</span> <span class="n">postsynaptic_cell</span><span class="o">=</span><span class="s1">&#39;cell_id&#39;</span><span class="p">)</span>
+<span class="o">-&gt;</span> <span class="n">Cell</span><span class="p">(</span><span class="n">presynaptic_slice</span><span class="o">=</span><span class="s1">'slice_id'</span><span class="p">,</span> <span class="n">presynaptic_cell</span><span class="o">=</span><span class="s1">'cell_id'</span><span class="p">)</span>
+<span class="o">-&gt;</span> <span class="n">Cell</span><span class="p">(</span><span class="n">postsynaptic_slice</span><span class="o">=</span><span class="s1">'slice_id'</span><span class="p">,</span> <span class="n">postsynaptic_cell</span><span class="o">=</span><span class="s1">'cell_id'</span><span class="p">)</span>
 <span class="o">---</span>
 <span class="n">connection_strength</span> <span class="p">:</span> <span class="n">double</span>  <span class="c1"># (pA) peak synaptic current</span>
 </code></pre></div>
@@ -3899,7 +3899,7 @@ each person may own up to one rig.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3573,29 +3573,29 @@ pipelines.</p>
 <p>To define a table using the <code>filepath</code> datatype, an existing DataJoint
 <a href="../../../sysadmin/external-store/">store</a> should be created and then referenced in the
 new table definition. For example, given a simple store:</p>
-<div class="highlight"><pre><span></span><code>  <span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;stores&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">{</span>
-      <span class="s1">&#39;protocol&#39;</span><span class="p">:</span> <span class="s1">&#39;file&#39;</span><span class="p">,</span>
-      <span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="s1">&#39;/data&#39;</span><span class="p">,</span>
-      <span class="s1">&#39;stage&#39;</span><span class="p">:</span> <span class="s1">&#39;/data&#39;</span>
+<div class="highlight"><pre><span></span><code>  <span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">'stores'</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">'data'</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s1">'protocol'</span><span class="p">:</span> <span class="s1">'file'</span><span class="p">,</span>
+      <span class="s1">'location'</span><span class="p">:</span> <span class="s1">'/data'</span><span class="p">,</span>
+      <span class="s1">'stage'</span><span class="p">:</span> <span class="s1">'/data'</span>
     <span class="p">}</span>
   <span class="p">}</span>
 </code></pre></div>
 <p>we can define an <code>ScanImages</code> table as follows:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScanImages</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
-    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="s2">    -&gt; Session</span>
 <span class="s2">    image_id:    int</span>
 <span class="s2">    ---</span>
 <span class="s2">    image_path:  filepath@data</span>
-<span class="s2">    &quot;&quot;&quot;</span>
+<span class="s2">    """</span>
 </code></pre></div>
 <p>This table can now be used for tracking paths within the <code>/data</code> local directory.
 For example:</p>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;&gt;&gt;</span> <span class="n">ScanImages</span><span class="o">.</span><span class="n">insert1</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;/data/images/image_0.tif&#39;</span><span class="p">))</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="p">(</span><span class="n">ScanImages</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s1">&#39;session_id&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="p">{</span><span class="s1">&#39;session_id&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;image_id&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;image_path&#39;</span><span class="p">:</span> <span class="s1">&#39;/data/images/image_0.tif&#39;</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="o">&gt;&gt;&gt;</span> <span class="n">ScanImages</span><span class="o">.</span><span class="n">insert1</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'/data/images/image_0.tif'</span><span class="p">))</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="p">(</span><span class="n">ScanImages</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s1">'session_id'</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span><span class="o">.</span><span class="n">fetch1</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">{</span><span class="s1">'session_id'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'image_id'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">'image_path'</span><span class="p">:</span> <span class="s1">'/data/images/image_0.tif'</span><span class="p">}</span>
 </code></pre></div>
 <p>As can be seen from the example, unlike <a href="../blobs/">blob</a> records, file
 paths are managed as path locations to the underlying file.</p>
@@ -3628,7 +3628,7 @@ downloaded files are not corrupted. With S3 stores, most of the time to complete
 option will primarily benefit <code>filepath</code> usage connected to a local <code>file</code> store.</p>
 <p>To disable checksums you can set a threshold in bytes
 for when to stop evaluating checksums like in the example below:</p>
-<div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;filepath_checksum_size_limit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span> <span class="c1"># Skip for all files greater than 5GiB</span>
+<div class="highlight"><pre><span></span><code><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">"filepath_checksum_size_limit"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span> <span class="c1"># Skip for all files greater than 5GiB</span>
 </code></pre></div>
 <p>The default is <code>None</code> which means it will always verify checksums.</p>
 <!-- TODO: purging filepath data -->
@@ -3766,7 +3766,7 @@ for when to stop evaluating checksums like in the example below:</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

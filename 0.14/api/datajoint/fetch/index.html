@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3646,10 +3646,10 @@ The string "KEY" can be used instead of the class key</p>
 <span class="normal">23</span>
 <span class="normal">24</span>
 <span class="normal">25</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">key</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    object that allows requesting the primary key as an argument in expression.fetch()</span>
-<span class="sd">    The string &quot;KEY&quot; can be used instead of the class key</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    The string "KEY" can be used instead of the class key</span>
+<span class="sd">    """</span>
 
     <span class="k">pass</span>
 </code></pre></div></td></tr></table></div>
@@ -3684,7 +3684,7 @@ The string "KEY" can be used instead of the class key</p>
 <span class="normal">33</span>
 <span class="normal">34</span>
 <span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dicts</span><span class="p">(</span><span class="n">recarray</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;convert record array to a dictionaries&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""convert record array to a dictionaries"""</span>
     <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">recarray</span><span class="p">:</span>
         <span class="k">yield</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">recarray</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">tolist</span><span class="p">()))</span>
 </code></pre></div></td></tr></table></div>
@@ -3907,11 +3907,11 @@ The string "KEY" can be used instead of the class key</p>
 <span class="normal">272</span>
 <span class="normal">273</span>
 <span class="normal">274</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Fetch</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A fetch object that handles retrieving elements from the table expression.</span>
 
 <span class="sd">    :param expression: the QueryExpression object to fetch from.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_expression</span> <span class="o">=</span> <span class="n">expression</span>
@@ -3925,9 +3925,9 @@ The string "KEY" can be used instead of the class key</p>
         <span class="nb">format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">as_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">download_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
+        <span class="n">download_path</span><span class="o">=</span><span class="s2">"."</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Fetches the expression results from the database into an np.array or list of dictionaries and</span>
 <span class="sd">        unpacks blob attributes.</span>
 
@@ -3936,16 +3936,16 @@ The string "KEY" can be used instead of the class key</p>
 <span class="sd">        :param offset: the number of tuples to skip in the returned result</span>
 <span class="sd">        :param limit: the maximum number of tuples to return</span>
 <span class="sd">        :param order_by: a single attribute or the list of attributes to order the results. No ordering should be assumed</span>
-<span class="sd">                        if order_by=None. To reverse the order, add DESC to the attribute name or names: e.g. (&quot;age DESC&quot;,</span>
-<span class="sd">                        &quot;frequency&quot;) To order by primary key, use &quot;KEY&quot; or &quot;KEY DESC&quot;</span>
-<span class="sd">        :param format: Effective when as_dict=None and when attrs is empty None: default from config[&#39;fetch_format&#39;] or</span>
-<span class="sd">                        &#39;array&#39; if not configured &quot;array&quot;: use numpy.key_array &quot;frame&quot;: output pandas.DataFrame. .</span>
+<span class="sd">                        if order_by=None. To reverse the order, add DESC to the attribute name or names: e.g. ("age DESC",</span>
+<span class="sd">                        "frequency") To order by primary key, use "KEY" or "KEY DESC"</span>
+<span class="sd">        :param format: Effective when as_dict=None and when attrs is empty None: default from config['fetch_format'] or</span>
+<span class="sd">                        'array' if not configured "array": use numpy.key_array "frame": output pandas.DataFrame. .</span>
 <span class="sd">        :param as_dict: returns a list of dictionaries instead of a record array. Defaults to False for .fetch() and to</span>
-<span class="sd">                        True for .fetch(&#39;KEY&#39;)</span>
+<span class="sd">                        True for .fetch('KEY')</span>
 <span class="sd">        :param squeeze:  if True, remove extra dimensions from arrays</span>
 <span class="sd">        :param download_path: for fetches that download data, e.g. attachments</span>
 <span class="sd">        :return: the contents of the table in the form of a structured numpy.array or a dict list</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">offset</span> <span class="ow">or</span> <span class="n">order_by</span> <span class="ow">or</span> <span class="n">limit</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_expression</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expression</span><span class="o">.</span><span class="n">restrict</span><span class="p">(</span>
                 <span class="n">Top</span><span class="p">(</span>
@@ -3963,25 +3963,25 @@ The string "KEY" can be used instead of the class key</p>
                     <span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attrs</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expression</span><span class="o">.</span><span class="n">primary_key</span>
                 <span class="p">]</span>
         <span class="k">if</span> <span class="n">as_dict</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">as_dict</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span>  <span class="c1"># default to True for &quot;KEY&quot; and False otherwise</span>
+            <span class="n">as_dict</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span>  <span class="c1"># default to True for "KEY" and False otherwise</span>
         <span class="c1"># format should not be specified with attrs or is_dict=True</span>
         <span class="k">if</span> <span class="nb">format</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">as_dict</span> <span class="ow">or</span> <span class="n">attrs</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Cannot specify output format when as_dict=True or &quot;</span>
-                <span class="s2">&quot;when attributes are selected to be fetched separately.&quot;</span>
+                <span class="s2">"Cannot specify output format when as_dict=True or "</span>
+                <span class="s2">"when attributes are selected to be fetched separately."</span>
             <span class="p">)</span>
-        <span class="k">if</span> <span class="nb">format</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;frame&quot;</span><span class="p">}:</span>
+        <span class="k">if</span> <span class="nb">format</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="kc">None</span><span class="p">,</span> <span class="s2">"array"</span><span class="p">,</span> <span class="s2">"frame"</span><span class="p">}:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                <span class="s2">&quot;Fetch output format must be in &quot;</span>
-                <span class="s1">&#39;{{&quot;array&quot;, &quot;frame&quot;}} but &quot;</span><span class="si">{}</span><span class="s1">&quot; was given&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">format</span><span class="p">)</span>
+                <span class="s2">"Fetch output format must be in "</span>
+                <span class="s1">'{{"array", "frame"}} but "</span><span class="si">{}</span><span class="s1">" was given'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">format</span><span class="p">)</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">attrs</span> <span class="ow">or</span> <span class="n">as_dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">format</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="nb">format</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;fetch_format&quot;</span><span class="p">]</span>  <span class="c1"># default to array</span>
-            <span class="k">if</span> <span class="nb">format</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;frame&quot;</span><span class="p">}:</span>
+            <span class="nb">format</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">"fetch_format"</span><span class="p">]</span>  <span class="c1"># default to array</span>
+            <span class="k">if</span> <span class="nb">format</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"array"</span><span class="p">,</span> <span class="s2">"frame"</span><span class="p">}:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s1">&#39;Invalid entry &quot;</span><span class="si">{}</span><span class="s1">&quot; in datajoint.config[&quot;fetch_format&quot;]: &#39;</span>
-                    <span class="s1">&#39;use &quot;array&quot; or &quot;frame&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">format</span><span class="p">)</span>
+                    <span class="s1">'Invalid entry "</span><span class="si">{}</span><span class="s1">" in datajoint.config["fetch_format"]: '</span>
+                    <span class="s1">'use "array" or "frame"'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">format</span><span class="p">)</span>
                 <span class="p">)</span>
 
         <span class="n">get</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span>
@@ -4000,7 +4000,7 @@ The string "KEY" can be used instead of the class key</p>
                 <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">squeeze</span><span class="o">=</span><span class="n">squeeze</span><span class="p">,</span>
                 <span class="n">download_path</span><span class="o">=</span><span class="n">download_path</span><span class="p">,</span>
-                <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;array&quot;</span><span class="p">,</span>
+                <span class="nb">format</span><span class="o">=</span><span class="s2">"array"</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">attrs_as_dict</span><span class="p">:</span>
                 <span class="n">ret</span> <span class="o">=</span> <span class="p">[</span>
@@ -4056,7 +4056,7 @@ The string "KEY" can be used instead of the class key</p>
                 <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">heading</span><span class="p">:</span>
                     <span class="c1"># unpack blobs and externals</span>
                     <span class="n">ret</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">get</span><span class="p">,</span> <span class="n">heading</span><span class="p">[</span><span class="n">name</span><span class="p">]),</span> <span class="n">ret</span><span class="p">[</span><span class="n">name</span><span class="p">]))</span>
-                <span class="k">if</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;frame&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">"frame"</span><span class="p">:</span>
                     <span class="n">ret</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">heading</span><span class="o">.</span><span class="n">primary_key</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">ret</span>
 </code></pre></div></td></tr></table></div>
@@ -4205,17 +4205,17 @@ The string "KEY" can be used instead of the class key</p>
 <span class="normal">342</span>
 <span class="normal">343</span>
 <span class="normal">344</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Fetch1</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Fetch object for fetching the result of a query yielding one row.</span>
 
 <span class="sd">    :param expression: a query expression to fetch from.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_expression</span> <span class="o">=</span> <span class="n">expression</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">attrs</span><span class="p">,</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">attrs</span><span class="p">,</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download_path</span><span class="o">=</span><span class="s2">"."</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Fetches the result of a query expression that yields one entry.</span>
 
 <span class="sd">        If no attributes are specified, returns the result as a dict.</span>
@@ -4223,14 +4223,14 @@ The string "KEY" can be used instead of the class key</p>
 
 <span class="sd">        Examples:</span>
 <span class="sd">        d = rel.fetch1()   # as a dictionary</span>
-<span class="sd">        a, b = rel.fetch1(&#39;a&#39;, &#39;b&#39;)   # as a tuple</span>
+<span class="sd">        a, b = rel.fetch1('a', 'b')   # as a tuple</span>
 
 <span class="sd">        :params *attrs: attributes to return when expanding into a tuple.</span>
 <span class="sd">                 If attrs is empty, the return result is a dict</span>
 <span class="sd">        :param squeeze:  When true, remove extra dimensions from arrays in attributes</span>
 <span class="sd">        :param download_path: for fetches that download data, e.g. attachments</span>
 <span class="sd">        :return: the one tuple in the table in the form of a dict</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">heading</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expression</span><span class="o">.</span><span class="n">heading</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">attrs</span><span class="p">:</span>  <span class="c1"># fetch all attributes, return as ordered dict</span>
@@ -4238,7 +4238,7 @@ The string "KEY" can be used instead of the class key</p>
             <span class="n">ret</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">ret</span> <span class="ow">or</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">():</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;fetch1 requires exactly one tuple in the input set.&quot;</span>
+                    <span class="s2">"fetch1 requires exactly one tuple in the input set."</span>
                 <span class="p">)</span>
             <span class="n">ret</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
                 <span class="p">(</span>
@@ -4256,11 +4256,11 @@ The string "KEY" can be used instead of the class key</p>
         <span class="k">else</span><span class="p">:</span>  <span class="c1"># fetch some attributes, return as tuple</span>
             <span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attrs</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">is_key</span><span class="p">(</span><span class="n">a</span><span class="p">)]</span>
             <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expression</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="o">*</span><span class="n">attributes</span><span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span>
-                <span class="n">squeeze</span><span class="o">=</span><span class="n">squeeze</span><span class="p">,</span> <span class="n">download_path</span><span class="o">=</span><span class="n">download_path</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;array&quot;</span>
+                <span class="n">squeeze</span><span class="o">=</span><span class="n">squeeze</span><span class="p">,</span> <span class="n">download_path</span><span class="o">=</span><span class="n">download_path</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"array"</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
-                    <span class="s2">&quot;fetch1 should only return one tuple. </span><span class="si">%d</span><span class="s2"> tuples found&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+                    <span class="s2">"fetch1 should only return one tuple. </span><span class="si">%d</span><span class="s2"> tuples found"</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
                 <span class="p">)</span>
             <span class="n">return_values</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
                 <span class="p">(</span>
@@ -4431,7 +4431,7 @@ The string "KEY" can be used instead of the class key</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

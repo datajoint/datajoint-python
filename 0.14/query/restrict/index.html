@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -3716,7 +3716,7 @@ Exclusion by an empty mapping or by a mapping with no matches will return no ent
 <a href="../../design/tables/attributes/">datatype</a> <code>datetime</code>.
 You are interested in sessions from January 1st, 2018, so you write the following
 restriction query using a mapping.</p>
-<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s1">&#39;session_date&#39;</span><span class="p">:</span> <span class="s2">&quot;2018-01-01&quot;</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s1">'session_date'</span><span class="p">:</span> <span class="s2">"2018-01-01"</span><span class="p">}</span>
 </code></pre></div>
 <p>Our mapping contains a typo omitting the final <code>e</code> from <code>session_date</code>, so no keys in
 our mapping will match any attribute in <code>Session</code>.
@@ -3728,23 +3728,23 @@ Such conditions may include arithmetic operations, functions, range tests, etc.
 Restriction of table <code>A</code> by a string containing an attribute not found in table <code>A</code>
 produces an error.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># All the sessions performed by Alice</span>
-<span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">&#39;user = &quot;Alice&quot;&#39;</span>
+<span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">'user = "Alice"'</span>
 
 <span class="c1"># All the experiments at least one minute long</span>
-<span class="n">Experiment</span> <span class="o">&amp;</span> <span class="s1">&#39;duration &gt;= 60&#39;</span>
+<span class="n">Experiment</span> <span class="o">&amp;</span> <span class="s1">'duration &gt;= 60'</span>
 </code></pre></div>
 <h2 id="restriction-by-a-collection">Restriction by a collection<a class="headerlink" href="#restriction-by-a-collection" title="Permanent link">&para;</a></h2>
 <p>A collection can be a list, a tuple, or a Pandas <code>DataFrame</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># a list:</span>
-<span class="n">cond_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;first_name = &quot;Aaron&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;last_name = &quot;Aaronson&quot;&#39;</span><span class="p">]</span>
+<span class="n">cond_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'first_name = "Aaron"'</span><span class="p">,</span> <span class="s1">'last_name = "Aaronson"'</span><span class="p">]</span>
 
 <span class="c1"># a tuple:</span>
-<span class="n">cond_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;first_name = &quot;Aaron&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;last_name = &quot;Aaronson&quot;&#39;</span><span class="p">)</span>
+<span class="n">cond_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="s1">'first_name = "Aaron"'</span><span class="p">,</span> <span class="s1">'last_name = "Aaronson"'</span><span class="p">)</span>
 
 <span class="c1"># a dataframe:</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="n">cond_frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
-               <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;first_name&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Aaron&#39;</span><span class="p">],</span> <span class="s1">&#39;last_name&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Aaronson&#39;</span><span class="p">]})</span>
+               <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">'first_name'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'Aaron'</span><span class="p">],</span> <span class="s1">'last_name'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'Aaronson'</span><span class="p">]})</span>
 </code></pre></div>
 <p>When <code>cond</code> is a collection of conditions, the conditions are applied by logical
 disjunction (logical OR).
@@ -3753,7 +3753,7 @@ meet <em>any</em> of the conditions in the collection.
 For example, if you restrict the <code>Student</code> table by a collection containing two
 conditions, one for a first and one for a last name, your query will return any
 students with a matching first name <em>or</em> a matching last name.</p>
-<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">[</span><span class="s1">&#39;first_name = &quot;Aaron&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;last_name = &quot;Aaronson&quot;&#39;</span><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">[</span><span class="s1">'first_name = "Aaron"'</span><span class="p">,</span> <span class="s1">'last_name = "Aaronson"'</span><span class="p">]</span>
 </code></pre></div>
 <p>Restriction by a collection, returning all entities matching any condition in the collection.</p>
 <p><img alt="Restriction by collection" src="../../images/python_collection.png" style="align:center" /></p>
@@ -3787,7 +3787,7 @@ described above.</p>
 the user Alice.
 The <code>Experiment</code> table is then restricted by the query object, returning all the
 experiments that are part of sessions performed by Alice.</p>
-<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">&#39;user = &quot;Alice&quot;&#39;</span>
+<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">'user = "Alice"'</span>
 <span class="n">Experiment</span> <span class="o">&amp;</span> <span class="n">query</span>
 </code></pre></div>
 <h2 id="restriction-by-djtop">Restriction by <code>dj.Top</code><a class="headerlink" href="#restriction-by-djtop" title="Permanent link">&para;</a></h2>
@@ -3796,7 +3796,7 @@ argument. These entities can be returned in the order specified by the <code>ord
 argument. And finally, the <code>offset</code> argument can be used to offset the returned entities
 which is useful for pagination in web applications.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Return the first 10 sessions in descending order of session date</span>
-<span class="n">Session</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s1">&#39;session_date DESC&#39;</span><span class="p">)</span>
+<span class="n">Session</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s1">'session_date DESC'</span><span class="p">)</span>
 </code></pre></div>
 
 
@@ -3932,7 +3932,7 @@ which is useful for pagination in web applications.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
