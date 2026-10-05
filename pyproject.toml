@@ -18,11 +18,9 @@ dependencies = [
   "pydot",
   "minio>=7.0.0",
   "matplotlib",
-  "otumat",
   "faker",
   "cryptography",
   "urllib3",
-  "setuptools<82",  # pkg_resources removed in 82.0.0
 ]
 requires-python = ">=3.9,<4.0"
 authors = [
