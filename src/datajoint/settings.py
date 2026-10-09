@@ -207,14 +207,15 @@ class DatabaseSettings(BaseSettings):
     name: str | None = Field(
         default=None,
         validation_alias="DJ_DATABASE_NAME",
-        description="Database name for PostgreSQL connections. Defaults to 'postgres' if not set.",
+        description="Namespace for this connection's schemas. PostgreSQL: the database to connect to "
+        "(defaults to 'postgres'). MySQL: a prefix added to every schema name, as name + '_'.",
     )
     reconnect: bool = True
     use_tls: bool | None = Field(default=None, validation_alias="DJ_USE_TLS")
     database_prefix: str = Field(
         default="",
         validation_alias="DJ_DATABASE_PREFIX",
-        description="Deprecated. Use database.name instead.",
+        description="Deprecated and not applied by DataJoint. Use database.name, which DataJoint applies itself.",
     )
     create_tables: bool = Field(
         default=True,
