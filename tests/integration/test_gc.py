@@ -425,6 +425,22 @@ class TestBareAtUsesDefaultStore:
         yield schema
         schema.drop()
 
+    def test_insert_without_default_store_raises(self, connection_test, prefix, mock_stores):
+        """``<npy@>`` with no stores.default configured fails loudly on insert."""
+        dj.config.stores.pop("default", None)
+        schema = dj.Schema(
+            f"{prefix}_test_gc_bare_at_no_default",
+            context={"GcBareNpyTest": GcBareNpyTest},
+            connection=connection_test,
+        )
+        try:
+            schema(GcBareNpyTest)
+            with pytest.raises(DataJointError, match="stores.default is not configured"):
+                GcBareNpyTest.insert1({"rid": 1, "waveform": np.arange(4, dtype="float32")})
+            assert len(GcBareNpyTest()) == 0
+        finally:
+            schema.drop()
+
     def test_roundtrip(self, schema_bare):
         waveform = np.arange(64, dtype="float32")
         GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})

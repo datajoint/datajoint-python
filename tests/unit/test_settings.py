@@ -410,6 +410,16 @@ class TestStoreSpec:
         finally:
             dj.config.stores = original_stores
 
+    def test_get_store_spec_empty_name_without_default_raises(self):
+        """With no stores.default, the bare ``@`` form names no store: an error, not a guess."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores = {"main": {"protocol": "file", "location": "/tmp/main"}}
+            with pytest.raises(DataJointError, match="stores.default is not configured"):
+                dj.config.get_store_spec("")
+        finally:
+            dj.config.stores = original_stores
+
     def test_get_store_spec_empty_name_is_filepath_default(self):
         """For filepath references, an empty store name resolves to stores.filepath_default."""
         original_stores = dj.config.stores.copy()
