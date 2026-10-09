@@ -396,6 +396,44 @@ class TestStoreSpec:
         finally:
             dj.config.stores = original_stores
 
+    def test_get_store_spec_empty_name_is_default_store(self):
+        """An empty store name (the bare ``@`` in ``<npy@>``) resolves to stores.default."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["default"] = "my_default"
+            dj.config.stores["my_default"] = {
+                "protocol": "file",
+                "location": "/tmp/default",
+            }
+            assert dj.config.get_store_spec("") == dj.config.get_store_spec(None)
+            assert dj.config.get_store_spec("")["location"] == "/tmp/default"
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_empty_name_without_default_raises(self):
+        """With no stores.default, the bare ``@`` form names no store: an error, not a guess."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores = {"main": {"protocol": "file", "location": "/tmp/main"}}
+            with pytest.raises(DataJointError, match="stores.default is not configured"):
+                dj.config.get_store_spec("")
+        finally:
+            dj.config.stores = original_stores
+
+    def test_get_store_spec_empty_name_is_filepath_default(self):
+        """For filepath references, an empty store name resolves to stores.filepath_default."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores["filepath_default"] = "raw_data"
+            dj.config.stores["raw_data"] = {
+                "protocol": "file",
+                "location": "/data/acquisition",
+            }
+            spec = dj.config.get_store_spec("", use_filepath_default=True)
+            assert spec["location"] == "/data/acquisition"
+        finally:
+            dj.config.stores = original_stores
+
     def test_get_store_spec_no_default_configured(self):
         """Test error when stores.default is not configured."""
         original_stores = dj.config.stores.copy()
