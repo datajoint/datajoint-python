@@ -470,8 +470,10 @@ class Config(BaseSettings):
         DataJointError
             If store is not configured or has invalid config.
         """
-        # Handle default store
-        if store is None:
+        # Handle default store. An empty name is the bare ``@`` form (``<npy@>``,
+        # ``<object@>``, ...), which the declaration keeps as "" so the codec can
+        # tell "store requested" from "no store"; it means the default store.
+        if not store:
             if use_filepath_default:
                 # Filepath references use separate default (not part of OAS)
                 if "filepath_default" not in self.stores:

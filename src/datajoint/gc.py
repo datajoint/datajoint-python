@@ -115,6 +115,9 @@ class GarbageCollector:
         self.schemas = schemas
         self.store = store
         self.config = config if config is not None else schemas[0].connection._config
+        # References written with the bare ``@`` form record an empty store name
+        # (older metadata may record none); both mean the default store.
+        self._default_store = self.config.stores.get("default")
         # Resolve the store eagerly: validates it exists and pins the backend
         # and section prefixes for this collector's lifetime (one store only).
         self.backend = get_store_backend(store, config=self.config)
@@ -174,7 +177,7 @@ class GarbageCollector:
                         try:
                             for row in table.proj(attr_name).cursor(as_dict=True):
                                 for path, ref_store in attr.codec.referenced_paths(row[attr_name]):
-                                    if self.store is None or ref_store == self.store:
+                                    if self.store is None or (ref_store or self._default_store) == self.store:
                                         referenced.add(path)
                         except Exception as e:
                             logger.warning(f"Error scanning {table_name}.{attr_name}: {e}")

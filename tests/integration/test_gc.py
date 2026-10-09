@@ -402,6 +402,52 @@ class TestScanWithLiveData:
         assert not (deleted_paths & stored_after), f"deleted row's orphan not reclaimed: {deleted_paths & stored_after}"
 
 
+class GcBareNpyTest(dj.Manual):
+    definition = """
+    rid : int32
+    ---
+    waveform : <npy@>
+    """
+
+
+class TestBareAtUsesDefaultStore:
+    """``<npy@>`` with no store name writes to, reads from, and is collected as stores.default."""
+
+    @pytest.fixture
+    def schema_bare(self, connection_test, prefix, mock_stores):
+        dj.config.stores["default"] = "local"
+        schema = dj.Schema(
+            f"{prefix}_test_gc_bare_at",
+            context={"GcBareNpyTest": GcBareNpyTest},
+            connection=connection_test,
+        )
+        schema(GcBareNpyTest)
+        yield schema
+        schema.drop()
+
+    def test_roundtrip(self, schema_bare):
+        waveform = np.arange(64, dtype="float32")
+        GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
+
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+    def test_collecting_the_default_store_by_name_keeps_bare_at_files(self, schema_bare):
+        """A collector bound to the default store by name must count bare-@ references.
+
+        Their metadata records an empty store name; if the scan compared it to "local"
+        literally, the files would be reported as orphans and deleted.
+        """
+        waveform = np.arange(64, dtype="float32")
+        GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
+        path = (GcBareNpyTest & "rid=1").fetch1("waveform").path
+
+        stats = _gc(schema_bare, store="local").collect(dry_run=False)
+
+        assert stats["schema_paths_referenced"] >= 1
+        assert not any(orphan.endswith(path) for orphan in stats["orphaned_schema_paths"])
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+
 class TestDirectoryObjects:
     """Directory-valued objects (e.g. Zarr stores) — the referenced metadata
     path is a directory PREFIX whose stored form is many chunk files plus a
