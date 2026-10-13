@@ -19,7 +19,7 @@ dependencies = [
   "packaging",
 ]
 
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.10,<3.16"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
@@ -62,6 +62,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Healthcare Industry",
@@ -263,12 +264,16 @@ datajoint = { path = ".", editable = true, extras = ["test"] }
 datajoint = { path = ".", editable = true, extras = ["dev", "test"] }
 
 # Pin the interpreter for the min/max supported versions so CI can exercise
-# both ends of the requires-python range (see .github/workflows/test.yaml).
+# both ends of the requires-python range, plus the previous newest release
+# (see .github/workflows/test.yaml).
 [tool.pixi.feature.py310.dependencies]
 python = "3.10.*"
 
 [tool.pixi.feature.py314.dependencies]
 python = "3.14.*"
+
+[tool.pixi.feature.py315.dependencies]
+python = "3.15.*"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
@@ -278,6 +283,7 @@ test = { features = ["test"], solve-group = "default" }
 # cannot span different Python versions).
 test-py310 = { features = ["test", "py310"] }
 test-py314 = { features = ["test", "py314"] }
+test-py315 = { features = ["test", "py315"] }
 
 [tool.pixi.tasks]
 # Tests use testcontainers - no manual setup required
@@ -289,7 +295,7 @@ services-down = "docker compose down"
 test-external = { cmd = "DJ_USE_EXTERNAL_CONTAINERS=1 pytest tests/", depends-on = ["services-up"] }
 
 [tool.pixi.dependencies]
-python = ">=3.10,<3.15"
+python = ">=3.10,<3.16"
 graphviz = ">=13.1.2,<14"
 
 [tool.pixi.activation]
