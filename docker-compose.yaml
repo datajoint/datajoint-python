@@ -38,19 +38,18 @@ services:
       retries: 5
       interval: 15s
   minio:
-    image: minio/minio:${MINIO_VER:-RELEASE.2025-02-28T09-55-16Z}
+    # Same image as the minio_container fixture in tests/conftest.py, and the
+    # same override variable: MinIO no longer publishes minio/minio. This image
+    # has no curl, so the healthcheck uses its bundled mc client.
+    image: ${DJ_TEST_MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
     environment:
-      - MINIO_ACCESS_KEY=datajoint
-      - MINIO_SECRET_KEY=datajoint
+      - MINIO_ROOT_USER=datajoint
+      - MINIO_ROOT_PASSWORD=datajoint
     ports:
       - "9000:9000"
     command: server --address ":9000" /data
     healthcheck:
-      test:
-        - "CMD"
-        - "curl"
-        - "--fail"
-        - "http://localhost:9000/minio/health/live"
+      test: [ "CMD", "mc", "ready", "local" ]
       timeout: 30s
       retries: 5
       interval: 15s
