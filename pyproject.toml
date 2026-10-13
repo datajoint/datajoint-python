@@ -32,7 +32,7 @@ maintainers = [
   {name = "DataJoint Contributors", email = "support@datajoint.com"},
 ]
 # manually sync here: https://docs.datajoint.com/core/datajoint-python/latest/#welcome-to-datajoint-for-python
-description = "DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data."
+description = "The DataJoint Library for Python is a framework for scientific workflow management based on relational principles. It is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data."
 readme = "README.md"
 license = {file = "LICENSE"}
 keywords = [
