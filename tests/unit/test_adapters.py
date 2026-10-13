@@ -181,6 +181,46 @@ class TestMySQLAdapter:
         result = adapter.json_path_expr("data", "value", "decimal(10,2)")
         assert result == "json_value(`data`, _utf8mb4'$.value' returning decimal(10,2))"
 
+    @pytest.mark.parametrize(
+        "annotation, returning",
+        [
+            # PostgreSQL spellings are mapped onto the RETURNING vocabulary
+            ("int", "signed"),
+            ("INTEGER", "signed"),
+            ("bigint", "signed"),
+            ("smallint", "signed"),
+            ("int(11)", "signed"),
+            ("bool", "signed"),
+            ("boolean", "signed"),
+            ("numeric", "decimal"),
+            ("numeric(5,1)", "decimal(5,1)"),
+            ("double precision", "double"),
+            ("varchar(16)", "char(16)"),
+            ("text", "char"),
+            ("timestamp", "datetime"),
+            # RETURNING spellings pass through unchanged
+            ("signed", "signed"),
+            ("unsigned", "unsigned"),
+            ("decimal(4, 1)", "decimal(4, 1)"),
+            ("char(20)", "char(20)"),
+            ("float", "float"),
+            ("double", "double"),
+            ("datetime", "datetime"),
+        ],
+    )
+    def test_json_path_expr_maps_return_type(self, adapter, annotation, returning):
+        """PostgreSQL type spellings in a JSON path annotation are valid on MySQL (#1563)."""
+        result = adapter.json_path_expr("data", "n", annotation)
+        assert result == f"json_value(`data`, _utf8mb4'$.n' returning {returning})"
+
+    def test_json_path_equals(self, adapter):
+        """Test JSON path comparison with a JSON literal."""
+        assert adapter.json_path_equals("data", "n", "64") == "json_extract(`data`, _utf8mb4'$.n') = cast('64' as json)"
+        assert (
+            adapter.json_path_equals("data", "a[0].b", "true")
+            == "json_extract(`data`, _utf8mb4'$.a[0].b') = cast('true' as json)"
+        )
+
     def test_transaction_sql(self, adapter):
         """Test transaction statements."""
         assert "START TRANSACTION" in adapter.start_transaction_sql()
@@ -326,6 +366,30 @@ class TestPostgreSQLAdapter:
         result = adapter.json_path_expr("data", "nested.field")
         assert result == "jsonb_extract_path_text(\"data\", 'nested', 'field')"
 
+    @pytest.mark.parametrize(
+        "annotation, cast",
+        [
+            ("signed", "integer"),
+            ("unsigned", "integer"),
+            ("double", "double precision"),
+            ("datetime", "timestamp"),
+            ("datetime(3)", "timestamp(3)"),
+            ("int", "int"),
+            ("decimal(5,1)", "decimal(5,1)"),
+        ],
+    )
+    def test_json_path_expr_maps_return_type(self, adapter, annotation, cast):
+        """MySQL RETURNING spellings in a JSON path annotation are valid on PostgreSQL."""
+        result = adapter.json_path_expr("data", "n", annotation)
+        assert result == f"(jsonb_extract_path_text(\"data\", 'n'))::{cast}"
+
+    def test_json_path_equals(self, adapter):
+        """Test JSON path comparison with a JSON literal."""
+        assert adapter.json_path_equals("data", "n", "64") == "jsonb_extract_path(\"data\", 'n') = '64'::jsonb"
+        assert (
+            adapter.json_path_equals("data", "a[0].b", "true") == "jsonb_extract_path(\"data\", 'a', '0', 'b') = 'true'::jsonb"
+        )
+
     def test_transaction_sql(self, adapter):
         """Test transaction statements."""
         assert adapter.start_transaction_sql() == "BEGIN"
@@ -405,6 +469,7 @@ class TestAdapterInterface:
             "current_timestamp_expr",
             "interval_expr",
             "json_path_expr",
+            "json_path_equals",
             "format_column_definition",
             "table_options_clause",
             "table_comment_ddl",

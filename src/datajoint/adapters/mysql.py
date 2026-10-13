@@ -7,6 +7,7 @@ type mapping, error translation, and connection management.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pymysql as client
@@ -43,6 +44,25 @@ SQL_TO_CORE_MAP = {
     "json": "json",
     "date": "date",
 }
+
+# JSON path type annotations (``attr.path:type``) that PostgreSQL accepts but
+# MySQL's ``JSON_VALUE ... RETURNING`` does not, mapped onto the RETURNING
+# vocabulary so the same annotation works on both backends. Annotations not
+# listed here are passed through unchanged.
+JSON_RETURN_TYPE_MAP = {
+    "int": "signed",
+    "integer": "signed",
+    "smallint": "signed",
+    "bigint": "signed",
+    "bool": "signed",
+    "boolean": "signed",
+    "numeric": "decimal",
+    "double precision": "double",
+    "varchar": "char",
+    "text": "char",
+    "timestamp": "datetime",
+}
+_JSON_RETURN_TYPE_PATTERN = re.compile(r"\s*(?P<name>[a-z]+(?:\s+[a-z]+)?)\s*(?P<args>\(.*\))?\s*")
 
 
 class MySQLAdapter(DatabaseAdapter):
@@ -856,7 +876,9 @@ class MySQLAdapter(DatabaseAdapter):
         path : str
             JSON path (e.g., 'field' or 'nested.field').
         return_type : str, optional
-            Return type specification (e.g., 'decimal(10,2)').
+            Return type specification (e.g., 'decimal(10,2)'). PostgreSQL
+            spellings such as 'int' or 'numeric(10,2)' are mapped onto the
+            RETURNING vocabulary (see ``JSON_RETURN_TYPE_MAP``).
 
         Returns
         -------
@@ -869,10 +891,52 @@ class MySQLAdapter(DatabaseAdapter):
         "json_value(`data`, _utf8mb4'$.field')"
         >>> adapter.json_path_expr('data', 'value', 'decimal(10,2)')
         "json_value(`data`, _utf8mb4'$.value' returning decimal(10,2))"
+        >>> adapter.json_path_expr('data', 'n', 'int')
+        "json_value(`data`, _utf8mb4'$.n' returning signed)"
         """
         quoted_col = self.quote_identifier(column)
-        return_clause = f" returning {return_type}" if return_type else ""
+        return_clause = f" returning {self._json_return_type(return_type)}" if return_type else ""
         return f"json_value({quoted_col}, _utf8mb4'$.{path}'{return_clause})"
+
+    @staticmethod
+    def _json_return_type(return_type: str) -> str:
+        """Map a JSON path type annotation onto MySQL's RETURNING vocabulary."""
+        match = _JSON_RETURN_TYPE_PATTERN.fullmatch(return_type.lower())
+        if match is None:
+            return return_type
+        name = " ".join(match["name"].split())
+        if name not in JSON_RETURN_TYPE_MAP:
+            return return_type
+        mysql_type = JSON_RETURN_TYPE_MAP[name]
+        # Integer display widths (e.g. int(11)) have no RETURNING equivalent; other
+        # arguments (precision, scale, length) carry over.
+        return mysql_type if mysql_type == "signed" else mysql_type + (match["args"] or "")
+
+    def json_path_equals(self, column: str, path: str, value: str) -> str:
+        """
+        Generate a condition comparing the JSON value at a path with a JSON literal.
+
+        Parameters
+        ----------
+        column : str
+            Column name containing JSON data.
+        path : str
+            JSON path (e.g., 'field' or 'nested.field').
+        value : str
+            JSON literal (e.g., '64', '2.5', 'true').
+
+        Returns
+        -------
+        str
+            MySQL condition comparing two JSON values.
+
+        Examples
+        --------
+        >>> adapter.json_path_equals('data', 'n', '64')
+        "json_extract(`data`, _utf8mb4'$.n') = cast('64' as json)"
+        """
+        quoted_col = self.quote_identifier(column)
+        return f"json_extract({quoted_col}, _utf8mb4'$.{path}') = cast('{value}' as json)"
 
     def translate_expression(self, expr: str) -> str:
         """
