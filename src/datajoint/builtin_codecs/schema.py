@@ -66,7 +66,7 @@ class SchemaCodec(Codec, register=False):
                 )
                 backend = self._get_backend(store_name, config=config)
                 backend.put_buffer(serialize(value), path)
-                return {"path": path, "store": store_name, ...}
+                return {"path": path, "store": config.resolve_store_name(store_name), ...}
 
             def decode(self, stored, *, key=None, context=None):
                 config = self._codec_config(key, context)

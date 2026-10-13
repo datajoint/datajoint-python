@@ -434,6 +434,35 @@ class TestStoreSpec:
         finally:
             dj.config.stores = original_stores
 
+    def test_resolve_store_name(self):
+        """An empty or missing name resolves to the configured default; a name to itself."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores = {
+                "default": "main",
+                "filepath_default": "raw_data",
+                "main": {"protocol": "file", "location": "/tmp/main"},
+                "raw_data": {"protocol": "file", "location": "/data/acquisition"},
+                "archive": {"protocol": "file", "location": "/tmp/archive"},
+            }
+            assert dj.config.resolve_store_name("") == "main"
+            assert dj.config.resolve_store_name(None) == "main"
+            assert dj.config.resolve_store_name("archive") == "archive"
+            assert dj.config.resolve_store_name("", use_filepath_default=True) == "raw_data"
+            assert dj.config.resolve_store_name("archive", use_filepath_default=True) == "archive"
+        finally:
+            dj.config.stores = original_stores
+
+    def test_resolve_store_name_without_default_raises(self):
+        """The bare ``@`` form with no stores.default configured is an error."""
+        original_stores = dj.config.stores.copy()
+        try:
+            dj.config.stores = {"main": {"protocol": "file", "location": "/tmp/main"}}
+            with pytest.raises(DataJointError, match="stores.default is not configured"):
+                dj.config.resolve_store_name("")
+        finally:
+            dj.config.stores = original_stores
+
     def test_get_store_spec_no_default_configured(self):
         """Test error when stores.default is not configured."""
         original_stores = dj.config.stores.copy()

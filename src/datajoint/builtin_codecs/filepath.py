@@ -164,7 +164,7 @@ class FilepathCodec(Codec):
 
         return {
             "path": path,
-            "store": store_name,
+            "store": config.resolve_store_name(store_name, use_filepath_default=True),
             "size": size,
             "is_dir": is_dir,
             "timestamp": datetime.now(timezone.utc).isoformat(),

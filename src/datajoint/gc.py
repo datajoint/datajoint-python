@@ -113,10 +113,13 @@ class GarbageCollector:
         if not schemas:
             raise DataJointError("At least one schema must be provided")
         self.schemas = schemas
-        self.store = store
+        # An empty name (the bare ``@`` form) means the default store, as None
+        # does. Kept as "", it would match no reference in _references, and every
+        # stored file would look orphaned.
+        self.store = store or None
         self.config = config if config is not None else schemas[0].connection._config
-        # References written with the bare ``@`` form record an empty store name
-        # (older metadata may record none); both mean the default store.
+        # References record the resolved store name. Metadata written before
+        # that may record an empty name or none; both mean the default store.
         self._default_store = self.config.stores.get("default")
         # Resolve the store eagerly: validates it exists and pins the backend
         # and section prefixes for this collector's lifetime (one store only).

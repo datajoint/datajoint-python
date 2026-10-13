@@ -447,6 +447,58 @@ class Config(BaseSettings):
             return None
         return Path(v) if not isinstance(v, Path) else v
 
+    def resolve_store_name(self, store: str | None = None, *, use_filepath_default: bool = False) -> str:
+        """
+        Name the configured store that a store reference resolves to.
+
+        An empty or missing name means the default store: ``stores.default``,
+        or ``stores.filepath_default`` for filepath references. Codecs record
+        the resolved name in their metadata, so a stored object stays tied to
+        the store it was written to even if the default is later re-pointed.
+
+        Parameters
+        ----------
+        store : str, optional
+            Store name as declared. ``""`` (the bare ``@`` form) and None both
+            mean the default store.
+        use_filepath_default : bool, optional
+            If True, resolve the default to stores.filepath_default instead of
+            stores.default. Default: False.
+
+        Returns
+        -------
+        str
+            Name of a key in ``stores``.
+
+        Raises
+        ------
+        DataJointError
+            If the default store is needed but not configured.
+        """
+        if store:
+            return store
+        # An empty name is the bare ``@`` form (``<npy@>``, ``<object@>``, ...),
+        # which the declaration keeps as "" so the codec can tell "store
+        # requested" from "no store"; it means the default store.
+        if use_filepath_default:
+            # Filepath references use separate default (not part of OAS)
+            if "filepath_default" not in self.stores:
+                raise DataJointError(
+                    "stores.filepath_default is not configured. "
+                    "Set stores.filepath_default or specify store explicitly with <filepath@store>"
+                )
+            store = self.stores["filepath_default"]
+        else:
+            # Integrated storage (hash, schema) uses stores.default
+            if "default" not in self.stores:
+                raise DataJointError("stores.default is not configured")
+            store = self.stores["default"]
+
+        if not isinstance(store, str):
+            default_key = "filepath_default" if use_filepath_default else "default"
+            raise DataJointError(f"stores.{default_key} must be a string")
+        return store
+
     def get_store_spec(self, store: str | None = None, *, use_filepath_default: bool = False) -> dict[str, Any]:
         """
         Get configuration for a storage store.
@@ -470,27 +522,7 @@ class Config(BaseSettings):
         DataJointError
             If store is not configured or has invalid config.
         """
-        # Handle default store. An empty name is the bare ``@`` form (``<npy@>``,
-        # ``<object@>``, ...), which the declaration keeps as "" so the codec can
-        # tell "store requested" from "no store"; it means the default store.
-        if not store:
-            if use_filepath_default:
-                # Filepath references use separate default (not part of OAS)
-                if "filepath_default" not in self.stores:
-                    raise DataJointError(
-                        "stores.filepath_default is not configured. "
-                        "Set stores.filepath_default or specify store explicitly with <filepath@store>"
-                    )
-                store = self.stores["filepath_default"]
-            else:
-                # Integrated storage (hash, schema) uses stores.default
-                if "default" not in self.stores:
-                    raise DataJointError("stores.default is not configured")
-                store = self.stores["default"]
-
-            if not isinstance(store, str):
-                default_key = "filepath_default" if use_filepath_default else "default"
-                raise DataJointError(f"stores.{default_key} must be a string")
+        store = self.resolve_store_name(store, use_filepath_default=use_filepath_default)
 
         # Check store exists
         if store not in self.stores:

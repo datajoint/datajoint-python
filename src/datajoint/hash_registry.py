@@ -250,7 +250,7 @@ def put_hash(
         "hash": content_hash,
         "path": path,  # Always stored for retrieval
         "schema": schema_name,
-        "store": store_name,
+        "store": config.resolve_store_name(store_name),
         "size": len(data),
     }
 

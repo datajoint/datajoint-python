@@ -2,6 +2,7 @@
 Tests for garbage collection (gc.py).
 """
 
+import json
 from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 
@@ -448,16 +449,56 @@ class TestBareAtUsesDefaultStore:
         assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
 
     def test_collecting_the_default_store_by_name_keeps_bare_at_files(self, schema_bare):
-        """A collector bound to the default store by name must count bare-@ references.
-
-        Their metadata records an empty store name; if the scan compared it to "local"
-        literally, the files would be reported as orphans and deleted.
-        """
+        """A collector bound to the default store by name must count bare-@ references."""
         waveform = np.arange(64, dtype="float32")
         GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
         path = (GcBareNpyTest & "rid=1").fetch1("waveform").path
 
         stats = _gc(schema_bare, store="local").collect(dry_run=False)
+
+        assert stats["schema_paths_referenced"] >= 1
+        assert not any(orphan.endswith(path) for orphan in stats["orphaned_schema_paths"])
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+    def test_metadata_records_the_resolved_store(self, schema_bare):
+        """A bare-@ write records the store it went to, not the empty name."""
+        GcBareNpyTest.insert1({"rid": 1, "waveform": np.arange(8, dtype="float32")})
+
+        (raw,) = (GcBareNpyTest & "rid=1").proj("waveform").cursor(as_dict=True)
+        metadata = raw["waveform"]
+        if isinstance(metadata, str):  # MySQL returns JSON as text, PostgreSQL as a dict
+            metadata = json.loads(metadata)
+
+        assert metadata["store"] == "local"
+
+    def test_repointing_the_default_store_keeps_existing_files(self, schema_bare):
+        """Re-pointing stores.default leaves existing bare-@ objects readable and collected.
+
+        References record "local", so after the default moves to "raw" they still read
+        from "local", and a collector bound to "local" still counts them.
+        """
+        waveform = np.arange(64, dtype="float32")
+        GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
+        path = (GcBareNpyTest & "rid=1").fetch1("waveform").path
+
+        dj.config.stores["default"] = "raw"
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+        stats = _gc(schema_bare, store="local").collect(dry_run=False)
+
+        assert not any(orphan.endswith(path) for orphan in stats["orphaned_schema_paths"])
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+    def test_empty_store_name_is_the_default_collector(self, schema_bare):
+        """``store=""`` builds the same collector as no store, and deletes no live file."""
+        waveform = np.arange(64, dtype="float32")
+        GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
+        path = (GcBareNpyTest & "rid=1").fetch1("waveform").path
+
+        collector = _gc(schema_bare, store="")
+        assert collector.store is None
+
+        stats = collector.collect(dry_run=False)
 
         assert stats["schema_paths_referenced"] >= 1
         assert not any(orphan.endswith(path) for orphan in stats["orphaned_schema_paths"])
