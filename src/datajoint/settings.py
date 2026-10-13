@@ -63,22 +63,6 @@ SECRETS_DIRNAME = ".secrets"
 SYSTEM_SECRETS_DIR = Path("/run/secrets/datajoint")
 DEFAULT_SUBFOLDING = (2, 2)
 
-# Mapping of config keys to environment variables
-# Environment variables take precedence over config file values
-ENV_VAR_MAPPING = {
-    "database.host": "DJ_HOST",
-    "database.user": "DJ_USER",
-    "database.password": "DJ_PASS",
-    "database.backend": "DJ_BACKEND",
-    "database.port": "DJ_PORT",
-    "database.name": "DJ_DATABASE_NAME",
-    "database.database_prefix": "DJ_DATABASE_PREFIX",
-    "database.create_tables": "DJ_CREATE_TABLES",
-    "loglevel": "DJ_LOG_LEVEL",
-    "display.diagram_direction": "DJ_DIAGRAM_DIRECTION",
-    "display.diagram_theme": "DJ_DIAGRAM_THEME",
-}
-
 Role = Enum("Role", "manual lookup imported computed job")
 role_to_prefix = {
     Role.manual: "",
@@ -761,11 +745,7 @@ class Config(BaseSettings):
                 group_obj = getattr(self, key)
                 for nested_key, nested_value in value.items():
                     if hasattr(group_obj, nested_key):
-                        # Check if env var is set for this nested key
-                        full_key = f"{key}.{nested_key}"
-                        env_var = ENV_VAR_MAPPING.get(full_key)
-                        if env_var and os.environ.get(env_var):
-                            logger.debug(f"Skipping {full_key} from file (env var {env_var} takes precedence)")
+                        if _is_set_by_env(f"{key}.{nested_key}"):
                             continue
                         setattr(group_obj, nested_key, nested_value)
                 continue
@@ -774,10 +754,7 @@ class Config(BaseSettings):
             parts = key.split(".")
             if len(parts) == 1:
                 if hasattr(self, key) and not key.startswith("_"):
-                    # Check if env var is set for this key
-                    env_var = ENV_VAR_MAPPING.get(key)
-                    if env_var and os.environ.get(env_var):
-                        logger.debug(f"Skipping {key} from file (env var {env_var} takes precedence)")
+                    if _is_set_by_env(key):
                         continue
                     setattr(self, key, value)
             elif len(parts) == 2:
@@ -785,10 +762,7 @@ class Config(BaseSettings):
                 if hasattr(self, group):
                     group_obj = getattr(self, group)
                     if hasattr(group_obj, attr):
-                        # Check if env var is set for this key
-                        env_var = ENV_VAR_MAPPING.get(key)
-                        if env_var and os.environ.get(env_var):
-                            logger.debug(f"Skipping {key} from file (env var {env_var} takes precedence)")
+                        if _is_set_by_env(key):
                             continue
                         setattr(group_obj, attr, value)
             elif len(parts) == 3:
@@ -1107,6 +1081,61 @@ class Config(BaseSettings):
             return self[key]
         except KeyError:
             return default
+
+
+def _env_var_mapping() -> dict[str, str]:
+    """
+    Map each setting's dot-notation key to the environment variable that sets it.
+
+    The names are read from the settings models, so a new setting is covered
+    as soon as it is declared: the field's ``validation_alias`` if it has one,
+    otherwise its model's ``env_prefix`` followed by the field name. A model
+    without an ``env_prefix`` (``connection``, ``display``) contributes only
+    its aliased fields. ``stores`` is left out because ``DJ_STORES`` is applied
+    after the config file, by ``Config._apply_stores_env``.
+
+    Returns
+    -------
+    dict[str, str]
+        Environment variable name (upper case) by setting key.
+    """
+
+    def env_var(model: type[BaseSettings], name: str) -> str | None:
+        alias = model.model_fields[name].validation_alias
+        if isinstance(alias, str):
+            return alias.upper()
+        prefix = model.model_config.get("env_prefix") or ""
+        return f"{prefix}{name}".upper() if prefix else None
+
+    mapping: dict[str, str] = {}
+    for name, field in Config.model_fields.items():
+        if name == "stores":
+            continue
+        group = field.annotation
+        if isinstance(group, type) and issubclass(group, BaseSettings):
+            names = {f"{name}.{attr}": env_var(group, attr) for attr in group.model_fields}
+        else:
+            names = {name: env_var(Config, name)}
+        mapping.update({key: var for key, var in names.items() if var})
+    return mapping
+
+
+# Environment variable for each setting. Environment variables take precedence
+# over config file values; see ``Config._update_from_flat_dict``.
+ENV_VAR_MAPPING = _env_var_mapping()
+
+
+def _is_set_by_env(key: str) -> bool:
+    """
+    Return True if the environment variable for setting ``key`` is set.
+
+    The config file skips such a setting, so the environment keeps precedence.
+    """
+    env_var = ENV_VAR_MAPPING.get(key)
+    if env_var and os.environ.get(env_var):
+        logger.debug(f"Skipping {key} from file (env var {env_var} takes precedence)")
+        return True
+    return False
 
 
 def _create_config() -> Config:
