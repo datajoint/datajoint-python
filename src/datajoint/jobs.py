@@ -329,7 +329,8 @@ class Job(Table):
         Parameters
         ----------
         *restrictions : any
-            Conditions to filter key_source (for adding new jobs).
+            Conditions to filter key_source (for adding new jobs). Cleanup
+            always checks the unrestricted key_source.
         delay : float, optional
             Seconds from now until new jobs become available for processing.
             Default 0 (immediately available). Uses database server time.
@@ -357,7 +358,11 @@ class Job(Table):
 
         1. Add new jobs: ``(key_source & restrictions) - target - jobs`` → insert as pending
         2. Re-pend success jobs: if ``keep_completed=True`` and key in key_source but not in target
-        3. Remove stale jobs: jobs older than stale_timeout whose keys not in key_source
+        3. Remove vanished jobs, judged against the unrestricted key_source:
+
+           a. success and error records whose keys are in neither key_source nor target, at any age
+           b. stale jobs (except ``ignore``): older than stale_timeout, keys not in key_source
+
         4. Remove orphaned jobs: reserved jobs older than orphan_timeout (if specified)
         """
         # Ensure jobs table exists
@@ -413,16 +418,24 @@ class Job(Table):
                 self.insert1({**key, "status": "pending", "priority": priority})
                 result["re_pended"] += 1
 
-        # 3. Remove stale jobs (not ignore status) - use server CURRENT_TIMESTAMP for consistent timing
+        # 3. Remove jobs whose keys have vanished. Judge against the unrestricted key_source:
+        # jobs outside the restrictions (e.g. reserved by other workers) are not stale.
+        # Disable semantic_check for Job table operations (job table PK has different lineage than target)
+        vanished = self.restrict(Not(self._target.key_source.proj()), semantic_check=False)
+
+        # 3a. Success and error records describe rows that no longer exist once their key
+        # has left both key_source and the target, regardless of age.
+        result["removed"] += (
+            (vanished & "status in ('success', 'error')")
+            .restrict(Not(self._target.proj()), semantic_check=False)
+            .delete_quick(get_count=True)
+        )
+
+        # 3b. Remove stale jobs (not ignore status) - use server CURRENT_TIMESTAMP for consistent timing
         if stale_timeout > 0:
             stale_interval = self.adapter.interval_expr(stale_timeout, "second")
-            old_jobs = self & f"created_time < CURRENT_TIMESTAMP - {stale_interval}" & "status != 'ignore'"
-
-            for key in old_jobs.keys():
-                # Check if key still in key_source
-                if not (key_source & key):
-                    (self & key).delete_quick()
-                    result["removed"] += 1
+            stale_jobs = vanished & f"created_time < CURRENT_TIMESTAMP - {stale_interval}" & "status != 'ignore'"
+            result["removed"] += stale_jobs.delete_quick(get_count=True)
 
         # 4. Handle orphaned reserved jobs - use server CURRENT_TIMESTAMP for consistent timing
         if orphan_timeout is not None and orphan_timeout > 0:
