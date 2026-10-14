@@ -572,3 +572,19 @@ class TestPostgreSQLDDLMethods:
         assert "varchar(64)" in sql[2]
         # PostgreSQL carries no inline comment; it is applied via COMMENT ON.
         assert "COMMENT" not in sql[0].upper()
+
+
+class TestMySQLErrorTranslation:
+    """Tests for MySQL error translation."""
+
+    def test_column_permission_denied(self):
+        """MySQL error 1143 should become AccessError."""
+        from datajoint import errors
+
+        adapter = MySQLAdapter()
+
+        mysql_error = Exception(1143, "SELECT command denied for column 'salary'")
+
+        result = adapter.translate_error(mysql_error)
+
+        assert isinstance(result, errors.AccessError)
