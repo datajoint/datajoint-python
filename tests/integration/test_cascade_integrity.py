@@ -155,3 +155,61 @@ def test_upward_u3_nonprimary_master_fk(schema_by_backend):
         f"only master 1 (via the secondary-FK part row) must be restricted; got {counts} — "
         "a bare proj() on the U3 arm would have restricted both masters."
     )
+
+
+def test_part_to_master_walks_all_fk_paths(schema_by_backend):
+    """A Part reachable from its Master through more than one FK chain must be
+    restricted through EVERY chain, not just the shortest (see #1492). `Master.P`
+    references both its Master directly (the implicit `-> master` edge) AND a
+    sibling Part `Master.Q`, so there are two simple FK paths Master -> Master.P
+    (`Master -> Master.P` and `Master -> Master.Q -> Master.P`). An external
+    `Ext` feeds a restriction into both parts, firing the part->master upward
+    walk along both chains. The pre-#1492 `nx.shortest_path` walk followed a
+    single chain; the all-paths walk (`nx.all_simple_edge_paths`) must exercise
+    both branches without over- or under-restricting the master's part-group."""
+
+    @schema_by_backend
+    class Ext(dj.Manual):
+        definition = """
+        ext_id : int32
+        """
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+        class Q(dj.Part):
+            definition = """
+            -> master
+            q_id : int32
+            ---
+            -> Ext
+            """
+
+        class P(dj.Part):
+            definition = """
+            -> master
+            p_id : int32
+            ---
+            -> master.Q
+            -> Ext
+            """
+
+    Ext.insert([(1,), (2,)])
+    Master.insert([(1,), (2,)])
+    # master 1: one Q and one P (P references that Q), both via ext 1.
+    # master 2: one Q and one P, both via ext 2 (must stay untouched).
+    Master.Q.insert([(1, 10, 1), (2, 20, 2)])
+    Master.P.insert([(1, 100, 10, 1), (2, 200, 20, 2)])
+
+    # Seed taints ext 1 only. Forward cascade restricts the Q and P rows that
+    # reference ext 1; the part->master walk then pulls master 1 up both chains.
+    counts = dj.Diagram.cascade(Ext & {"ext_id": 1}, part_integrity="cascade").counts()
+
+    # Only master 1 is pulled in, with its whole part-group (its Q and its P);
+    # master 2 and its parts are untouched.
+    assert counts.get(Master.full_table_name, 0) == 1, f"only master 1 must be restricted; got {counts}"
+    assert counts.get(Master.P.full_table_name, 0) == 1, f"master 1's P must be pulled in; got {counts}"
+    assert counts.get(Master.Q.full_table_name, 0) == 1, f"master 1's Q must be pulled in; got {counts}"
