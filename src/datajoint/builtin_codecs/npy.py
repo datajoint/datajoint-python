@@ -356,7 +356,7 @@ class NpyCodec(SchemaCodec):
         # Return metadata (includes numpy-specific shape/dtype)
         return {
             "path": path,
-            "store": store_name,
+            "store": config.resolve_store_name(store_name),
             "dtype": str(value.dtype),
             "shape": list(value.shape),
         }

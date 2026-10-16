@@ -2,6 +2,7 @@
 Tests for garbage collection (gc.py).
 """
 
+import json
 from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 
@@ -400,6 +401,108 @@ class TestScanWithLiveData:
         stored_after = set(collector.list_schema_paths(schema_custom.database))
         assert live_path in stored_after, f"collect() deleted the live custom-codec file {live_path} (#1469)"
         assert not (deleted_paths & stored_after), f"deleted row's orphan not reclaimed: {deleted_paths & stored_after}"
+
+
+class GcBareNpyTest(dj.Manual):
+    definition = """
+    rid : int32
+    ---
+    waveform : <npy@>
+    """
+
+
+class TestBareAtUsesDefaultStore:
+    """``<npy@>`` with no store name writes to, reads from, and is collected as stores.default."""
+
+    @pytest.fixture
+    def schema_bare(self, connection_test, prefix, mock_stores):
+        dj.config.stores["default"] = "local"
+        schema = dj.Schema(
+            f"{prefix}_test_gc_bare_at",
+            context={"GcBareNpyTest": GcBareNpyTest},
+            connection=connection_test,
+        )
+        schema(GcBareNpyTest)
+        yield schema
+        schema.drop()
+
+    def test_insert_without_default_store_raises(self, connection_test, prefix, mock_stores):
+        """``<npy@>`` with no stores.default configured fails loudly on insert."""
+        dj.config.stores.pop("default", None)
+        schema = dj.Schema(
+            f"{prefix}_test_gc_bare_at_no_default",
+            context={"GcBareNpyTest": GcBareNpyTest},
+            connection=connection_test,
+        )
+        try:
+            schema(GcBareNpyTest)
+            with pytest.raises(DataJointError, match="stores.default is not configured"):
+                GcBareNpyTest.insert1({"rid": 1, "waveform": np.arange(4, dtype="float32")})
+            assert len(GcBareNpyTest()) == 0
+        finally:
+            schema.drop()
+
+    def test_roundtrip(self, schema_bare):
+        waveform = np.arange(64, dtype="float32")
+        GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
+
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+    def test_collecting_the_default_store_by_name_keeps_bare_at_files(self, schema_bare):
+        """A collector bound to the default store by name must count bare-@ references."""
+        waveform = np.arange(64, dtype="float32")
+        GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
+        path = (GcBareNpyTest & "rid=1").fetch1("waveform").path
+
+        stats = _gc(schema_bare, store="local").collect(dry_run=False)
+
+        assert stats["schema_paths_referenced"] >= 1
+        assert not any(orphan.endswith(path) for orphan in stats["orphaned_schema_paths"])
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+    def test_metadata_records_the_resolved_store(self, schema_bare):
+        """A bare-@ write records the store it went to, not the empty name."""
+        GcBareNpyTest.insert1({"rid": 1, "waveform": np.arange(8, dtype="float32")})
+
+        (raw,) = (GcBareNpyTest & "rid=1").proj("waveform").cursor(as_dict=True)
+        metadata = raw["waveform"]
+        if isinstance(metadata, str):  # MySQL returns JSON as text, PostgreSQL as a dict
+            metadata = json.loads(metadata)
+
+        assert metadata["store"] == "local"
+
+    def test_repointing_the_default_store_keeps_existing_files(self, schema_bare):
+        """Re-pointing stores.default leaves existing bare-@ objects readable and collected.
+
+        References record "local", so after the default moves to "raw" they still read
+        from "local", and a collector bound to "local" still counts them.
+        """
+        waveform = np.arange(64, dtype="float32")
+        GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
+        path = (GcBareNpyTest & "rid=1").fetch1("waveform").path
+
+        dj.config.stores["default"] = "raw"
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+        stats = _gc(schema_bare, store="local").collect(dry_run=False)
+
+        assert not any(orphan.endswith(path) for orphan in stats["orphaned_schema_paths"])
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
+
+    def test_empty_store_name_is_the_default_collector(self, schema_bare):
+        """``store=""`` builds the same collector as no store, and deletes no live file."""
+        waveform = np.arange(64, dtype="float32")
+        GcBareNpyTest.insert1({"rid": 1, "waveform": waveform})
+        path = (GcBareNpyTest & "rid=1").fetch1("waveform").path
+
+        collector = _gc(schema_bare, store="")
+        assert collector.store is None
+
+        stats = collector.collect(dry_run=False)
+
+        assert stats["schema_paths_referenced"] >= 1
+        assert not any(orphan.endswith(path) for orphan in stats["orphaned_schema_paths"])
+        assert np.array_equal(np.asarray((GcBareNpyTest & "rid=1").fetch1("waveform")), waveform)
 
 
 class TestDirectoryObjects:
