@@ -127,13 +127,23 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         """
         Return the full SQL comment including type markers.
 
+        A core type (``int32``, ``uuid``, ``float64``, ...) is recorded in the column
+        comment as ``:type:`` so it can be reconstructed from the database; heading
+        parsing strips the marker into ``original_type``. Restoring it here keeps the
+        core type on columns copied by a foreign key.
+
         Returns
         -------
         str
-            Comment with optional ``:uuid:`` prefix.
+            Comment with the core-type prefix, e.g. ``:int32:``, when there is one.
         """
-        # UUID info is stored in the comment for reconstruction
-        return (":uuid:" if self.uuid else "") + (self.comment or "")
+        if self.original_type:
+            marker = f":{self.original_type}:"
+        elif self.uuid:
+            marker = ":uuid:"
+        else:
+            marker = ""
+        return marker + (self.comment or "")
 
     @property
     def sql(self) -> str:
