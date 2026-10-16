@@ -216,14 +216,6 @@ class Connection:
             backend = self._config["database.backend"]
         self.adapter = get_adapter(backend)
 
-        if database_name and self.adapter.backend == "mysql":
-            warnings.warn(
-                "database.name is set but the MySQL backend does not support database selection. "
-                "This setting only applies to PostgreSQL connections.",
-                UserWarning,
-                stacklevel=2,
-            )
-
         self.connect()
         if self.is_connected:
             db = self.conn_info.get("database_name")
@@ -356,6 +348,56 @@ class Connection:
         """
         self.close()
         return False
+
+    @property
+    def schema_prefix(self) -> str:
+        """
+        Prefix that ``database.name`` adds to schema names on this connection.
+
+        On PostgreSQL, ``database.name`` selects the database, which already
+        separates one namespace from another, so schema names are not prefixed.
+        MySQL has no level between the server and its schemas, so
+        ``database.name`` becomes a prefix: ``name + "_"``.
+
+        Returns
+        -------
+        str
+            The prefix, or an empty string if there is none.
+        """
+        name = self.conn_info.get("database_name")
+        if name and self.adapter.backend == "mysql":
+            return f"{name}_"
+        return ""
+
+    def qualify_schema_name(self, schema_name: str) -> str:
+        """
+        Return the name a schema has on the server.
+
+        Parameters
+        ----------
+        schema_name : str
+            Schema name as written in the pipeline, e.g. ``"subject"``.
+
+        Returns
+        -------
+        str
+            The name with :attr:`schema_prefix` applied, e.g.
+            ``"lab_project_subject"``. A name that already starts with the
+            prefix is returned unchanged.
+        """
+        prefix = self.schema_prefix
+        if not prefix:
+            return schema_name
+        if schema_name.startswith(prefix):
+            warnings.warn(
+                f"Schema name `{schema_name}` already starts with the prefix `{prefix}` "
+                f"from database.name, so it is used as is. DataJoint adds the prefix itself; "
+                f"write `{schema_name[len(prefix) :]}` instead.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return schema_name
+        return prefix + schema_name
 
     def register(self, schema) -> None:
         """
