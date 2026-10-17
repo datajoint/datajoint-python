@@ -6,6 +6,8 @@ which keys have vanished against the full ``key_source``: jobs outside the
 restriction -- reserved by other workers, or recording errors -- are not stale.
 ``success`` and ``error`` records whose key has left both ``key_source`` and the
 target are removed on refresh, in one statement rather than one per key.
+``stale_timeout=0`` means no grace period for other jobs whose key has left
+``key_source``: they are removed on that refresh, not kept indefinitely.
 """
 
 import time
@@ -166,19 +168,34 @@ def test_refresh_keeps_success_records_of_existing_rows(schema_by_backend):
         assert _statuses(Gated.jobs) == {0: "success", 1: "success"}
 
 
-def test_stale_timeout_zero_still_skips_stale_check(pipeline):
-    """``stale_timeout=0`` keeps skipping the age-based check for pending jobs."""
+def test_stale_timeout_zero_means_no_grace_period(pipeline):
+    """``stale_timeout=0`` removes vanished pending jobs at once; the default keeps them for its grace period."""
+    Raw, Proc = pipeline
+    Raw.insert([dict(raw_id=i, v=float(i)) for i in range(3)])
+    Proc.jobs.refresh()
+    (Raw & "raw_id in (1, 2)").delete(prompt=False)
+
+    result = Proc.jobs.refresh()  # stale_timeout=None: the configured grace period applies
+    assert _statuses(Proc.jobs) == {0: "pending", 1: "pending", 2: "pending"}
+    assert result["removed"] == 0
+
+    result = Proc.jobs.refresh(stale_timeout=0)
+    assert _statuses(Proc.jobs) == {0: "pending"}
+    assert result["removed"] == 2
+
+
+def test_configured_stale_timeout_zero_means_no_grace_period(pipeline):
+    """``config.jobs.stale_timeout = 0`` makes the refresh in ``populate()`` remove vanished jobs at once."""
     Raw, Proc = pipeline
     Raw.insert([dict(raw_id=i, v=float(i)) for i in range(2)])
     Proc.jobs.refresh()
+    assert Proc.jobs.reserve({"raw_id": 0})  # keeps populate() from computing raw_id=0
     (Raw & {"raw_id": 1}).delete(prompt=False)
-    _backdate(Proc.jobs)
 
-    Proc.jobs.refresh(stale_timeout=0)
-    assert _statuses(Proc.jobs) == {0: "pending", 1: "pending"}
+    with dj.config.override(jobs={"stale_timeout": 0}):
+        Proc.populate(reserve_jobs=True, suppress_errors=True)
 
-    Proc.jobs.refresh()
-    assert _statuses(Proc.jobs) == {0: "pending"}
+    assert _statuses(Proc.jobs) == {0: "reserved"}
 
 
 def test_refresh_cleanup_is_set_based(pipeline, monkeypatch):

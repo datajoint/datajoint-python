@@ -294,7 +294,12 @@ class JobsSettings(BaseSettings):
 
     auto_refresh: bool = Field(default=True, description="Auto-refresh jobs queue on populate")
     keep_completed: bool = Field(default=False, description="Keep success records in jobs table")
-    stale_timeout: int = Field(default=3600, ge=0, description="Seconds before pending job is checked for staleness")
+    stale_timeout: int = Field(
+        default=3600,
+        ge=0,
+        description="Grace period in seconds before refresh() removes a job whose key is no longer in key_source. "
+        "0 means no grace period: such jobs are removed on the next refresh.",
+    )
     default_priority: int = Field(default=5, ge=0, le=255, description="Default priority for new jobs (lower = more urgent)")
     version_method: Literal["git", "none"] | None = Field(
         default=None, description="Method to obtain version: 'git' (commit hash), 'none' (empty), or None (disabled)"
