@@ -164,7 +164,7 @@ class TestSettingsAccess:
         # Host can be localhost or db (docker), just verify it's a string
         assert isinstance(dj.config.database.host, str)
         assert len(dj.config.database.host) > 0
-        # Port may be 3306 (default) or a random port (testcontainers)
+        # Port may be the backend's default or a random port (testcontainers)
         assert isinstance(dj.config.database.port, int)
         assert 1 <= dj.config.database.port <= 65535
         # safemode may be modified by conftest fixtures
@@ -175,7 +175,7 @@ class TestSettingsAccess:
         # Host can be localhost or db (docker), just verify it's a string
         assert isinstance(dj.config["database.host"], str)
         assert len(dj.config["database.host"]) > 0
-        # Port may be 3306 (default) or a random port (testcontainers)
+        # Port may be the backend's default or a random port (testcontainers)
         assert isinstance(dj.config["database.port"], int)
         assert 1 <= dj.config["database.port"] <= 65535
         # safemode may be modified by conftest fixtures
@@ -770,8 +770,9 @@ class TestSaveTemplate:
             content = json.load(f)
 
         assert "database" in content
+        assert content["database"]["backend"] == "postgresql"
         assert content["database"]["host"] == "localhost"
-        assert content["database"]["port"] == 3306
+        assert content["database"]["port"] == 5432
         # Minimal template should not have credentials
         assert "password" not in content["database"]
         assert "user" not in content["database"]
@@ -1062,12 +1063,23 @@ class TestBackendConfiguration:
             monkeypatch.delenv(var, raising=False)
 
     def test_backend_default(self):
-        """Test default backend is mysql."""
+        """Test default backend is postgresql on port 5432."""
         from datajoint.settings import DatabaseSettings
 
         settings = DatabaseSettings()
+        assert settings.backend == "postgresql"
+        assert settings.port == 5432
+        assert "backend" not in settings.model_fields_set
+
+    def test_backend_mysql_env_var(self, monkeypatch):
+        """DJ_BACKEND=mysql selects MySQL on port 3306 and counts as set explicitly."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", "mysql")
+        settings = DatabaseSettings()
         assert settings.backend == "mysql"
         assert settings.port == 3306
+        assert "backend" in settings.model_fields_set
 
     def test_backend_postgresql(self, monkeypatch):
         """Test PostgreSQL backend with auto port."""
@@ -1121,7 +1133,6 @@ class TestBackendConfiguration:
 
         from datajoint.settings import Config
 
-        # Include port in config since auto-detection only happens during initialization
         config_file = tmp_path / "test_config.json"
         config_file.write_text(json.dumps({"database": {"backend": "postgresql", "host": "db.example.com", "port": 5432}}))
 
@@ -1138,7 +1149,7 @@ class TestBackendConfiguration:
 
     def test_global_config_backend(self):
         """Test global config has backend configuration."""
-        # Global config should have backend field with default mysql
+        # Global config has a backend field (conftest fixtures may have set it)
         assert hasattr(dj.config.database, "backend")
         # Backend should be one of the valid values
         assert dj.config.database.backend in ["mysql", "postgresql"]
@@ -1146,19 +1157,59 @@ class TestBackendConfiguration:
         assert isinstance(dj.config.database.port, int)
         assert 1 <= dj.config.database.port <= 65535
 
-    def test_port_auto_detection_on_initialization(self):
-        """Test port auto-detects only during initialization, not on live updates."""
+    def test_port_follows_backend_when_not_set(self):
+        """A port that was not set follows changes of the backend on a live config."""
         from datajoint.settings import DatabaseSettings
 
-        # Start with MySQL (default)
         settings = DatabaseSettings()
+        assert settings.port == 5432
+
+        settings.backend = "mysql"
+        assert settings.port == 3306
+        settings.backend = "postgresql"
+        assert settings.port == 5432
+        assert "port" not in settings.model_fields_set
+
+    def test_explicit_port_survives_backend_change(self, monkeypatch):
+        """A port that was set, by assignment or DJ_PORT, is kept when the backend changes."""
+        from datajoint.settings import DatabaseSettings
+
+        settings = DatabaseSettings()
+        settings.port = 6543
+        settings.backend = "mysql"
+        assert settings.port == 6543
+
+        monkeypatch.setenv("DJ_PORT", "3307")
+        settings = DatabaseSettings()
+        settings.backend = "mysql"
+        assert settings.port == 3307
+
+    def test_port_none_returns_to_backend_default(self):
+        """Setting the port to None makes it follow the backend again."""
+        from datajoint.settings import DatabaseSettings
+
+        settings = DatabaseSettings()
+        settings.port = 6543
+        settings.port = None
+        assert settings.port == 5432
+        settings.backend = "mysql"
         assert settings.port == 3306
 
-        # Change backend on live config - port won't auto-update
-        settings.backend = "postgresql"
-        # Port remains at previous value (this is expected behavior)
-        # Users should set port explicitly when changing backend on live config
-        assert settings.port == 3306  # Didn't auto-update
+    def test_config_file_mysql_backend_without_port(self, tmp_path):
+        """backend: mysql in datajoint.json, without a port, connects on port 3306."""
+        import json
+
+        from datajoint.settings import Config
+
+        config_file = tmp_path / "datajoint.json"
+        config_file.write_text(json.dumps({"database": {"backend": "mysql", "host": "db.example.com"}}))
+
+        cfg = Config()
+        assert cfg.database.port == 5432
+        cfg.load(config_file)
+        assert cfg.database.backend == "mysql"
+        assert cfg.database.port == 3306
+        assert "backend" in cfg.database.model_fields_set
 
     def test_mysql_backend_with_explicit_port(self, monkeypatch):
         """Test MySQL backend with explicit non-default port."""

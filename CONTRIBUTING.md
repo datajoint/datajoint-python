@@ -36,17 +36,17 @@ pytest tests/
 
 ## Running Tests
 
-Tests use [testcontainers](https://testcontainers.com/) to automatically manage MySQL, PostgreSQL, and MinIO containers. No manual `docker-compose up` required.
+Tests use [testcontainers](https://testcontainers.com/) to automatically manage PostgreSQL, MySQL, and MinIO containers. No manual `docker-compose up` required.
 
-Integration tests are **backend-parameterized** — tests using the `backend` fixture run automatically against both MySQL and PostgreSQL.
+Integration tests are **backend-parameterized** — tests using the `backend` fixture run automatically against both PostgreSQL and MySQL.
 
 ```bash
 pixi run -e test test                            # All tests (both backends)
 pixi run -e test test-cov                        # With coverage
 pixi run -e test pytest tests/unit/              # Unit tests only
 pixi run -e test pytest tests/integration/test_blob.py -v  # Specific file
-pixi run -e test pytest -m mysql                 # MySQL tests only
 pixi run -e test pytest -m postgresql            # PostgreSQL tests only
+pixi run -e test pytest -m mysql                 # MySQL tests only
 ```
 
 **macOS Docker Desktop users:** If tests fail to connect:
@@ -62,18 +62,18 @@ DataJoint supports MySQL 8.0.13+ and PostgreSQL 15+ as production database backe
 pip install -e ".[postgres]"    # Installs psycopg2-binary
 ```
 
-Tests automatically spin up both MySQL and PostgreSQL containers via testcontainers. Backend-parameterized tests (those using the `backend` fixture in `tests/conftest.py`) run against both backends to ensure feature parity.
+Tests automatically spin up both PostgreSQL and MySQL containers via testcontainers. Backend-parameterized tests (those using the `backend` fixture in `tests/conftest.py`) run against both backends to ensure feature parity. PostgreSQL is the default backend (`database.backend`), so fixtures and tests that need MySQL select it explicitly.
 
 ### External Containers (for debugging)
 
 ```bash
-# MySQL + MinIO
-docker compose up -d db minio
+# PostgreSQL + MySQL + MinIO
+docker compose up -d postgres db minio
 DJ_USE_EXTERNAL_CONTAINERS=1 pixi run -e test test
 docker compose down
 
-# MySQL + PostgreSQL + MinIO
-docker compose up -d db postgres minio
+# MySQL + MinIO
+docker compose up -d db minio
 DJ_USE_EXTERNAL_CONTAINERS=1 pixi run -e test test
 docker compose down
 ```
@@ -111,6 +111,15 @@ Hooks include: **ruff** (lint/format), **codespell**, YAML/JSON/TOML validation.
 
 For `DJ_USE_EXTERNAL_CONTAINERS=1`:
 
+### PostgreSQL
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DJ_PG_HOST` | `localhost` | PostgreSQL hostname |
+| `DJ_PG_PORT` | `5432` | PostgreSQL port |
+| `DJ_PG_USER` | `postgres` | PostgreSQL username |
+| `DJ_PG_PASS` | `password` | PostgreSQL password |
+
 ### MySQL
 
 | Variable | Default | Description |
@@ -120,14 +129,7 @@ For `DJ_USE_EXTERNAL_CONTAINERS=1`:
 | `DJ_USER` | `root` | MySQL username |
 | `DJ_PASS` | `password` | MySQL password |
 
-### PostgreSQL
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DJ_PG_HOST` | `localhost` | PostgreSQL hostname |
-| `DJ_PG_PORT` | `5432` | PostgreSQL port |
-| `DJ_PG_USER` | `postgres` | PostgreSQL username |
-| `DJ_PG_PASS` | `password` | PostgreSQL password |
+The test suite reads `DJ_HOST`, `DJ_PORT`, `DJ_USER`, and `DJ_PASS` as the MySQL server. Outside the tests, these variables configure whichever backend `DJ_BACKEND` selects, PostgreSQL by default.
 
 ### Object Storage
 

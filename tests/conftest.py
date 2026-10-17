@@ -12,6 +12,10 @@ To use external containers instead (e.g., docker-compose), set:
     DJ_USE_EXTERNAL_CONTAINERS=1
     DJ_HOST=localhost DJ_PORT=3306 S3_ENDPOINT=localhost:9000 pytest
 
+PostgreSQL is the default backend. The MySQL-only fixtures (``db_creds_root``,
+``db_creds_test`` and the connections built from them) select MySQL explicitly
+through ``mysql_backend_config``.
+
 To run only unit tests (no Docker required):
     pytest -m "not requires_mysql"
 """
@@ -207,7 +211,19 @@ def prefix():
 
 
 @pytest.fixture(scope="session")
-def db_creds_root(mysql_container) -> Dict:
+def mysql_backend_config():
+    """Select the MySQL backend in ``dj.config`` for the MySQL-only fixtures and tests.
+
+    PostgreSQL is the default backend. Tests connect to the MySQL server with
+    ``dj.conn(**db_creds_root)`` and ``dj.Connection(**db_creds_test)``, which take
+    the backend from ``dj.config``, so the MySQL credentials fixtures set it.
+    ``connection_by_backend`` switches it per test and restores it afterwards.
+    """
+    dj.config["database.backend"] = "mysql"
+
+
+@pytest.fixture(scope="session")
+def db_creds_root(mysql_container, mysql_backend_config) -> Dict:
     """Root database credentials from container or environment."""
     if mysql_container is not None:
         # From testcontainer
@@ -230,7 +246,7 @@ def db_creds_root(mysql_container) -> Dict:
 
 
 @pytest.fixture(scope="session")
-def db_creds_test(mysql_container) -> Dict:
+def db_creds_test(mysql_container, mysql_backend_config) -> Dict:
     """Test user database credentials from container or environment."""
     if mysql_container is not None:
         # From testcontainer
@@ -340,7 +356,7 @@ def connection_by_backend(db_creds_by_backend):
     is restored after each test, preventing config pollution between tests.
     """
     # Save original config to restore after tests
-    original_backend = dj.config.get("database.backend", "mysql")
+    original_backend = dj.config.get("database.backend", "postgresql")
     original_host = dj.config.get("database.host")
     original_port = dj.config.get("database.port")
 
@@ -410,7 +426,7 @@ def configure_datajoint(db_creds_root):
 @pytest.fixture(scope="session")
 def connection_root_bare(db_creds_root, configure_datajoint):
     """Bare root connection without user setup."""
-    connection = dj.Connection(**db_creds_root)
+    connection = dj.Connection(**db_creds_root, backend="mysql")
     yield connection
 
 
@@ -480,7 +496,7 @@ def connection_test(connection_root, prefix, db_creds_test):
         """
     )
 
-    connection = dj.Connection(**db_creds_test)
+    connection = dj.Connection(**db_creds_test, backend="mysql")
     yield connection
     connection_root.query(f"""DROP USER `{db_creds_test["user"]}`""")
     connection.close()
