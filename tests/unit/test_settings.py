@@ -730,6 +730,27 @@ class TestDisplaySettings:
         finally:
             dj.config.display.limit = original
 
+    def test_diagram_fontname_default(self, monkeypatch):
+        """Diagram labels default to Helvetica."""
+        from datajoint.settings import DisplaySettings
+
+        monkeypatch.delenv("DJ_DIAGRAM_FONTNAME", raising=False)
+        assert DisplaySettings().diagram_fontname == "Helvetica"
+
+    def test_diagram_fontname_from_env(self, monkeypatch):
+        """DJ_DIAGRAM_FONTNAME sets display.diagram_fontname, and outranks a config file value."""
+        from datajoint.settings import ENV_VAR_MAPPING, DisplaySettings
+
+        monkeypatch.setenv("DJ_DIAGRAM_FONTNAME", "Roboto Slab")
+        assert DisplaySettings().diagram_fontname == "Roboto Slab"
+        assert ENV_VAR_MAPPING["display.diagram_fontname"] == "DJ_DIAGRAM_FONTNAME"
+
+    def test_diagram_fontname_rejects_empty(self):
+        """An empty name would let Graphviz fall back to Times."""
+        with pytest.raises(ValidationError):
+            dj.config.display.diagram_fontname = ""
+        assert dj.config.display.diagram_fontname == "Helvetica"
+
 
 class TestCachePaths:
     """Test cache path settings."""
