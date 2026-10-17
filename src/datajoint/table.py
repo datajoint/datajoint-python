@@ -315,10 +315,23 @@ class Table(QueryExpression):
     def alter(self, prompt=True, context=None):
         """
         Alter the table definition from self.definition
+
+        Parameters
+        ----------
+        prompt : bool, optional
+            If True (default), show the ALTER statement and ask for confirmation.
+        context : dict, optional
+            Namespace that resolves the definition's foreign key references.
+            Defaults to the table's declaration context, so the table alters the
+            same way wherever this is called from; a table without one uses the
+            caller's namespace.
         """
         if self.connection.in_transaction:
             raise DataJointError("Cannot update table declaration inside a transaction, e.g. from inside a populate/make call")
         if context is None:
+            context = self.declaration_context
+        if context is None:
+            # f_back is alter()'s caller, so this cannot move into a helper
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
