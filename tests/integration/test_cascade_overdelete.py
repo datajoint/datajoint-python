@@ -246,3 +246,47 @@ def test_part_cascade_lifts_only_masters_that_have_a_matching_part(schema_by_bac
     assert Master.to_arrays("master_id").tolist() == [2]
     assert len(Master.P()) == 0
     assert Downstream.to_arrays("master_id").tolist() == [2]
+
+
+SUBQUERY_SEEDS = {
+    # seed -> (subjects deleted, sessions deleted)
+    "restricted by a query": (lambda S, T: S & (T & "quality = 0"), {1, 3}, {(1, 1), (1, 2), (3, 1)}),
+    "anti-restricted by a query": (lambda S, T: S - (T & "quality = 0"), {2, 4}, {(2, 1)}),
+    "restricted by a table": (lambda S, T: S & T, {1, 2, 3}, {(1, 1), (1, 2), (2, 1), (3, 1)}),
+}
+
+
+@pytest.mark.parametrize("seed_kind", list(SUBQUERY_SEEDS))
+def test_seed_restricted_by_a_downstream_query(schema_by_backend, seed_kind):
+    """A seed restricted by a query on a downstream table deletes the rows that
+    query selected when the delete started, with all their descendants."""
+
+    @schema_by_backend
+    class Subject(dj.Manual):
+        definition = """
+        subject_id : int32
+        """
+
+    @schema_by_backend
+    class Session(dj.Manual):
+        definition = """
+        -> Subject
+        session_id : int32
+        ---
+        quality : int32
+        """
+
+    Subject.insert([(1,), (2,), (3,), (4,)])
+    Session.insert([(1, 1, 1), (1, 2, 0), (2, 1, 1), (3, 1, 0)])
+    all_sessions = {(1, 1), (1, 2), (2, 1), (3, 1)}
+
+    make_seed, subjects, sessions = SUBQUERY_SEEDS[seed_kind]
+    seed = make_seed(Subject, Session)
+
+    counts = dj.Diagram.cascade(seed).counts()
+    assert counts[Subject.full_table_name] == len(subjects)
+    assert counts[Session.full_table_name] == len(sessions)
+
+    seed.delete(prompt=False)
+    assert set(Subject.to_arrays("subject_id").tolist()) == {1, 2, 3, 4} - subjects
+    assert set(zip(*Session.to_arrays("subject_id", "session_id"))) == all_sessions - sessions
