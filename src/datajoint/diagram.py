@@ -24,7 +24,7 @@ import logging
 import networkx as nx
 
 from .condition import AndList
-from .dependencies import extract_master, group_graph, topo_sort
+from .dependencies import extract_master, topo_sort
 from .errors import DataJointError
 from .table import Table, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
@@ -781,12 +781,18 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         # Only propagate through descendants of start_node
         allowed_nodes = {start_node} | set(nx.descendants(self, start_node))
-        # Sort only the tables propagation can reach: part_integrity="cascade" also
-        # reaches the master of every part it reaches, and the master's descendants.
+        # Sort only the tables propagation can reach. With part_integrity="cascade",
+        # propagation also reaches the master of every part it reaches (matched by
+        # name, as in _propagate_part_to_master), and the master's descendants.
+        reachable = set(allowed_nodes)
         if part_integrity == "cascade" and mode == "cascade":
-            reachable = {start_node} | nx.descendants(group_graph(self), start_node)
-        else:
-            reachable = allowed_nodes
+            pending = list(reachable)
+            while pending:
+                master = extract_master(pending.pop())
+                if master in self.nodes and master not in reachable:
+                    added = {master} | nx.descendants(self, master)
+                    pending.extend(added - reachable)
+                    reachable |= added
         sorted_nodes = topo_sort(self, reachable)
         propagated_edges = set()
         # Dedup upward part→master walks by (part, master) PAIR, not by master

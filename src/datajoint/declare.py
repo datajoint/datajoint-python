@@ -204,7 +204,7 @@ def compile_foreign_key(
     fk_attribute_map: dict[str, tuple[str, str]] | None = None,
     fk_index_candidates: list[list[str]] | None = None,
     column_comments: dict[str, str] | None = None,
-    foreign_keys: list[tuple[str, dict[str, str], bool]] | None = None,
+    foreign_keys: list[tuple[str, dict[str, str]]] | None = None,
 ) -> None:
     """
     Parse a foreign key line and update declaration components.
@@ -241,7 +241,7 @@ def compile_foreign_key(
         comment, with its core-type marker (e.g. ``:int32:``), is added so the
         child keeps the parent's declared type. Updated in place.
     foreign_keys : list, optional
-        One ``(parent_table, attr_map, nullable)`` entry per foreign key, where
+        One ``(parent_table, attr_map)`` entry per foreign key, where
         ``attr_map`` maps each child attribute to the parent attribute it
         references. Unlike ``fk_attribute_map``, it keeps every reference when
         several share an attribute. Updated in place.
@@ -335,7 +335,7 @@ def compile_foreign_key(
     )
     if foreign_keys is not None:
         attr_map = {attr: ref.heading[attr].original_name for attr in ref.primary_key}
-        foreign_keys.append((ref_table_name, attr_map, is_nullable))
+        foreign_keys.append((ref_table_name, attr_map))
 
     # Supporting index on the foreign-key columns.
     #
@@ -397,7 +397,7 @@ def prepare_declare(
     *,
     table_name: str | None = None,
     config=None,
-    foreign_keys: list[tuple[str, dict[str, str], bool]] | None = None,
+    foreign_keys: list[tuple[str, dict[str, str]]] | None = None,
 ) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]], dict[str, str]]:
     """
     Parse a table definition into its components.
@@ -423,7 +423,7 @@ def prepare_declare(
     config : Config, optional
         Read for ``jobs.add_job_metadata`` and ``provenance.capture``.
     foreign_keys : list, optional
-        Receives one ``(parent_table, attr_map, nullable)`` entry per foreign
+        Receives one ``(parent_table, attr_map)`` entry per foreign
         key; see :func:`compile_foreign_key`. Updated in place.
 
     Returns
@@ -559,7 +559,7 @@ def declare(
     adapter,
     *,
     config=None,
-    foreign_keys: list[tuple[str, dict[str, str], bool]] | None = None,
+    foreign_keys: list[tuple[str, dict[str, str]]] | None = None,
 ) -> tuple[str, list[str], list[str], dict[str, tuple[str, str]], list[str], list[str]]:
     r"""
     Parse a definition and generate SQL CREATE TABLE statement.
@@ -577,7 +577,7 @@ def declare(
     config : Config, optional
         Configuration object. If None, falls back to global config.
     foreign_keys : list, optional
-        Receives one ``(parent_table, attr_map, nullable)`` entry per foreign
+        Receives one ``(parent_table, attr_map)`` entry per foreign
         key; see :func:`compile_foreign_key`. Updated in place.
 
     Returns

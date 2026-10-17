@@ -219,7 +219,7 @@ class Table(QueryExpression):
         fk_attribute_map : dict
             Dict mapping child_attr -> (parent_table, parent_attr).
         foreign_keys : list
-            One ``(parent_table, attr_map, nullable)`` entry per foreign key,
+            One ``(parent_table, attr_map)`` entry per foreign key,
             where ``attr_map`` maps child_attr -> parent_attr.
         """
         pass  # Default: no validation

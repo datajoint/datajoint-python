@@ -1,8 +1,10 @@
 """
 Integration tests for the master-part group cycle rule.
 
-A part may reference its master, another part of the same master, or a table
-that does not depend on its master. A reference to a table that depends on the
+A part is owned by its master when a foreign key in its primary key references
+the master, or another owned part of the same master. An owned part may
+reference its master, another owned part of the same master, or a table that
+does not depend on its master. A reference to a table that depends on the
 master would make the master-part group depend on itself, and DataJoint could
 no longer order the tables for delete, drop or trace, so the declaration is
 refused before any DDL runs.
@@ -62,8 +64,8 @@ def regrow(master, **parts):
     return type(master.__name__, master.__bases__, namespace)
 
 
-def master_key_warnings(record):
-    return [w for w in record if "does not inherit the primary key of its master" in str(w.message)]
+def not_owned_warnings(record):
+    return [w for w in record if "is not owned by its master" in str(w.message)]
 
 
 # ---------------------------------------------------------------------------
@@ -257,7 +259,7 @@ def test_allowed_part_references(schema_by_backend):
                 -> Other.Item
                 """
 
-    assert not master_key_warnings(record)
+    assert not not_owned_warnings(record)
     assert {Session.Channel.table_name, Session.Spike.table_name, Session.Link.table_name} <= set(schema.list_tables())
 
     Other.insert1({"other_id": 1})
@@ -369,8 +371,102 @@ def test_legacy_cycle_is_named_and_contained(schema_by_backend, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# A part that does not inherit its master's primary key
+# Parts that their masters do not own
 # ---------------------------------------------------------------------------
+
+
+def test_owned_part_referencing_a_sibling_that_is_not_owned_is_refused(schema_by_backend):
+    """
+    Loose references the master only outside its primary key, so it is a
+    separate table that depends on the master. Summary is owned and references
+    Loose, which would make the master's group depend on itself.
+    """
+    schema = schema_by_backend
+
+    @schema
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+    with pytest.warns(UserWarning, match="is not owned by its master"):
+        schema(
+            regrow(
+                Master,
+                Loose="""
+                loose_id : int32
+                ---
+                -> [nullable] master
+                """,
+            )
+        )
+
+    Grown = regrow(
+        Master,
+        Loose="""
+        loose_id : int32
+        ---
+        -> [nullable] master
+        """,
+        Summary="""
+        -> master
+        -> master.Loose
+        """,
+    )
+    with pytest.raises(DataJointError) as error:
+        schema(Grown)
+    master, loose, summary = Master.full_table_name, Grown.Loose.full_table_name, Grown.Summary.full_table_name
+    message = str(error.value)
+    assert f"Part table {summary} cannot reference {loose}, which depends on the part's master {master}" in message
+    assert f"{master} -> {loose} -> {summary} -> {master}" in message
+    assert f"{loose} is a part of {master} that the master does not own" in message
+    assert not Grown.Summary().is_declared
+    assert set(schema.list_tables()) == {Master.table_name, Grown.Loose.table_name}
+
+
+def test_part_with_nullable_master_reference_is_a_separate_table(schema_by_backend):
+    """
+    Annotation references X, which references the master, and references the
+    master itself only through a nullable foreign key. It is not owned, so it is
+    sorted as a separate table after X; it is not refused and causes no cycle.
+    """
+    schema = schema_by_backend
+
+    @schema
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+    @schema
+    class X(dj.Manual):
+        definition = """
+        -> Master
+        x_id : int32
+        """
+
+    Grown = regrow(
+        Master,
+        Annotation="""
+        -> X
+        note_id : int32
+        ---
+        -> [nullable] master.proj(reviewed_in="master_id")
+        """,
+    )
+    with pytest.warns(UserWarning, match="is not owned by its master") as record:
+        schema(Grown)
+    message = str(not_owned_warnings(record)[0].message)
+    assert Grown.Annotation.full_table_name in message and Master.full_table_name in message
+    assert "from DataJoint 2.4 delete and trace will also treat it as a separate table" in message
+
+    tables = schema.list_tables()
+    assert tables.index(Master.table_name) < tables.index(X.table_name) < tables.index(Grown.Annotation.table_name)
+    Master.insert1({"master_id": 1})
+    X.insert1({"master_id": 1, "x_id": 1})
+    Grown.Annotation.insert1({"master_id": 1, "x_id": 1, "note_id": 1, "reviewed_in": 1})
+    Master.delete()
+    assert len(X()) == len(Grown.Annotation()) == 0
 
 
 @pytest.mark.parametrize(
@@ -380,18 +476,19 @@ def test_legacy_cycle_is_named_and_contained(schema_by_backend, monkeypatch):
         part_id : int32
         """,
         """
-        -> master.proj(other_id="master_id")
-        part_id : int32
-        """,
-        """
         part_id : int32
         ---
         -> [nullable] master
         """,
+        """
+        part_id : int32
+        ---
+        -> master
+        """,
     ],
-    ids=["no-reference", "renamed", "nullable"],
+    ids=["no-reference", "nullable", "secondary"],
 )
-def test_part_without_master_key_warns(schema_by_backend, definition):
+def test_part_not_owned_warns(schema_by_backend, definition):
     schema = schema_by_backend
 
     @schema
@@ -400,16 +497,15 @@ def test_part_without_master_key_warns(schema_by_backend, definition):
         master_id : int32
         """
 
-    with pytest.warns(UserWarning, match="does not inherit the primary key of its master") as record:
+    with pytest.warns(UserWarning, match="is not owned by its master") as record:
         schema(regrow(Master, Part=definition))
-    assert Master.full_table_name in str(master_key_warnings(record)[0].message)
+    assert Master.full_table_name in str(not_owned_warnings(record)[0].message)
 
 
-def test_part_with_master_key_through_secondary_reference_does_not_warn(schema_by_backend):
+def test_part_owned_only_through_a_sibling_that_is_not_owned_warns(schema_by_backend):
     schema = schema_by_backend
 
-    with warnings.catch_warnings(record=True) as record:
-        warnings.simplefilter("always")
+    with pytest.warns(UserWarning, match="is not owned by its master") as record:
 
         @schema
         class Master(dj.Manual):
@@ -417,11 +513,56 @@ def test_part_with_master_key_through_secondary_reference_does_not_warn(schema_b
             master_id : int32
             """
 
-            class Part(dj.Part):
+            class Loose(dj.Part):
                 definition = """
-                part_id : int32
+                loose_id : int32
                 ---
                 -> master
                 """
 
-    assert not master_key_warnings(record)
+            class Child(dj.Part):
+                definition = """
+                -> master.Loose
+                child_id : int32
+                """
+
+    warned = {str(w.message).split()[2] for w in not_owned_warnings(record)}
+    assert warned == {Master.Loose.full_table_name, Master.Child.full_table_name}
+
+
+@pytest.mark.parametrize(
+    "parts",
+    [
+        {
+            "Renamed": """
+            -> master.proj(other_id="master_id")
+            part_id : int32
+            """
+        },
+        {  # the renamed part-of-part case from #1429
+            "PartA": """
+            -> master
+            part_a_id : int32
+            """,
+            "PartB": """
+            -> Master.PartA.proj(src_master='master_id', src_part='part_a_id')
+            part_b_id : int32
+            """,
+        },
+    ],
+    ids=["renamed-master", "renamed-sibling"],
+)
+def test_owned_parts_with_renamed_references_do_not_warn(schema_by_backend, parts):
+    schema = schema_by_backend
+
+    @schema
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        schema(regrow(Master, **parts))
+
+    assert not not_owned_warnings(record)
