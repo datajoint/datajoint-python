@@ -10,6 +10,10 @@ version-resolver:
       - 'documentation'
       - 'enhancement'
       - 'bug'
+# Base each draft on the latest release cut from the same branch. Without this,
+# a release from a maintenance branch (maint/0.14, maint/2.3) becomes the baseline
+# for master's draft, and master PRs merged before it drop out of the notes.
+filter-by-commitish: true
 name-template: '$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
 categories:
