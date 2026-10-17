@@ -1,4 +1,5 @@
 import collections
+import copy
 import csv
 import inspect
 import itertools
@@ -1083,6 +1084,12 @@ class Table(QueryExpression):
         Deletes the table without cascading and without user prompt.
         If this table has populated dependent tables, this will fail.
         """
+        if self._top is not None:
+            # dj.Top is an ORDER BY ... LIMIT, not part of the WHERE clause:
+            # delete exactly the rows it selects.
+            target = copy.copy(self)
+            target._top = None
+            return (target & self.keys()).delete_quick(get_count=get_count)
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
         cursor = self.connection.query(query)
         # Use cursor.rowcount (DB-API 2.0 standard, works for both MySQL and PostgreSQL)
