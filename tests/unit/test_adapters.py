@@ -166,6 +166,11 @@ class TestMySQLAdapter:
         assert adapter.current_timestamp_expr() == "CURRENT_TIMESTAMP"
         assert adapter.current_timestamp_expr(3) == "CURRENT_TIMESTAMP(3)"
 
+    def test_statement_timestamp_expr(self, adapter):
+        """Test statement start time expression."""
+        assert adapter.statement_timestamp_expr() == "NOW()"
+        assert adapter.statement_timestamp_expr(3) == "NOW(3)"
+
     def test_interval_expr(self, adapter):
         """Test INTERVAL expression."""
         assert adapter.interval_expr(5, "second") == "INTERVAL 5 SECOND"
@@ -311,6 +316,11 @@ class TestPostgreSQLAdapter:
         assert adapter.current_timestamp_expr() == "CURRENT_TIMESTAMP"
         assert adapter.current_timestamp_expr(3) == "CURRENT_TIMESTAMP(3)"
 
+    def test_statement_timestamp_expr(self, adapter):
+        """Test statement start time expression: not CURRENT_TIMESTAMP, which is the transaction's start."""
+        assert adapter.statement_timestamp_expr() == "statement_timestamp()"
+        assert adapter.statement_timestamp_expr(3) == "CAST(statement_timestamp() AS timestamptz(3))"
+
     def test_interval_expr(self, adapter):
         """Test INTERVAL expression with PostgreSQL syntax."""
         assert adapter.interval_expr(5, "second") == "INTERVAL '5 seconds'"
@@ -403,6 +413,7 @@ class TestAdapterInterface:
             "commit_sql",
             "rollback_sql",
             "current_timestamp_expr",
+            "statement_timestamp_expr",
             "interval_expr",
             "json_path_expr",
             "format_column_definition",
