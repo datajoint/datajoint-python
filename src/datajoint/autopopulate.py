@@ -189,7 +189,12 @@ class AutoPopulate:
 
     jobs: Job = _JobsDescriptor()
 
-    def _declare_check(self, primary_key: list[str], fk_attribute_map: dict[str, tuple[str, str]]) -> None:
+    def _declare_check(
+        self,
+        primary_key: list[str],
+        fk_attribute_map: dict[str, tuple[str, str]],
+        foreign_keys: list[tuple[str, dict[str, str], bool]],
+    ) -> None:
         """
         Validate FK-only primary key constraint for auto-populated tables.
 
@@ -203,6 +208,9 @@ class AutoPopulate:
             List of primary key attribute names.
         fk_attribute_map : dict
             Mapping of child_attr -> (parent_table, parent_attr).
+        foreign_keys : list
+            One ``(parent_table, attr_map, nullable)`` entry per foreign key.
+            Not used here.
 
         Raises
         ------

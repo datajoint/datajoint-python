@@ -24,7 +24,7 @@ import logging
 import networkx as nx
 
 from .condition import AndList
-from .dependencies import extract_master, topo_sort
+from .dependencies import extract_master, group_graph, topo_sort
 from .errors import DataJointError
 from .table import Table, lookup_class_name
 from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
@@ -581,9 +581,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         passes until no new ancestor is restricted; termination is
         guaranteed because the dependency graph is a DAG.
         """
-        sorted_nodes = topo_sort(self)
         # Only propagate through ancestors of start_node
         allowed_nodes = {start_node} | set(nx.ancestors(self, start_node))
+        sorted_nodes = topo_sort(self, allowed_nodes)
         propagated_edges = set()
 
         restrictions = self._cascade_restrictions
@@ -779,9 +779,15 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         restricted from every one of them.
         """
 
-        sorted_nodes = topo_sort(self)
         # Only propagate through descendants of start_node
         allowed_nodes = {start_node} | set(nx.descendants(self, start_node))
+        # Sort only the tables propagation can reach: part_integrity="cascade" also
+        # reaches the master of every part it reaches, and the master's descendants.
+        if part_integrity == "cascade" and mode == "cascade":
+            reachable = {start_node} | nx.descendants(group_graph(self), start_node)
+        else:
+            reachable = allowed_nodes
+        sorted_nodes = topo_sort(self, reachable)
         propagated_edges = set()
         # Dedup upward part→master walks by (part, master) PAIR, not by master
         # alone: distinct Parts of the same master can be restricted via
@@ -1138,9 +1144,8 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         Yields restricted ``FreeTable`` objects when cascade or restrict
         conditions have been applied, unrestricted ``FreeTable`` otherwise.
         """
-        for node in topo_sort(self):
-            if node in self.nodes_to_show:
-                yield self._restricted_table(node)
+        for node in topo_sort(self, self.nodes_to_show):
+            yield self._restricted_table(node)
 
     def __reversed__(self):
         """
@@ -1149,9 +1154,8 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         Same as ``__iter__`` but reversed — useful for cascading
         deletes and drops.
         """
-        for node in reversed(topo_sort(self)):
-            if node in self.nodes_to_show:
-                yield self._restricted_table(node)
+        for node in reversed(topo_sort(self, self.nodes_to_show)):
+            yield self._restricted_table(node)
 
     def prune(self):
         """

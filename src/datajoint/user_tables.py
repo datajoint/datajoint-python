@@ -3,8 +3,10 @@ Hosts the table tiers, user tables should be derived from.
 """
 
 import re
+import warnings
 
 from .autopopulate import AutoPopulate
+from .dependencies import CHAIN_LEGEND, extract_master, group_cycle
 from .errors import DataJointError
 from .table import Table
 from .utils import from_camel_case
@@ -213,6 +215,72 @@ class Part(UserTable, metaclass=PartMeta):
         + _base_regexp
         + ")"
     )
+
+    def _declare_check(self, primary_key, fk_attribute_map, foreign_keys):
+        """
+        Check the part's references before the part is created.
+
+        A part may reference its master, another part of the same master, or a
+        table outside its master-part group that does not depend on its master.
+        A reference to a table that does depend on the master would make the group
+        depend on itself, and DataJoint could no longer order its tables for
+        delete, drop or trace, so the declaration is refused.
+
+        A part that does not inherit its master's primary key, unrenamed and
+        non-nullable, through a reference to the master or to another part of it,
+        gets a warning.
+
+        Parameters
+        ----------
+        primary_key : list
+            List of primary key attribute names.
+        fk_attribute_map : dict
+            Dict mapping child_attr -> (parent_table, parent_attr).
+        foreign_keys : list
+            One ``(parent_table, attr_map, nullable)`` entry per foreign key.
+
+        Raises
+        ------
+        DataJointError
+            If a reference would close a cycle through the part's master-part group.
+        """
+        super()._declare_check(primary_key, fk_attribute_map, foreign_keys)
+        part = self.full_table_name
+        master = extract_master(part)
+        parents = [parent for parent, _, _ in foreign_keys]
+
+        if any(master not in (parent, extract_master(parent)) for parent in parents):
+            # Reload: the graph may predate tables declared or dropped since. A
+            # cycle runs through the ancestors of the referenced tables, so their
+            # schemas and everything upstream of them is enough.
+            dependencies = self.connection.dependencies
+            dependencies.clear()
+            split = self.connection.adapter.split_full_table_name
+            dependencies.load_all_upstream({self.database} | {split(parent)[0] for parent in parents})
+            if cycle := group_cycle(dependencies, part, parents):
+                parent = cycle[-3]  # the cycle ends with the referenced table, the part, and the master
+                raise DataJointError(
+                    f"Part table {part} cannot reference {parent}, which depends on the part's master {master}. "
+                    f"The reference would close the cycle {' -> '.join(cycle)} ({CHAIN_LEGEND}), and DataJoint "
+                    "could no longer order these tables for delete, drop or trace. A part table may reference its "
+                    "master, another part of the same master, or a table that does not depend on its master."
+                )
+
+        master_key = self._master.primary_key
+        if master_key and not any(
+            not nullable and all(attr_map.get(attr) == attr for attr in master_key)
+            for parent, attr_map, nullable in foreign_keys
+            if master in (parent, extract_master(parent))
+        ):
+            warnings.warn(
+                f"Part table {part} does not inherit the primary key of its master {master} "
+                f"({', '.join(master_key)}), unrenamed, through a non-nullable reference to the master or to another "
+                "part of it. Without that key its rows cannot be matched to master rows by key, and operations that "
+                "keep a master and its parts together may treat it as a separate table. "
+                "Reference the master with `-> master` unless this is intended.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     def delete(self, part_integrity: str = "enforce", **kwargs):
         """
