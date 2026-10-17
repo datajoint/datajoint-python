@@ -17,10 +17,18 @@ random schemas and databases drawn by Hypothesis, with no database server:
 - T8 ordering: under A1, ``datajoint.dependencies.topo_sort`` succeeds if and
   only if the group quotient Q is acyclic, and its order is valid.
 
-The tests of ``self.upstream`` for a row not inserted yet come last.
+T1-T8 run under both readings of A1: the specification's, and a generalization
+to owning chains with renames (#1429; ``Schema(..., a1="chain")``).
+
+Then come checks of the specification's computation (``diagram.md``,
+"Computation") against the definitions: the one pass over Q and the groups that
+iterate, R1's rule for copying a condition, and the rule for relabeling
+materialized keys. Each claim that does not hold is kept as a strict ``xfail``
+with a minimal counterexample. The tests of ``self.upstream`` for a row not
+inserted yet, and of the chain reading of A1, come last.
 
 Drawn schemas may contain group cycles (Q cyclic), which E1b refuses at
-declaration. T1-T7 and the ``self.upstream`` properties are stated for acyclic Q
+declaration. T1-T7 and the other row-level properties are stated for acyclic Q
 and discard the other schemas with ``assume``; T8 tests both cases. Select the
 number of examples with ``HYPOTHESIS_PROFILE`` (see ``tests/conftest.py``).
 """
@@ -41,17 +49,30 @@ from datajoint.errors import DataJointError
 from .expand_model import (
     DB,
     FK,
+    Not,
+    PartIntegrityError,
+    Relation,
     RowGraph,
     Schema,
     TableSpec,
     all_rows,
     apply_delete,
+    copy_allowed,
     dependency_graph,
     fk_value,
     full_table_name,
     group_whole,
     make_db,
+    one_pass,
+    preserves_instance,
     q_acyclic,
+    r1_down,
+    r1_up,
+    relabel_down,
+    relabel_down_allowed,
+    relabel_up,
+    renames_master_key,
+    restrict,
     ri_ok,
     subdatabase,
     virtual_upstream,
@@ -173,15 +194,18 @@ def _finish(draw, builder: _TableBuilder, tables: list[TableSpec], fks: list, ow
 
 
 @st.composite
-def schemas(draw, max_tables: int = 7, a1_only: bool = False) -> Schema:
+def schemas(draw, max_tables: int = 7, a1_only: bool = False, a1: str = "strict") -> Schema:
     """
     Draw a schema: tables in declaration order, so the FK graph is a DAG.
 
     - Each step declares a plain table, a master, or a part of a master declared
       earlier, so parts can be added late, after other tables.
     - A master has 0-3 parts. A part's owning reference is direct (``-> master``
-      in the primary key), through a sibling part, secondary, or (unless
-      ``a1_only``) it violates A1: it is missing, renamed or nullable.
+      in the primary key), through a sibling part, or secondary. Otherwise it is
+      missing, nullable, or renamed: to the master, or to a sibling as in #1429.
+      A renamed owning reference in the primary key violates A1 under
+      ``a1="strict"`` and satisfies it under ``a1="chain"``. With ``a1_only``,
+      every part satisfies A1.
     - Other FKs are primary or secondary, nullable, renamed and parallel, to any
       table declared earlier. Diamonds that share attributes, part -> part across
       groups, renamed references within a group and group cycles all occur.
@@ -191,7 +215,6 @@ def schemas(draw, max_tables: int = 7, a1_only: bool = False) -> Schema:
     tables: list[TableSpec] = []
     fks: list[FK] = []
     parts_of: dict[str, list[str]] = {}
-    a1_parts: dict[str, list[str]] = {}  # parts whose owning reference satisfies A1 by construction
     for i in range(draw(st.integers(min(2, max_tables), max_tables))):
         by_name = {t.name: t for t in tables}
         open_masters = [m for m, parts in parts_of.items() if len(parts) < 3]
@@ -201,29 +224,47 @@ def schemas(draw, max_tables: int = 7, a1_only: bool = False) -> Schema:
             extra = _draw_fks(draw, tables, fks, fresh, draw(st.integers(0, 3)) if tables else 0, set())
             spec = _finish(draw, builder, tables, extra, own_pk=f"k{i}", force_own=False)
             if kind == "master":
-                parts_of[spec.name], a1_parts[spec.name] = [], []
+                parts_of[spec.name] = []
         else:
             master = draw(st.sampled_from(open_masters))
-            mspec = by_name[master]
+            mspec, mk = by_name[master], by_name[master].pk
             builder = _TableBuilder(f"{master}__p{len(parts_of[master])}", master=master)
-            owners = [s for s in a1_parts[master] if set(mspec.pk) <= set(by_name[s].pk)]
-            modes = ["direct", "secondary"] + (["sibling"] if owners else []) + ([] if a1_only else ["violate"])
-            mode = draw(st.sampled_from(modes))
-            how = None
+            so_far = Schema(tables, fks, a1=a1)
+            members = [p for p in parts_of[master] if p in so_far.group]
+            # Siblings an FK can inherit the key from: unrenamed (key in the primary key under
+            # the master's names), or renamed (owning attributes in the primary key).
+            carrying = [p for p in members if so_far.owning_attributes(p) == mk and set(mk) <= set(by_name[p].pk)]
+            chainable = [p for p in members if set(so_far.owning_attributes(p)) <= set(by_name[p].pk)]
+            renamed_modes = ["renamed"] + (["renamed sibling"] if chainable else [])
+            owner_modes = ["direct", "secondary"] + (["sibling"] if carrying else [])
+            violations = ["missing", "nullable"]
+            if a1 == "chain":
+                owner_modes += renamed_modes
+            else:
+                violations += renamed_modes
+            mode = draw(st.sampled_from(owner_modes + ([] if a1_only else ["violate"])))
+            if mode == "violate":
+                mode = draw(st.sampled_from(violations))
             owning = []  # the owning reference, when it is a secondary FK
             if mode == "direct":
                 builder.add_fk(mspec, True, {})
             elif mode == "sibling":
-                sibling = by_name[draw(st.sampled_from(owners))]
-                builder.add_fk(sibling, True, _draw_renames(draw, sibling, fresh, keep=mspec.pk))
+                sibling = by_name[draw(st.sampled_from(carrying))]
+                builder.add_fk(sibling, True, _draw_renames(draw, sibling, fresh, keep=mk))
             elif mode == "secondary":
                 owning = [(mspec, False, {}, False)]
-            else:
-                how = draw(st.sampled_from(["missing", "renamed", "nullable"]))
-                if how == "renamed":
-                    builder.add_fk(mspec, True, {a: f"{a}_r{next(fresh)}" for a in mspec.pk})
-                elif how == "nullable":
-                    owning = [(mspec, False, {}, True)]
+            elif mode == "nullable":
+                owning = [(mspec, False, {}, True)]
+            elif mode == "renamed":
+                renamed = draw(st.sets(st.sampled_from(mk), min_size=1))
+                builder.add_fk(mspec, True, {a: f"{a}_r{next(fresh)}" for a in sorted(renamed)})
+            elif mode == "renamed sibling":
+                sibling = by_name[draw(st.sampled_from(chainable))]
+                key = so_far.owning_attributes(sibling.name)
+                renamed = draw(st.sets(st.sampled_from(key), min_size=1))
+                renames = _draw_renames(draw, sibling, fresh, keep=key)
+                renames.update({a: f"{a}_r{next(fresh)}" for a in sorted(renamed)})
+                builder.add_fk(sibling, True, renames)
             solid = set(builder.pk) | {a for o in owning if not o[3] for a in o[0].pk}
             group = [master] + parts_of[master]
             extra = _draw_fks(draw, tables, fks, fresh, draw(st.integers(0, 3)), solid, group)
@@ -231,11 +272,9 @@ def schemas(draw, max_tables: int = 7, a1_only: bool = False) -> Schema:
             # primary key, so the part needs a key attribute of its own.
             spec = _finish(draw, builder, tables, owning + extra, own_pk=f"k{i}", force_own=bool(owning))
             parts_of[master].append(spec.name)
-            if mode != "violate":
-                a1_parts[master].append(spec.name)
         tables.append(spec)
         fks.extend(builder.fks)
-    schema = Schema(tables, fks)
+    schema = Schema(tables, fks, a1=a1)
     if a1_only:
         assert all(t.name in schema.group for t in schema.tables if t.master), schema
     return schema
@@ -294,9 +333,11 @@ class Case:
 
 
 @st.composite
-def cases(draw, max_tables: int = 7, max_rows: int = 4, acyclic: bool = True, max_total: int | None = None) -> Case:
+def cases(
+    draw, max_tables: int = 7, max_rows: int = 4, acyclic: bool = True, max_total: int | None = None, a1: str = "strict"
+) -> Case:
     """Draw a schema and a database. With ``acyclic``, schemas whose Q has a cycle are discarded."""
-    schema = draw(schemas(max_tables))
+    schema = draw(schemas(max_tables, a1=a1))
     if acyclic:
         assume(q_acyclic(schema))
     db = draw(databases(schema, max_rows))
@@ -311,8 +352,13 @@ def seeds(rows) -> st.SearchStrategy:
     return st.frozensets(st.sampled_from(rows)) if rows else st.just(frozenset())
 
 
-#: Tiny databases for the brute-force minimality checks (at most 2^8 supersets).
-tiny_cases = cases(max_tables=4, max_rows=2, max_total=8)
+#: Both readings of A1: the specification's, and the generalization for #1429.
+A1_MODES = ["strict", "chain"]
+
+
+def tiny_cases(a1: str) -> st.SearchStrategy:
+    """Tiny databases for the brute-force minimality checks (at most 2^8 supersets)."""
+    return cases(max_tables=4, max_rows=2, max_total=8, a1=a1)
 
 
 def supersets(rows, seed):
@@ -441,34 +487,38 @@ def test_generator_draws_data_feature(feature):
 # =============================================================================
 # T1-T3
 # =============================================================================
+# Each property runs under both readings of A1 (see the A1 section at the end).
 
 
-@given(case=cases(), data=st.data())
-def test_t1_closure(case, data):
-    """T1: D and U are extensive, monotone and idempotent."""
-    g = case.graph
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t1_closure(a1, data):
+    """T1: D, U and D1 are extensive, monotone and idempotent."""
+    g = data.draw(cases(a1=a1), label="case").graph
     b = data.draw(seeds(g.rows), label="B")
     a = data.draw(seeds(b), label="A ⊆ B")
-    for op in (g.D, g.U):
+    for op in (g.D, g.U, g.D1):
         assert a <= op(a)
         assert op(a) <= op(b)
         assert op(op(a)) == op(a)
 
 
-@given(case=cases(), data=st.data())
-def test_t2_additivity(case, data):
-    """T2: X(A ∪ B) = X(A) ∪ X(B) for X in D, U and both."""
-    g = case.graph
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t2_additivity(a1, data):
+    """T2: X(A ∪ B) = X(A) ∪ X(B) for X in D, U, D1 and both."""
+    g = data.draw(cases(a1=a1), label="case").graph
     a = data.draw(seeds(g.rows), label="A")
     b = data.draw(seeds(g.rows), label="B")
-    for op in (g.D, g.U, g.both):
+    for op in (g.D, g.U, g.D1, g.both):
         assert op(a | b) == op(a) | op(b)
 
 
-@given(case=cases())
-def test_t3_duality(case):
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t3_duality(a1, data):
     """T3: y ∈ D({x}) if and only if x ∈ U({y})."""
-    g = case.graph
+    g = data.draw(cases(a1=a1), label="case").graph
     up = {y: g.U({y}) for y in g.rows}
     for x in g.rows:
         down = g.D({x})
@@ -481,9 +531,11 @@ def test_t3_duality(case):
 # =============================================================================
 
 
-@given(case=cases(), data=st.data())
-def test_t4_delete_safety(case, data):
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t4_delete_safety(a1, data):
     """T4: removing D(S) leaves the database consistent and takes every master-part instance whole."""
+    case = data.draw(cases(a1=a1), label="case")
     g = case.graph
     s = data.draw(seeds(g.rows), label="S")
     d = g.D(s)
@@ -493,9 +545,11 @@ def test_t4_delete_safety(case, data):
     assert g.group_closed(d)
 
 
-@given(case=tiny_cases, data=st.data())
-def test_t4_minimality(case, data):
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t4_minimality(a1, data):
     """T4: D(S) is the least superset of S whose removal is safe."""
+    case = data.draw(tiny_cases(a1), label="case")
     g = case.graph
     s = data.draw(seeds(g.rows), label="S")
     safe = [x for x in supersets(g.rows, s) if ri_ok(case.schema, apply_delete(case.db, x)) and g.group_closed(x)]
@@ -504,9 +558,11 @@ def test_t4_minimality(case, data):
     assert all(d <= x for x in safe)
 
 
-@given(case=cases(), data=st.data())
-def test_t5_read_boundary(case, data):
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t5_read_boundary(a1, data):
     """T5: U(S) is consistent on its own and holds every master-part instance it touches whole."""
+    case = data.draw(cases(a1=a1), label="case")
     g = case.graph
     s = data.draw(seeds(g.rows), label="S")
     u = g.U(s)
@@ -516,12 +572,18 @@ def test_t5_read_boundary(case, data):
     assert g.group_closed(u)
 
 
-@given(case=tiny_cases, data=st.data())
-def test_t5_minimality(case, data):
+def _self_contained(case, rows) -> bool:
+    return ri_ok(case.schema, subdatabase(case.db, rows)) and case.graph.group_closed(rows)
+
+
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t5_minimality(a1, data):
     """T5: U(S) is the least superset of S that is consistent on its own."""
+    case = data.draw(tiny_cases(a1), label="case")
     g = case.graph
     s = data.draw(seeds(g.rows), label="S")
-    consistent = [x for x in supersets(g.rows, s) if ri_ok(case.schema, subdatabase(case.db, x)) and g.group_closed(x)]
+    consistent = [x for x in supersets(g.rows, s) if _self_contained(case, x)]
     u = g.U(s)
     assert u in consistent
     assert all(u <= x for x in consistent)
@@ -532,16 +594,31 @@ def test_t5_minimality(case, data):
 # =============================================================================
 
 
-@given(case=cases(), data=st.data())
-def test_t6_both(case, data):
-    """T6: U(D(S)) is up-closed, group-closed and contains D(S)."""
-    g = case.graph
-    s = data.draw(seeds(g.rows), label="S")
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t6_both(a1, data):
+    """T6: U(D(S)) contains D(S), is up-closed and group-closed; both is extensive and monotone."""
+    g = data.draw(cases(a1=a1), label="case").graph
+    big = data.draw(seeds(g.rows), label="B")
+    s = data.draw(seeds(big), label="S ⊆ B")
     b = g.both(s)
     assert g.D(s) <= b
     assert g.U(b) == b
     assert g.group_closed(b)
-    assert b <= g.both(b)  # extensive, though not idempotent (next test)
+    assert b <= g.both(b)  # extensive, though not idempotent (test_t6_both_is_not_idempotent)
+    assert b <= g.both(big)
+
+
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t6_minimality(a1, data):
+    """T6: U(D(S)) is the least superset of D(S) that is consistent on its own."""
+    case = data.draw(tiny_cases(a1), label="case")
+    g = case.graph
+    d = g.D(data.draw(seeds(g.rows), label="S"))
+    consistent = [x for x in supersets(g.rows, d) if _self_contained(case, x)]
+    assert g.U(d) in consistent
+    assert all(g.U(d) <= x for x in consistent)
 
 
 def test_t6_both_is_not_idempotent():
@@ -557,14 +634,20 @@ def test_t6_both_is_not_idempotent():
     assert g.both(g.both({b})) == {a, b, c}
 
 
-@given(case=cases(), data=st.data())
-def test_t7_enforce(case, data):
-    """T7: D1(S) is lift-closed if and only if D1(S) = D(S)."""
-    g = case.graph
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_t7_enforce(a1, data):
+    """T7: D1(S) is lift-closed if and only if D1(S) = D(S); enforce deletes D1(S) or raises."""
+    g = data.draw(cases(a1=a1), label="case").graph
     s = data.draw(seeds(g.rows), label="S")
     d1, d = g.D1(s), g.D(s)
     assert d1 <= d
     assert g.lift_closed(d1) == (d1 == d)
+    if d1 == d:
+        assert g.delete(s, "enforce") == d
+    else:
+        with pytest.raises(PartIntegrityError):
+            g.delete(s, "enforce")
 
 
 # =============================================================================
@@ -584,9 +667,10 @@ def assert_valid_order(schema: Schema, order: list[str], quote: str) -> None:
         assert set(block) == {name[master]} | {name[p] for p in parts}, (master, order)
 
 
+@pytest.mark.parametrize("a1", A1_MODES)
 @pytest.mark.parametrize("quote", ["`", '"'])
-@given(schema=schemas(a1_only=True))
-def test_t8_topo_sort(quote, schema):
+@given(data=st.data())
+def test_t8_topo_sort(quote, a1, data):
     """
     T8: under A1, topo_sort succeeds if and only if Q is acyclic, and its order is valid.
 
@@ -594,6 +678,7 @@ def test_t8_topo_sort(quote, schema):
     fills it, and sorted by ``datajoint.dependencies.topo_sort``. Both MySQL and
     PostgreSQL quoting are used, since ``extract_master`` recognizes parts by name.
     """
+    schema = data.draw(schemas(a1_only=True, a1=a1), label="schema")
     graph = dependency_graph(schema, quote)
     if q_acyclic(schema):
         assert_valid_order(schema, graph.topo_sort(), quote)
@@ -678,14 +763,16 @@ def _rows_outside_parts(case: Case):
     return sorted(r for r in case.graph.rows if case.schema.table(r[0]).master is None)
 
 
-@given(case=cases(), data=st.data())
-def test_virtual_upstream_does_not_need_the_row(case, data):
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_virtual_upstream_does_not_need_the_row(a1, data):
     """
     ``self.upstream`` is the same before and after the row is inserted.
 
     Before the insert, the row, its parts and its descendants are absent:
     ``db - D({r})``. Its upstream is built from its primary FKs alone.
     """
+    case = data.draw(cases(a1=a1), label="case")
     rows = _rows_outside_parts(case)
     assume(rows)
     r = data.draw(st.sampled_from(rows), label="r")
@@ -697,12 +784,14 @@ def test_virtual_upstream_does_not_need_the_row(case, data):
     assert r not in upstream
 
 
-@given(case=cases(), data=st.data())
-def test_virtual_upstream_matches_trace_of_the_inserted_row(case, data):
+@pytest.mark.parametrize("a1", A1_MODES)
+@given(data=st.data())
+def test_virtual_upstream_matches_trace_of_the_inserted_row(a1, data):
     """
     Once the row exists, ``U({r})`` contains ``self.upstream``. They are equal,
     apart from r itself, when r is in no group and all its FKs are primary.
     """
+    case = data.draw(cases(a1=a1), label="case")
     rows = _rows_outside_parts(case)
     assume(rows)
     r = data.draw(st.sampled_from(rows), label="r")
@@ -747,3 +836,369 @@ def test_fk_value_follows_match_simple():
     schema = Schema([TableSpec("parent", ("a", "b")), TableSpec("child", ("a", "c"), ("b",))], [fk])
     assert fk_value(schema, fk, {"a": 1, "b": None, "c": 1}) is None
     assert fk_value(schema, fk, {"a": 1, "b": 2, "c": 1}) == (1, 2)
+
+
+# =============================================================================
+# The one pass over Q, and the groups that iterate (diagram.md, Computation)
+# =============================================================================
+# ``one_pass`` evaluates the engine's computation on rows: one visit per node of
+# Q, with an iterating group repeating its group step. It must give D(S) and
+# U(S). diagram.md decides which groups iterate by whether an FK inside the
+# group renames the master's key ("spec"); the exact test is whether the FK
+# maps the instance onto itself ("exact").
+
+
+@pytest.mark.parametrize("a1", A1_MODES)
+@pytest.mark.parametrize("direction", ["down", "up"])
+@given(data=st.data())
+def test_one_pass_with_exact_iteration_equals_the_closure(direction, a1, data):
+    """Iterating every group that has an FK not preserving the instance, one pass gives D(S) and U(S)."""
+    case = data.draw(cases(a1=a1), label="case")
+    s = data.draw(seeds(case.graph.rows), label="S")
+    found, _ = one_pass(case.schema, case.db, s, direction, iterate="exact")
+    assert found == (case.graph.D(s) if direction == "down" else case.graph.U(s))
+
+
+def _inner_fks_carry_the_master_key(schema: Schema) -> bool:
+    return all(
+        set(schema.owning[fk.parent].values()) <= set(fk.attr_map.values())
+        for master in schema.a1_parts
+        for fk in schema.intra_group_fks(master)
+    )
+
+
+@pytest.mark.parametrize("direction", ["down", "up"])
+@given(data=st.data())
+def test_one_pass_with_the_spec_iteration_rule(direction, data):
+    """
+    The rule of diagram.md is exact when every FK inside a group carries the master's key.
+
+    Then an FK either maps the key to itself, and stays in the instance, or
+    renames it, and the group iterates. The next test shows the case it misses.
+    """
+    case = data.draw(cases(), label="case")
+    assume(_inner_fks_carry_the_master_key(case.schema))
+    s = data.draw(seeds(case.graph.rows), label="S")
+    found, _ = one_pass(case.schema, case.db, s, direction, iterate="spec")
+    assert found == (case.graph.D(s) if direction == "down" else case.graph.U(s))
+
+
+def _sibling_fk_without_master_key():
+    """
+    Part S holds the master key below the line (A1 through a secondary ``-> master``);
+    part P references S by S's primary key, which does not contain the master key.
+    """
+    schema = Schema(
+        [
+            TableSpec("m", ("m_id",)),
+            TableSpec("m__s", ("s_id",), ("m_id",), master="m"),
+            TableSpec("m__p", ("m_id", "p_id"), ("s_id",), master="m"),
+        ],
+        [FK("m__s", "m", {"m_id": "m_id"}), FK("m__p", "m", {"m_id": "m_id"}), FK("m__p", "m__s", {"s_id": "s_id"})],
+    )
+    # S 10 belongs to master 1; P (2, 1) of master 2 references it.
+    db = make_db(schema, {"m": [(1,), (2,)], "m__s": [(10, 1)], "m__p": [(2, 1, 10)]})
+    return schema, db
+
+
+def test_one_pass_iterates_for_a_sibling_fk_without_the_master_key():
+    """With the exact test, the group iterates and one pass reaches master 2 through P (2, 1)."""
+    schema, db = _sibling_fk_without_master_key()
+    assert schema.a1_parts == {"m": ("m__s", "m__p")}
+    g = RowGraph(schema, db)
+    everything = all_rows(db)
+    assert g.D({("m", (1,))}) == everything
+    assert g.U({("m__p", (2, 1))}) == everything
+    assert one_pass(schema, db, {("m", (1,))}, "down", iterate="exact")[0] == everything
+    assert one_pass(schema, db, {("m__p", (2, 1))}, "up", iterate="exact")[0] == everything
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "docs vs model: diagram.md (Groups that iterate) iterates a group only for an FK inside it that "
+        "renames the master's key. An FK to a sibling whose primary key lacks the master key (the sibling "
+        "holds it below the line) renames nothing, yet links instances, so one pass misses rows."
+    ),
+)
+def test_spec_iteration_rule_misses_a_sibling_fk_without_the_master_key():
+    """traversal per diagram.md: the FK from P to S does not rename the master key, so the group does not iterate."""
+    schema, db = _sibling_fk_without_master_key()
+    assert not any(renames_master_key(schema, fk) for fk in schema.intra_group_fks("m"))
+    g = RowGraph(schema, db)
+    assert one_pass(schema, db, {("m", (1,))}, "down", iterate="spec")[0] == g.D({("m", (1,))})
+
+
+# =============================================================================
+# R1: copying a condition (diagram.md, R1, the edge rule)
+# =============================================================================
+
+
+VALUES = st.sampled_from([0, 1, 2, None])
+
+
+def key_dicts(names: list[str]) -> st.SearchStrategy:
+    """A dict over some of ``names``, with values that may be NULL."""
+    return st.lists(st.sampled_from(names), unique=True, max_size=3).flatmap(
+        lambda keys: st.fixed_dictionaries({k: VALUES for k in keys})
+    )
+
+
+def relations(names: list[str]) -> st.SearchStrategy:
+    """A query expression used as a condition: a few rows over some of ``names``."""
+
+    def over(heading):
+        rows = st.frozensets(st.tuples(*[VALUES] * len(heading)), max_size=4) if heading else st.just(frozenset({()}))
+        return rows.map(lambda r: Relation(tuple(heading), r))
+
+    return st.lists(st.sampled_from(names), unique=True, max_size=3).flatmap(over)
+
+
+def conditions(names: list[str]) -> st.SearchStrategy:
+    """A dict, a list of dicts, a query expression (Relation) or a Not, over ``names``."""
+    return st.one_of(
+        key_dicts(names),
+        st.lists(key_dicts(names), max_size=2),
+        relations(names),
+        relations(names).map(Not),
+        key_dicts(names).map(Not),
+    )
+
+
+def _edge_and_names(case: Case, data, copyable: bool):
+    fks = [fk for fk in case.schema.fks if fk.child != fk.parent]
+    if copyable:
+        fks = [fk for fk in fks if not fk.renamed and not set(fk.attr_map) & case.schema.nullable[fk.child]]
+    assume(fks)
+    fk = data.draw(st.sampled_from(fks), label="fk")
+    parent, child = case.schema.table(fk.parent), case.schema.table(fk.child)
+    # The FK's own attributes, three times as likely as the others.
+    names = list(fk.attr_map) * 3 + sorted(set(parent.heading) | set(child.heading)) + ["unrelated"]
+    return fk, names
+
+
+@given(data=st.data())
+def test_r1_copy_rule(data):
+    """
+    A condition copied under R1's rule selects the same child rows as the restriction.
+
+    The rule: the attributes the condition names are among the FK's attributes,
+    the FK is not renamed, and none of its columns is nullable.
+    """
+    case = data.draw(cases(), label="case")
+    fk, names = _edge_and_names(case, data, copyable=True)
+    cond = data.draw(conditions(names), label="condition")
+    assume(copy_allowed(case.schema, fk, cond))
+    parents = restrict(case.schema, case.db, fk.parent, cond)
+    assert restrict(case.schema, case.db, fk.child, cond) == r1_down(case.schema, case.db, fk, parents)
+
+
+# =============================================================================
+# Relabeling materialized keys (diagram.md, Seeds)
+# =============================================================================
+
+
+def _relabel_down_exact(schema: Schema, fk: FK, keys: list[dict]) -> bool:
+    """
+    When relabeling parent keys gives the same child rows as R1.
+
+    Every key names, among the parent's attributes, only those the FK carries;
+    and if the FK has a nullable column, every key names all its attributes,
+    none of them NULL.
+    """
+    parent = schema.table(fk.parent)
+    carried = set(fk.attr_map.values())
+    if any(set(key) & set(parent.heading) - carried for key in keys):
+        return False
+    if not set(fk.attr_map) & schema.nullable[fk.child]:
+        return True
+    return all(carried <= set(key) and all(key[a] is not None for a in carried) for key in keys)
+
+
+@given(data=st.data())
+def test_relabel_down_when_exact(data):
+    """Relabeled parent keys select the same child rows as R1 when ``_relabel_down_exact`` holds."""
+    case = data.draw(cases(), label="case")
+    fk, names = _edge_and_names(case, data, copyable=False)
+    keys = data.draw(st.lists(key_dicts(names), max_size=3), label="keys")
+    assume(_relabel_down_exact(case.schema, fk, keys))
+    parents = restrict(case.schema, case.db, fk.parent, keys)
+    relabeled = relabel_down(fk, keys)
+    assert restrict(case.schema, case.db, fk.child, relabeled) == r1_down(case.schema, case.db, fk, parents)
+
+
+@given(data=st.data())
+def test_relabel_up_for_keys_read_from_the_child(data):
+    """Keys read from child rows that contain all the FK's columns, relabeled, select the referenced parents."""
+    case = data.draw(cases(), label="case")
+    fk, _ = _edge_and_names(case, data, copyable=False)
+    child = case.schema.table(fk.child)
+    picked = data.draw(st.frozensets(st.sampled_from(sorted(case.db[fk.child])) if case.db[fk.child] else st.nothing()))
+    extra = data.draw(st.sets(st.sampled_from(child.heading)), label="other attributes")
+    attrs = set(fk.attr_map) | extra
+    keys = [{a: case.db[fk.child][k][a] for a in attrs} for k in picked]
+    relabeled = relabel_up(fk, keys)
+    referenced = r1_up(case.schema, case.db, fk, {(fk.child, k) for k in picked})
+    assert restrict(case.schema, case.db, fk.parent, relabeled) == referenced
+
+
+def _k_schema():
+    schema = Schema(
+        [
+            TableSpec("subject", ("subject_id",), ("species",)),
+            TableSpec("session", ("subject_id", "session_id"), ("quality",)),
+            TableSpec("trial", ("subject_id", "session_id", "trial_id")),
+        ],
+        [
+            FK("session", "subject", {"subject_id": "subject_id"}),
+            FK("trial", "session", {"subject_id": "subject_id", "session_id": "session_id"}),
+        ],
+    )
+    db = make_db(
+        schema,
+        {
+            "subject": [(1, "mouse"), (2, "rat")],
+            "session": [(1, 1, 0), (1, 2, 1), (2, 2, 0)],
+            "trial": [(1, 1, 1), (1, 2, 1), (2, 2, 1)],
+        },
+    )
+    return schema, db
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "docs vs model: diagram.md (Seeds) relabels a dict seed downward whenever the FK has no nullable "
+        "column, keeping only the keys the FK carries. A dict that names a secondary attribute of the parent "
+        "loses that key, so `Session & {'quality': 0}` relabels to {} and selects every trial."
+    ),
+)
+def test_spec_relabel_rule_drops_a_secondary_attribute():
+    """traversal per diagram.md: relabeling ``Session & {"quality": 0}`` across Trial's FK."""
+    schema, db = _k_schema()
+    fk, keys = schema.fks_of("trial")[0], [{"quality": 0}]
+    assert relabel_down_allowed(schema, fk, keys)
+    assert relabel_down(fk, keys) == [{}]
+    r1 = r1_down(schema, db, fk, restrict(schema, db, "session", keys))
+    assert r1 == {("trial", (1, 1, 1)), ("trial", (2, 2, 1))}
+    assert restrict(schema, db, "trial", relabel_down(fk, keys)) == r1
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "docs vs model: diagram.md (Seeds) relabels downward over a nullable FK when the keys name all its "
+        "columns. A key that names a nullable column as None selects no parent, but relabeled it selects the "
+        "child rows whose FK column is NULL."
+    ),
+)
+def test_spec_relabel_rule_with_a_null_key_value():
+    """traversal per diagram.md: ``Surgery & {"subject_id": 1, "surgery_id": None}`` relabeled to Session (S3's schema)."""
+    schema = Schema(
+        [
+            TableSpec("subject", ("subject_id",)),
+            TableSpec("surgery", ("subject_id", "surgery_id")),
+            TableSpec("session", ("subject_id", "session_id"), ("surgery_id",)),
+        ],
+        [
+            FK("surgery", "subject", {"subject_id": "subject_id"}),
+            FK("session", "subject", {"subject_id": "subject_id"}),
+            FK("session", "surgery", {"subject_id": "subject_id", "surgery_id": "surgery_id"}, nullable=True),
+        ],
+    )
+    db = make_db(
+        schema,
+        {"subject": [(1,)], "surgery": [(1, 1)], "session": [(1, 1, 1), (1, 2, None)]},
+    )
+    fk, keys = schema.fks_of("session")[1], [{"subject_id": 1, "surgery_id": None}]
+    assert relabel_down_allowed(schema, fk, keys)
+    r1 = r1_down(schema, db, fk, restrict(schema, db, "surgery", keys))
+    assert r1 == set()
+    assert restrict(schema, db, "session", relabel_down(fk, keys)) == r1
+
+
+# =============================================================================
+# A1 generalized to owning chains with renames (#1429)
+# =============================================================================
+
+
+def _issue_1429_case_1(a1: str):
+    """``PartB`` references ``Master.PartA.proj(src_master="master_id", src_part="part_a_id")`` and has no master_id."""
+    schema = Schema(
+        [
+            TableSpec("master", ("master_id",)),
+            TableSpec("master__part_a", ("master_id", "part_a_id"), master="master"),
+            TableSpec("master__part_b", ("src_master", "src_part", "part_b_id"), master="master"),
+        ],
+        [
+            FK("master__part_a", "master", {"master_id": "master_id"}),
+            FK("master__part_b", "master__part_a", {"src_master": "master_id", "src_part": "part_a_id"}),
+        ],
+        a1=a1,
+    )
+    db = make_db(
+        schema,
+        {"master": [(1,), (2,)], "master__part_a": [(1, 1), (2, 1)], "master__part_b": [(1, 1, 1), (2, 1, 1)]},
+    )
+    return schema, db
+
+
+def test_issue_1429_case_1_under_strict_a1():
+    """Under the specification's A1, PartB violates A1: no lift, and it is not part of an instance."""
+    schema, db = _issue_1429_case_1("strict")
+    assert schema.a1_parts == {"master": ("master__part_a",)}
+    g = RowGraph(schema, db)
+    assert g.D({("master__part_b", (1, 1, 1))}) == {("master__part_b", (1, 1, 1))}
+    assert g.U({("master__part_a", (1, 1))}) == {("master__part_a", (1, 1)), ("master", (1,))}
+
+
+def test_issue_1429_case_1_under_chain_a1():
+    """
+    Under the chain reading, PartB is a member whose owning attribute is src_master.
+
+    The lift takes master_id from src_master, so R2's ``M & R(Pi).proj(*M.primary_key)``
+    must rename it: PartB has no master_id. The FK from PartB to PartA renames the
+    master key yet preserves the instance, so the rule of diagram.md iterates the
+    group although one pass would be exact.
+    """
+    schema, db = _issue_1429_case_1("chain")
+    assert schema.a1_parts == {"master": ("master__part_a", "master__part_b")}
+    assert schema.owning_attributes("master__part_b") == ("src_master",)
+    g = RowGraph(schema, db)
+    instance_1 = {("master", (1,)), ("master__part_a", (1, 1)), ("master__part_b", (1, 1, 1))}
+    assert g.D({("master__part_b", (1, 1, 1))}) == instance_1
+    assert g.U({("master__part_a", (1, 1))}) == instance_1
+    (fk,) = schema.intra_group_fks("master")[1:]
+    assert renames_master_key(schema, fk) and preserves_instance(schema, fk)
+    for direction in ("down", "up"):
+        assert one_pass(schema, db, {("master__part_b", (1, 1, 1))}, direction, iterate=None)[0] == instance_1
+
+
+def test_chain_a1_makes_g6_a_member():
+    """
+    Under the chain reading, G6's Probe.Channel satisfies A1 through ``-> master.proj(host_id="probe_id")``.
+
+    The catalog's G6 rows then change: channel (1, 1) lifts probe 1 and brings channel (1, 2).
+    """
+    tables = [TableSpec("probe", ("probe_id",)), TableSpec("probe__channel", ("host_id", "channel_id"), master="probe")]
+    fks = [FK("probe__channel", "probe", {"host_id": "probe_id"})]
+    data = {"probe": [(1,), (2,)], "probe__channel": [(1, 1), (1, 2), (2, 1)]}
+    strict, chain = Schema(tables, fks), Schema(tables, fks, a1="chain")
+    assert strict.a1_parts == {"probe": ()}
+    assert chain.a1_parts == {"probe": ("probe__channel",)}
+    seed = {("probe__channel", (1, 1))}
+    assert RowGraph(strict, make_db(strict, data)).D(seed) == seed
+    assert RowGraph(chain, make_db(chain, data)).D(seed) == {
+        ("probe__channel", (1, 1)),
+        ("probe", (1,)),
+        ("probe__channel", (1, 2)),
+    }
+
+
+def test_generator_draws_chain_members():
+    """Under the chain reading, the generator draws members whose owning attributes are renamed."""
+    find(
+        schemas(a1="chain"),
+        lambda s: any(s.owning_attributes(p) != s.table(s.group[p]).pk for p in s.group),
+        settings=_FIND_SETTINGS,
+    )
