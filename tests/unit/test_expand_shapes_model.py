@@ -41,13 +41,14 @@ from .expand_model import (
     copy_allowed,
     dependency_graph,
     group_whole,
+    iterates,
     make_db,
     one_pass,
+    preserves_instance,
     q_acyclic,
     r1_down,
     relabel_down_allowed,
     relabel_up,
-    renames_master_key,
     restrict,
     ri_ok,
     subdatabase,
@@ -363,8 +364,11 @@ def test_G2_part_of_part_with_two_chains():
         "up",
         {"master__p": [(1, 100)], "master": [1], "master__q": [(1, 10)], "ext": [1, 2]},
     )
-    # Why: the lift is one step on master_id, so the group needs no iteration.
-    assert not any(renames_master_key(s.schema, fk) for fk in s.schema.intra_group_fks("master"))
+    # Why: the lift is one step on master_id, which every part row carries; the
+    # references inside the group map owning attributes onto owning attributes,
+    # so the group does not iterate.
+    assert s.schema.owning_attributes("master__p") == ("master_id",)
+    assert not iterates(s.schema, "master")
 
 
 def test_G3_second_renamed_fk_to_its_own_master():
@@ -383,11 +387,14 @@ def test_G3_second_renamed_fk_to_its_own_master():
     seed = s.seed("session__link", {"session_id": 1}, [(1, 1)])
     s.check("session__link", seed, "down", {"session__link": [(1, 1), (3, 1)], "session": [1, 3]})
     s.check("session__link", seed, "up", {"session__link": [(1, 1)], "session": [1, 2]})
-    # Why: the renamed FK links one instance to another, so this group iterates. One
-    # pass alone would stop at session 1; with the iteration it reaches session 3.
-    assert renames_master_key(s.schema, s.fk("session__link", "session", "other_session"))
-    assert one_pass(s.schema, s.db, seed, "down", iterate=None)[0] == rows({"session__link": [(1, 1)], "session": [1]})
-    assert one_pass(s.schema, s.db, seed, "down", iterate="spec")[0] == s.g.D(seed)
+    # Why: Link is owned through -> master, so its owning attribute is session_id.
+    # The second FK maps other_session, not an owning attribute, onto the master's
+    # key, so the group iterates. One pass alone stops at session 1.
+    assert s.schema.owning_attributes("session__link") == ("session_id",)
+    assert not preserves_instance(s.schema, s.fk("session__link", "session", "other_session"))
+    assert iterates(s.schema, "session")
+    assert one_pass(s.schema, s.db, seed, "down", iterate=False)[0] == rows({"session__link": [(1, 1)], "session": [1]})
+    assert one_pass(s.schema, s.db, seed, "down")[0] == s.g.D(seed)
     # With part_integrity="enforce", deleting session 1 raises: link (3, 1) would go without session 3.
     with pytest.raises(PartIntegrityError, match=r"session__link.*\(3, 1\)"):
         s.g.delete(rows({"session": [1]}), "enforce")
@@ -428,14 +435,16 @@ def test_G4_renamed_sibling_fk_chained_across_three_instances():
         "both",
         {"run": [1, 2, 3], "run__step": [(1, 1), (2, 1), (3, 1)], "run__carry": [(2, 1), (3, 1)]},
     )
-    # Why: one pass over the group would stop at run 1. Iterating, the master keys grow
-    # as {1}, {1, 2}, {1, 2, 3}, and a fourth round adds nothing. Upward the chain runs
-    # the other way, from run 2 back to run 1.
-    assert one_pass(s.schema, s.db, run1, "down", iterate=None)[0] == rows({"run": [1], "run__step": [(1, 1)]})
-    found, rounds = one_pass(s.schema, s.db, run1, "down", iterate="spec")
+    # Why: one pass over the group would stop at run 1. Carry's reference to Step maps
+    # prev_run, not Carry's owning attribute run_id, onto Step's owning attribute, so
+    # the group step repeats: the master keys grow as {1}, {1, 2}, {1, 2, 3}, and a
+    # fourth round adds nothing. Upward the chain runs the other way, from run 2 back to run 1.
+    assert not preserves_instance(s.schema, s.fk("run__carry", "run__step"))
+    assert one_pass(s.schema, s.db, run1, "down", iterate=False)[0] == rows({"run": [1], "run__step": [(1, 1)]})
+    found, rounds = one_pass(s.schema, s.db, run1, "down")
     assert found == s.g.D(run1)
     assert rounds["run"] == [rows({"run": [1]}), rows({"run": [1, 2]}), rows({"run": [1, 2, 3]})]
-    found, rounds = one_pass(s.schema, s.db, run2, "up", iterate="spec")
+    found, rounds = one_pass(s.schema, s.db, run2, "up")
     assert found == s.g.U(run2)
     assert rounds["run"] == [rows({"run": [2]}), rows({"run": [1, 2]})]
 
@@ -493,19 +502,86 @@ def test_G5_merge_table():
         s.g.delete(seed, "enforce")
 
 
-def test_G6_part_violating_a1():
-    """traversal-shapes.md, G6. A part violating A1, traversed as a plain table."""
-    s = Shape(
+def test_G6_part_its_master_does_not_own():
+    """traversal-shapes.md, G6. A part its master does not own, traversed as a plain table."""
+    tables = [TableSpec("probe", ("probe_id",)), TableSpec("probe__channel", ("channel_id",), ("probe_id",), master="probe")]
+    data = {"probe": [(1,), (2,)], "probe__channel": [(1, 1), (2, 1), (3, 2)]}
+    s = Shape(tables, [FK("probe__channel", "probe", {"probe_id": "probe_id"})], data)
+    assert s.schema.owned_parts == {"probe": ()}
+    seed = s.seed("probe__channel", {"channel_id": 1}, [1])
+    s.check("probe__channel", seed, "down", {"probe__channel": [1]})
+    s.check("probe__channel", seed, "up", {"probe__channel": [1], "probe": [1]})
+    seed = s.seed("probe", {"probe_id": 1}, [1])
+    s.check("probe", seed, "down", {"probe": [1], "probe__channel": [1, 2]})
+    # A nullable reference, -> [nullable] master, has the same effect.
+    nullable = Schema(tables, [FK("probe__channel", "probe", {"probe_id": "probe_id"}, nullable=True)])
+    assert nullable.owned_parts == {"probe": ()}
+    # Moving the reference into the primary key, as -> master or renamed as
+    # -> master.proj(host_id="probe_id"), would make the part owned.
+    in_key = Schema(
+        [TableSpec("probe", ("probe_id",)), TableSpec("probe__channel", ("probe_id", "channel_id"), master="probe")],
+        [FK("probe__channel", "probe", {"probe_id": "probe_id"})],
+    )
+    renamed = Schema(
         [TableSpec("probe", ("probe_id",)), TableSpec("probe__channel", ("host_id", "channel_id"), master="probe")],
         [FK("probe__channel", "probe", {"host_id": "probe_id"})],
-        {"probe": [(1,), (2,)], "probe__channel": [(1, 1), (1, 2), (2, 1)]},
     )
-    assert s.schema.a1_parts == {"probe": ()}
-    seed = s.seed("probe__channel", {"host_id": 1, "channel_id": 1}, [(1, 1)])
-    s.check("probe__channel", seed, "down", {"probe__channel": [(1, 1)]})
-    s.check("probe__channel", seed, "up", {"probe__channel": [(1, 1)], "probe": [1]})
-    seed = s.seed("probe", {"probe_id": 1}, [1])
-    s.check("probe", seed, "down", {"probe": [1], "probe__channel": [(1, 1), (1, 2)]})
+    assert in_key.owned_parts == renamed.owned_parts == {"probe": ("probe__channel",)}
+    assert renamed.owning_attributes("probe__channel") == ("host_id",)
+
+
+def test_G7_owned_part_of_part_with_renamed_attributes():
+    """traversal-shapes.md, G7. Owned part-of-part with renamed attributes (#1429, Case 1)."""
+    s = Shape(
+        [
+            TableSpec("master", ("master_id",)),
+            TableSpec("master__part_a", ("master_id", "part_a_id"), master="master"),
+            TableSpec("master__part_b", ("src_master", "src_part", "part_b_id"), master="master"),
+            TableSpec("report", ("master_id", "report_id")),
+        ],
+        [
+            FK("master__part_a", "master", {"master_id": "master_id"}),
+            FK("master__part_b", "master__part_a", {"src_master": "master_id", "src_part": "part_a_id"}),
+            FK("report", "master", {"master_id": "master_id"}),
+        ],
+        {
+            "master": [(1,), (2,), (3,)],
+            "master__part_a": [(1, 10), (1, 11), (2, 20)],
+            "master__part_b": [(1, 10, 100), (1, 11, 110), (2, 20, 200)],
+            "report": [(1, 1), (2, 1)],
+        },
+    )
+    # PartB has no master_id; it is owned through PartA, and its owning attribute is src_master.
+    assert s.schema.owned_parts == {"master": ("master__part_a", "master__part_b")}
+    assert s.schema.owning_attributes("master__part_b") == ("src_master",)
+    seed = s.seed("master__part_b", {"part_b_id": 100}, [(1, 10, 100)])
+    s.check(
+        "master__part_b",
+        seed,
+        "down",
+        {
+            "master__part_b": [(1, 10, 100), (1, 11, 110)],
+            "master": [1],
+            "master__part_a": [(1, 10), (1, 11)],
+            "report": [(1, 1)],
+        },
+    )
+    s.check(
+        "master__part_b",
+        seed,
+        "up",
+        {"master__part_b": [(1, 10, 100), (1, 11, 110)], "master": [1], "master__part_a": [(1, 10), (1, 11)]},
+    )
+    # Why: the lift renames the owning attribute onto the master's key,
+    # Master & R(PartB).proj(master_id="src_master"), and selects master 1 in one step.
+    lifted = Relation(("master_id",), frozenset({(s.db["master__part_b"][k]["src_master"],) for _, k in seed}))
+    assert restrict(s.schema, s.db, "master", lifted) == rows({"master": [1]})
+    # PartB's reference to PartA maps src_master onto PartA's owning attribute, so the group does not iterate.
+    assert not iterates(s.schema, "master")
+    assert one_pass(s.schema, s.db, seed, "down", iterate=False)[0] == s.g.D(seed)
+    # With part_integrity="enforce", deleting the seed raises: part B row (1, 10, 100) would go without master 1.
+    with pytest.raises(PartIntegrityError, match=r"master__part_b.*\(1, 10, 100\)"):
+        s.g.delete(seed, "enforce")
 
 
 # =============================================================================
@@ -672,7 +748,7 @@ def test_X2_group_cycle():
             FK("session__note", "review", {"session_id": "session_id"}),
         ],
     )
-    assert after.a1_parts == {"session": ("session__trial", "session__note")}
+    assert after.owned_parts == {"session": ("session__trial", "session__note")}  # Note is owned: -> master in its key
     assert not q_acyclic(after)  # Session -> Review -> Session.Note, which belongs to Session's group
     with pytest.raises(nx.NetworkXUnfeasible):
         dependency_graph(after).topo_sort()

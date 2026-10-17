@@ -22,7 +22,7 @@ the model.
 The module also models parts of the specification's "Computation" section, so
 that its claims can be checked against the definitions: the table-level reach
 (the node set of an expanded diagram), the one pass over the group quotient with
-its iterating groups, and the conditions under which R1 may copy a condition or
+its iterating groups, and the rules under which R1 may copy a condition or
 relabel materialized keys.
 
 Model
@@ -32,10 +32,10 @@ Model
   Parallel FKs between the same two tables are separate edges.
 - A2: an FK with any NULL column references nothing, as in SQL's MATCH SIMPLE.
   FKs can share columns, so partial NULLs occur.
-- A1, the owning reference: a part's heading contains its master's primary key,
-  unrenamed and non-null, inherited through ``-> master`` directly or through a
-  sibling part. A part that violates A1 is traversed as a plain table.
-  ``Schema(..., a1="chain")`` selects a generalized A1, described in ``Schema``.
+- A1, owned parts: a part is owned by its master if an FK in its primary key
+  references the master or an owned part of the same master, renames allowed.
+  The chain maps the part's owning attributes onto the master's key. A master
+  and its owned parts form its group; a part that is not owned is a plain table.
 - A database is ``{table: {pk_tuple: row_dict}}``, where ``pk_tuple`` lists the
   primary-key values in the order of ``TableSpec.pk``.
 """
@@ -130,16 +130,6 @@ class Schema:
         Tables in declaration order.
     fks : iterable of FK
         Foreign keys. Each child's FKs are listed in declaration order.
-    a1 : {"strict", "chain"}, optional
-        Which owning reference makes a part a member of its master's group.
-
-        - ``"strict"`` (the specification): an FK to the master, or to a sibling
-          that is a member, that carries the master's key unrenamed and non-null.
-        - ``"chain"`` (a generalization, for #1429): also a primary-key FK, with
-          renames allowed, to the master or to a member whose owning attributes
-          lie in its primary key. The owning attributes are then composed along
-          the chain. When a part has several such FKs, an unrenamed one wins,
-          and otherwise the first in declaration order.
 
     Notes
     -----
@@ -149,18 +139,19 @@ class Schema:
       FK that includes it is nullable, as in ``declare.py``, where an FK adds
       only the attributes not declared yet. Primary-key attributes and
       attributes outside every FK are never NULL.
-    - **Groups.** Each master that has parts forms a group with its member
-      parts. ``group[t]`` names the master of table ``t`` for the master itself
-      and for its members. A part that is not a member is in no group.
+    - **Owned parts and groups** (A1). A part is owned if an FK in its primary
+      key (every attribute of the FK in the primary key, as ``Dependencies``
+      marks it ``primary``) references the master or an owned part of the same
+      master, renamed or not. Each master that has parts forms a group with its
+      owned parts; ``group[t]`` names the master of table ``t`` for the master
+      and for its owned parts. A part that is not owned is in no group.
     - **Owning attributes.** ``owning[t]`` maps each attribute of the master's
-      primary key to the attribute of member ``t`` that holds it: the identity
-      for the master, and for every member under ``a1="strict"``.
+      key to the attribute of ``t`` that the owning chain maps onto it: the
+      identity for the master. If a part has several owning references, an
+      unrenamed ``-> master`` wins, and otherwise the first in its definition.
     """
 
-    def __init__(self, tables: Iterable[TableSpec], fks: Iterable[FK], a1: str = "strict") -> None:
-        if a1 not in ("strict", "chain"):
-            raise ValueError(f"a1 must be 'strict' or 'chain', not {a1!r}")
-        self.a1 = a1
+    def __init__(self, tables: Iterable[TableSpec], fks: Iterable[FK]) -> None:
         self.tables = tuple(tables)
         self.fks = tuple(fks)
         self._by_name = {t.name: t for t in self.tables}
@@ -168,14 +159,14 @@ class Schema:
             raise ValueError("table names must be unique")
         self._validate()
         self.nullable = {t.name: self._nullable_attributes(t) for t in self.tables}
-        self.a1_parts = {}
+        self.owned_parts = {}
         self.group = {}
         self.owning = {}
         for t in self.tables:
             parts = [p for p in self.tables if p.master == t.name]
             if parts:
-                owning = self._find_members(t, parts)
-                self.a1_parts[t.name] = tuple(p.name for p in parts if p.name in owning)
+                owning = self._find_owned(t, parts)
+                self.owned_parts[t.name] = tuple(p.name for p in parts if p.name in owning)
                 self.owning.update(owning)
                 self.group.update({name: t.name for name in owning})
 
@@ -187,8 +178,7 @@ class Schema:
         for fk in self.fks:
             null = ", nullable=True" if fk.nullable else ""
             lines.append(f"  FK({fk.child!r}, {fk.parent!r}, {dict(fk.attr_map)!r}{null}),")
-        a1 = "" if self.a1 == "strict" else f"  a1={self.a1!r},\n"
-        return "\n".join(lines) + "\n" + a1 + ")"
+        return "\n".join(lines) + "\n)"
 
     def table(self, name: str) -> TableSpec:
         """Return the table named ``name``."""
@@ -247,45 +237,19 @@ class Schema:
                         nullable.add(attr)
         return frozenset(nullable)
 
-    def _find_members(self, master: TableSpec, parts: list[TableSpec]) -> dict[str, dict[str, str]]:
-        # The strict owning reference is found first, to a fixed point, so that
-        # the result does not depend on the order in which the parts are listed.
-        # Under a1="chain", primary-key FKs with renames are then accepted for
-        # the parts left over.
+    def _find_owned(self, master: TableSpec, parts: list[TableSpec]) -> dict[str, dict[str, str]]:
+        # Parts are taken in declaration order, so an owning reference to another
+        # part is decided after that part (an FK references a table declared earlier).
         owning = {master.name: {a: a for a in master.pk}}
-        rules = [self._strict_owning] + ([self._chain_owning] if self.a1 == "chain" else [])
-        for rule in rules:
-            changed = True
-            while changed:
-                changed = False
-                for part in parts:
-                    if part.name in owning:
-                        continue
-                    for fk in self.fks_of(part.name):
-                        found = rule(fk, master.pk, owning)
-                        if found is not None:
-                            owning[part.name] = found
-                            changed = True
-                            break
+        for part in parts:
+            chains = [fk for fk in self.fks_of(part.name) if fk.parent in owning and self.is_primary(fk)]
+            if not chains:
+                continue
+            unrenamed = [fk for fk in chains if fk.parent == master.name and not fk.renamed]
+            fk = (unrenamed or chains)[0]
+            by_parent_attr = {p: c for c, p in fk.attr_map.items()}
+            owning[part.name] = {a: by_parent_attr[owning[fk.parent][a]] for a in master.pk}
         return owning
-
-    def _strict_owning(self, fk: FK, master_key: tuple, owning: dict) -> dict | None:
-        # Unrenamed and non-null: the part holds the master's key under its names.
-        if fk.parent == fk.child or fk.parent not in owning or any(owning[fk.parent][a] != a for a in master_key):
-            return None
-        if all(fk.attr_map.get(a) == a and a not in self.nullable[fk.child] for a in master_key):
-            return {a: a for a in master_key}
-        return None
-
-    def _chain_owning(self, fk: FK, master_key: tuple, owning: dict) -> dict | None:
-        # A primary-key FK to a member whose owning attributes it carries, renamed or not.
-        if fk.parent == fk.child or fk.parent not in owning or not self.is_primary(fk):
-            return None
-        by_parent_attr = {p: c for c, p in fk.attr_map.items()}
-        parent_owning = owning[fk.parent]
-        if not all(parent_owning[a] in by_parent_attr for a in master_key):
-            return None  # the parent's owning attributes are not in its primary key
-        return {a: by_parent_attr[parent_owning[a]] for a in master_key}
 
 
 # =============================================================================
@@ -356,9 +320,9 @@ def master_of(schema: Schema, table: str, row: Mapping) -> Row | None:
     """
     ``master(r)``: identifier of the master row of a row in a group.
 
-    The master row is named by the row's owning attributes, which A1 guarantees
-    are present and non-null. Returns None for a row in no group. The identifier
-    is returned whether or not the master row exists.
+    The master row is named by the row's owning attributes, which lie in the
+    primary key and so are never NULL. Returns None for a row in no group. The
+    identifier is returned whether or not the master row exists.
     """
     attrs = schema.owning_attributes(table)
     if attrs is None:
@@ -406,8 +370,8 @@ def group_whole(schema: Schema, db: DB) -> bool:
     delete must remove each master-part instance whole or not at all, which
     ``RowGraph.group_closed`` checks on the deleted rows. Removing one part row
     of an instance leaves a database that still passes this check, yet breaks
-    P2. Under A1 the check also follows from ``ri_ok``, since each part row
-    references its master directly or through a sibling.
+    P2. For owned parts the check also follows from ``ri_ok``, since each part
+    row references its master along its owning chain.
     """
     for table, master in schema.group.items():
         if table == master:
@@ -423,8 +387,8 @@ def quotient(schema: Schema) -> nx.DiGraph:
     """
     The group quotient Q: the FK graph with each master-part group contracted to one node.
 
-    FKs between two tables of the same group are left out. A part that violates
-    A1 is in no group and stays its own node. A self-referencing FK is a
+    FKs between two tables of the same group are left out. A part that is not
+    owned is in no group and stays its own node. A self-referencing FK is a
     self-loop, which counts as a cycle.
     """
     node = {t.name: schema.group.get(t.name, t.name) for t in schema.tables}
@@ -447,7 +411,7 @@ def table_reach(schema: Schema, tables: Iterable[str], direction: str = "down", 
     The node set of an expanded diagram: the table-level reach of ``tables``.
 
     The tables reached by following FKs in the direction of travel, together
-    with the master and all member parts of every group that has a reached
+    with the master and all owned parts of every group that has a reached
     member. ``group_step=False`` leaves the group step out (``D1``). For
     ``"both"``, it is the upward reach of the downward reach.
     """
@@ -465,7 +429,7 @@ def table_reach(schema: Schema, tables: Iterable[str], direction: str = "down", 
             nxt = {fk.parent for fk in schema.fks if fk.child == t}
         if group_step and t in schema.group:
             master = schema.group[t]
-            nxt |= {master, *schema.a1_parts[master]}
+            nxt |= {master, *schema.owned_parts[master]}
         for n in nxt - seen:
             seen.add(n)
             stack.append(n)
@@ -497,8 +461,8 @@ class RowGraph:
     - ``child(r) = {c : ref_e(c) = r}`` and ``parent(r) = {ref_e(r)}``, over
       every FK edge e.
     - ``inst(r)`` is the master-part instance of a row in a group: the master
-      row and every member part row that carries the same master key. For a row
-      in no group, ``inst(r) = {r}``.
+      row and every owned part row whose owning attributes hold the same master
+      key. For a row in no group, ``inst(r) = {r}``.
     - ``down = child ∪ inst`` and ``up = parent ∪ inst``, so ``up`` is the
       converse of ``down``.
     """
@@ -635,30 +599,23 @@ class RowGraph:
 
 def preserves_instance(schema: Schema, fk: FK) -> bool:
     """
-    True if an FK inside a group always references a row of the same instance.
+    True if an FK inside a group maps the referencing part's owning attributes
+    onto the referenced table's owning attributes, so it stays in the instance.
 
-    It does when it maps the child's owning attribute of each master-key
-    attribute onto the parent's owning attribute of the same one.
+    A group iterates if and only if some FK inside it does not.
     """
     master = schema.group[fk.child]
     child_owning, parent_owning = schema.owning[fk.child], schema.owning[fk.parent]
     return all(fk.attr_map.get(child_owning[a]) == parent_owning[a] for a in schema.table(master).pk)
 
 
-def renames_master_key(schema: Schema, fk: FK) -> bool:
-    """The specification's test for an iterating group: the FK renames an attribute of the master's key."""
-    parent_owning = set(schema.owning[fk.parent].values())
-    return any(c != p for c, p in fk.attr_map.items() if p in parent_owning)
-
-
-ITERATION_TESTS = {
-    "spec": renames_master_key,
-    "exact": lambda schema, fk: not preserves_instance(schema, fk),
-}
+def iterates(schema: Schema, master: str) -> bool:
+    """Whether the group of ``master`` iterates: some FK inside it does not preserve the instance."""
+    return not all(preserves_instance(schema, fk) for fk in schema.intra_group_fks(master))
 
 
 def one_pass(
-    schema: Schema, db: DB, seed: Iterable[Row], direction: str = "down", iterate: str | None = "exact"
+    schema: Schema, db: DB, seed: Iterable[Row], direction: str = "down", iterate: bool = True
 ) -> tuple[frozenset[Row], dict]:
     """
     The engine's computation, evaluated on rows: one visit per node of Q.
@@ -666,10 +623,10 @@ def one_pass(
     The nodes of Q are visited in topological order for ``"down"`` and in
     reverse order for ``"up"``. A plain table takes its seed rows and the rows
     that R1 reaches from its neighbors on the incoming side. A group takes the
-    master keys of its seed rows and of the rows R1 reaches in any of its
-    tables, then all rows of those instances. A group that iterates repeats the
-    group step, following the FKs inside the group, until no new master key
-    appears.
+    master keys of its seed rows and of the rows R1 reaches in any of its tables
+    (the lift, through the owning attributes), then all rows of those instances
+    (the re-expansion). A group that iterates repeats the group step, following
+    the FKs inside the group, until no new master key appears.
 
     Parameters
     ----------
@@ -679,11 +636,9 @@ def one_pass(
         The seed rows.
     direction : {"down", "up"}
         The direction of travel.
-    iterate : {"exact", "spec"} or None
-        Which groups iterate: those with an FK inside the group that does not
-        preserve the instance (``"exact"``), those with an FK inside the group
-        that renames the master's key (``"spec"``, the rule in ``diagram.md``),
-        or none.
+    iterate : bool
+        Whether the groups that ``iterates`` selects repeat the group step. With
+        False, every group takes one step.
 
     Returns
     -------
@@ -704,7 +659,6 @@ def one_pass(
     members = defaultdict(list)
     for t in schema.tables:
         members[node_of[t.name]].append(t.name)
-    test = ITERATION_TESTS[iterate] if iterate else None
 
     def rows_of(table):
         return {(table, k) for k in db[table]}
@@ -727,16 +681,16 @@ def one_pass(
             outside = fk.parent if direction == "down" else fk.child
             if inside in mem and node_of[outside] != node:
                 incoming |= crossing(fk, reached)
-        if node not in schema.a1_parts:
+        if node not in schema.owned_parts:
             reached |= incoming
             continue
         inner = schema.intra_group_fks(node)
-        iterates = test is not None and any(test(schema, fk) for fk in inner)
+        repeat = iterate and iterates(schema, node)
         keys = {graph.master(r) for r in incoming}
         history = [set(keys)]
         while True:
             instance = {r for t in mem for r in rows_of(t) if graph.master(r) in keys}
-            if not iterates:
+            if not repeat:
                 break
             step = set().union(*(crossing(fk, instance) for fk in inner))
             grown = keys | {graph.master(r) for r in step}
@@ -866,9 +820,20 @@ def relabel_up(fk: FK, keys: list[dict]) -> list[dict]:
 
 
 def relabel_down_allowed(schema: Schema, fk: FK, keys: list[dict]) -> bool:
-    """The Seeds rule for relabeling downward: the FK has no nullable column, or every key names all its columns."""
-    parent_attrs = set(fk.attr_map.values())
-    return not set(fk.attr_map) & schema.nullable[fk.child] or all(parent_attrs <= set(key) for key in keys)
+    """
+    The Seeds rule for relabeling parent keys downward.
+
+    Every key names, among the parent's attributes, only attributes the FK
+    carries; and if the FK has a nullable column, every key names all of the
+    FK's attributes, none of them NULL.
+    """
+    parent = schema.table(fk.parent)
+    carried = set(fk.attr_map.values())
+    if any(set(key) & set(parent.heading) - carried for key in keys):
+        return False
+    if not set(fk.attr_map) & schema.nullable[fk.child]:
+        return True
+    return all(carried <= set(key) and all(key[a] is not None for a in carried) for key in keys)
 
 
 # =============================================================================
