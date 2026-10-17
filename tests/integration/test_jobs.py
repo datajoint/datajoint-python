@@ -1,7 +1,11 @@
 """Tests for per-table Job management (AutoPopulate 2.0)."""
 
+import datetime
 import random
 import string
+import time
+
+import pytest
 
 import datajoint as dj
 from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
@@ -230,3 +234,78 @@ def test_jobs_table_uuid_fk_derived_pk(schema_uuid):
     pk = BasicComputed.jobs.heading.primary_key
     assert "item" in pk
     assert BasicComputed.jobs.heading["item"].original_type == "uuid"
+
+
+# Each make() below sleeps this long between reserve() and complete()/error().
+MAKE_SECONDS = 0.15
+
+
+@pytest.fixture(scope="function")
+def schema_by_backend(connection_by_backend, db_creds_by_backend):
+    """Create a fresh schema per test, parameterized across backends."""
+    backend = db_creds_by_backend["backend"]
+    test_id = str(int(time.time() * 1000))[-8:]
+    schema = dj.Schema(f"djtest_jobs_{backend}_{test_id}"[:64], connection=connection_by_backend)
+    yield schema
+    schema.drop(prompt=False)
+
+
+def test_completed_time_precision(schema_by_backend):
+    """completed_time keeps datetime(3) precision on success, so it never precedes reserved_time (#1600)."""
+
+    @schema_by_backend
+    class Item(dj.Manual):
+        definition = """
+        item : int32
+        """
+
+    @schema_by_backend
+    class Result(dj.Computed):
+        definition = """
+        -> Item
+        ---
+        value : int32
+        """
+
+        def make(self, key):
+            time.sleep(MAKE_SECONDS)
+            self.insert1(dict(key, value=key["item"]))
+
+    Item.insert({"item": i} for i in range(3))
+    with dj.config.override(jobs__keep_completed=True):
+        Result.populate(reserve_jobs=True)
+    jobs = Result.jobs.completed.to_dicts()
+    assert len(jobs) == 3
+    for job in jobs:
+        # Truncated to the second, completed_time falls before reserved_time or short of make()'s sleep
+        assert job["completed_time"] - job["reserved_time"] >= datetime.timedelta(seconds=0.1), job
+
+
+def test_error_time_precision(schema_by_backend):
+    """completed_time keeps datetime(3) precision on error, so it never precedes reserved_time (#1600)."""
+
+    @schema_by_backend
+    class Item(dj.Manual):
+        definition = """
+        item : int32
+        """
+
+    @schema_by_backend
+    class Result(dj.Computed):
+        definition = """
+        -> Item
+        ---
+        value : int32
+        """
+
+        def make(self, key):
+            time.sleep(MAKE_SECONDS)
+            raise RuntimeError("not ready")
+
+    Item.insert({"item": i} for i in range(3))
+    Result.populate(reserve_jobs=True, suppress_errors=True)
+    jobs = Result.jobs.errors.to_dicts()
+    assert len(jobs) == 3
+    for job in jobs:
+        # Error records carry no duration, so this difference is the only record of how long make() ran
+        assert job["completed_time"] - job["reserved_time"] >= datetime.timedelta(seconds=0.1), job
