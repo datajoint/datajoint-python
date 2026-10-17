@@ -1224,6 +1224,8 @@ class Table(QueryExpression):
     def drop_quick(self):
         """
         Drops the table without cascading to dependent tables and without user prompt.
+
+        An auto-populated table's jobs table (``~~table_name``) is dropped with it.
         """
         if self.is_declared:
             # Clean up lineage entries for this table
@@ -1256,6 +1258,18 @@ class Table(QueryExpression):
                         logger.debug("Dropped enum type %s" % enum_type)
                     except Exception:
                         pass  # Ignore errors - type may be used by other tables
+
+            # Drop the jobs table of an auto-populated table, else a table later
+            # declared under the same name inherits it. drop() reaches each table
+            # as a FreeTable, so the tier is read from the name, as Schema.jobs does;
+            # a Manual `result` and a Computed `__result` map to the same `~~result`.
+            from .user_tables import Computed, Imported, _get_tier
+
+            if _get_tier(self.full_table_name) in (Computed, Imported):
+                jobs_table_name = "~~" + self.table_name.lstrip("_")
+                jobs = FreeTable(self.connection, self.adapter.make_full_table_name(self.database, jobs_table_name))
+                if jobs.is_declared:
+                    jobs.drop_quick()
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
