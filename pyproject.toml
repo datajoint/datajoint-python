@@ -7,7 +7,6 @@ name = "datajoint"
 dynamic = ["version"]
 dependencies = [
   "numpy",
-  "pymysql>=0.7.2",
   "deepdiff",
   "pyparsing",
   "pandas",
@@ -93,6 +92,8 @@ test = [
   "ipython",
   "graphviz",
   "testcontainers[mysql,minio,postgres]>=4.0",
+  "pymysql>=0.7.2",
+  "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]
@@ -101,7 +102,9 @@ test = [
 s3 = ["s3fs>=2023.1.0"]
 gcs = ["gcsfs>=2023.1.0"]
 azure = ["adlfs>=2023.1.0"]
+# Database drivers: install the extra for each backend in use.
 postgres = ["psycopg2-binary>=2.9.0"]
+mysql = ["pymysql>=0.7.2"]
 polars = ["polars>=0.20.0"]
 arrow = ["pyarrow>=14.0.0"]
 viz = ["matplotlib", "ipython"]
@@ -114,6 +117,7 @@ test = [
   "ipython",
   "s3fs>=2023.1.0",
   "testcontainers[mysql,minio,postgres]>=4.0",
+  "pymysql>=0.7.2",
   "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
@@ -125,6 +129,8 @@ dev = [
   # including test
   "pytest",
   "pytest-cov",
+  "pymysql>=0.7.2",
+  "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]

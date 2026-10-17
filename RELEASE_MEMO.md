@@ -143,7 +143,9 @@ If the bot doesn't create a PR, manually update the feedstock:
    curl -sL https://pypi.org/pypi/datajoint/2.1.0/json | jq -r '.urls[] | select(.packagetype=="sdist") | .digests.sha256'
    ```
 
-4. **Check dependencies** match `pyproject.toml`:
+4. **Check dependencies** match `pyproject.toml`. conda has no extras, so `run`
+   also lists the database drivers that `pyproject.toml` keeps in the `mysql` and
+   `postgres` extras:
    ```yaml
    requirements:
      host:
@@ -154,6 +156,7 @@ If the bot doesn't create a PR, manually update the feedstock:
        - python >={{ python_min }}
        - numpy
        - pymysql >=0.7.2
+       - psycopg2 >=2.9.0
        - deepdiff
        - pyparsing
        - pandas
