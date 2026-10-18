@@ -638,7 +638,9 @@ def declare(
     return sql, external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl
 
 
-def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str], adapter) -> list[str]:
+def _make_attribute_alter(
+    new: list[str], old: list[str], primary_key: list[str], adapter, comments: dict[str, str] | None = None
+) -> list[str]:
     """
     Generate SQL ALTER commands for attribute changes.
 
@@ -652,6 +654,9 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
         Primary key attribute names (cannot be altered).
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    comments : dict, optional
+        The new attributes' comments as declared, ``name -> comment``. A comment
+        that opens with ``{old_name}`` renames that attribute.
 
     Returns
     -------
@@ -666,9 +671,16 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
     # parse attribute names - use adapter's quote character
     quote_char = re.escape(adapter.quote_identifier("x")[0])
     name_regexp = re.compile(rf"^{quote_char}(?P<name>\w+){quote_char}")
-    original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*}')
-    matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
-    new_names = dict((d.group("name"), n and n.group("name")) for d, n in matched)
+    # The rename marker opens the comment as declared. A core type or codec puts
+    # its `:type:` marker in front of it, and PostgreSQL keeps comments out of the
+    # column SQL, so the marker is read from the declared comment, not the SQL.
+    original_regexp = re.compile(r"^(?::[^:]*:)?{\s*(?P<name>\w+)\s*}")
+    comments = comments or {}
+    new_names = {}
+    for d in new:
+        name = name_regexp.match(d).group("name")
+        original = original_regexp.match(comments.get(name, ""))
+        new_names[name] = original and original.group("name")
     old_names = [name_regexp.search(d).group("name") for d in old]
 
     # verify that original names are only used once
@@ -717,6 +729,13 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
                     command = "ADD"
                 elif not old_name:
                     command = "MODIFY"
+                elif adapter.backend != "mysql":
+                    # Without this check the rename went unnoticed on PostgreSQL and
+                    # became DROP + ADD, discarding the attribute's values.
+                    raise DataJointError(
+                        f"Renaming attribute `{old_name}` to `{new_name}` with alter() is not supported "
+                        f"on {adapter.backend}. No change was made."
+                    )
                 else:
                     command = f"CHANGE {adapter.quote_identifier(old_name)}"
 
@@ -816,7 +835,7 @@ def alter(
     if index_sql != index_sql_:
         raise NotImplementedError("table.alter cannot alter indexes (yet)")
     if attribute_sql != attribute_sql_:
-        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key, adapter))
+        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key, adapter, column_comments))
     if table_comment != table_comment_:
         # For MySQL: COMMENT="new comment"
         # For PostgreSQL: would need COMMENT ON TABLE, but that's not an ALTER TABLE clause
