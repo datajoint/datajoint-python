@@ -203,6 +203,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             dj.Diagram(schema).draw()
     """
 
+    # Set by Diagram.expand: the direction, the plan, and each node's rows as a
+    # query expression, in topological order. None on other diagrams.
+    _direction = None
+    _plan = None
+    _expansion = None
+
     def __init__(self, source, context=None) -> None:
         if isinstance(source, Diagram):
             # copy constructor
@@ -416,6 +422,126 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         self = Diagram(self)  # copy
         self.nodes_to_show.intersection_update(arg.nodes_to_show)
         return self
+
+    @classmethod
+    def expand(cls, seed, direction="down"):
+        """
+        Expand a seed into the rows that depend on it, that it depends on, or both.
+
+        The rows are those the traversal specification defines (the "Traversal
+        specification" section of the Diagram specification, ``diagram.md``):
+
+        - ``"down"``: ``D(S)``, the seed rows and every row that depends on them,
+          through foreign keys and through master-part groups;
+        - ``"up"``: ``U(S)``, the seed rows and every row they depend on, with
+          the whole master-part instance of every row reached;
+        - ``"both"``: ``U(D(S))``, the smallest region around the seed that is
+          consistent on its own.
+
+        The traversal is planned once over the group quotient (``datajoint.expand``)
+        and compiled to one restricted query expression per table. No rows are
+        read, except to find the master keys of a group whose foreign keys link
+        one master-part instance to another, and the keys of a ``dj.Top`` seed.
+
+        Parameters
+        ----------
+        seed : QueryExpression
+            One table with any restriction, e.g. ``Session & {"subject_id": 1}``.
+            The restriction may use other queries. Projections, joins,
+            aggregations and unions are refused as seeds.
+        direction : str, optional
+            ``"down"`` (default), ``"up"``, or ``"both"``.
+
+        Returns
+        -------
+        Diagram
+            A diagram whose nodes are the tables the expansion reaches (the
+            table-level reach: a node may hold zero rows). ``d[T]`` returns table
+            ``T`` restricted to its rows, ``counts()`` counts them, and iteration
+            yields each node's restricted table in topological order.
+
+        Raises
+        ------
+        DataJointError
+            If the seed is not one table with a restriction.
+        ValueError
+            If ``direction`` is not ``"down"``, ``"up"``, or ``"both"``.
+
+        Examples
+        --------
+        >>> dj.Diagram.expand(Subject & {"subject_id": 1}, "down").counts()
+        >>> dj.Diagram.expand(Session & key, "up")[Subject]
+        """
+        from .expand import (
+            TraversalSchema,
+            compile_plan,
+            graph_reach,
+            load_dependencies,
+            plan_expand,
+            seed_from_expression,
+        )
+        from .table import FreeTable
+
+        if direction not in ("down", "up", "both"):
+            raise ValueError(f"direction must be 'down', 'up', or 'both', got {direction!r}")
+        if inspect.isclass(seed) and issubclass(seed, Table):
+            seed = seed()
+        seed_node = seed_from_expression(seed)
+        conn = seed.connection
+        database, _ = conn.adapter.split_full_table_name(seed_node.table)
+        dependencies = load_dependencies(conn, direction, {database})
+        # Describe the tables the traversal can reach, then plan on the description.
+        names = graph_reach(dependencies, seed_node.table, direction)
+        tables = {name: FreeTable(conn, name) for name in names}
+        schema = TraversalSchema.from_dependencies(dependencies, names, lambda name: tables[name].heading)
+        plan = plan_expand(schema, seed_node, direction)
+        expansion = compile_plan(plan, conn, tables)
+
+        result = cls.__new__(cls)
+        nx.MultiDiGraph.__init__(result, dependencies)
+        result.remove_nodes_from(set(result.nodes()) - set(plan.order))
+        result._connection = conn
+        result.context = {}
+        result._cascade_restrictions = {}
+        result._restrict_conditions = {}
+        result._restriction_attrs = {}
+        result.nodes_to_show = set(plan.order)
+        result._expanded_nodes = set(plan.order)
+        result._direction = direction
+        result._plan = plan
+        result._expansion = expansion
+        return result
+
+    def _expansion_node(self, key):
+        """
+        Resolve ``d[key]`` on an expanded diagram to a full table name.
+
+        ``key`` is a table class or instance, a full table name, or a class name
+        (``"Session"``, or ``"Session.Trial"`` for a part).
+        """
+        from .utils import from_camel_case
+
+        if isinstance(key, type) and issubclass(key, Table) or isinstance(key, Table):
+            name = key.full_table_name
+        elif isinstance(key, str) and ("`" in key or '"' in key):
+            name = key
+        elif isinstance(key, str):
+            try:
+                tail = "__".join(from_camel_case(part) for part in key.split("."))
+            except DataJointError:
+                tail = None
+            split = self._connection.adapter.split_full_table_name
+            matches = [n for n in self._expansion if split(n)[1].lstrip("#_") == tail]
+            if len(matches) > 1:
+                raise DataJointError(
+                    f"Ambiguous table reference {key!r}: matches {', '.join(matches)}. Use a full table name."
+                )
+            name = matches[0] if matches else key
+        else:
+            raise DataJointError(f"d[...] expects a Table class, Table instance, or string; got {type(key).__name__}.")
+        if name not in self._expansion:
+            raise DataJointError(f"Table {name} is not a node of this diagram.")
+        return name
 
     @classmethod
     def cascade(cls, table_expr, part_integrity="enforce"):
@@ -664,6 +790,10 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         >>> trace[Session].fetch1("session_date")     # class index
         >>> trace["my_schema.Session"].to_dicts()     # string index → FreeTable
         """
+        # Expanded diagrams: each node's rows, in every direction.
+        if self._expansion is not None:
+            return self._expansion[self._expansion_node(key)]
+
         # Non-trace diagrams: defer to networkx adjacency lookup so existing
         # `diagram[node_name]` patterns (used in diagram algebra, diagram tests)
         # keep working.
@@ -716,6 +846,8 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         """
         from .table import FreeTable
 
+        if self._expansion is not None and node in self._expansion:
+            return self._expansion[node]
         ft = FreeTable(self._connection, node)
         restrictions = (self._cascade_restrictions or self._restrict_conditions).get(node, [])
         if not restrictions:
@@ -1117,6 +1249,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         dict[str, int]
             Mapping of full table name to affected row count.
         """
+        if self._expansion is not None:
+            result = {}
+            for ft in self:
+                result[ft.full_table_name] = len(ft)
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=result[ft.full_table_name]))
+            return result
         restrictions = self._cascade_restrictions or self._restrict_conditions
         if not restrictions:
             raise DataJointError(
@@ -1137,7 +1275,14 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         Yields restricted ``FreeTable`` objects when cascade or restrict
         conditions have been applied, unrestricted ``FreeTable`` otherwise.
+        On an expanded diagram, the order is the plan's: each master's owned
+        parts right after it.
         """
+        if self._expansion is not None:
+            for node in self._expansion:
+                if node in self.nodes_to_show:
+                    yield self._expansion[node]
+            return
         for node in topo_sort(self):
             if node in self.nodes_to_show:
                 yield self._restricted_table(node)
@@ -1149,6 +1294,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         Same as ``__iter__`` but reversed — useful for cascading
         deletes and drops.
         """
+        if self._expansion is not None:
+            for node in reversed(list(self._expansion)):
+                if node in self.nodes_to_show:
+                    yield self._expansion[node]
+            return
         for node in reversed(topo_sort(self)):
             if node in self.nodes_to_show:
                 yield self._restricted_table(node)
