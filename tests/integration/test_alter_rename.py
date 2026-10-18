@@ -1,9 +1,8 @@
 """
 Renaming an attribute with ``alter()`` keeps its values.
 
-A comment that opens with ``{old_name}`` renames that attribute. On MySQL the
-rename is a CHANGE, which keeps the values; PostgreSQL refuses the rename
-instead of dropping the attribute and adding an empty one.
+A comment that opens with ``{old_name}`` renames that attribute: a CHANGE on
+MySQL and a RENAME COLUMN on PostgreSQL, both of which keep the values.
 """
 
 import time
@@ -11,7 +10,6 @@ import time
 import pytest
 
 import datajoint as dj
-from datajoint.errors import DataJointError
 
 
 @pytest.fixture(scope="function")
@@ -43,17 +41,9 @@ def test_rename_keeps_values(schema_by_backend, db_creds_by_backend, nullable):
     reading{default} : float32   # {{value}} the value
     """
 
-    if db_creds_by_backend["backend"] == "mysql":
-        Measurement.alter(prompt=False)
-        assert Measurement.heading.names == ["measurement_id", "reading"]
-        assert Measurement.to_dicts(order_by="measurement_id") == [
-            {"measurement_id": 1, "reading": 2.5},
-            {"measurement_id": 2, "reading": 4.0},
-        ]
-    else:
-        with pytest.raises(DataJointError, match="Renaming attribute `value` to `reading`"):
-            Measurement.alter(prompt=False)
-        assert dj.FreeTable(schema_by_backend.connection, Measurement.full_table_name).to_dicts(order_by="measurement_id") == [
-            {"measurement_id": 1, "value": 2.5},
-            {"measurement_id": 2, "value": 4.0},
-        ]
+    Measurement.alter(prompt=False)
+    assert Measurement.heading.names == ["measurement_id", "reading"]
+    assert Measurement.to_dicts(order_by="measurement_id") == [
+        {"measurement_id": 1, "reading": 2.5},
+        {"measurement_id": 2, "reading": 4.0},
+    ]

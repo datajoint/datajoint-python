@@ -490,6 +490,50 @@ class MySQLAdapter(DatabaseAdapter):
 
         return f"ALTER TABLE {table_name} {', '.join(clauses)}"
 
+    def alter_table_ddl(
+        self,
+        full_table_name: str,
+        drop: list[str],
+        changes: list[dict[str, Any]],
+        table_comment: str | None = None,
+    ) -> list[str]:
+        """
+        Generate the ALTER TABLE statement that applies ``Table.alter()`` changes.
+
+        MySQL makes every change in one statement: ``MODIFY`` restates a
+        column's whole declaration, comment included, and ``CHANGE`` also
+        renames it.
+
+        Parameters
+        ----------
+        full_table_name : str
+            Quoted name of the table.
+        drop : list[str]
+            Names of the attributes to drop.
+        changes : list[dict]
+            Attributes to add or change; see ``DatabaseAdapter.alter_table_ddl``.
+        table_comment : str, optional
+            The new table comment, or None when it is unchanged.
+
+        Returns
+        -------
+        list[str]
+            One ALTER TABLE statement, or none when there is nothing to change.
+        """
+        clauses = [f"DROP {self.quote_identifier(name)}" for name in drop]
+        for change in changes:
+            if change["old"] is None:
+                command = "ADD"
+            elif change["renamed_from"] is None:
+                command = "MODIFY"
+            else:
+                command = f"CHANGE {self.quote_identifier(change['renamed_from'])}"
+            after = "" if change["after"] is None else f"AFTER {self.quote_identifier(change['after'])}"
+            clauses.append(f"{command} {change['new']['sql']} {after}")
+        if table_comment is not None:
+            clauses.append(f'COMMENT="{table_comment}"')
+        return [f"ALTER TABLE {full_table_name}\n\t" + ",\n\t".join(clauses)] if clauses else []
+
     def add_comment_sql(
         self,
         object_type: str,

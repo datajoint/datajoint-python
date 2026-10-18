@@ -192,6 +192,48 @@ def is_foreign_key(line: str) -> bool:
     return arrow_position >= 0 and not any(c in line[:arrow_position] for c in "\"#'")
 
 
+def _column(
+    name: str,
+    sql_type: str,
+    nullable: bool,
+    default: str | None,
+    comment: str | None,
+    sql: str,
+    renamed_from: str | None = None,
+) -> dict:
+    """
+    The parts of a declared column, as ``alter`` compares them.
+
+    Parameters
+    ----------
+    name : str
+        Column name.
+    sql_type : str
+        Backend type, e.g. ``"real"`` or a schema-qualified enum type.
+    nullable : bool
+        Whether the column accepts NULL.
+    default : str or None
+        Default as an SQL expression (``"NULL"`` for a nullable attribute,
+        ``"'1.5'"``, ``"CURRENT_TIMESTAMP"``), or None when there is none.
+    comment : str or None
+        Comment as stored, including the ``:type:`` marker of a core type.
+    sql : str
+        The compiled column declaration.
+    renamed_from : str, optional
+        The attribute this one renames, from its rename marker (see
+        ``_renamed_from``).
+
+    Returns
+    -------
+    dict
+        Keys ``name``, ``type``, ``nullable``, ``default``, ``comment``, ``sql``
+        and ``renamed_from``.
+    """
+    return dict(
+        name=name, type=sql_type, nullable=nullable, default=default, comment=comment, sql=sql, renamed_from=renamed_from
+    )
+
+
 def compile_foreign_key(
     line: str,
     context: dict,
@@ -204,6 +246,7 @@ def compile_foreign_key(
     fk_attribute_map: dict[str, tuple[str, str]] | None = None,
     fk_index_candidates: list[list[str]] | None = None,
     column_comments: dict[str, str] | None = None,
+    columns: dict[str, dict] | None = None,
 ) -> None:
     """
     Parse a foreign key line and update declaration components.
@@ -239,6 +282,9 @@ def compile_foreign_key(
         out of line (PostgreSQL's ``COMMENT ON COLUMN``). Each copied column's
         comment, with its core-type marker (e.g. ``:int32:``), is added so the
         child keeps the parent's declared type. Updated in place.
+    columns : dict, optional
+        Mapping of ``column -> parts`` (see ``_column``) for ``alter``.
+        Updated in place.
 
     Raises
     ------
@@ -305,6 +351,8 @@ def compile_foreign_key(
             attr_sql.append(col_def)
             if comment and column_comments is not None:
                 column_comments[attr] = comment
+            if columns is not None:
+                columns[attr] = _column(attr, sql_type, is_nullable, None, comment or None, col_def)
 
         # Track FK attribute mapping for lineage: child_attr -> (parent_table, parent_attr)
         if fk_attribute_map is not None:
@@ -382,7 +430,7 @@ def _tier_attributes(table_name: str | None, config) -> tuple[str, ...]:
 
 
 def prepare_declare(
-    definition: str, context: dict, adapter, *, table_name: str | None = None, config=None
+    definition: str, context: dict, adapter, *, table_name: str | None = None, config=None, columns: dict | None = None
 ) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]], dict[str, str]]:
     """
     Parse a table definition into its components.
@@ -407,6 +455,9 @@ def prepare_declare(
         declares them.
     config : Config, optional
         Read for ``jobs.add_job_metadata`` and ``provenance.capture``.
+    columns : dict, optional
+        Filled in place with ``column -> parts`` (see ``_column``) for every
+        attribute, in declaration order.
 
     Returns
     -------
@@ -440,7 +491,8 @@ def prepare_declare(
     fk_index_candidates = []  # PostgreSQL: FK column-lists that may need a support index (#1512)
 
     def add_attribute(line: str, in_key: bool) -> None:
-        name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
+        column = {}
+        name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter, column=column)
         if store:
             external_stores.append(store)
         if in_key and name not in primary_key:
@@ -450,6 +502,8 @@ def prepare_declare(
             attribute_sql.append(sql)
             if comment:
                 column_comments[name] = comment
+            if columns is not None:
+                columns[name] = column
 
     for line in definition:
         if not line or line.startswith("#"):  # ignore additional comments
@@ -469,6 +523,7 @@ def prepare_declare(
                 fk_attribute_map,
                 fk_index_candidates,
                 column_comments,
+                columns,
             )
         elif re.match(r"^(unique\s+)?index\s*\(.*\)\s*(#.*)?$", line, re.I):  # index
             compile_index(re.sub(r"\s*#.*$", "", line), index_sql, adapter)
@@ -648,50 +703,67 @@ def declare(
     return sql, external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl
 
 
-def _make_attribute_alter(
-    new: list[str], old: list[str], primary_key: list[str], adapter, comments: dict[str, str] | None = None
-) -> list[str]:
+def _renamed_from(comment: str) -> str | None:
     """
-    Generate SQL ALTER commands for attribute changes.
+    Name of the attribute an attribute renames, if its comment says so.
+
+    A comment that opens with an attribute name in braces renames that
+    attribute: ``reading : float32  # {value} the value`` renames ``value`` to
+    ``reading``.
 
     Parameters
     ----------
-    new : list[str]
-        New attribute SQL declarations.
-    old : list[str]
-        Old attribute SQL declarations.
-    primary_key : list[str]
-        Primary key attribute names (cannot be altered).
-    adapter : DatabaseAdapter
-        Database adapter for backend-specific SQL generation.
-    comments : dict, optional
-        The new attributes' comments as declared, ``name -> comment``. A comment
-        that opens with ``{old_name}`` renames that attribute.
+    comment : str
+        The comment written in the definition, without the ``:type:`` marker
+        a core type adds to the stored comment.
 
     Returns
     -------
-    list[str]
-        SQL ALTER commands (ADD, MODIFY, CHANGE, DROP).
+    str or None
+        The name in braces, or None.
+    """
+    match = re.match(r"{\s*(?P<name>\w+)\s*}", comment)
+    return match["name"] if match else None
+
+
+def _make_attribute_alter(
+    new: dict[str, dict], old: dict[str, dict], primary_key: list[str], adapter
+) -> tuple[list[str], list[dict]]:
+    """
+    Find the attributes to drop, add and change between two definitions.
+
+    Parameters
+    ----------
+    new : dict[str, dict]
+        Columns of the new definition, ``name -> parts`` (see ``_column``),
+        in declaration order.
+    old : dict[str, dict]
+        Columns of the current definition, likewise.
+    primary_key : list[str]
+        Primary key attribute names (cannot be altered).
+    adapter : DatabaseAdapter
+        Database adapter, consulted on whether a column can be positioned.
+
+    Returns
+    -------
+    tuple
+        Two-element tuple:
+
+        - drop : list[str] - Names of the attributes to drop
+        - changes : list[dict] - One per attribute to add or change, in
+          declaration order, with keys ``new`` (its parts), ``old`` (the parts
+          of the column it changes, or None when it is added),
+          ``renamed_from`` (the name in its rename marker, or None) and
+          ``after`` (the attribute to place it after, or None to leave it).
 
     Raises
     ------
     DataJointError
         If an attribute is renamed twice or renamed from non-existent attribute.
     """
-    # parse attribute names - use adapter's quote character
-    quote_char = re.escape(adapter.quote_identifier("x")[0])
-    name_regexp = re.compile(rf"^{quote_char}(?P<name>\w+){quote_char}")
-    # The rename marker opens the comment as declared. A core type or codec puts
-    # its `:type:` marker in front of it, and PostgreSQL keeps comments out of the
-    # column SQL, so the marker is read from the declared comment, not the SQL.
-    original_regexp = re.compile(r"^(?::[^:]*:)?{\s*(?P<name>\w+)\s*}")
-    comments = comments or {}
-    new_names = {}
-    for d in new:
-        name = name_regexp.match(d).group("name")
-        original = original_regexp.match(comments.get(name, ""))
-        new_names[name] = original and original.group("name")
-    old_names = [name_regexp.search(d).group("name") for d in old]
+    new_names = {name: column["renamed_from"] for name, column in new.items()}
+    old_names = list(old)
+    old_sql = [column["sql"] for column in old.values()]
 
     # verify that original names are only used once
     renamed = set()
@@ -713,12 +785,13 @@ def _make_attribute_alter(
 
     # dropping attributes
     to_drop = [n for n in old_names if n not in renamed and n not in new_names]
-    sql = [f"DROP {adapter.quote_identifier(n)}" for n in to_drop]
     old_names = [name for name in old_names if name not in to_drop]
 
     # add or change attributes in order
+    changes = []
     prev = None
-    for new_def, (new_name, old_name) in zip(new, new_names.items()):
+    for new_name, old_name in new_names.items():
+        column = new[new_name]
         if new_name not in primary_key:
             after = None  # if None, then must include the AFTER clause
             if prev:
@@ -733,29 +806,14 @@ def _make_attribute_alter(
                 # Without an AFTER clause a reorder-only change has nothing to
                 # emit, so drop the position before it can force a statement.
                 after = None
-            if new_def not in old or after:
-                # Determine command type
-                if (old_name or new_name) not in old_names:
-                    command = "ADD"
-                elif not old_name:
-                    command = "MODIFY"
-                elif adapter.backend != "mysql":
-                    # Without this check the rename went unnoticed on PostgreSQL and
-                    # became DROP + ADD, discarding the attribute's values.
-                    raise DataJointError(
-                        f"Renaming attribute `{old_name}` to `{new_name}` with alter() is not supported "
-                        f"on {adapter.backend}. No change was made."
-                    )
-                else:
-                    command = f"CHANGE {adapter.quote_identifier(old_name)}"
-
-                # Build after clause
-                after_clause = "" if after is None else f"AFTER {adapter.quote_identifier(after)}"
-
-                sql.append(f"{command} {new_def} {after_clause}")
+            source = old[old_name or new_name] if (old_name or new_name) in old_names else None
+            # The comment is compared on its own because PostgreSQL leaves it
+            # out of the column declaration.
+            if column["sql"] not in old_sql or after or (source is not None and source["comment"] != column["comment"]):
+                changes.append(dict(new=column, old=source, renamed_from=old_name, after=after))
         prev = new_name, old_name
 
-    return sql
+    return to_drop, changes
 
 
 def alter(
@@ -764,10 +822,10 @@ def alter(
     context: dict,
     adapter,
     *,
-    schema_name: str | None = None,
-) -> tuple[list[str], list[str], list[str], dict]:
+    full_table_name: str,
+) -> tuple[list[str], list[str], list[str]]:
     """
-    Generate SQL ALTER commands for table definition changes.
+    Generate SQL statements for table definition changes.
 
     Parameters
     ----------
@@ -779,79 +837,82 @@ def alter(
         Namespace for resolving foreign key references.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
-    schema_name : str, optional
-        Schema the table lives in. Required to collect pre-DDL for backends that
-        declare column types separately (PostgreSQL enums); omitting it yields an
-        empty ``pre_ddl``.
+    full_table_name : str
+        Quoted name of the table to alter. Its schema also qualifies the
+        pre-DDL of backends that declare column types separately (PostgreSQL
+        enums).
 
     Returns
     -------
     tuple
-        Four-element tuple:
+        Three-element tuple:
 
-        - sql : list[str] - SQL ALTER commands
+        - sql : list[str] - Statements to run in order (see
+          ``DatabaseAdapter.alter_table_ddl``); empty when nothing changes
         - new_stores : list[str] - New external stores used
         - pre_ddl : list[str] - DDL to run before the ALTER (e.g. CREATE TYPE)
-        - column_comments : dict - Comments to reapply after the ALTER. On
-          backends that store them out of line these carry the ``:type:``
-          prefix that ``heading`` reads back as ``original_type``, so skipping
-          them silently loses the declared type of an added attribute.
 
     Raises
     ------
     NotImplementedError
         If attempting to alter primary key, foreign keys, or indexes.
+    DataJointError
+        If the backend cannot convert an attribute to its new type.
     """
+    schema_name, _ = adapter.split_full_table_name(full_table_name)
+    columns = {}
     (
         table_comment,
         primary_key,
-        attribute_sql,
+        _attribute_sql,
         foreign_key_sql,
         index_sql,
         external_stores,
         _fk_attribute_map,
-        column_comments,
-    ) = prepare_declare(definition, context, adapter)
+        _column_comments,
+    ) = prepare_declare(definition, context, adapter, columns=columns)
 
     # prepare_declare registers backend types (PostgreSQL enums) on the adapter
     # as a side effect, so each parse must be drained separately to tell the two
     # apart. Type names are content hashes, making the statements comparable.
-    new_type_ddl = adapter.get_pending_enum_ddl(schema_name) if schema_name else []
+    new_type_ddl = adapter.get_pending_enum_ddl(schema_name)
 
+    old_columns = {}
     (
         table_comment_,
         primary_key_,
-        attribute_sql_,
+        _attribute_sql_,
         foreign_key_sql_,
         index_sql_,
         external_stores_,
         _fk_attribute_map_,
         _column_comments_,
-    ) = prepare_declare(old_definition, context, adapter)
+    ) = prepare_declare(old_definition, context, adapter, columns=old_columns)
 
     # Whatever the old definition registered already exists in the database, so
     # only the difference needs creating. Draining both also leaves nothing
     # behind to leak into the next declare() on this adapter, including on the
     # NotImplementedError paths below.
-    old_type_ddl = set(adapter.get_pending_enum_ddl(schema_name)) if schema_name else set()
+    old_type_ddl = set(adapter.get_pending_enum_ddl(schema_name))
     pre_ddl = [ddl for ddl in new_type_ddl if ddl not in old_type_ddl]
 
     # analyze differences between declarations
-    sql = list()
     if primary_key != primary_key_:
         raise NotImplementedError("table.alter cannot alter the primary key (yet).")
     if foreign_key_sql != foreign_key_sql_:
         raise NotImplementedError("table.alter cannot alter foreign keys (yet).")
     if index_sql != index_sql_:
         raise NotImplementedError("table.alter cannot alter indexes (yet)")
-    if attribute_sql != attribute_sql_:
-        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key, adapter, column_comments))
-    if table_comment != table_comment_:
-        # For MySQL: COMMENT="new comment"
-        # For PostgreSQL: would need COMMENT ON TABLE, but that's not an ALTER TABLE clause
-        # Keep MySQL syntax for now (ALTER TABLE ... COMMENT="...")
-        sql.append(f'COMMENT="{table_comment}"')
-    return sql, [e for e in external_stores if e not in external_stores_], pre_ddl, column_comments
+    drop, changes = [], []
+    if list(columns.values()) != list(old_columns.values()):  # a list, so that order counts
+        drop, changes = _make_attribute_alter(columns, old_columns, primary_key, adapter)
+    sql = adapter.alter_table_ddl(
+        full_table_name,
+        drop,
+        changes,
+        table_comment=table_comment if table_comment != table_comment_ else None,
+    )
+    return sql, [e for e in external_stores if e not in external_stores_], pre_ddl
 
 
 def _parse_index_args(args: str) -> list[str]:
@@ -989,7 +1050,7 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
 
 
 def compile_attribute(
-    line: str, in_key: bool, foreign_key_sql: list[str], context: dict, adapter
+    line: str, in_key: bool, foreign_key_sql: list[str], context: dict, adapter, *, column: dict | None = None
 ) -> tuple[str, str, str | None, str | None]:
     """
     Convert an attribute definition from DataJoint format to SQL.
@@ -1006,6 +1067,10 @@ def compile_attribute(
         Namespace for codec lookup.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    column : dict, optional
+        Filled in place with the parts of the column: see ``_column``.
+        ``alter`` compares these rather than the compiled declarations, which
+        differ by backend (PostgreSQL keeps comments out of them).
 
     Returns
     -------
@@ -1036,9 +1101,12 @@ def compile_attribute(
     match = {k: v.strip() for k, v in match.items()}
     match["nullable"] = match["default"].lower() == "null"
 
+    # `default` is the SQL expression; match["default"] becomes the whole clause
+    default = None
     if match["nullable"]:
         if in_key:
             raise DataJointError('Primary key attributes cannot be nullable in line "%s"' % line)
+        default = "NULL"
         match["default"] = "DEFAULT NULL"  # nullable attributes default to null
     else:
         if match["default"]:
@@ -1047,17 +1115,18 @@ def compile_attribute(
 
             if base_val in CONSTANT_LITERALS:
                 # SQL constants like NULL, CURRENT_TIMESTAMP - use as-is
-                match["default"] = f"NOT NULL DEFAULT {default_val}"
+                default = default_val
             elif default_val.startswith('"') and default_val.endswith('"'):
                 # Double-quoted string - convert to single quotes for PostgreSQL
                 inner = default_val[1:-1].replace("'", "''")  # Escape single quotes
-                match["default"] = f"NOT NULL DEFAULT '{inner}'"
+                default = f"'{inner}'"
             elif default_val.startswith("'"):
                 # Already single-quoted - use as-is
-                match["default"] = f"NOT NULL DEFAULT {default_val}"
+                default = default_val
             else:
                 # Unquoted value - wrap in single quotes
-                match["default"] = f"NOT NULL DEFAULT '{default_val}'"
+                default = f"'{default_val}'"
+            match["default"] = f"NOT NULL DEFAULT {default}"
         else:
             match["default"] = "NOT NULL"
 
@@ -1065,6 +1134,7 @@ def compile_attribute(
 
     if match["comment"].startswith(":"):
         raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
+    renamed_from = _renamed_from(match["comment"])
 
     category = match_type(match["type"])
 
@@ -1103,4 +1173,7 @@ def compile_attribute(
         default=match["default"] if match["default"] else None,
         comment=match["comment"] if match["comment"] else None,
     )
-    return match["name"], sql, match.get("store"), match["comment"] if match["comment"] else None
+    comment = match["comment"] if match["comment"] else None
+    if column is not None:
+        column.update(_column(match["name"], match["type"], match["nullable"], default, comment, sql, renamed_from))
+    return match["name"], sql, match.get("store"), comment

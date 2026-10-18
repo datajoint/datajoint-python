@@ -51,6 +51,27 @@ SQL_TO_CORE_MAP = {
     "date": "date",
 }
 
+# Groups of PostgreSQL types, for choosing how ALTER COLUMN ... TYPE converts
+# values. Patterns are matched against the whole type, ignoring case.
+TYPE_FAMILIES = {
+    "numeric": r"(smallint|integer|int[248]?|bigint|real|float[48]?|double precision|numeric|decimal)(\s*\([\d\s,]*\))?",
+    "boolean": r"bool(ean)?",
+    "string": r"(varchar|character varying|char|character|bpchar|text)(\s*\(\d+\))?",
+    "datetime": r"date|timestamp(\s*\(\d+\))?(\s+without time zone)?",
+    "uuid": r"uuid",
+    "bytes": r"bytea",
+    "json": r"jsonb?",
+    "enum": r'.*"enum_\w+"',  # schema-qualified type created for an enum attribute
+}
+
+
+def _type_family(sql_type: str) -> str | None:
+    """Family of a PostgreSQL type in TYPE_FAMILIES, or None if it is in none."""
+    return next(
+        (family for family, pattern in TYPE_FAMILIES.items() if re.fullmatch(pattern, sql_type.strip(), re.I)),
+        None,
+    )
+
 
 class PostgreSQLAdapter(DatabaseAdapter):
     """PostgreSQL database adapter implementation."""
@@ -573,6 +594,162 @@ class PostgreSQLAdapter(DatabaseAdapter):
 
         return f"ALTER TABLE {table_name} {', '.join(clauses)}"
 
+    def alter_table_ddl(
+        self,
+        full_table_name: str,
+        drop: list[str],
+        changes: list[dict[str, Any]],
+        table_comment: str | None = None,
+    ) -> list[str]:
+        """
+        Generate the statements that apply ``Table.alter()`` changes.
+
+        PostgreSQL changes a column one property at a time (``ALTER COLUMN ...
+        TYPE``, ``SET``/``DROP NOT NULL``, ``SET``/``DROP DEFAULT``), renames
+        it in a statement of its own, and keeps comments, which carry the
+        core-type marker, outside the table definition (``COMMENT ON``). The
+        statements run in this order: drops, renames, then one ALTER TABLE for
+        the added and changed columns, then comments. Dropping first frees a
+        dropped name for a rename; renaming before the changes lets them name
+        the column as it is now. Columns cannot be positioned, so ``after`` is
+        ignored.
+
+        Parameters
+        ----------
+        full_table_name : str
+            Quoted name of the table.
+        drop : list[str]
+            Names of the attributes to drop.
+        changes : list[dict]
+            Attributes to add or change; see ``DatabaseAdapter.alter_table_ddl``.
+        table_comment : str, optional
+            The new table comment, or None when it is unchanged.
+
+        Returns
+        -------
+        list[str]
+            Statements to run in order, inside one transaction.
+
+        Raises
+        ------
+        DataJointError
+            If PostgreSQL cannot convert an attribute to its new type.
+        """
+        statements = []
+        if drop:
+            drops = [f"DROP COLUMN {self.quote_identifier(name)}" for name in drop]
+            statements.append(f"ALTER TABLE {full_table_name}\n\t" + ",\n\t".join(drops))
+        for change in changes:
+            source, name = change["renamed_from"], change["new"]["name"]
+            if source is not None and source != name:
+                source, name = self.quote_identifier(source), self.quote_identifier(name)
+                statements.append(f"ALTER TABLE {full_table_name} RENAME COLUMN {source} TO {name}")
+        clauses, comments = [], []
+        for change in changes:
+            new, old = change["new"], change["old"]
+            if old is None:
+                clauses.append(f"ADD COLUMN {new['sql']}")
+            else:
+                clauses.extend(self._alter_column_clauses(old, new))
+            if new["comment"] != (old["comment"] if old else None):
+                # An empty comment removes it
+                comments.append(self.column_comment_ddl(full_table_name, new["name"], new["comment"] or ""))
+        if clauses:
+            statements.append(f"ALTER TABLE {full_table_name}\n\t" + ",\n\t".join(clauses))
+        statements.extend(comments)
+        if table_comment is not None:
+            statements.append(self.table_comment_ddl(full_table_name, table_comment))
+        return statements
+
+    def _alter_column_clauses(self, old: dict[str, Any], new: dict[str, Any]) -> list[str]:
+        """
+        ALTER COLUMN clauses that change a column from ``old`` to ``new``.
+
+        Parameters
+        ----------
+        old, new : dict
+            The parts of the column before and after; see ``DatabaseAdapter.alter_table_ddl``.
+            The clauses name the column by its new name.
+
+        Returns
+        -------
+        list[str]
+            Clauses for one ALTER TABLE statement.
+        """
+        column = self.quote_identifier(new["name"])
+        # PostgreSQL stores no default for DEFAULT NULL: it is the same as none
+        old_default = None if old["default"] in (None, "NULL") else old["default"]
+        new_default = None if new["default"] in (None, "NULL") else new["default"]
+        retyped = old["type"] != new["type"]
+        clauses = []
+        if retyped:
+            # A default is converted with the column, and may not convert, so it
+            # is dropped and set again. Within one statement PostgreSQL drops
+            # defaults before it changes types and sets defaults after.
+            if old_default is not None:
+                clauses.append(f"ALTER COLUMN {column} DROP DEFAULT")
+            using = self._type_conversion(new["name"], old["type"], new["type"])
+            clauses.append(f"ALTER COLUMN {column} TYPE {new['type']}" + ("" if using is None else f" USING {using}"))
+        if old["nullable"] != new["nullable"]:
+            clauses.append(f"ALTER COLUMN {column} {'DROP' if new['nullable'] else 'SET'} NOT NULL")
+        if new_default is not None and (retyped or new_default != old_default):
+            clauses.append(f"ALTER COLUMN {column} SET DEFAULT {new_default}")
+        elif new_default is None and old_default is not None and not retyped:
+            clauses.append(f"ALTER COLUMN {column} DROP DEFAULT")
+        return clauses
+
+    def _type_conversion(self, name: str, old_type: str, new_type: str) -> str | None:
+        """
+        The USING expression that converts a column to a new type, if one is needed.
+
+        Without USING, PostgreSQL converts the way it does on assignment, which
+        it can do between types of one family and from any type to a string
+        type. Other conversions need an explicit expression: strings and enum
+        labels are parsed as the new type, numbers become booleans by
+        comparison with zero and booleans become 0 or 1, and values become JSON
+        through ``to_jsonb``. When a conversion fails on a value, PostgreSQL
+        reports it and nothing is changed.
+
+        Parameters
+        ----------
+        name : str
+            Column name.
+        old_type, new_type : str
+            PostgreSQL types before and after.
+
+        Returns
+        -------
+        str or None
+            The expression, or None where an assignment conversion exists or a
+            type is not one this method knows (PostgreSQL then decides).
+
+        Raises
+        ------
+        DataJointError
+            If there is no conversion between the two types, e.g. between a date
+            and a number.
+        """
+        old_family, new_family = _type_family(old_type), _type_family(new_type)
+        column = self.quote_identifier(name)
+        if new_family == "string" or (old_family == new_family and old_family != "enum"):
+            return None
+        if old_family is None or new_family is None:
+            return None
+        if "enum" in (old_family, new_family):
+            return f"{column}::text::{new_type}"
+        if old_family == "string" or (old_family == "json" and new_family in ("numeric", "boolean")):
+            return f"{column}::{new_type}"
+        if (old_family, new_family) == ("numeric", "boolean"):
+            return f"{column} <> 0"
+        if (old_family, new_family) == ("boolean", "numeric"):
+            return f"{column}::integer"
+        if new_family == "json":
+            return f"to_jsonb({column})"
+        raise errors.DataJointError(
+            f"PostgreSQL cannot convert attribute `{name}` from {old_type} to {new_type}. "
+            "Add an attribute of the new type, copy the values into it, and drop the old attribute instead."
+        )
+
     def add_comment_sql(
         self,
         object_type: str,
@@ -727,6 +904,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
         always appended.
         """
         return False
+
+    @property
+    def supports_transactional_ddl(self) -> bool:
+        """
+        PostgreSQL runs DDL inside transactions, so the several statements of
+        one alter apply together or not at all.
+        """
+        return True
 
     @property
     def auto_indexes_foreign_keys(self) -> bool:
@@ -1001,11 +1186,19 @@ class PostgreSQLAdapter(DatabaseAdapter):
             else:
                 data_type = f"decimal({num_precision})"
 
+        # PostgreSQL reports a literal default cast to the column type, e.g.
+        # 'abc'::character varying. Report the value alone, as MySQL does, so
+        # that describe() writes the default the definition declared.
+        default = row["column_default"]
+        literal = re.fullmatch(r"'((?:[^']|'')*)'::[\w\s\".\[\]()]+", default or "")
+        if literal:
+            default = literal[1].replace("''", "'")
+
         return {
             "name": row["column_name"],
             "type": data_type,
             "nullable": row["is_nullable"] == "YES",
-            "default": row["column_default"],
+            "default": default,
             "comment": row.get("column_comment"),  # Retrieved via col_description()
             "key": "",  # PostgreSQL key info retrieved separately
             "extra": "",  # PostgreSQL doesn't have auto_increment in same way
@@ -1257,7 +1450,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """
         return ""  # PostgreSQL uses COMMENT ON TABLE separately
 
-    def table_comment_ddl(self, full_table_name: str, comment: str) -> str | None:
+    def table_comment_ddl(self, full_table_name: str, comment: str) -> str:
         """
         Generate COMMENT ON TABLE statement for PostgreSQL.
 
@@ -1270,7 +1463,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         escaped_comment = comment.replace("'", "''")
         return f"COMMENT ON TABLE {full_table_name} IS '{escaped_comment}'"
 
-    def column_comment_ddl(self, full_table_name: str, column_name: str, comment: str) -> str | None:
+    def column_comment_ddl(self, full_table_name: str, column_name: str, comment: str) -> str:
         """
         Generate COMMENT ON COLUMN statement for PostgreSQL.
 
