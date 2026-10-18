@@ -236,3 +236,38 @@ def test_seed_restricted_by_a_downstream_query(schema_by_backend, seed_kind):
     seed.delete(prompt=False)
     assert set(Subject.to_arrays("subject_id").tolist()) == {1, 2, 3, 4} - subjects
     assert set(zip(*Session.to_arrays("subject_id", "session_id"))) == all_sessions - sessions
+
+
+def test_seed_condition_with_a_percent_sign(schema_by_backend):
+    """A seed condition containing % selects the same rows in the cascade as
+    on its own."""
+
+    @schema_by_backend
+    class Label(dj.Manual):
+        definition = """
+        label_id : int32
+        ---
+        name : varchar(16)
+        """
+
+    @schema_by_backend
+    class Use(dj.Manual):
+        definition = """
+        -> Label
+        use_id : int32
+        """
+
+    Label.insert([(1, "50%"), (2, "other"), (3, "5%%")])
+    Use.insert([(1, 1), (2, 1), (3, 1)])
+
+    for seed, label in [
+        (Label & "name = '50%'", 1),
+        (Label & {"name": "50%"}, 1),
+        (Label & "name = '5%%'", 3),
+    ]:
+        assert len(seed) == 1
+        assert dj.Diagram.cascade(seed).counts()[Use.full_table_name] == 1
+
+    (Label & "name LIKE '50%'").delete(prompt=False)
+    assert sorted(Label.to_arrays("label_id").tolist()) == [2, 3]
+    assert sorted(Use.to_arrays("label_id").tolist()) == [2, 3]

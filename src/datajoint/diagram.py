@@ -181,7 +181,11 @@ def _seed_restriction(table_expr):
     """
     if table_expr._top is not None or any(_has_subquery(c) for c in table_expr.restriction):
         return AndList([table_expr.keys()]), set(table_expr.primary_key)
-    return AndList(table_expr.restriction), set(table_expr.restriction_attributes)
+    # The seed's conditions are compiled SQL, with each % already escaped as %%
+    # for the driver. The traversal applies them again through restrict(), which
+    # escapes again, so the escape is undone here.
+    restriction = AndList(c.replace("%%", "%") if isinstance(c, str) else c for c in table_expr.restriction)
+    return restriction, set(table_expr.restriction_attributes)
 
 
 class Diagram(nx.MultiDiGraph):  # noqa: C901
