@@ -352,6 +352,18 @@ class TestPostgreSQLAdapter:
         assert "'pending'" in sql
         assert "'complete'" in sql
 
+    def test_drop_enum_type_ddl_does_not_cascade(self, adapter):
+        """An enum type shared by other columns must not take them with it."""
+        sql = adapter.drop_enum_type_ddl("myschema.enum_abc")
+        assert sql == 'DROP TYPE IF EXISTS "myschema"."enum_abc"'
+
+    def test_enum_type_in_use_sql(self, adapter):
+        """The usage check looks the type up by its quoted, qualified name."""
+        sql = adapter.enum_type_in_use_sql("myschema.enum_abc")
+        assert "pg_attribute" in sql
+        assert """'"myschema"."enum_abc"'::regtype""" in sql
+        assert "NOT attisdropped" in sql
+
     def test_drop_enum_type_sql(self, adapter):
         """Test PostgreSQL enum type dropping."""
         sql = adapter.drop_enum_type_sql("myschema", "mytable", "status")
