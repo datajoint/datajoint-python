@@ -131,7 +131,7 @@ def test_refresh_removes_records_of_vanished_keys(pipeline):
 
 
 def test_refresh_keeps_success_records_of_existing_rows(schema_by_backend):
-    """A success record stays while its row exists, even if its key leaves key_source."""
+    """A fresh success record stays while its row exists, even if its key leaves key_source."""
 
     @schema_by_backend
     class Raw(dj.Manual):

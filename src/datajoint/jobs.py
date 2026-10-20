@@ -340,7 +340,9 @@ class Job(Table):
         stale_timeout : float, optional
             Seconds after which jobs are checked for staleness.
             Jobs older than this are removed if key not in key_source.
-            Default from ``config.jobs.stale_timeout``. Set to 0 to skip.
+            Default from ``config.jobs.stale_timeout``. Set to 0 to skip the
+            age-based check; the cleanup of success and error records whose
+            keys have left both key_source and the target runs regardless.
         orphan_timeout : float, optional
             Seconds after which reserved jobs are considered orphaned.
             Reserved jobs older than this are deleted and re-added as pending.
