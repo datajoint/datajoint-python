@@ -721,6 +721,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
         return False
 
     @property
+    def supports_column_position(self) -> bool:
+        """
+        PostgreSQL has no ``AFTER`` clause in ALTER TABLE; added columns are
+        always appended.
+        """
+        return False
+
+    @property
     def auto_indexes_foreign_keys(self) -> bool:
         """
         PostgreSQL never indexes a foreign key's referencing columns
@@ -1340,23 +1348,6 @@ class PostgreSQLAdapter(DatabaseAdapter):
                 ddl_statements.append(f"CREATE TYPE {quoted_type} AS ENUM ({quoted_values})")
             self._pending_enum_types = {}
         return ddl_statements
-
-    def job_metadata_columns(self) -> list[str]:
-        """
-        Return PostgreSQL-specific job metadata column definitions.
-
-        Examples
-        --------
-        >>> adapter.job_metadata_columns()
-        ['"_job_start_time" timestamp DEFAULT NULL',
-         '"_job_duration" real DEFAULT NULL',
-         '"_job_version" varchar(64) DEFAULT \\'\\'']
-        """
-        return [
-            '"_job_start_time" timestamp DEFAULT NULL',
-            '"_job_duration" real DEFAULT NULL',
-            "\"_job_version\" varchar(64) DEFAULT ''",
-        ]
 
     # =========================================================================
     # Error Translation

@@ -61,18 +61,25 @@ BLOB_TYPES = re.compile(r"^(tiny|small|medium|long|)blob$", re.I)
 # Column Type Migration (Phase 2)
 # =============================================================================
 
-# Mapping from MySQL native types to DataJoint core types
+# Mapping from MySQL native types to DataJoint core types.
+#
+# Every value here must be a type that `declare.match_type` accepts: the values are
+# written into column comments as `:<value>:` markers and read back by
+# `heading.Heading._init_from_database`. DataJoint 2.0 provides no unsigned integer
+# types, so unsigned columns widen to the next signed type that holds their full range.
+# See `test_migrate_core_types_are_declarable` for the assertion that enforces this.
 NATIVE_TO_CORE_TYPE = {
-    # Unsigned integers
-    "tinyint unsigned": "uint8",
-    "smallint unsigned": "uint16",
-    "mediumint unsigned": "uint24",
-    "int unsigned": "uint32",
-    "bigint unsigned": "uint64",
+    # Unsigned integers widen to the next signed type. bigint unsigned is the one case
+    # with no lossless target: values above 2**63-1 do not fit in int64.
+    "tinyint unsigned": "int16",
+    "smallint unsigned": "int32",
+    "mediumint unsigned": "int32",
+    "int unsigned": "int64",
+    "bigint unsigned": "int64",
     # Signed integers
     "tinyint": "int8",
     "smallint": "int16",
-    "mediumint": "int24",
+    "mediumint": "int32",  # int24 is not a core type
     "int": "int32",
     "bigint": "int64",
     # Floats
@@ -191,6 +198,18 @@ def analyze_columns(schema: Schema) -> dict:
                 # Handle numeric types
                 elif lookup_type in NATIVE_TO_CORE_TYPE:
                     col_info["core_type"] = NATIVE_TO_CORE_TYPE[lookup_type]
+                    if lookup_type == "bigint unsigned":
+                        logger.warning(
+                            f"Column `{col_info['table']}`.`{col_info['column']}` is "
+                            "`bigint unsigned` and will be labeled `int64`. DataJoint 2.0 "
+                            "provides no unsigned integer types. The physical column and "
+                            "stored data are unchanged by migration, but `describe()` will "
+                            "report `int64`, so a describe->recreate->copy round trip "
+                            "produces a signed column: values above 2**63-1 do not survive "
+                            "that copy. Verify the stored range before migrating; if the "
+                            "full unsigned range is in use, declare the attribute as "
+                            "decimal(20,0), which holds it losslessly."
+                        )
                     result["needs_migration"].append(col_info)
                 # Types that don't need migration (varchar, date, datetime, json, etc.)
                 # are silently skipped
@@ -211,7 +230,7 @@ def migrate_columns(
 
     Migrates:
 
-    - Numeric types: int unsigned → :uint32:, smallint → :int16:, etc.
+    - Numeric types: int unsigned → :int64:, smallint → :int16:, etc.
     - Blob types: longblob → :<blob>:
 
     Does NOT migrate external storage columns (external-*, attach@*,
@@ -576,12 +595,25 @@ def check_migration_status(schema: Schema) -> dict:
 # Job Metadata Migration
 # =============================================================================
 
-# Hidden job metadata columns added by config.jobs.add_job_metadata
-JOB_METADATA_COLUMNS = [
-    ("_job_start_time", "datetime(3) DEFAULT NULL"),
-    ("_job_duration", "float DEFAULT NULL"),
-    ("_job_version", "varchar(64) DEFAULT ''"),
-]
+
+def _job_metadata_ddl(adapter) -> list[tuple[str, str, str]]:
+    """Compile the job-metadata columns the way a fresh declaration does.
+
+    Returns ``(name, column_sql, comment)`` per column.  Going through
+    ``compile_attribute`` rather than a hand-written string is what makes a
+    retrofitted column identical to a declared one: the same backend type
+    mapping -- ``datetime(3)`` on MySQL, ``timestamp(3)`` on PostgreSQL -- and
+    the same ``:type:`` marker.
+    """
+    from .declare import JOB_METADATA_DEFINITION, compile_attribute
+
+    return [
+        (name, column_sql, comment)
+        for name, column_sql, _store, comment in (
+            compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=adapter)
+            for line in JOB_METADATA_DEFINITION
+        )
+    ]
 
 
 def _get_existing_columns(connection, database: str, table_name: str) -> set[str]:
@@ -598,16 +630,10 @@ def _get_existing_columns(connection, database: str, table_name: str) -> set[str
 
 
 def _is_autopopulated_table(table_name: str) -> bool:
-    """Check if a table name indicates a Computed or Imported table."""
-    # Computed tables start with __ (but not part tables which have __ in middle)
-    # Imported tables start with _ (but not __)
-    if table_name.startswith("__"):
-        # Computed table if no __ after the prefix
-        return "__" not in table_name[2:]
-    elif table_name.startswith("_"):
-        # Imported table
-        return True
-    return False
+    """Whether a table name denotes a Computed or Imported table."""
+    from .user_tables import Computed, Imported, is_tier
+
+    return is_tier(table_name, Computed) or is_tier(table_name, Imported)
 
 
 def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
@@ -700,8 +726,9 @@ def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
             continue
 
         # Check which columns need to be added
+        adapter = connection.adapter
         existing_columns = _get_existing_columns(connection, database, table_name)
-        columns_to_add = [(name, definition) for name, definition in JOB_METADATA_COLUMNS if name not in existing_columns]
+        columns_to_add = [column for column in _job_metadata_ddl(adapter) if column[0] not in existing_columns]
 
         if not columns_to_add:
             result["details"].append(
@@ -721,13 +748,20 @@ def add_job_metadata_columns(target, dry_run: bool = True) -> dict:
             "sql_statements": [],
         }
 
-        for col_name, col_definition in columns_to_add:
-            sql = f"ALTER TABLE `{database}`.`{table_name}` ADD COLUMN `{col_name}` {col_definition}"
-            table_detail["sql_statements"].append(sql)
+        qualified = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier(table_name)}"
+        for col_name, column_sql, comment in columns_to_add:
+            statements = [f"ALTER TABLE {qualified} ADD COLUMN {column_sql}"]
+            # PostgreSQL keeps comments out of the column definition, so without
+            # this the retrofitted column reads back with no original_type.
+            comment_ddl = adapter.column_comment_ddl(qualified, col_name, comment)
+            if comment_ddl:
+                statements.append(comment_ddl)
+            table_detail["sql_statements"].extend(statements)
 
             if not dry_run:
                 try:
-                    connection.query(sql)
+                    for statement in statements:
+                        connection.query(statement)
                     logger.info(f"Added column {col_name} to {database}.{table_name}")
                 except Exception as e:
                     logger.error(f"Failed to add column {col_name} to {database}.{table_name}: {e}")

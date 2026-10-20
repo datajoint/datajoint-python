@@ -57,7 +57,9 @@ class HashCodec(Codec):
             raise DataJointError("<hash> requires @ (in-store storage only)")
         return "json"
 
-    def encode(self, value: bytes, *, key: dict | None = None, store_name: str | None = None) -> dict:
+    def encode(
+        self, value: bytes, *, key: dict | None = None, context: dict | None = None, store_name: str | None = None
+    ) -> dict:
         """
         Store content and return metadata.
 
@@ -66,7 +68,11 @@ class HashCodec(Codec):
         value : bytes
             Raw bytes to store.
         key : dict, optional
-            Context dict with ``_schema`` for path isolation.
+            Primary key values. Before 2.3.4 this also carried the schema name
+            under ``_schema``; that is still read when ``context`` omits it.
+        context : dict, optional
+            Connection context. ``schema`` isolates the stored path and
+            ``config`` resolves the store.
         store_name : str, optional
             Store to use. If None, uses default store.
 
@@ -77,11 +83,14 @@ class HashCodec(Codec):
         """
         from ..hash_registry import put_hash
 
-        schema_name = (key or {}).get("_schema", "unknown")
-        config = (key or {}).get("_config")
+        # Same precedence as `_extract_context`. Reading `key` alone would store
+        # under "unknown" for any caller that passes `context` with a key holding
+        # only primary-key values -- which is every caller once 2.4 lands.
+        schema_name = (context or {}).get("schema", (key or {}).get("_schema", "unknown"))
+        config = self._codec_config(key, context)
         return put_hash(value, schema_name=schema_name, store_name=store_name, config=config)
 
-    def decode(self, stored: dict, *, key: dict | None = None) -> bytes:
+    def decode(self, stored: dict, *, key: dict | None = None, context: dict | None = None) -> bytes:
         """
         Retrieve content using stored metadata.
 
@@ -99,7 +108,7 @@ class HashCodec(Codec):
         """
         from ..hash_registry import get_hash
 
-        config = (key or {}).get("_config")
+        config = self._codec_config(key, context)
         return get_hash(stored, config=config)
 
     def validate(self, value: Any) -> None:

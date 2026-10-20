@@ -11,6 +11,7 @@ import signal
 import traceback
 from typing import TYPE_CHECKING, Any, Generator
 
+from . import provenance
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
 
@@ -684,6 +685,13 @@ class AutoPopulate:
         self._upstream_key = dict(key)
         self._upstream = None
 
+        # Rows this make() writes into Entry tables that carry no foreign key back
+        # here -- the fan-out ingestion pattern -- record the ingesting table and
+        # key, which is what makes such a row traceable without one.
+        from .jobs import _get_job_version
+
+        prov_token = provenance.set_ingesting(self.full_table_name, key, _get_job_version(self.connection._config))
+
         try:
             if not is_generator:
                 make(dict(key), **(make_kwargs or {}))
@@ -740,6 +748,7 @@ class AutoPopulate:
                 jobs.complete(key, duration=duration)
             return True
         finally:
+            provenance.reset_ingesting(prov_token)
             self.__class__._allow_insert = False
             # Clear the per-make() upstream state: `_upstream = None` invalidates
             # the memoized Diagram; `_upstream_key = None` restores the "outside

@@ -64,12 +64,17 @@ TYPE_PATTERN = {
         # Core DataJoint types
         **{name.upper(): pattern for name, (pattern, _) in CORE_TYPES.items()},
         # Native SQL types (passthrough with warning for non-standard use)
-        INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
-        NUMERIC=r"numeric(\s*\(.+\))?(\s+unsigned)?$",  # numeric is SQL alias, use decimal instead
+        INTEGER=r"(((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial)$",
+        # decimal/numeric/dec/fixed are the same SQL type. The canonical core spelling
+        # decimal(M,D) is matched above; anything carrying a modifier or an alias falls
+        # through to here and passes as a native type, as int/float unsigned do.
+        NUMERIC=r"(decimal|numeric|dec|fixed)(\s*\(.+\))?(\s+unsigned)?(\s+zerofill)?$",
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
         STRING=r"(var)?char\s*\(.+\)$",  # Catches char/varchar not matched by core types
         TEMPORAL=r"(time|timestamp|year)(\s*\(.+\))?$",  # time, timestamp, year (not date/datetime)
-        NATIVE_BLOB=r"(tiny|small|medium|long)blob$",  # Specific blob variants
+        # Size prefix is optional: bare `blob` is a MySQL type in its own right, and is
+        # already recognized by migrate.BLOB_TYPES.
+        NATIVE_BLOB=r"(tiny|small|medium|long)?blob$",
         NATIVE_TEXT=r"(tiny|small|medium|long)?text$",  # Native text types (not portable)
         # Codecs use angle brackets
         CODEC=r"<.+>$",
@@ -107,8 +112,12 @@ def match_type(attribute_type: str) -> str:
     DataJointError
         If the type string doesn't match any known pattern.
     """
+    # fullmatch, not match: a declared type must be consumed in its entirety. With
+    # a prefix match, a misspelling such as `int24` or `tinyinteger` classifies as a
+    # native integer and is emitted into the DDL verbatim, so the failure surfaces as
+    # a SQL syntax error from the server rather than as an unsupported-type error here.
     try:
-        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
+        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.fullmatch(attribute_type))
     except StopIteration:
         raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type))
 
@@ -147,7 +156,10 @@ def build_attribute_parser() -> pp.ParserElement:
     """
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).set_results_name("name")
+    # A leading underscore is permitted by the grammar so the framework can
+    # declare its own columns in this notation. Whether a *user* may is policy,
+    # enforced in prepare_declare where a user's definition is parsed.
+    attribute_name = pp.Word(pp.srange("[a-z_]"), pp.srange("[a-z0-9_]")).set_results_name("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
         ^ pp.QuotedString("<", end_quote_char=">", unquote_results=False)
@@ -191,6 +203,7 @@ def compile_foreign_key(
     adapter,
     fk_attribute_map: dict[str, tuple[str, str]] | None = None,
     fk_index_candidates: list[list[str]] | None = None,
+    column_comments: dict[str, str] | None = None,
 ) -> None:
     """
     Parse a foreign key line and update declaration components.
@@ -221,6 +234,11 @@ def compile_foreign_key(
         candidate supporting index; the redundancy/coverage decision is made
         post-parse (once the full primary key and index list are known).
         Updated in place.
+    column_comments : dict, optional
+        Mapping of ``column -> comment`` for backends that set column comments
+        out of line (PostgreSQL's ``COMMENT ON COLUMN``). Each copied column's
+        comment, with its core-type marker (e.g. ``:int32:``), is added so the
+        child keeps the parent's declared type. Updated in place.
 
     Raises
     ------
@@ -276,14 +294,17 @@ def compile_foreign_key(
             # Enum type names start with "enum_" (generated hash-based names)
             if sql_type.startswith("enum_") and adapter.backend == "postgresql":
                 sql_type = f"{adapter.quote_identifier(ref.database)}.{adapter.quote_identifier(sql_type)}"
+            comment = parent_attr.sql_comment
             col_def = adapter.format_column_definition(
                 name=attr,
                 sql_type=sql_type,
                 nullable=is_nullable,
                 default=None,
-                comment=parent_attr.sql_comment,
+                comment=comment,
             )
             attr_sql.append(col_def)
+            if comment and column_comments is not None:
+                column_comments[attr] = comment
 
         # Track FK attribute mapping for lineage: child_attr -> (parent_table, parent_attr)
         if fk_attribute_map is not None:
@@ -325,11 +346,51 @@ def compile_foreign_key(
         fk_index_candidates.append(fk_attrs)
 
 
+# =============================================================================
+# Platform-managed attributes
+#
+# Written in DataJoint notation and compiled by the same `compile_attribute` as
+# any user attribute, so the backend type mapping, the `:type:` comment and the
+# column-comment bookkeeping all come from the one path that owns them.
+# =============================================================================
+
+#: Primary key for a table that declares none of its own.
+SINGLETON_DEFINITION = "_singleton = 1 : bool # singleton primary key"
+
+#: Per-row execution record on the auto-populated tiers.
+JOB_METADATA_DEFINITION = (
+    "_job_start_time = null : datetime(3) # when computation began",
+    "_job_duration = null : float32 # computation duration in seconds",
+    '_job_version = "" : varchar(64) # code version',
+)
+
+#: Extrinsic provenance on Entry tables, where rows arrive from outside.
+PROV_DEFINITION = "_prov = null : json # extrinsic provenance for a row that entered from outside"
+
+
+def _tier_attributes(table_name: str | None, config) -> tuple[str, ...]:
+    """The platform-managed attributes a tier receives, in DataJoint notation."""
+    from .user_tables import Computed, Imported, Manual, is_tier
+
+    if table_name is None:  # `alter` compares two definitions; neither declares these
+        return ()
+    if config.jobs.add_job_metadata and (is_tier(table_name, Computed) or is_tier(table_name, Imported)):
+        return JOB_METADATA_DEFINITION
+    if config.provenance.capture and is_tier(table_name, Manual):
+        return (PROV_DEFINITION,)
+    return ()
+
+
 def prepare_declare(
-    definition: str, context: dict, adapter
+    definition: str, context: dict, adapter, *, table_name: str | None = None, config=None
 ) -> tuple[str, list[str], list[str], list[str], list[str], list[str], dict[str, tuple[str, str]], dict[str, str]]:
     """
     Parse a table definition into its components.
+
+    The platform-managed attributes are added here too, once the user's lines are
+    parsed and by the same ``add_attribute``.  That is what lets ``_singleton``
+    be decided from the primary key the parse produced, and leaves the loop
+    iterating user lines only, where a user-declared hidden one is refused.
 
     Parameters
     ----------
@@ -339,6 +400,13 @@ def prepare_declare(
         Namespace for resolving foreign key references.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    table_name : str, optional
+        Stripped table name, which carries the tier.  Given one, the tier's
+        platform attributes are added and ``config`` is required; ``alter``
+        passes neither, since it compares two definitions and neither side
+        declares them.
+    config : Config, optional
+        Read for ``jobs.add_job_metadata`` and ``provenance.capture``.
 
     Returns
     -------
@@ -371,6 +439,18 @@ def prepare_declare(
     column_comments = {}  # column_name -> comment (for PostgreSQL COMMENT ON)
     fk_index_candidates = []  # PostgreSQL: FK column-lists that may need a support index (#1512)
 
+    def add_attribute(line: str, in_key: bool) -> None:
+        name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
+        if store:
+            external_stores.append(store)
+        if in_key and name not in primary_key:
+            primary_key.append(name)
+        if name not in attributes:
+            attributes.append(name)
+            attribute_sql.append(sql)
+            if comment:
+                column_comments[name] = comment
+
     for line in definition:
         if not line or line.startswith("#"):  # ignore additional comments
             pass
@@ -388,20 +468,31 @@ def prepare_declare(
                 adapter,
                 fk_attribute_map,
                 fk_index_candidates,
+                column_comments,
             )
         elif re.match(r"^(unique\s+)?index\s*\(.*\)\s*(#.*)?$", line, re.I):  # index
             compile_index(re.sub(r"\s*#.*$", "", line), index_sql, adapter)
+        elif line.startswith("_"):
+            # Policy, not grammar: the parser accepts the name so that the
+            # framework can declare its own columns in the same notation. Only
+            # user lines reach here -- the platform's are added after the loop.
+            raise DataJointError(
+                f'Attribute name in line "{line}" starts with an underscore. '
+                "Names with leading underscore are reserved for platform-managed "
+                "columns (e.g. _job_start_time, _singleton). Use a regular "
+                "attribute name; if you need to control visibility at the call "
+                "site, use proj()."
+            )
         else:
-            name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
-            if store:
-                external_stores.append(store)
-            if in_key and name not in primary_key:
-                primary_key.append(name)
-            if name not in attributes:
-                attributes.append(name)
-                attribute_sql.append(sql)
-                if comment:
-                    column_comments[name] = comment
+            add_attribute(line, in_key)
+
+    # A table that declares no primary key of its own gets the sentinel, which is
+    # what makes it hold at most one row. Only the parse knows whether it does:
+    # `index (...)` contributes no attribute and `-> Parent` may contribute many.
+    if not primary_key:
+        add_attribute(SINGLETON_DEFINITION, True)
+    for line in _tier_attributes(table_name, config):
+        add_attribute(line, False)
 
     # Foreign-key support indexes (PostgreSQL; #1512). Now that the whole
     # definition is parsed, emit an index on each candidate foreign key's columns
@@ -476,7 +567,7 @@ def declare(
     Raises
     ------
     DataJointError
-        If table name exceeds max length or has no primary key.
+        If the table name exceeds the backend's max length.
     """
     # Parse table name using adapter (handles backend-specific quoting)
     schema_name, table_name = adapter.split_full_table_name(full_table_name)
@@ -488,6 +579,11 @@ def declare(
             )
         )
 
+    if config is None:
+        from .settings import config as _config
+
+        config = _config
+
     (
         table_comment,
         primary_key,
@@ -497,35 +593,7 @@ def declare(
         external_stores,
         fk_attribute_map,
         column_comments,
-    ) = prepare_declare(definition, context, adapter)
-
-    # Add hidden job metadata for Computed/Imported tables (not parts)
-    if config is None:
-        from .settings import config as _config
-
-        config = _config
-    if config.jobs.add_job_metadata:
-        # Check if this is a Computed (__) or Imported (_) table, but not a Part (contains __ in middle)
-        is_computed = table_name.startswith("__") and "__" not in table_name[2:]
-        is_imported = table_name.startswith("_") and not table_name.startswith("__")
-        if is_computed or is_imported:
-            job_metadata_sql = adapter.job_metadata_columns()
-            attribute_sql.extend(job_metadata_sql)
-
-    if not primary_key:
-        # Singleton table: add hidden sentinel attribute
-        primary_key = ["_singleton"]
-        singleton_comment = ":bool:singleton primary key"
-        sql_type = adapter.core_type_to_sql("bool")
-        singleton_sql = adapter.format_column_definition(
-            name="_singleton",
-            sql_type=sql_type,
-            nullable=False,
-            default="NOT NULL DEFAULT TRUE",
-            comment=singleton_comment,
-        )
-        attribute_sql.insert(0, singleton_sql)
-        column_comments["_singleton"] = singleton_comment
+    ) = prepare_declare(definition, context, adapter, table_name=table_name, config=config)
 
     pre_ddl = []  # DDL to run BEFORE CREATE TABLE (e.g., CREATE TYPE for enums)
     post_ddl = []  # DDL to run AFTER CREATE TABLE (e.g., COMMENT ON)
@@ -649,6 +717,10 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
                 else:
                     if idx >= 1 and old_names[idx - 1] != (prev[1] or prev[0]):
                         after = prev[0]
+            if not adapter.supports_column_position:
+                # Without an AFTER clause a reorder-only change has nothing to
+                # emit, so drop the position before it can force a statement.
+                after = None
             if new_def not in old or after:
                 # Determine command type
                 if (old_name or new_name) not in old_names:
@@ -667,7 +739,14 @@ def _make_attribute_alter(new: list[str], old: list[str], primary_key: list[str]
     return sql
 
 
-def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple[list[str], list[str]]:
+def alter(
+    definition: str,
+    old_definition: str,
+    context: dict,
+    adapter,
+    *,
+    schema_name: str | None = None,
+) -> tuple[list[str], list[str], list[str], dict]:
     """
     Generate SQL ALTER commands for table definition changes.
 
@@ -681,14 +760,23 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         Namespace for resolving foreign key references.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    schema_name : str, optional
+        Schema the table lives in. Required to collect pre-DDL for backends that
+        declare column types separately (PostgreSQL enums); omitting it yields an
+        empty ``pre_ddl``.
 
     Returns
     -------
     tuple
-        Two-element tuple:
+        Four-element tuple:
 
         - sql : list[str] - SQL ALTER commands
         - new_stores : list[str] - New external stores used
+        - pre_ddl : list[str] - DDL to run before the ALTER (e.g. CREATE TYPE)
+        - column_comments : dict - Comments to reapply after the ALTER. On
+          backends that store them out of line these carry the ``:type:``
+          prefix that ``heading`` reads back as ``original_type``, so skipping
+          them silently loses the declared type of an added attribute.
 
     Raises
     ------
@@ -703,8 +791,14 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         index_sql,
         external_stores,
         _fk_attribute_map,
-        _column_comments,
+        column_comments,
     ) = prepare_declare(definition, context, adapter)
+
+    # prepare_declare registers backend types (PostgreSQL enums) on the adapter
+    # as a side effect, so each parse must be drained separately to tell the two
+    # apart. Type names are content hashes, making the statements comparable.
+    new_type_ddl = adapter.get_pending_enum_ddl(schema_name) if schema_name else []
+
     (
         table_comment_,
         primary_key_,
@@ -715,6 +809,13 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         _fk_attribute_map_,
         _column_comments_,
     ) = prepare_declare(old_definition, context, adapter)
+
+    # Whatever the old definition registered already exists in the database, so
+    # only the difference needs creating. Draining both also leaves nothing
+    # behind to leak into the next declare() on this adapter, including on the
+    # NotImplementedError paths below.
+    old_type_ddl = set(adapter.get_pending_enum_ddl(schema_name)) if schema_name else set()
+    pre_ddl = [ddl for ddl in new_type_ddl if ddl not in old_type_ddl]
 
     # analyze differences between declarations
     sql = list()
@@ -731,7 +832,7 @@ def alter(definition: str, old_definition: str, context: dict, adapter) -> tuple
         # For PostgreSQL: would need COMMENT ON TABLE, but that's not an ALTER TABLE clause
         # Keep MySQL syntax for now (ALTER TABLE ... COMMENT="...")
         sql.append(f'COMMENT="{table_comment}"')
-    return sql, [e for e in external_stores if e not in external_stores_]
+    return sql, [e for e in external_stores if e not in external_stores_], pre_ddl, column_comments
 
 
 def _parse_index_args(args: str) -> list[str]:
@@ -902,14 +1003,6 @@ def compile_attribute(
     DataJointError
         If syntax is invalid, primary key is nullable, or blob has invalid default.
     """
-    if line.lstrip().startswith("_"):
-        raise DataJointError(
-            f'Attribute name in line "{line}" starts with an underscore. '
-            "Names with leading underscore are reserved for platform-managed "
-            "columns (e.g. _job_start_time, _singleton). Use a regular "
-            "attribute name; if you need to control visibility at the call "
-            "site, use proj()."
-        )
     try:
         match = attribute_parser.parse_string(line + "#", parse_all=True)
     except pp.ParseException as err:
@@ -960,6 +1053,16 @@ def compile_attribute(
         # Core types and Codecs are recorded in comment for reconstruction
         match["comment"] = ":{type}:{comment}".format(**match)
         substitute_special_type(match, category, foreign_key_sql, context, adapter)
+    elif category == "NATIVE_BLOB":
+        # A native blob is a raw binary column, not a DataJoint blob. Say so plainly:
+        # the generic portability warning below reads as cosmetic, and users migrating
+        # from pre-2.0 expect `longblob` to serialize objects for them.
+        logger.warning(
+            f"Native type '{match['type']}' is used in attribute '{match['name']}'. "
+            "It stores raw bytes only — values are not serialized on write or "
+            "deserialized on read. Use '<blob>' to store arrays and other Python "
+            "objects, or 'bytes' if raw binary is intended."
+        )
     elif category in NATIVE_TYPES:
         # Native type - warn user
         logger.warning(

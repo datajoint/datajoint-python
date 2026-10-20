@@ -617,6 +617,41 @@ class DatabaseAdapter(ABC):
         """
         return True  # Default for MySQL, override in PostgreSQL
 
+    def get_pending_enum_ddl(self, schema_name: str) -> list[str]:
+        """
+        DDL for backend types that must exist before the columns using them,
+        clearing the pending list as it reads.
+
+        Backends that spell column types inline (MySQL) have none. PostgreSQL
+        overrides this to emit CREATE TYPE for enums registered while parsing.
+
+        Parameters
+        ----------
+        schema_name : str
+            Schema used to qualify the type names.
+
+        Returns
+        -------
+        list[str]
+            Empty for MySQL; CREATE TYPE statements for PostgreSQL.
+        """
+        return []
+
+    @property
+    def supports_column_position(self) -> bool:
+        """
+        Whether ALTER TABLE can place a column at a position (``AFTER x``).
+
+        MySQL supports it. PostgreSQL has no such clause and always appends,
+        so the position is dropped rather than emitted.
+
+        Returns
+        -------
+        bool
+            True for MySQL, False for PostgreSQL.
+        """
+        return True  # Default for MySQL, override in PostgreSQL
+
     @property
     def auto_indexes_foreign_keys(self) -> bool:
         """
@@ -1279,29 +1314,6 @@ class DatabaseAdapter(ABC):
         --------
         MySQL: None (inline enum('val1', 'val2'))
         PostgreSQL: CREATE TYPE "type_name" AS ENUM ('val1', 'val2')
-        """
-        ...
-
-    @abstractmethod
-    def job_metadata_columns(self) -> list[str]:
-        """
-        Return job metadata column definitions for Computed/Imported tables.
-
-        Returns
-        -------
-        list[str]
-            List of column definition strings (fully formatted with quotes).
-
-        Examples
-        --------
-        MySQL:
-            ["`_job_start_time` datetime(3) DEFAULT NULL",
-             "`_job_duration` float DEFAULT NULL",
-             "`_job_version` varchar(64) DEFAULT ''"]
-        PostgreSQL:
-            ['"_job_start_time" timestamp DEFAULT NULL',
-             '"_job_duration" real DEFAULT NULL',
-             '"_job_version" varchar(64) DEFAULT \'\'']
         """
         ...
 

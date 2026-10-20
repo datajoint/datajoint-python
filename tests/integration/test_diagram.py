@@ -1,8 +1,22 @@
+import re
+
 import pytest as _pytest
 
 import datajoint as dj
 
 from tests.schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L, Profile, Website
+
+
+def test_master_part_entity_cluster(schema_simp):
+    """A master and its parts render inside a nested entity cluster, and part
+    labels drop the master prefix (#1532): `B.C` shows as `C`."""
+    if not dj.diagram.diagram_active:
+        _pytest.skip("networkx/pydot not available")
+    svg = dj.Diagram(schema_simp, context=LOCALS_SIMPLE).make_dot().create_svg().decode()
+    assert "cluster_entity_" in svg, "a master with parts should get a nested entity cluster"
+    texts = re.findall(r"<text[^>]*>([^<]+)</text>", svg)
+    assert "C" in texts, "part B.C should display as 'C' (master prefix dropped)"
+    assert "B.C" not in texts, "the part label must not include the master prefix"
 
 
 def test_decorator(schema_simp):
@@ -24,10 +38,10 @@ def test_dependencies(schema_simp):
     assert set(deps.descendants(L.full_table_name)).issubset(cls.full_table_name for cls in (L, D, E, E.F, E.G, E.H, E.M, G))
 
 
-def test_erd(schema_simp):
+def test_diagram(schema_simp):
     assert dj.diagram.diagram_active, "Failed to import networkx and pydot"
-    erd = dj.Diagram(schema_simp, context=LOCALS_SIMPLE)
-    graph = erd._make_graph()
+    diagram = dj.Diagram(schema_simp, context=LOCALS_SIMPLE)
+    graph = diagram._make_graph()
     assert set(cls.__name__ for cls in (A, B, D, E, L)).issubset(graph.nodes())
 
 
@@ -46,21 +60,21 @@ def test_diagram_algebra(schema_simp):
 
 
 def test_repr_svg(schema_adv):
-    erd = dj.Diagram(schema_adv, context=dict())
-    svg = erd._repr_svg_()
+    diagram = dj.Diagram(schema_adv, context=dict())
+    svg = diagram._repr_svg_()
     assert svg.startswith("<svg") and svg.endswith("svg>")
 
 
 def test_make_image(schema_simp):
-    erd = dj.Diagram(schema_simp, context=dict())
-    img = erd.make_image()
+    diagram = dj.Diagram(schema_simp, context=dict())
+    img = diagram.make_image()
     assert img.ndim == 3 and img.shape[2] in (3, 4)
 
 
 def test_part_table_parsing(schema_simp):
     # https://github.com/datajoint/datajoint-python/issues/882
-    erd = dj.Diagram(schema_simp, context=LOCALS_SIMPLE)
-    graph = erd._make_graph()
+    diagram = dj.Diagram(schema_simp, context=LOCALS_SIMPLE)
+    graph = diagram._make_graph()
     assert "OutfitLaunch" in graph.nodes()
     assert "OutfitLaunch.OutfitPiece" in graph.nodes()
 

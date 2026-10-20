@@ -262,7 +262,25 @@ class Part(UserTable, metaclass=PartMeta):
         super().alter(prompt=prompt, context=context or self.declaration_context)
 
 
+#: Tier names on a single axis -- what puts rows in the table. ``Manual`` names
+#: its writer but means the origin; ``Imported`` names the origin but means the
+#: writer. ``Entry``, ``Ingest`` and ``Compute`` put all of them on the one
+#: question, and the grammar carries it: nouns are tables something else fills,
+#: verbs are the two things ``populate()`` does.
+#:
+#: These are the same classes, not subclasses, so a table declared either way is
+#: identical -- same SQL prefix, same ``Role``, same tier detection. The old
+#: names are permanent aliases, never deprecated. See #1546.
+Entry = Manual
+Ingest = Imported
+Compute = Computed
+
 user_table_classes = (Manual, Lookup, Computed, Imported, Part)
+
+
+def is_tier(table_name: str, tier) -> bool:
+    """Whether a stripped table name belongs to ``tier``."""
+    return re.fullmatch(tier.tier_regexp, table_name) is not None
 
 
 def _get_tier(table_name):
@@ -277,6 +295,6 @@ def _get_tier(table_name):
     else:
         return None
     try:
-        return next(tier for tier in user_table_classes if re.fullmatch(tier.tier_regexp, extracted_name))
+        return next(tier for tier in user_table_classes if is_tier(extracted_name, tier))
     except StopIteration:
         return None

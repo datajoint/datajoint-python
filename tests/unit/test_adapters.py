@@ -410,7 +410,6 @@ class TestAdapterInterface:
             "table_comment_ddl",
             "column_comment_ddl",
             "enum_type_ddl",
-            "job_metadata_columns",
             "translate_error",
             "validate_native_type",
         ]
@@ -476,15 +475,20 @@ class TestDDLMethods:
         assert result is None
 
     def test_job_metadata_columns_mysql(self, adapter):
-        """Test MySQL job metadata columns."""
-        result = adapter.job_metadata_columns()
-        assert len(result) == 3
-        assert "_job_start_time" in result[0]
-        assert "datetime(3)" in result[0]
-        assert "_job_duration" in result[1]
-        assert "float" in result[1]
-        assert "_job_version" in result[2]
-        assert "varchar(64)" in result[2]
+        """Job metadata is declared in DataJoint notation, compiled like any attribute."""
+        from datajoint.declare import compile_attribute
+        from datajoint.declare import JOB_METADATA_DEFINITION
+
+        compiled = [
+            compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=adapter)
+            for line in JOB_METADATA_DEFINITION
+        ]
+        names = [c[0] for c in compiled]
+        sql = [c[1] for c in compiled]
+        assert names == ["_job_start_time", "_job_duration", "_job_version"]
+        assert "datetime(3)" in sql[0] and ":datetime(3):" in sql[0]
+        assert "float" in sql[1]
+        assert "varchar(64)" in sql[2]
 
 
 class TestPostgreSQLDDLMethods:
@@ -550,12 +554,21 @@ class TestPostgreSQLDDLMethods:
             postgres_adapter.replica_identity_ddl('"schema"."table"', "nothing")
 
     def test_job_metadata_columns_postgres(self, postgres_adapter):
-        """Test PostgreSQL job metadata columns."""
-        result = postgres_adapter.job_metadata_columns()
-        assert len(result) == 3
-        assert "_job_start_time" in result[0]
-        assert "timestamp" in result[0]
-        assert "_job_duration" in result[1]
-        assert "real" in result[1]
-        assert "_job_version" in result[2]
-        assert "varchar(64)" in result[2]
+        """Precision is the point: a bare `timestamp` gave PostgreSQL microseconds.
+
+        The hand-written column declared `timestamp`, so PostgreSQL applied its
+        default precision while MySQL got `datetime(3)`. Compiling the DataJoint
+        type keeps the two backends on the same declared precision -- #1566.
+        """
+        from datajoint.declare import compile_attribute
+        from datajoint.declare import JOB_METADATA_DEFINITION
+
+        sql = [
+            compile_attribute(line, in_key=False, foreign_key_sql=[], context={}, adapter=postgres_adapter)[1]
+            for line in JOB_METADATA_DEFINITION
+        ]
+        assert "timestamp(3)" in sql[0], "must match MySQL's datetime(3)"
+        assert "real" in sql[1]
+        assert "varchar(64)" in sql[2]
+        # PostgreSQL carries no inline comment; it is applied via COMMENT ON.
+        assert "COMMENT" not in sql[0].upper()

@@ -845,12 +845,12 @@ class TestStagedInsert:
         codec = ObjectCodec()
         encode_file_meta = codec.encode(
             ref_path,
-            key={
-                "_schema": table.database,
-                "_table": table.class_name,
-                "_field": "data_file",
-                "_config": table.connection._config,
-                "file_id": 801,
+            key={"file_id": 801},
+            context={
+                "schema": table.database,
+                "table": table.class_name,
+                "field": "data_file",
+                "config": table.connection._config,
             },
             store_name="local",
         )
@@ -888,12 +888,12 @@ class TestStagedInsert:
         (ref_dir / "y.bin").write_bytes(b"yy")
         encode_dir_meta = codec.encode(
             ref_dir,
-            key={
-                "_schema": table_folder.database,
-                "_table": table_folder.class_name,
-                "_field": "data_folder",
-                "_config": table_folder.connection._config,
-                "folder_id": 803,
+            key={"folder_id": 803},
+            context={
+                "schema": table_folder.database,
+                "table": table_folder.class_name,
+                "field": "data_folder",
+                "config": table_folder.connection._config,
             },
             store_name="local",
         )

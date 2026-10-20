@@ -16,10 +16,10 @@ class GraphCodec(dj.Codec):
     def get_dtype(self, is_store: bool) -> str:
         return "<blob>"
 
-    def encode(self, graph, *, key=None, store_name=None):
+    def encode(self, graph, *, key=None, context=None, store_name=None):
         return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
 
-    def decode(self, stored, *, key=None):
+    def decode(self, stored, *, key=None, context=None):
         import networkx as nx
         G = nx.Graph()
         G.add_nodes_from(stored['nodes'])
@@ -38,6 +38,8 @@ class MyTable(dj.Manual):
 
 from __future__ import annotations
 
+import functools
+import inspect
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -79,10 +81,10 @@ class Codec(ABC):
     ...     def get_dtype(self, is_store: bool) -> str:
     ...         return "<blob>"
     ...
-    ...     def encode(self, graph, *, key=None, store_name=None):
+    ...     def encode(self, graph, *, key=None, context=None, store_name=None):
     ...         return {'nodes': list(graph.nodes()), 'edges': list(graph.edges())}
     ...
-    ...     def decode(self, stored, *, key=None):
+    ...     def decode(self, stored, *, key=None, context=None):
     ...         import networkx as nx
     ...         G = nx.Graph()
     ...         G.add_nodes_from(stored['nodes'])
@@ -176,6 +178,18 @@ class Codec(ABC):
         -------
         any
             Value in the format expected by the dtype.
+
+        Notes
+        -----
+        **Declare ``context`` as well**: ``encode(self, value, *, key=None,
+        context=None, store_name=None)``. It carries ``schema``, ``table``,
+        ``field`` and ``config`` — the calling connection's configuration, which
+        :meth:`_codec_config` reads and which store resolution needs.
+
+        Before 2.3.4 those four arrived inside ``key`` under underscore-prefixed
+        names. That path still works and DataJoint still populates it, so a codec
+        written against it keeps running — but it is deprecated and removed in
+        2.4. Write new codecs against ``context``.
         """
         ...
 
@@ -195,8 +209,44 @@ class Codec(ABC):
         -------
         any
             The reconstructed Python object.
+
+        Notes
+        -----
+        **Declare ``context`` as well**: ``decode(self, stored, *, key=None,
+        context=None)``. On this path it carries ``config`` only — the stored
+        metadata already holds the location, so ``schema``, ``table`` and
+        ``field`` are not resolved again. Pass it to :meth:`_codec_config` for
+        the same reason :meth:`encode` does.
         """
         ...
+
+    @staticmethod
+    def _codec_config(key: dict | None = None, context: dict | None = None):
+        """
+        Return the calling connection's config, or None.
+
+        Always thread the result into ``_build_path`` and ``_get_backend``. Those
+        helpers fall back to the global ``dj.config`` without it, which in a
+        process holding connections for several users belongs to none of them and
+        resolves a different store silently rather than raising.
+
+        Prefers ``context["config"]``. Falls back to ``key["_config"]``, the
+        pre-2.3.4 location, which DataJoint still populates.
+
+        Parameters
+        ----------
+        key : dict, optional
+            The ``key`` argument the codec received.
+        context : dict, optional
+            The ``context`` argument the codec received, if it declares one.
+
+        Returns
+        -------
+        Config or None
+        """
+        if context and context.get("config") is not None:
+            return context["config"]
+        return (key or {}).get("_config")
 
     def validate(self, value: Any) -> None:
         """
@@ -562,6 +612,28 @@ def lookup_codec(codec_spec: str) -> tuple[Codec, str | None]:
 # =============================================================================
 
 
+@functools.lru_cache(maxsize=None)
+def _accepts_kwarg(func, name: str) -> bool:
+    """
+    Whether ``func`` declares a keyword parameter ``name``.
+
+    Used to offer optional arguments -- ``store_name``, ``context`` -- only to
+    codecs whose signature declares them, so a codec written before either
+    existed is called exactly as it was.
+
+    Cached on the underlying function: ``inspect.signature`` costs several
+    times more than a small ``encode`` call, and this runs per attribute per
+    row. Pass the unbound function (``type(codec).encode``), which is stable
+    per class, rather than a bound method, which is not.
+
+    Introspection rather than calling and catching ``TypeError``: an ``encode``
+    body serializes and uploads, so a ``TypeError`` raised inside it would be
+    indistinguishable from an unexpected-keyword error at the call site, and
+    retrying would both mask the real failure and repeat the upload.
+    """
+    return name in inspect.signature(func).parameters
+
+
 def decode_attribute(attr, data, squeeze: bool = False, connection=None):
     """
     Decode raw database value using attribute's codec or native type handling.
@@ -617,14 +689,21 @@ def decode_attribute(attr, data, squeeze: bool = False, connection=None):
         elif final_dtype.lower() == "binary(16)":
             data = uuid_module.UUID(bytes=data)
 
-        # Build decode key with config if connection is available
+        # Build decode key with config if connection is available. The
+        # underscore key stays for codecs written against it; `context` carries
+        # the same config to codecs that declare one -- see #1550.
         decode_key = None
+        decode_context = None
         if connection is not None:
             decode_key = {"_config": connection._config}
+            decode_context = {"config": connection._config}
 
         # Apply decoders in reverse order: innermost first, then outermost
         for codec in reversed(type_chain):
-            data = codec.decode(data, key=decode_key)
+            if _accepts_kwarg(type(codec).decode, "context"):
+                data = codec.decode(data, key=decode_key, context=decode_context)
+            else:
+                data = codec.decode(data, key=decode_key)
 
         # Squeeze arrays if requested
         if squeeze and isinstance(data, np.ndarray):

@@ -50,7 +50,9 @@ class AttachCodec(Codec):
         """Return bytes for in-table, <hash> for in-store storage."""
         return "<hash>" if is_store else "bytes"
 
-    def encode(self, value: Any, *, key: dict | None = None, store_name: str | None = None) -> bytes:
+    def encode(
+        self, value: Any, *, key: dict | None = None, context: dict | None = None, store_name: str | None = None
+    ) -> bytes:
         """
         Read file and encode as filename + contents.
 
@@ -80,7 +82,7 @@ class AttachCodec(Codec):
         contents = path.read_bytes()
         return filename.encode("utf-8") + b"\x00" + contents
 
-    def decode(self, stored: bytes, *, key: dict | None = None) -> str:
+    def decode(self, stored: bytes, *, key: dict | None = None, context: dict | None = None) -> str:
         """
         Extract file to download path and return local path.
 
@@ -104,7 +106,7 @@ class AttachCodec(Codec):
         contents = stored[null_pos + 1 :]
 
         # Write to download path
-        config = (key or {}).get("_config")
+        config = self._codec_config(key, context)
         if config is None:
             from ..settings import config  # type: ignore[assignment]
         assert config is not None

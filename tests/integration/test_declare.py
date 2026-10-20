@@ -236,6 +236,24 @@ def test_descendants_only_contain_part_table(schema_any):
     ]
 
 
+def test_braces_in_comments(schema_any):
+    """Braces in table and attribute comments are literal text, not
+    str.format template fields."""
+
+    class BraceComment(dj.Manual):
+        definition = """
+        # payload spec: {data, config}
+        brace_id : int
+        ---
+        payload = null : varchar(32)   # {data, config} payload
+        note = null : varchar(64)      # mentions {database} literally
+        """
+
+    schema_any(BraceComment, context=dict(BraceComment=BraceComment))
+    assert BraceComment.heading["payload"].comment == "{data, config} payload"
+    assert BraceComment.heading["note"].comment == "mentions {database} literally"
+
+
 def test_bad_attribute_name(schema_any):
     class BadName(dj.Manual):
         definition = """
@@ -456,6 +474,34 @@ class TestSingletonTables:
         assert result["max_workers"] == 4
         assert result["debug_mode"] == 0  # bool stored as tinyint
 
+    def test_singleton_with_an_index(self, schema_any):
+        """An index line is not an attribute, and must not suppress `_singleton`.
+
+        Whether a table needs the sentinel is decided after the parse, from the
+        primary key it produced, rather than by reading the definition text.
+        Deciding it from the text had to guess what each line contributes, and
+        read an `index (...)` line in the key section as an attribute -- which
+        left the table with no primary key and a `PRIMARY KEY ()` the server
+        rejects.
+        """
+
+        @schema_any
+        class IndexedConfig(dj.Lookup):
+            definition = """
+            index (label)
+            ---
+            label : varchar(32)
+            """
+
+        IndexedConfig.heading.attributes  # trigger the lazy load
+        assert "_singleton" in IndexedConfig.heading._attributes
+        assert IndexedConfig.heading.primary_key == []
+
+        IndexedConfig.insert1({"label": "only"})
+        assert IndexedConfig.fetch1()["label"] == "only"
+        with pytest.raises(dj.errors.DuplicateError):
+            IndexedConfig.insert1({"label": "second"})
+
     def test_singleton_describe(self, schema_any):
         """Describe should show the singleton nature."""
 
@@ -470,3 +516,73 @@ class TestSingletonTables:
         # Description should show just the secondary attribute
         assert "info" in description
         # _singleton is hidden, implementation detail
+
+
+def test_native_blob_rejects_non_bytes(schema_any):
+    """
+    A native blob column stores raw bytes. Handing it an object silently stored
+    str(object) before the guard in __make_placeholder; it must raise instead.
+    """
+    import numpy as np
+
+    @schema_any
+    class RawBinary(dj.Manual):
+        definition = """
+        id : int32
+        ---
+        data : longblob
+        """
+
+    with pytest.raises(dj.DataJointError, match="native binary type"):
+        RawBinary.insert1({"id": 1, "data": np.arange(500, dtype="float32")})
+    with pytest.raises(dj.DataJointError, match="native binary type"):
+        RawBinary.insert1({"id": 2, "data": [1, 2, 3]})
+    with pytest.raises(dj.DataJointError, match="native binary type"):
+        RawBinary.insert1({"id": 3, "data": "text"})
+
+    # bytes are what the column is for, and must round-trip untouched
+    RawBinary.insert1({"id": 4, "data": b"\x00\x01\x02"})
+    assert (RawBinary & "id=4").fetch1("data") == b"\x00\x01\x02"
+    assert len(RawBinary()) == 1  # none of the rejected inserts landed
+    RawBinary.drop_quick()
+
+
+def test_bare_blob_datatype(schema_any):
+    """`blob` without a size prefix is a MySQL type in its own right."""
+
+    @schema_any
+    class BareBlob(dj.Manual):
+        definition = """
+        id : int32
+        ---
+        data : blob
+        """
+
+    BareBlob.insert1({"id": 1, "data": b"abc"})
+    assert (BareBlob & "id=1").fetch1("data") == b"abc"
+    BareBlob.drop_quick()
+
+
+def test_decimal_with_modifiers(schema_any):
+    """
+    decimal(M,D) carrying `unsigned`, or spelled with a single argument, was valid in
+    0.14.x and must remain declarable as a native type.
+    """
+    from decimal import Decimal
+
+    @schema_any
+    class Proportion(dj.Manual):
+        definition = """
+        id : int32
+        ---
+        on_proportion  : decimal(2, 2) unsigned
+        scale          : decimal(5)
+        """
+
+    Proportion.insert1({"id": 1, "on_proportion": Decimal("0.25"), "scale": 42})
+    row = (Proportion & "id=1").fetch1()
+    assert row["on_proportion"] == Decimal("0.25")
+    assert int(row["scale"]) == 42
+    # the modified decimal must be recognized as numeric, not fall through as unsupported
+    assert Proportion.heading["on_proportion"].numeric
+    Proportion.drop_quick()

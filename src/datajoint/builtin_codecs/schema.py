@@ -4,6 +4,8 @@ Schema-addressed storage base class.
 
 from __future__ import annotations
 
+import warnings
+
 from ..codecs import Codec
 from ..errors import DataJointError
 
@@ -24,9 +26,27 @@ class SchemaCodec(Codec, register=False):
         - ``validate()``: Validate input values
 
     Helper Methods:
-        - ``_extract_context()``: Parse key dict into schema/table/field/pk
+        - ``_extract_context()``: Parse key/context into schema/table/field/pk
+        - ``_codec_config()``: Read the calling connection's config
         - ``_build_path()``: Construct storage path from context
         - ``_get_backend()``: Get storage backend by name
+
+    ``_build_path`` and ``_get_backend`` take a ``config`` and fall back to the
+    global ``dj.config`` without one. Always pass the calling connection's
+    config: in a process holding connections for several users, the global one
+    belongs to none of them, and the fallback resolves a different store
+    silently rather than raising.
+
+    Since 2.3.4 that config arrives in an explicit ``context`` argument rather
+    than hidden among the primary key values. **Declare ``context=None`` in
+    ``encode`` and ``decode`` and pass it to the helpers**, as the example below
+    does.
+
+    The old underscore keys in ``key`` still work and are still populated, so a
+    codec written before 2.3.4 keeps running. They are removed in 2.4.
+    ``_extract_context`` warns when it falls back to them; ``_codec_config`` and
+    a direct ``key["_config"]`` do not, so the warning is a prompt rather than a
+    complete inventory of what still reads them.
 
     Comparison with Hash-addressed:
         - **Schema-addressed** (this): Path from schema structure, no dedup
@@ -37,15 +57,20 @@ class SchemaCodec(Codec, register=False):
         class MyCodec(SchemaCodec):
             name = "my"
 
-            def encode(self, value, *, key=None, store_name=None):
-                schema, table, field, pk = self._extract_context(key)
-                path, _ = self._build_path(schema, table, field, pk, ext=".dat")
-                backend = self._get_backend(store_name)
+            def encode(self, value, *, key=None, context=None, store_name=None):
+                schema, table, field, pk = self._extract_context(key, context)
+                config = self._codec_config(key, context)
+                path, _ = self._build_path(
+                    schema, table, field, pk, ext=".dat",
+                    store_name=store_name, config=config,
+                )
+                backend = self._get_backend(store_name, config=config)
                 backend.put_buffer(serialize(value), path)
-                return {"path": path, "store": store_name, ...}
+                return {"path": path, "store": config.resolve_store_name(store_name), ...}
 
-            def decode(self, stored, *, key=None):
-                backend = self._get_backend(stored.get("store"))
+            def decode(self, stored, *, key=None, context=None):
+                config = self._codec_config(key, context)
+                backend = self._get_backend(stored.get("store"), config=config)
                 return MyRef(stored, backend)
 
     See Also
@@ -78,15 +103,21 @@ class SchemaCodec(Codec, register=False):
             raise DataJointError(f"<{self.name}> requires @ (store only)")
         return "json"
 
-    def _extract_context(self, key: dict | None) -> tuple[str, str, str, dict]:
+    def _extract_context(self, key: dict | None, context: dict | None = None) -> tuple[str, str, str, dict]:
         """
-        Extract schema, table, field, and primary key from context dict.
+        Extract schema, table, field, and primary key.
 
         Parameters
         ----------
         key : dict or None
-            Context dict with ``_schema``, ``_table``, ``_field``,
-            and primary key values.
+            Primary key values. Before 2.3.4 this also carried connection
+            context under ``_schema``, ``_table``, ``_field`` and ``_config``;
+            those keys are still populated and still read, with a
+            ``DeprecationWarning``, when ``context`` is not supplied.
+        context : dict or None
+            Connection context with ``schema``, ``table``, ``field`` and
+            ``config``. Pass the ``context`` argument your ``encode``/``decode``
+            received.
 
         Returns
         -------
@@ -94,9 +125,19 @@ class SchemaCodec(Codec, register=False):
             ``(schema, table, field, primary_key)``
         """
         key = dict(key) if key else {}
-        schema = key.pop("_schema", "unknown")
-        table = key.pop("_table", "unknown")
-        field = key.pop("_field", "data")
+        if context is None and any(k.startswith("_") for k in key):
+            warnings.warn(
+                "Reading connection context from the `key` dict is deprecated and will "
+                "be removed in DataJoint 2.4. Accept a `context` argument in encode()/decode() "
+                "and pass it to _extract_context(key, context). See "
+                "https://github.com/datajoint/datajoint-python/issues/1550",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        context = context or {}
+        schema = context.get("schema", key.pop("_schema", "unknown"))
+        table = context.get("table", key.pop("_table", "unknown"))
+        field = context.get("field", key.pop("_field", "data"))
         primary_key = {k: v for k, v in key.items() if not k.startswith("_")}
         return schema, table, field, primary_key
 

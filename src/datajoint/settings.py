@@ -4,11 +4,17 @@ DataJoint configuration system using pydantic-settings.
 This module provides strongly-typed configuration with automatic loading
 from environment variables, secrets directories, and JSON config files.
 
-Configuration sources (in priority order):
+Configuration sources (highest precedence first):
 
-1. Environment variables (``DJ_*``)
-2. Secrets directories (``.secrets/`` in project, ``/run/secrets/datajoint/``)
+1. Runtime assignment (``dj.config[...] = ...``)
+2. Environment variables (``DJ_*``)
 3. Project config file (``datajoint.json``, searched recursively up to ``.git/.hg``)
+4. Secrets directories (``.secrets/`` in project, ``/run/secrets/datajoint/``)
+5. Built-in defaults
+
+A value set by a higher source is not overridden by a lower one. In particular
+``datajoint.json`` takes precedence over ``.secrets/``: the secrets directory
+only supplies values the config file and environment leave unset.
 
 Examples
 --------
@@ -30,7 +36,7 @@ Project structure::
     ├── datajoint.json      # Project config (commit this)
     ├── .secrets/           # Local secrets (gitignore this)
     │   ├── database.password
-    │   └── aws.secret_access_key
+    │   └── stores.main.secret_key   # one file per setting: database.* or stores.<name>.<attr>
     └── src/
         └── analysis.py     # Config found via parent search
 """
@@ -70,6 +76,7 @@ ENV_VAR_MAPPING = {
     "database.create_tables": "DJ_CREATE_TABLES",
     "loglevel": "DJ_LOG_LEVEL",
     "display.diagram_direction": "DJ_DIAGRAM_DIRECTION",
+    "display.diagram_theme": "DJ_DIAGRAM_THEME",
 }
 
 Role = Enum("Role", "manual lookup imported computed job")
@@ -245,6 +252,14 @@ class DisplaySettings(BaseSettings):
         validation_alias="DJ_DIAGRAM_DIRECTION",
         description="Default diagram layout direction: 'TB' (top-to-bottom) or 'LR' (left-to-right)",
     )
+    diagram_theme: Literal["light", "dark", "auto"] = Field(
+        default="auto",
+        validation_alias="DJ_DIAGRAM_THEME",
+        description=(
+            "Default diagram color theme: 'auto' (single SVG that adapts to the viewer's light/dark "
+            "mode; default), 'light', or 'dark' (dark background with adjusted palette)"
+        ),
+    )
 
 
 class StoresSettings(BaseSettings):
@@ -297,6 +312,51 @@ class JobsSettings(BaseSettings):
     )
 
 
+class ProvenanceSettings(BaseSettings):
+    """Extrinsic provenance capture at pipeline entry points."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="DJ_PROVENANCE_",
+        case_sensitive=False,
+        extra="forbid",
+        validate_assignment=True,
+    )
+
+    capture: bool = Field(
+        default=False,
+        description="Add the hidden `_prov` attribute to Entry (dj.Manual) tables at declaration "
+        "and fill it on insert. Off by default, matching jobs.add_job_metadata: enabling it changes "
+        "the DDL of every Entry table declared afterwards, which is a deployment's decision rather "
+        "than a library default. Tables declared while this is False never receive the column; "
+        "use datajoint.deploy.add_prov_column to add it to an existing table.",
+    )
+    source: dict[str, Any] = Field(
+        default_factory=dict,
+        description="External source identity recorded on every row this process enters, e.g. "
+        "{'system': 'PyRat', 'endpoint': 'https://...'}. Set per deployment via "
+        "DJ_PROVENANCE_SOURCE (as JSON), the config file, or the secrets directory. "
+        "No author supplies this at the insert call site.",
+    )
+
+    @field_validator("source")
+    @classmethod
+    def _source_must_be_json_serializable(cls, value: dict) -> dict:
+        """Reject a source that cannot be recorded, at the point it is set.
+
+        Every insert into an Entry table serializes this. Without the check the
+        failure surfaces from inside an unrelated insert, naming neither
+        provenance nor the setting responsible.
+        """
+        try:
+            json.dumps(value, default=str)
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f"provenance.source must be JSON-serializable; it is recorded on every row "
+                f"entering an Entry table. {error.__class__.__name__}: {error}"
+            ) from error
+        return value
+
+
 class Config(BaseSettings):
     """
     Main DataJoint configuration.
@@ -333,6 +393,7 @@ class Config(BaseSettings):
     connection: ConnectionSettings = Field(default_factory=ConnectionSettings)
     display: DisplaySettings = Field(default_factory=DisplaySettings)
     jobs: JobsSettings = Field(default_factory=JobsSettings)
+    provenance: ProvenanceSettings = Field(default_factory=ProvenanceSettings)
 
     # Unified stores configuration (replaces external and object_storage)
     # ``validation_alias`` redirects pydantic-settings' env source away from the
@@ -386,6 +447,58 @@ class Config(BaseSettings):
             return None
         return Path(v) if not isinstance(v, Path) else v
 
+    def resolve_store_name(self, store: str | None = None, *, use_filepath_default: bool = False) -> str:
+        """
+        Name the configured store that a store reference resolves to.
+
+        An empty or missing name means the default store: ``stores.default``,
+        or ``stores.filepath_default`` for filepath references. Codecs record
+        the resolved name in their metadata, so a stored object stays tied to
+        the store it was written to even if the default is later re-pointed.
+
+        Parameters
+        ----------
+        store : str, optional
+            Store name as declared. ``""`` (the bare ``@`` form) and None both
+            mean the default store.
+        use_filepath_default : bool, optional
+            If True, resolve the default to stores.filepath_default instead of
+            stores.default. Default: False.
+
+        Returns
+        -------
+        str
+            Name of a key in ``stores``.
+
+        Raises
+        ------
+        DataJointError
+            If the default store is needed but not configured.
+        """
+        if store:
+            return store
+        # An empty name is the bare ``@`` form (``<npy@>``, ``<object@>``, ...),
+        # which the declaration keeps as "" so the codec can tell "store
+        # requested" from "no store"; it means the default store.
+        if use_filepath_default:
+            # Filepath references use separate default (not part of OAS)
+            if "filepath_default" not in self.stores:
+                raise DataJointError(
+                    "stores.filepath_default is not configured. "
+                    "Set stores.filepath_default or specify store explicitly with <filepath@store>"
+                )
+            store = self.stores["filepath_default"]
+        else:
+            # Integrated storage (hash, schema) uses stores.default
+            if "default" not in self.stores:
+                raise DataJointError("stores.default is not configured")
+            store = self.stores["default"]
+
+        if not isinstance(store, str):
+            default_key = "filepath_default" if use_filepath_default else "default"
+            raise DataJointError(f"stores.{default_key} must be a string")
+        return store
+
     def get_store_spec(self, store: str | None = None, *, use_filepath_default: bool = False) -> dict[str, Any]:
         """
         Get configuration for a storage store.
@@ -409,25 +522,7 @@ class Config(BaseSettings):
         DataJointError
             If store is not configured or has invalid config.
         """
-        # Handle default store
-        if store is None:
-            if use_filepath_default:
-                # Filepath references use separate default (not part of OAS)
-                if "filepath_default" not in self.stores:
-                    raise DataJointError(
-                        "stores.filepath_default is not configured. "
-                        "Set stores.filepath_default or specify store explicitly with <filepath@store>"
-                    )
-                store = self.stores["filepath_default"]
-            else:
-                # Integrated storage (hash, schema) uses stores.default
-                if "default" not in self.stores:
-                    raise DataJointError("stores.default is not configured")
-                store = self.stores["default"]
-
-            if not isinstance(store, str):
-                default_key = "filepath_default" if use_filepath_default else "default"
-                raise DataJointError(f"stores.{default_key} must be a string")
+        store = self.resolve_store_name(store, use_filepath_default=use_filepath_default)
 
         # Check store exists
         if store not in self.stores:

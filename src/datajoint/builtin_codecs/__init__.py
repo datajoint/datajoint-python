@@ -29,14 +29,14 @@ Example - Creating a Custom Codec:
             def get_dtype(self, is_store: bool) -> str:
                 return "<blob>"  # Compose with blob for serialization
 
-            def encode(self, graph, *, key=None, store_name=None):
+            def encode(self, graph, *, key=None, context=None, store_name=None):
                 # Convert graph to a serializable format
                 return {
                     'nodes': list(graph.nodes(data=True)),
                     'edges': list(graph.edges(data=True)),
                 }
 
-            def decode(self, stored, *, key=None):
+            def decode(self, stored, *, key=None, context=None):
                 # Reconstruct graph from stored format
                 G = nx.Graph()
                 G.add_nodes_from(stored['nodes'])

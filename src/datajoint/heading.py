@@ -44,12 +44,12 @@ class _MissingType(Codec, register=False):
             f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
         )
 
-    def encode(self, value, *, key=None, store_name=None):
+    def encode(self, value, *, key=None, context=None, store_name=None):
         raise DataJointError(
             f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
         )
 
-    def decode(self, stored, *, key=None):
+    def decode(self, stored, *, key=None, context=None):
         raise DataJointError(
             f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
         )
@@ -127,13 +127,23 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         """
         Return the full SQL comment including type markers.
 
+        A core type (``int32``, ``uuid``, ``float64``, ...) is recorded in the column
+        comment as ``:type:`` so it can be reconstructed from the database; heading
+        parsing strips the marker into ``original_type``. Restoring it here keeps the
+        core type on columns copied by a foreign key.
+
         Returns
         -------
         str
-            Comment with optional ``:uuid:`` prefix.
+            Comment with the core-type prefix, e.g. ``:int32:``, when there is one.
         """
-        # UUID info is stored in the comment for reconstruction
-        return (":uuid:" if self.uuid else "") + (self.comment or "")
+        if self.original_type:
+            marker = f":{self.original_type}:"
+        elif self.uuid:
+            marker = ":uuid:"
+        else:
+            marker = ""
+        return marker + (self.comment or "")
 
     @property
     def sql(self) -> str:
@@ -397,7 +407,11 @@ class Heading:
             return adapter.quote_identifier(name) if adapter else f'"{name}"'
 
         def render_field(name):
-            attr = self.attributes[name]
+            # `attributes` hides underscore-prefixed names, so a caller that asks
+            # for one by name -- copying `_prov` through an INSERT ... SELECT --
+            # falls back to the full set. Default field lists are unaffected:
+            # they are built from `attributes` and never contain hidden names.
+            attr = self.attributes.get(name) or self._attributes[name]
             if attr.attribute_expression is None:
                 return quote(name)
             else:
@@ -484,7 +498,11 @@ class Heading:
                 in_key=(attr["key"] == "PRI"),
                 nullable=attr["nullable"],  # Already boolean from parse_column_info
                 autoincrement=bool(re.search(r"auto_increment", attr["extra"], flags=re.I)),
-                numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "INTEGER", "FLOAT")),
+                # NOTE: .match() here is equivalent to .fullmatch() — every pattern in
+                # these tuples is anchored with $ — so this is not prefix matching.
+                # Server-reported spellings match because the patterns themselves cover
+                # them, not because of the matching mode.
+                numeric=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("DECIMAL", "NUMERIC", "INTEGER", "FLOAT")),
                 string=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("ENUM", "TEMPORAL", "STRING")),
                 is_blob=any(TYPE_PATTERN[t].match(attr["type"]) for t in ("BYTES", "NATIVE_BLOB")),
                 uuid=False,
