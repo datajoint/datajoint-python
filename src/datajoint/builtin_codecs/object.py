@@ -168,7 +168,7 @@ class ObjectCodec(SchemaCodec):
         timestamp = datetime.now(timezone.utc)
         metadata = {
             "path": path,
-            "store": store_name,
+            "store": config.resolve_store_name(store_name),
             "size": size,
             "ext": ext,
             "is_dir": is_dir,

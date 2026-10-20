@@ -203,6 +203,7 @@ def compile_foreign_key(
     adapter,
     fk_attribute_map: dict[str, tuple[str, str]] | None = None,
     fk_index_candidates: list[list[str]] | None = None,
+    column_comments: dict[str, str] | None = None,
 ) -> None:
     """
     Parse a foreign key line and update declaration components.
@@ -233,6 +234,11 @@ def compile_foreign_key(
         candidate supporting index; the redundancy/coverage decision is made
         post-parse (once the full primary key and index list are known).
         Updated in place.
+    column_comments : dict, optional
+        Mapping of ``column -> comment`` for backends that set column comments
+        out of line (PostgreSQL's ``COMMENT ON COLUMN``). Each copied column's
+        comment, with its core-type marker (e.g. ``:int32:``), is added so the
+        child keeps the parent's declared type. Updated in place.
 
     Raises
     ------
@@ -288,14 +294,17 @@ def compile_foreign_key(
             # Enum type names start with "enum_" (generated hash-based names)
             if sql_type.startswith("enum_") and adapter.backend == "postgresql":
                 sql_type = f"{adapter.quote_identifier(ref.database)}.{adapter.quote_identifier(sql_type)}"
+            comment = parent_attr.sql_comment
             col_def = adapter.format_column_definition(
                 name=attr,
                 sql_type=sql_type,
                 nullable=is_nullable,
                 default=None,
-                comment=parent_attr.sql_comment,
+                comment=comment,
             )
             attr_sql.append(col_def)
+            if comment and column_comments is not None:
+                column_comments[attr] = comment
 
         # Track FK attribute mapping for lineage: child_attr -> (parent_table, parent_attr)
         if fk_attribute_map is not None:
@@ -459,6 +468,7 @@ def prepare_declare(
                 adapter,
                 fk_attribute_map,
                 fk_index_candidates,
+                column_comments,
             )
         elif re.match(r"^(unique\s+)?index\s*\(.*\)\s*(#.*)?$", line, re.I):  # index
             compile_index(re.sub(r"\s*#.*$", "", line), index_sql, adapter)
