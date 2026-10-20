@@ -1,4 +1,5 @@
 import collections
+import contextlib
 import csv
 import inspect
 import itertools
@@ -323,12 +324,13 @@ class Table(QueryExpression):
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
         old_definition = self.describe(context=context)
-        sql, _external_stores, pre_ddl, column_comments = alter(
+        adapter = self.connection.adapter
+        sql, _external_stores, pre_ddl = alter(
             self.definition,
             old_definition,
             context,
-            self.connection.adapter,
-            schema_name=self.database,
+            adapter,
+            full_table_name=self.full_table_name,
         )
         if not sql:
             if prompt:
@@ -336,13 +338,9 @@ class Table(QueryExpression):
         else:
             # Same two steps declare() performs on its own output: substitute the
             # adapter's schema placeholder, and issue any pre-DDL the attribute
-            # types depend on. The attribute SQL is joined in after the format
-            # call, so it never passes through str.format.
-            sql = _substitute_database(
-                "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql),
-                self.database,
-            )
-            if not prompt or user_choice(sql + "\n\nExecute?") == "yes":
+            # types depend on.
+            sql = [_substitute_database(statement, self.database) for statement in sql]
+            if not prompt or user_choice(";\n".join(sql) + "\n\nExecute?") == "yes":
                 try:
                     for ddl in pre_ddl:
                         try:
@@ -353,15 +351,11 @@ class Table(QueryExpression):
                             # type may already exist. Logged rather than dropped:
                             # a genuine failure surfaces on the ALTER below.
                             logger.debug("pre-DDL skipped (%s): %s", error, ddl)
-                    self.connection.query(sql)
-                    # Reapply comments. Where they are stored out of line they
-                    # carry the `:type:` prefix heading reads back as
-                    # original_type, without which describe() loses an added
-                    # attribute's declared type and cannot re-parse the table.
-                    for col_name, comment in column_comments.items():
-                        comment_ddl = self.connection.adapter.column_comment_ddl(self.full_table_name, col_name, comment)
-                        if comment_ddl:
-                            self.connection.query(_substitute_database(comment_ddl, self.database))
+                    # Where the change takes several statements (PostgreSQL), a
+                    # failure in any of them leaves the table as it was.
+                    with self.connection.transaction if adapter.supports_transactional_ddl else contextlib.nullcontext():
+                        for statement in sql:
+                            self.connection.query(statement)
                 except AccessError:
                     # skip if no create privilege
                     pass
