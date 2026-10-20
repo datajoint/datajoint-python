@@ -160,7 +160,7 @@ def _has_subquery(condition):
     if not isinstance(condition, str):
         return False
     text = re.sub(r"(\\\")|(\\\')", "", condition)  # escaped quotes
-    text = re.sub(r"'[^']*'|\"[^\"]*\"", "", text)  # quoted text and identifiers
+    text = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", "", text)  # quoted text and identifiers
     return re.search(r"\bselect\b", text, re.IGNORECASE) is not None
 
 
@@ -178,6 +178,10 @@ def _seed_restriction(table_expr):
       to a fresh copy of the table, which rejects a subquery that names other
       tables' columns. A delete would also remove the rows the subquery reads,
       when they are downstream, before it deletes the seed itself.
+
+    Replacing a seed by its keys reads every selected primary key into Python
+    and sends them back as one condition, so a very large seed makes a large
+    query; restrict by the keys in batches if that becomes a problem.
     """
     if table_expr._top is not None or any(_has_subquery(c) for c in table_expr.restriction):
         return AndList([table_expr.keys()]), set(table_expr.primary_key)

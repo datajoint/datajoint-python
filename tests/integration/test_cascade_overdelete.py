@@ -319,7 +319,7 @@ def test_seed_condition_with_a_percent_sign(schema_by_backend):
         (Label & {"name": "50%"}, 1),
         (Label & "name = '5%%'", 3),
     ]:
-        assert len(seed) == 1
+        assert seed.to_arrays("label_id").tolist() == [label]
         assert dj.Diagram.cascade(seed).counts()[Use.full_table_name] == 1
 
     (Label & "name LIKE '50%'").delete(prompt=False)
