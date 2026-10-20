@@ -1080,8 +1080,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         # the master is materialized. The master then cascades back down to
         # all of its parts.
         intermediates = real_path[1:-1]
+        # Copy each node's attribute set too: the walk below extends it in place.
         saved = {
-            node: (copy.copy(restrictions[node]) if node in restrictions else None, self._restriction_attrs.get(node))
+            node: (
+                copy.copy(restrictions[node]) if node in restrictions else None,
+                set(self._restriction_attrs[node]) if node in self._restriction_attrs else None,
+            )
             for node in intermediates
         }
 

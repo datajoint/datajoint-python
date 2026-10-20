@@ -75,6 +75,60 @@ def test_top_seed_deletes_only_the_top_rows(schema_by_backend):
     assert sorted(Child.to_arrays("item_id")) == [3, 4]
 
 
+def test_top_seed_that_selects_no_rows_deletes_nothing(schema_by_backend):
+    """A ``Top`` over a restriction that matches nothing seeds an empty cascade:
+    the preview counts nothing and the delete removes nothing."""
+
+    @schema_by_backend
+    class Item(dj.Manual):
+        definition = """
+        item_id : int32
+        """
+
+    @schema_by_backend
+    class Child(dj.Manual):
+        definition = """
+        -> Item
+        child_id : int32
+        """
+
+    Item.insert([(i,) for i in range(3)])
+    Child.insert([(i, 0) for i in range(3)])
+
+    seed = Item & "item_id > 100" & dj.Top(2, order_by="item_id")
+    counts = dj.Diagram.cascade(seed).counts()
+    assert counts[Item.full_table_name] == 0
+    assert counts[Child.full_table_name] == 0
+
+    seed.delete(prompt=False)
+    assert len(Item()) == 3
+    assert len(Child()) == 3
+
+
+def test_top_seed_in_trace(schema_by_backend):
+    """``trace`` also starts from the rows a ``Top`` selects."""
+
+    @schema_by_backend
+    class Item(dj.Manual):
+        definition = """
+        item_id : int32
+        """
+
+    @schema_by_backend
+    class Child(dj.Manual):
+        definition = """
+        -> Item
+        child_id : int32
+        """
+
+    Item.insert([(i,) for i in range(5)])
+    Child.insert([(i, 0) for i in range(5)])
+
+    traced = dj.Diagram.trace(Child & dj.Top(2, order_by="item_id"))
+    assert traced.counts()[Child.full_table_name] == 2
+    assert traced.counts()[Item.full_table_name] == 2
+
+
 def test_nullable_fk_sharing_a_primary_key_column(schema_by_backend):
     """A child whose nullable foreign key shares a primary-key column with the
     parent keeps the rows whose foreign key is NULL: they reference nothing."""
