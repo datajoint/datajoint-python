@@ -338,11 +338,10 @@ class Job(Table):
             Priority for new jobs (lower = more urgent).
             Default from ``config.jobs.default_priority``.
         stale_timeout : float, optional
-            Seconds after which jobs are checked for staleness.
-            Jobs older than this are removed if key not in key_source.
-            Default from ``config.jobs.stale_timeout``. Set to 0 to skip the
-            age-based check; the cleanup of success and error records whose
-            keys have left both key_source and the target runs regardless.
+            Grace period in seconds for jobs whose keys are no longer in
+            key_source: such jobs are removed once older than this. 0 means no
+            grace period, and removes them on this refresh. Default None uses
+            ``config.jobs.stale_timeout``.
         orphan_timeout : float, optional
             Seconds after which reserved jobs are considered orphaned.
             Reserved jobs older than this are deleted and re-added as pending.
@@ -363,7 +362,8 @@ class Job(Table):
         3. Remove vanished jobs, judged against the unrestricted key_source:
 
            a. success and error records whose keys are in neither key_source nor target, at any age
-           b. stale jobs (except ``ignore``): older than stale_timeout, keys not in key_source
+           b. stale jobs (except ``ignore``): keys not in key_source, older than stale_timeout
+              (at any age when stale_timeout is 0)
 
         4. Remove orphaned jobs: reserved jobs older than orphan_timeout (if specified)
         """
@@ -433,11 +433,14 @@ class Job(Table):
             .delete_quick(get_count=True)
         )
 
-        # 3b. Remove stale jobs (not ignore status) - use server CURRENT_TIMESTAMP for consistent timing
+        # 3b. Remove stale jobs (not ignore status) once older than stale_timeout, a grace period
+        # for a key_source that is still being filled. stale_timeout=0 means no grace period.
+        # Age is judged on the server's CURRENT_TIMESTAMP for consistent timing.
+        stale_jobs = vanished & "status != 'ignore'"
         if stale_timeout > 0:
             stale_interval = self.adapter.interval_expr(stale_timeout, "second")
-            stale_jobs = vanished & f"created_time < CURRENT_TIMESTAMP - {stale_interval}" & "status != 'ignore'"
-            result["removed"] += stale_jobs.delete_quick(get_count=True)
+            stale_jobs = stale_jobs & f"created_time < CURRENT_TIMESTAMP - {stale_interval}"
+        result["removed"] += stale_jobs.delete_quick(get_count=True)
 
         # 4. Handle orphaned reserved jobs - use server CURRENT_TIMESTAMP for consistent timing
         if orphan_timeout is not None and orphan_timeout > 0:
