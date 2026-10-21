@@ -111,7 +111,9 @@ class Job(Table):
         base_name = target_name.lstrip("_")
         self._table_name = f"~~{base_name}"
 
-        # Generate definition from target's FK-derived primary key
+        # The target's FK-derived primary key, computed once: it generates the
+        # definition and is what an existing jobs table's primary key must match
+        self._pk_attrs = self._get_fk_derived_pk_attrs()
         self._definition = self._generate_definition()
 
         # Initialize heading and support
@@ -147,7 +149,7 @@ class Job(Table):
         str
             DataJoint table definition string.
         """
-        pk_attrs = self._get_fk_derived_pk_attrs()
+        pk_attrs = self._pk_attrs
 
         if not pk_attrs:
             raise DataJointError(
