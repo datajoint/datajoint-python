@@ -357,15 +357,29 @@ class Connection:
         On PostgreSQL, ``database.name`` selects the database, which already
         separates one namespace from another, so schema names are not prefixed.
         MySQL has no level between the server and its schemas, so
-        ``database.name`` becomes a prefix: ``name + "_"``.
+        ``database.name`` becomes a prefix: ``name + "_"``. The name may not
+        contain an underscore there: the prefix of one namespace would then
+        begin another's (``lab_`` begins ``lab_proj_``), and each would see
+        the other's schemas.
 
         Returns
         -------
         str
             The prefix, or an empty string if there is none.
+
+        Raises
+        ------
+        DataJointError
+            If ``database.name`` contains an underscore on MySQL.
         """
         name = self.conn_info.get("database_name")
         if name and self.adapter.backend == "mysql":
+            if "_" in name:
+                raise errors.DataJointError(
+                    f"database.name `{name}` contains an underscore. On MySQL it becomes the prefix "
+                    f"`{name}_` of every schema name, and an underscore would let one namespace's prefix "
+                    f"begin another's (`lab_` begins `lab_proj_`). Choose a name without underscores."
+                )
             return f"{name}_"
         return ""
 
@@ -382,8 +396,12 @@ class Connection:
         -------
         str
             The name with :attr:`schema_prefix` applied, e.g.
-            ``"lab_project_subject"``. A name that already starts with the
-            prefix is returned unchanged.
+            ``"lab_subject"``. A name that already starts with the prefix is
+            returned unchanged, with a warning, so pipelines that add the
+            prefix themselves keep reaching the same schemas. Such a name and
+            the name without the prefix therefore refer to the same schema:
+            with ``database.name = "lab"``, ``"lab_notes"`` and ``"notes"``
+            both mean ``lab_notes``.
         """
         prefix = self.schema_prefix
         if not prefix:

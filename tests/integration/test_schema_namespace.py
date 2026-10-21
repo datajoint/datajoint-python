@@ -17,7 +17,7 @@ import datajoint as dj
 @pytest.fixture
 def namespaces(connection_by_backend, db_creds_by_backend, backend, prefix):
     """Two namespaces on the same server, and a connection to each."""
-    names = [f"{prefix}_ns_a", f"{prefix}_ns_b"]
+    names = [f"{prefix.replace('_', '')}nsa", f"{prefix.replace('_', '')}nsb"]
     root = connection_by_backend
     if backend == "postgresql":
         for name in names:
@@ -112,7 +112,7 @@ def test_no_warning_for_database_name_on_mysql(db_creds_by_backend, connection_b
             host=db_creds_by_backend["host"],
             user=db_creds_by_backend["user"],
             password=db_creds_by_backend["password"],
-            database_name=f"{prefix}_ns_a",
+            database_name=f"{prefix.replace('_', '')}nsa",
         )
     conn.close()
     assert not [w for w in caught if "database.name" in str(w.message)]

@@ -208,7 +208,8 @@ class DatabaseSettings(BaseSettings):
         default=None,
         validation_alias="DJ_DATABASE_NAME",
         description="Namespace for this connection's schemas. PostgreSQL: the database to connect to "
-        "(defaults to 'postgres'). MySQL: a prefix added to every schema name, as name + '_'.",
+        "(defaults to 'postgres'). MySQL: a prefix added to every schema name, as name + '_'; "
+        "the name may not contain '_' there.",
     )
     reconnect: bool = True
     use_tls: bool | None = Field(default=None, validation_alias="DJ_USE_TLS")

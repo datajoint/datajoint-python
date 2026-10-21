@@ -21,9 +21,18 @@ def test_no_namespace_keeps_names(backend):
 
 
 def test_mysql_namespace_prefixes_names():
-    conn = _connection("mysql", "lab_project")
-    assert conn.schema_prefix == "lab_project_"
-    assert conn.qualify_schema_name("subject") == "lab_project_subject"
+    conn = _connection("mysql", "lab")
+    assert conn.schema_prefix == "lab_"
+    assert conn.qualify_schema_name("subject") == "lab_subject"
+
+
+def test_mysql_namespace_refuses_an_underscore():
+    """An underscore would let one namespace's prefix begin another's."""
+    conn = _connection("mysql", "lab_proj")
+    with pytest.raises(dj.DataJointError, match="contains an underscore"):
+        conn.schema_prefix
+    with pytest.raises(dj.DataJointError, match="contains an underscore"):
+        conn.qualify_schema_name("subject")
 
 
 def test_postgresql_namespace_is_the_database():
@@ -33,6 +42,6 @@ def test_postgresql_namespace_is_the_database():
 
 
 def test_mysql_prefixed_name_is_not_prefixed_twice():
-    conn = _connection("mysql", "lab_project")
+    conn = _connection("mysql", "lab")
     with pytest.warns(UserWarning, match="write `subject` instead"):
-        assert conn.qualify_schema_name("lab_project_subject") == "lab_project_subject"
+        assert conn.qualify_schema_name("lab_subject") == "lab_subject"
