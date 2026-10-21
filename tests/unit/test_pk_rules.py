@@ -5,6 +5,9 @@ These tests verify the functional dependency logic used to determine
 primary keys in join operations.
 """
 
+from types import SimpleNamespace
+
+from datajoint.adapters import PostgreSQLAdapter
 from datajoint.heading import Heading
 
 
@@ -205,3 +208,14 @@ class TestJoinAttributeOrdering:
         assert names.index("x") < names.index("z")
         # y should be secondary (demoted from A's PK)
         assert "y" in result.secondary_attributes
+
+
+class TestSetPrimaryKey:
+    """Tests for Heading.set_primary_key."""
+
+    def test_keeps_the_adapter_for_a_later_rename(self):
+        """A rename after set_primary_key (as dj.U & table does) quotes for the connection's backend."""
+        heading = make_heading(["a"], ["b"])
+        heading.table_info = {"conn": SimpleNamespace(adapter=PostgreSQLAdapter())}
+        renamed = heading.set_primary_key(["b"]).select([], rename_map={"c": "b"})
+        assert renamed.attributes["c"].attribute_expression == '"b"'
