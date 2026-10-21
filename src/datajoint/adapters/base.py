@@ -1138,7 +1138,12 @@ class DatabaseAdapter(ABC):
         path : str
             JSON path (e.g., 'field' or 'nested.field').
         return_type : str, optional
-            Return type specification (MySQL-specific).
+            Type to cast the extracted value to. Every backend accepts MySQL's
+            ``JSON_VALUE ... RETURNING`` spellings (``signed``, ``unsigned``,
+            ``decimal(p,s)``, ``char(n)``, ``double``, ``datetime``, ...) and the
+            common PostgreSQL spellings (``int``, ``integer``, ``bigint``,
+            ``numeric(p,s)``, ``varchar(n)``, ``text``, ``boolean``,
+            ``timestamp``, ...).
 
         Returns
         -------
@@ -1149,6 +1154,36 @@ class DatabaseAdapter(ABC):
         --------
         MySQL: json_value(`column`, _utf8mb4'$.path' returning type)
         PostgreSQL: jsonb_extract_path_text("column", 'path_part1', 'path_part2')
+        """
+        ...
+
+    @abstractmethod
+    def json_path_equals(self, column: str, path: str, value: str) -> str:
+        """
+        Generate a condition comparing the JSON value at a path with a JSON literal.
+
+        The comparison is between JSON values, not text: numbers compare
+        numerically (``64`` equals ``64.0``), booleans match only JSON booleans,
+        and a value of another JSON type (e.g. a string) is simply unequal.
+
+        Parameters
+        ----------
+        column : str
+            Column name containing JSON data.
+        path : str
+            JSON path (e.g., 'field' or 'nested.field').
+        value : str
+            JSON literal (e.g., '64', '2.5', 'true').
+
+        Returns
+        -------
+        str
+            Database-specific SQL condition.
+
+        Examples
+        --------
+        MySQL: json_extract(`column`, _utf8mb4'$.path') = cast('64' as json)
+        PostgreSQL: jsonb_extract_path("column", 'path') = '64'::jsonb
         """
         ...
 
