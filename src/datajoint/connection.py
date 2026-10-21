@@ -216,14 +216,6 @@ class Connection:
             backend = self._config["database.backend"]
         self.adapter = get_adapter(backend)
 
-        if database_name and self.adapter.backend == "mysql":
-            warnings.warn(
-                "database.name is set but the MySQL backend does not support database selection. "
-                "This setting only applies to PostgreSQL connections.",
-                UserWarning,
-                stacklevel=2,
-            )
-
         self.connect()
         if self.is_connected:
             db = self.conn_info.get("database_name")
@@ -356,6 +348,74 @@ class Connection:
         """
         self.close()
         return False
+
+    @property
+    def schema_prefix(self) -> str:
+        """
+        Prefix that ``database.name`` adds to schema names on this connection.
+
+        On PostgreSQL, ``database.name`` selects the database, which already
+        separates one namespace from another, so schema names are not prefixed.
+        MySQL has no level between the server and its schemas, so
+        ``database.name`` becomes a prefix: ``name + "_"``. The name may not
+        contain an underscore there: the prefix of one namespace would then
+        begin another's (``lab_`` begins ``lab_proj_``), and each would see
+        the other's schemas.
+
+        Returns
+        -------
+        str
+            The prefix, or an empty string if there is none.
+
+        Raises
+        ------
+        DataJointError
+            If ``database.name`` contains an underscore on MySQL.
+        """
+        name = self.conn_info.get("database_name")
+        if name and self.adapter.backend == "mysql":
+            if "_" in name:
+                raise errors.DataJointError(
+                    f"database.name `{name}` contains an underscore. On MySQL it becomes the prefix "
+                    f"`{name}_` of every schema name, and an underscore would let one namespace's prefix "
+                    f"begin another's (`lab_` begins `lab_proj_`). Choose a name without underscores."
+                )
+            return f"{name}_"
+        return ""
+
+    def qualify_schema_name(self, schema_name: str) -> str:
+        """
+        Return the name a schema has on the server.
+
+        Parameters
+        ----------
+        schema_name : str
+            Schema name as written in the pipeline, e.g. ``"subject"``.
+
+        Returns
+        -------
+        str
+            The name with :attr:`schema_prefix` applied, e.g.
+            ``"lab_subject"``. A name that already starts with the prefix is
+            returned unchanged, with a warning, so pipelines that add the
+            prefix themselves keep reaching the same schemas. Such a name and
+            the name without the prefix therefore refer to the same schema:
+            with ``database.name = "lab"``, ``"lab_notes"`` and ``"notes"``
+            both mean ``lab_notes``.
+        """
+        prefix = self.schema_prefix
+        if not prefix:
+            return schema_name
+        if schema_name.startswith(prefix):
+            warnings.warn(
+                f"Schema name `{schema_name}` already starts with the prefix `{prefix}` "
+                f"from database.name, so it is used as is. DataJoint adds the prefix itself; "
+                f"write `{schema_name[len(prefix) :]}` instead.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return schema_name
+        return prefix + schema_name
 
     def register(self, schema) -> None:
         """
