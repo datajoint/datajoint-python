@@ -1029,7 +1029,7 @@ class MySQLAdapter(DatabaseAdapter):
                 return errors.LostConnectionError("Server connection lost", *args)
 
             # Access errors
-            case 1044 | 1142:
+            case 1044 | 1142 | 1143:
                 query = args[0] if args else ""
                 return errors.AccessError("Insufficient privileges.", args[0] if args else "", query)
 
