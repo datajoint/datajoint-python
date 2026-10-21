@@ -186,3 +186,10 @@ def insert(self, rows, *, replace=False):
 - **Don't:** Repeat function signature in description
 
 See [NumPy Docstring Guide](https://numpydoc.readthedocs.io/en/latest/format.html) for full reference.
+
+## Releases
+
+Releases are annotated tags whose messages are the release notes; there is no changelog file to
+update in a pull request. A pull request's title states its user-visible change, since the
+notes are written from the titles. See [RELEASE_MEMO.md](RELEASE_MEMO.md) for how a release is
+cut.
