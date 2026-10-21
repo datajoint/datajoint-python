@@ -510,8 +510,8 @@ class Job(Table):
         - If False: deletes the job entry
         """
         if self.connection._config.jobs.keep_completed:
-            # Use server time for completed_time
-            server_now = self.connection.query("SELECT CURRENT_TIMESTAMP").fetchone()[0]
+            # Server time at the column's datetime(3) precision, as reserve() writes reserved_time
+            server_now = self.connection.query("SELECT CURRENT_TIMESTAMP(3)").fetchone()[0]
             pk = self._get_pk(key)
             update_row = {
                 **pk,
@@ -540,8 +540,8 @@ class Job(Table):
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
 
-        # Use server time for completed_time
-        server_now = self.connection.query("SELECT CURRENT_TIMESTAMP").fetchone()[0]
+        # Server time at the column's datetime(3) precision, as reserve() writes reserved_time
+        server_now = self.connection.query("SELECT CURRENT_TIMESTAMP(3)").fetchone()[0]
 
         pk = self._get_pk(key)
         update_row = {
