@@ -3,8 +3,10 @@ Hosts the table tiers, user tables should be derived from.
 """
 
 import re
+import warnings
 
 from .autopopulate import AutoPopulate
+from .dependencies import CHAIN_LEGEND, extract_master, group_cycle, is_owned
 from .errors import DataJointError
 from .table import Table
 from .utils import from_camel_case
@@ -213,6 +215,79 @@ class Part(UserTable, metaclass=PartMeta):
         + _base_regexp
         + ")"
     )
+
+    def _declare_check(self, primary_key, fk_attribute_map, foreign_keys):
+        """
+        Check the part's references before the part is created.
+
+        A part is owned by its master when a foreign key in its primary key
+        references the master, or references another owned part of the same
+        master (see :func:`~datajoint.dependencies.owned_parts`). An owned part
+        forms one group with its master. It may reference its master, an owned
+        part of the same master, or a table outside the group that does not depend
+        on the master. A reference to a table that does depend on the master would
+        make the group depend on itself, and DataJoint could no longer order its
+        tables for delete, drop or trace, so the declaration is refused.
+
+        A part that is not owned is treated as a separate table and gets a warning.
+
+        Parameters
+        ----------
+        primary_key : list
+            List of primary key attribute names.
+        fk_attribute_map : dict
+            Dict mapping child_attr -> (parent_table, parent_attr).
+        foreign_keys : list
+            One ``(parent_table, attr_map)`` entry per foreign key.
+
+        Raises
+        ------
+        DataJointError
+            If a reference would close a cycle through the part's master-part group.
+        """
+        super()._declare_check(primary_key, fk_attribute_map, foreign_keys)
+        part = self.full_table_name
+        master = extract_master(part)
+        references = [(parent, set(attr_map) <= set(primary_key)) for parent, attr_map in foreign_keys]
+        parents = [parent for parent, _ in references]
+
+        if all(parent == master for parent in parents):
+            owned = any(primary for _, primary in references)
+        else:
+            # Reload: the graph may predate tables declared or dropped since. A
+            # cycle runs through the ancestors of the referenced tables, so their
+            # schemas and everything upstream of them is enough.
+            dependencies = self.connection.dependencies
+            dependencies.clear()
+            split = self.connection.adapter.split_full_table_name
+            dependencies.load_all_upstream({self.database} | {split(parent)[0] for parent in parents})
+            owned = is_owned(dependencies, part, references)
+            if owned and (cycle := group_cycle(dependencies, part, parents)):
+                parent = cycle[-3]  # the cycle ends with the referenced table, the part, and the master
+                not_owned = (
+                    f" {parent} is a part of {master} that the master does not own: it has no primary-key reference"
+                    " to the master, either directly or through another part that has one, so it counts as a"
+                    " separate table."
+                    if extract_master(parent) == master
+                    else ""
+                )
+                raise DataJointError(
+                    f"Part table {part} cannot reference {parent}, which depends on the part's master {master}. "
+                    f"The reference would close the cycle {' -> '.join(cycle)} ({CHAIN_LEGEND}), and DataJoint "
+                    f"could no longer order these tables for delete, drop or trace.{not_owned} A part table may "
+                    "reference its master, a part that its master owns, or a table that does not depend on its master."
+                )
+
+        if not owned:
+            warnings.warn(
+                f"Part table {part} is not owned by its master {master}: it has no primary-key reference to the "
+                "master, either directly or through another part that has one. DataJoint sorts it as a separate "
+                "table, and from DataJoint 2.4 delete and trace will also treat it as a separate table rather than "
+                "as a part of its master. To make it a part of the master, reference the master in its primary key "
+                "(`-> master` above the `---` line).",
+                UserWarning,
+                stacklevel=2,
+            )
 
     def delete(self, part_integrity: str = "enforce", **kwargs):
         """
