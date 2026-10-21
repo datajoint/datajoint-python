@@ -57,8 +57,11 @@ The **DataJoint Library** is a framework for scientific data pipelines based on 
 
 ## Installation
 
+Install DataJoint with the driver for your database:
+
 ```bash
-pip install datajoint
+pip install "datajoint[postgres]"   # PostgreSQL
+pip install "datajoint[mysql]"      # MySQL
 ```
 
 or with Conda:

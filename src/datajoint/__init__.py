@@ -278,7 +278,7 @@ def FreeTable(conn_or_name, full_table_name: str | None = None) -> _FreeTable:
 # =============================================================================
 # Lazy imports — heavy dependencies loaded on first access
 # =============================================================================
-# These modules import heavy dependencies (networkx, matplotlib, click, pymysql)
+# These modules import heavy dependencies (networkx, matplotlib, click)
 # that slow down `import datajoint`. They are loaded on demand.
 
 _lazy_modules = {
