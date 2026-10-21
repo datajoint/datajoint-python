@@ -1264,8 +1264,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         # primary-key attribute of their own beyond what they inherit through
         # foreign keys. These are drawn with an underlined label. ("Schema
         # dimension" / "axis" is the documented term for such a table.)
-        # Filter nodes_to_show to only include nodes that exist in the graph
-        valid_nodes = self.nodes_to_show.intersection(set(self.nodes()))
+        # Filter nodes_to_show to only include nodes that exist in the graph.
+        # Sorted, because the rendered output follows this order: table names
+        # are strings, whose hashes are salted per process, so iterating the set
+        # would emit nodes, edges and clusters in a different order on every
+        # run (#1551).
+        valid_nodes = sorted(self.nodes_to_show.intersection(set(self.nodes())))
         for name in valid_nodes:
             foreign_attributes = set(
                 attr for p in self.in_edges(name, data=True) for attr in p[2]["attr_map"] if p[2]["primary"]
@@ -1273,12 +1277,25 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             self.nodes[name]["introduces_dimension"] = (
                 "primary_key" in self.nodes[name] and foreign_attributes < self.nodes[name]["primary_key"]
             )
-        # construct subgraph and rename nodes to class names. A MultiDiGraph is
-        # used so parallel FKs between the same pair of tables (e.g. a renamed
-        # FK alongside a direct one) survive to the renderer as distinct edges.
-        # Subgraph a plain MultiDiGraph copy — subgraphing/copying Diagram itself
-        # would try to instantiate Diagram() (which requires a `source`).
-        graph = nx.MultiDiGraph(nx.MultiDiGraph(self).subgraph(valid_nodes))
+        # Construct the drawing graph and rename nodes to class names. A
+        # MultiDiGraph is used so parallel FKs between the same pair of tables
+        # (e.g. a renamed FK alongside a direct one) survive to the renderer as
+        # distinct edges. It is built here in sorted order rather than with
+        # subgraph(): a subgraph view holding fewer than half of the nodes
+        # iterates them in set order. to_pydot() writes every node attribute
+        # into the dot source with str(), so the primary-key set is stored sorted.
+        graph = nx.MultiDiGraph()
+        for name in valid_nodes:
+            attrs = dict(self.nodes[name])
+            if "primary_key" in attrs:
+                attrs["primary_key"] = sorted(attrs["primary_key"])
+            graph.add_node(name, **attrs)
+        graph.add_edges_from(
+            sorted(
+                ((u, v, k, d) for u, v, k, d in self.edges(valid_nodes, keys=True, data=True) if v in graph),
+                key=lambda edge: (edge[0], edge[1], str(edge[2])),
+            )
+        )
         nx.set_node_attributes(graph, name="node_type", values={n: _get_tier(n) for n in graph})
         # relabel nodes to class names
         mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
@@ -1328,7 +1345,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         # Group collapsed nodes by schema
         collapsed_by_schema = {}  # schema_name -> list of class_names
-        for class_name in nodes_to_collapse:
+        for class_name in sorted(nodes_to_collapse):
             full_name = class_to_full.get(class_name)
             if full_name:
                 schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
@@ -1559,7 +1576,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         schema_map = {}  # class_name -> schema_name
         schema_modules = {}  # schema_name -> set of module names
 
-        for full_name in self.nodes_to_show:
+        for full_name in sorted(self.nodes_to_show):
             schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
             if schema_name:
                 class_name = lookup_class_name(full_name, self.context) or full_name
@@ -1803,9 +1820,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     fontname="Helvetica",  # schema label in a sans font, not Graphviz's Times default
                 )
                 node_by_name = {n.get_name().strip('"'): n for n in nodes}
-                # masters in this schema that have at least one part present
+                # masters in this schema that have at least one part present,
+                # in sorted order so the entity clusters are emitted in a fixed
+                # order (#1551)
                 masters_here = {}
-                for pn in part_names:
+                for pn in sorted(part_names):
                     mn = part_master[pn]
                     if pn in node_by_name and mn in node_by_name:
                         masters_here.setdefault(mn, []).append(pn)
@@ -1928,7 +1947,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         schema_map = {}  # class_name -> schema_name
         schema_modules = {}  # schema_name -> set of module names
 
-        for full_name in self.nodes_to_show:
+        for full_name in sorted(self.nodes_to_show):
             schema_name, _ = self._connection.adapter.split_full_table_name(full_name)
             if schema_name:
                 class_name = lookup_class_name(full_name, self.context) or full_name
