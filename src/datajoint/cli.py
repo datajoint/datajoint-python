@@ -5,8 +5,8 @@ Provides a Python REPL with DataJoint pre-loaded and optional schema access.
 
 Usage::
 
-    # Start REPL with database credentials
-    dj --user root --password secret --host localhost:3306
+    # Start REPL with database credentials (PostgreSQL unless DJ_BACKEND=mysql)
+    dj --user postgres --password secret --host localhost:5432
 
     # Load schemas as virtual modules
     dj -s my_lab:lab -s my_analysis:analysis
@@ -41,7 +41,8 @@ def cli(args: list[str] | None = None) -> None:
     --------
     From the command line::
 
-        $ dj --host localhost:3306 --user root --password secret
+        $ dj --host localhost:5432 --user postgres --password secret
+        $ DJ_BACKEND=mysql dj --host localhost:3306 --user root --password secret
         $ dj -s my_lab:lab -s my_analysis:analysis
 
     Programmatically::
@@ -52,7 +53,11 @@ def cli(args: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         prog="dj",
         description="DataJoint interactive console. Start a Python REPL with DataJoint pre-loaded.",
-        epilog="Example: dj -s my_lab:lab --host localhost:3306",
+        epilog=(
+            "The database backend is PostgreSQL unless database.backend is set in config; "
+            "for a MySQL server, set DJ_BACKEND=mysql. "
+            "Example: dj -s my_lab:lab --host localhost:5432"
+        ),
     )
     parser.add_argument(
         "-V",

@@ -21,10 +21,10 @@ Examples
 >>> import datajoint as dj
 >>> dj.config.database.host
 'localhost'
->>> dj.config.database.backend
-'mysql'
->>> dj.config.database.port  # Auto-detects: 3306 for MySQL, 5432 for PostgreSQL
-3306
+>>> dj.config.database.backend  # PostgreSQL is the default; set 'mysql' for a MySQL server
+'postgresql'
+>>> dj.config.database.port  # Follows the backend unless set: 5432 for PostgreSQL, 3306 for MySQL
+5432
 >>> with dj.config.override(safemode=False):
 ...     # dangerous operations here
 ...     pass
@@ -199,11 +199,15 @@ class DatabaseSettings(BaseSettings):
     user: str | None = Field(default=None, validation_alias="DJ_USER")
     password: SecretStr | None = Field(default=None, validation_alias="DJ_PASS")
     backend: Literal["mysql", "postgresql"] = Field(
-        default="mysql",
+        default="postgresql",
         validation_alias="DJ_BACKEND",
-        description="Database backend: 'mysql' or 'postgresql'",
+        description="Database backend: 'postgresql' (default) or 'mysql'",
     )
-    port: int | None = Field(default=None, validation_alias="DJ_PORT")
+    port: int | None = Field(
+        default=None,
+        validation_alias="DJ_PORT",
+        description="Database port. Defaults to the backend's port: 5432 for PostgreSQL, 3306 for MySQL.",
+    )
     name: str | None = Field(
         default=None,
         validation_alias="DJ_DATABASE_NAME",
@@ -225,9 +229,19 @@ class DatabaseSettings(BaseSettings):
 
     @model_validator(mode="after")
     def set_default_port_from_backend(self) -> "DatabaseSettings":
-        """Set default port based on backend if not explicitly provided."""
+        """
+        Use the backend's default port unless a port was set explicitly.
+
+        The validator also runs when a setting is assigned, so a port that was
+        not set follows later changes of the backend (for example
+        ``backend: "mysql"`` in ``datajoint.json``). Setting the port to None
+        returns it to the backend's default.
+        """
         if self.port is None:
-            self.port = 5432 if self.backend == "postgresql" else 3306
+            self.model_fields_set.discard("port")
+        if "port" not in self.model_fields_set:
+            # Write the derived port directly so that it is not recorded as set explicitly.
+            self.__dict__["port"] = 5432 if self.backend == "postgresql" else 3306
         return self
 
 
@@ -939,6 +953,9 @@ class Config(BaseSettings):
         Set ``DJ_IGNORE_CONFIG_FILE=true`` to skip both ``datajoint.json`` and
         the secrets directory entirely (env-var-only configuration).
 
+        The template selects the PostgreSQL backend on port 5432. For a MySQL
+        server, set ``backend`` to ``"mysql"`` and ``port`` to 3306.
+
         Parameters
         ----------
         path : str or Path, optional
@@ -973,15 +990,17 @@ class Config(BaseSettings):
         if minimal:
             template = {
                 "database": {
+                    "backend": "postgresql",
                     "host": "localhost",
-                    "port": 3306,
+                    "port": 5432,
                 },
             }
         else:
             template = {
                 "database": {
+                    "backend": "postgresql",
                     "host": "localhost",
-                    "port": 3306,
+                    "port": 5432,
                     "reconnect": True,
                     "use_tls": None,
                 },

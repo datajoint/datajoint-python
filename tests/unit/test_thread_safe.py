@@ -173,19 +173,26 @@ class TestInstanceBackend:
             )
             assert inst.config.database.backend == "postgresql"
 
-    def test_instance_backend_default_from_config(self, monkeypatch):
-        """Instance without backend uses config default."""
+    def test_instance_backend_default_from_config(self, monkeypatch, tmp_path):
+        """Instance without backend uses the config default, postgresql on port 5432."""
         monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        monkeypatch.delenv("DJ_BACKEND", raising=False)
+        monkeypatch.delenv("DJ_PORT", raising=False)
+        # Keep a datajoint.json in a parent directory from supplying the backend
+        (tmp_path / ".git").mkdir()
+        monkeypatch.chdir(tmp_path)
         from datajoint.instance import Instance
         from unittest.mock import patch
 
-        with patch("datajoint.instance.Connection"):
+        with patch("datajoint.instance.Connection") as MockConn:
             inst = Instance(
                 host="localhost",
-                user="root",
+                user="postgres",
                 password="secret",
             )
-            assert inst.config.database.backend == "mysql"
+            assert inst.config.database.backend == "postgresql"
+            args, kwargs = MockConn.call_args
+            assert args[3] == 5432  # port is the 4th positional arg
 
     def test_instance_backend_affects_port_default(self, monkeypatch):
         """Instance(backend='postgresql') uses port 5432 by default."""
@@ -203,6 +210,24 @@ class TestInstanceBackend:
             # Connection should be called with port 5432 (PostgreSQL default)
             args, kwargs = MockConn.call_args
             assert args[3] == 5432  # port is the 4th positional arg
+
+    def test_instance_mysql_backend_uses_port_3306(self, monkeypatch):
+        """Instance(backend='mysql') uses port 3306 by default."""
+        monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        monkeypatch.delenv("DJ_PORT", raising=False)
+        from datajoint.instance import Instance
+        from unittest.mock import patch
+
+        with patch("datajoint.instance.Connection") as MockConn:
+            inst = Instance(
+                host="localhost",
+                user="root",
+                password="secret",
+                backend="mysql",
+            )
+            assert inst.config.database.backend == "mysql"
+            args, kwargs = MockConn.call_args
+            assert args[3] == 3306
 
 
 class TestCrossConnectionValidation:

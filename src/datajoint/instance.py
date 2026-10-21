@@ -54,11 +54,12 @@ class Instance:
     password : str
         Database password.
     port : int, optional
-        Database port. Defaults to 3306 for MySQL, 5432 for PostgreSQL.
+        Database port. Defaults to 5432 for PostgreSQL, 3306 for MySQL.
     use_tls : bool or dict, optional
         TLS configuration.
     backend : str, optional
-        Database backend: ``"mysql"`` or ``"postgresql"``. Default from config.
+        Database backend: ``"postgresql"`` or ``"mysql"``. Default from config,
+        which is ``"postgresql"`` unless set.
     **kwargs : Any
         Additional config overrides applied to this instance's config.
 
@@ -112,14 +113,14 @@ class Instance:
         if port is None:
             port = self.config.database.port
 
-        # Create connection with this instance's config and backend
+        # Create connection with this instance's config. The backend comes from that
+        # config, which records whether it was set or left at the default.
         self.connection = Connection(
             host,
             user,
             password,
             port,
             use_tls,
-            backend=self.config.database.backend,
             config_override=self.config,
         )
 
