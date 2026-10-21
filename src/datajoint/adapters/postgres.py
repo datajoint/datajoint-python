@@ -1591,9 +1591,20 @@ class PostgreSQLAdapter(DatabaseAdapter):
         # to get actual enum types, then call this with results
         return []  # Placeholder - actual implementation requires query execution
 
+    def _quote_enum_type_name(self, enum_type_name: str) -> str:
+        """Quote a ``schema.typename`` enum type name, each part separately."""
+        parts = enum_type_name.split(".")
+        if len(parts) == 2:
+            return f"{self.quote_identifier(parts[0])}.{self.quote_identifier(parts[1])}"
+        return self.quote_identifier(enum_type_name)
+
     def drop_enum_type_ddl(self, enum_type_name: str) -> str:
         """
         Generate DROP TYPE IF EXISTS statement for a PostgreSQL enum.
+
+        The statement has no CASCADE: enum types are named by their values and
+        shared by every column in the schema with the same values, and CASCADE
+        would drop those columns too. A type still in use is not dropped.
 
         Parameters
         ----------
@@ -1603,12 +1614,26 @@ class PostgreSQLAdapter(DatabaseAdapter):
         Returns
         -------
         str
-            DROP TYPE IF EXISTS statement with CASCADE.
+            DROP TYPE IF EXISTS statement.
         """
-        # Split schema.typename and quote each part
-        parts = enum_type_name.split(".")
-        if len(parts) == 2:
-            qualified_name = f"{self.quote_identifier(parts[0])}.{self.quote_identifier(parts[1])}"
-        else:
-            qualified_name = self.quote_identifier(enum_type_name)
-        return f"DROP TYPE IF EXISTS {qualified_name} CASCADE"
+        return f"DROP TYPE IF EXISTS {self._quote_enum_type_name(enum_type_name)}"
+
+    def enum_type_in_use_sql(self, enum_type_name: str) -> str:
+        """
+        Query that returns a row if any table column uses a PostgreSQL enum type.
+
+        Parameters
+        ----------
+        enum_type_name : str
+            Fully qualified enum type name (schema.typename).
+
+        Returns
+        -------
+        str
+            SQL query returning at most one row.
+        """
+        return (
+            "SELECT 1 FROM pg_catalog.pg_attribute "
+            f"WHERE atttypid = {self.quote_string(self._quote_enum_type_name(enum_type_name))}::regtype "
+            "AND attnum > 0 AND NOT attisdropped LIMIT 1"
+        )

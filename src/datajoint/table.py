@@ -1267,15 +1267,20 @@ class Table(QueryExpression):
             self.connection.query(query)
             logger.info("Dropped table %s" % self.full_table_name)
 
-            # For PostgreSQL, clean up enum types after dropping the table
+            # For PostgreSQL, clean up enum types after dropping the table. An enum
+            # type is named by its values and shared by every column in the schema
+            # with the same values (every jobs table's status, for one), so it is
+            # dropped only when no column uses it any more.
             if enum_types_to_drop and hasattr(adapter, "drop_enum_type_ddl"):
                 for enum_type in enum_types_to_drop:
                     try:
+                        if self.connection.query(adapter.enum_type_in_use_sql(enum_type)).fetchone():
+                            continue
                         drop_ddl = adapter.drop_enum_type_ddl(enum_type)
                         self.connection.query(drop_ddl)
                         logger.debug("Dropped enum type %s" % enum_type)
                     except Exception:
-                        pass  # Ignore errors - type may be used by other tables
+                        pass  # Ignore errors - enum cleanup is best-effort
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
