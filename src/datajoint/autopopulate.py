@@ -662,7 +662,9 @@ class AutoPopulate:
         if jobs is not None and not jobs.reserve(key):
             return False
 
-        start_time = time.time()
+        # Elapsed time is measured on this host's monotonic clock. The start time
+        # itself is read from the server's clock when the job metadata is written.
+        started = time.monotonic()
 
         # if make is a generator, transaction can be delayed until the final stage
         is_generator = inspect.isgeneratorfunction(make)
@@ -730,7 +732,7 @@ class AutoPopulate:
                 return key, error if return_exception_objects else error_message
         else:
             self.connection.commit_transaction()
-            duration = time.time() - start_time
+            duration = time.monotonic() - started
             logger.jobs(f"Success making {key} -> {self.full_table_name}")
 
             # Update hidden job metadata if table has the columns
@@ -739,7 +741,6 @@ class AutoPopulate:
 
                 self._update_job_metadata(
                     key,
-                    start_time=datetime.datetime.fromtimestamp(start_time),
                     duration=duration,
                     version=_get_job_version(self.connection._config),
                 )
@@ -852,25 +853,33 @@ class AutoPopulate:
         all_attrs = self.heading._attributes
         return all_attrs is not None and "_job_start_time" in all_attrs
 
-    def _update_job_metadata(self, key, start_time, duration, version):
+    def _update_job_metadata(self, key, duration, version):
         """
         Update hidden job metadata for the given key.
+
+        ``_job_start_time`` is read from the server's clock: the time at which
+        this statement runs, less ``duration``. Every host that populates the
+        schema therefore records it on one clock, whatever time zone the host
+        runs in. ``_job_duration`` is measured on the populating host.
 
         Parameters
         ----------
         key : dict
             Primary key identifying the row(s) to update.
-        start_time : datetime
-            When computation started.
         duration : float
-            Computation duration in seconds.
+            Computation duration in seconds, measured on the populating host.
         version : str
             Code version (truncated to 64 chars).
         """
         from .condition import make_condition
 
+        adapter = self.connection.adapter
         pk_condition = make_condition(self, key, set())
+        start_time = (
+            f"{adapter.statement_timestamp_expr(3)} - {adapter.interval_expr(round(duration * 1_000_000), 'microsecond')}"
+        )
         self.connection.query(
-            f"UPDATE {self.full_table_name} SET _job_start_time=%s, _job_duration=%s, _job_version=%s WHERE {pk_condition}",
-            args=(start_time, duration, version[:64] if version else ""),
+            f"UPDATE {self.full_table_name} SET _job_start_time={start_time}, _job_duration=%s, _job_version=%s "
+            f"WHERE {pk_condition}",
+            args=(duration, version[:64] if version else ""),
         )

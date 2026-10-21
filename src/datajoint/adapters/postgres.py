@@ -1051,6 +1051,27 @@ class PostgreSQLAdapter(DatabaseAdapter):
             return f"CURRENT_TIMESTAMP({precision})"
         return "CURRENT_TIMESTAMP"
 
+    def statement_timestamp_expr(self, precision: int | None = None) -> str:
+        """
+        Statement start time for PostgreSQL.
+
+        PostgreSQL's ``CURRENT_TIMESTAMP`` is the start of the transaction;
+        ``statement_timestamp()`` is the start of the current statement.
+
+        Parameters
+        ----------
+        precision : int, optional
+            Fractional seconds precision (0-6).
+
+        Returns
+        -------
+        str
+            statement_timestamp(), cast to timestamptz(n) when a precision is given.
+        """
+        if precision is not None:
+            return f"CAST(statement_timestamp() AS timestamptz({precision}))"
+        return "statement_timestamp()"
+
     def interval_expr(self, value: int, unit: str) -> str:
         """
         INTERVAL expression for PostgreSQL.

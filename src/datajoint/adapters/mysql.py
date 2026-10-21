@@ -822,6 +822,26 @@ class MySQLAdapter(DatabaseAdapter):
             return f"CURRENT_TIMESTAMP({precision})"
         return "CURRENT_TIMESTAMP"
 
+    def statement_timestamp_expr(self, precision: int | None = None) -> str:
+        """
+        Statement start time for MySQL.
+
+        MySQL's ``NOW()`` is the time at which the statement began executing.
+
+        Parameters
+        ----------
+        precision : int, optional
+            Fractional seconds precision (0-6).
+
+        Returns
+        -------
+        str
+            NOW() or NOW(n).
+        """
+        if precision is not None:
+            return f"NOW({precision})"
+        return "NOW()"
+
     def interval_expr(self, value: int, unit: str) -> str:
         """
         INTERVAL expression for MySQL.
