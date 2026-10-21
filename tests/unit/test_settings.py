@@ -1,5 +1,6 @@
 """Tests for DataJoint settings module."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -308,6 +309,123 @@ class TestLoad:
         """Test loading nonexistent file raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             dj.config.load("/nonexistent/path/config.json")
+
+
+# Every setting that reads an environment variable: the variable, a value for
+# it, and a different config file value. A setting added to the models must be
+# added here too, or test_every_env_var_has_a_case fails.
+ENV_PRECEDENCE_CASES = {
+    "database.host": ("DJ_HOST", "env-host", "file-host"),
+    "database.user": ("DJ_USER", "env-user", "file-user"),
+    "database.password": ("DJ_PASS", "env-pass", "file-pass"),
+    "database.backend": ("DJ_BACKEND", "postgresql", "mysql"),
+    "database.port": ("DJ_PORT", "3307", 3308),
+    "database.name": ("DJ_DATABASE_NAME", "env_db", "file_db"),
+    "database.reconnect": ("DJ_RECONNECT", "false", True),
+    "database.use_tls": ("DJ_USE_TLS", "false", True),
+    "database.database_prefix": ("DJ_DATABASE_PREFIX", "env_", "file_"),
+    "database.create_tables": ("DJ_CREATE_TABLES", "false", True),
+    "display.diagram_direction": ("DJ_DIAGRAM_DIRECTION", "TB", "LR"),
+    "display.diagram_theme": ("DJ_DIAGRAM_THEME", "dark", "light"),
+    "jobs.auto_refresh": ("DJ_JOBS_AUTO_REFRESH", "false", True),
+    "jobs.keep_completed": ("DJ_JOBS_KEEP_COMPLETED", "true", False),
+    "jobs.stale_timeout": ("DJ_JOBS_STALE_TIMEOUT", "60", 120),
+    "jobs.default_priority": ("DJ_JOBS_DEFAULT_PRIORITY", "1", 9),
+    "jobs.version_method": ("DJ_JOBS_VERSION_METHOD", "git", "none"),
+    "jobs.allow_new_pk_fields_in_computed_tables": ("DJ_JOBS_ALLOW_NEW_PK_FIELDS_IN_COMPUTED_TABLES", "true", False),
+    "jobs.add_job_metadata": ("DJ_JOBS_ADD_JOB_METADATA", "true", False),
+    "provenance.capture": ("DJ_PROVENANCE_CAPTURE", "true", False),
+    "provenance.source": ("DJ_PROVENANCE_SOURCE", '{"system": "env"}', {"system": "file"}),
+    "loglevel": ("DJ_LOG_LEVEL", "DEBUG", "ERROR"),
+    "safemode": ("DJ_SAFEMODE", "false", True),
+    "ignore_config_file": ("DJ_IGNORE_CONFIG_FILE", "true", False),
+    "query_cache": ("DJ_QUERY_CACHE", "/env/cache", "/file/cache"),
+    "download_path": ("DJ_DOWNLOAD_PATH", "/env/downloads", "/file/downloads"),
+}
+
+
+def _precedence_params():
+    """One case per setting and config file layout: flat dot-notation, and nested for group settings."""
+    for key, (env_var, env_value, file_value) in ENV_PRECEDENCE_CASES.items():
+        yield pytest.param(key, env_var, env_value, {key: file_value}, id=f"{key}-flat")
+        if "." in key:
+            group, attr = key.split(".")
+            yield pytest.param(key, env_var, env_value, {group: {attr: file_value}}, id=f"{key}-nested")
+
+
+class TestEnvPrecedence:
+    """Environment variables take precedence over datajoint.json for every setting."""
+
+    @pytest.fixture(autouse=True)
+    def _restore_log_level(self):
+        """Setting ``loglevel`` sets the level of the datajoint logger; put it back."""
+        level = settings.logger.level
+        yield
+        settings.logger.setLevel(level)
+
+    def test_every_env_var_has_a_case(self):
+        """ENV_VAR_MAPPING, derived from the models, lists exactly the settings above.
+
+        A field's variable is its ``validation_alias``, else its model's
+        ``env_prefix`` plus the field name. Fields of a model without an
+        ``env_prefix`` (``display.limit``, ``connection.charset``) have none,
+        and ``stores`` is applied after the file by ``_apply_stores_env``.
+        """
+        expected = {key: env_var for key, (env_var, _, _) in ENV_PRECEDENCE_CASES.items()}
+        assert settings.ENV_VAR_MAPPING == expected
+
+    @pytest.mark.parametrize("key, env_var, env_value, data", list(_precedence_params()))
+    def test_env_var_beats_config_file(self, key, env_var, env_value, data, tmp_path, monkeypatch):
+        """The value read from the environment survives loading a file that sets the key."""
+        config_file = tmp_path / CONFIG_FILENAME
+        config_file.write_text(json.dumps(data))
+
+        monkeypatch.delenv(env_var, raising=False)
+        unset = settings.Config()[key]
+        monkeypatch.setenv(env_var, env_value)
+        cfg = settings.Config()
+        from_env = cfg[key]
+        assert from_env != unset  # pydantic-settings reads the variable
+
+        cfg.load(config_file)
+        assert cfg[key] == from_env  # the file does not replace it
+
+        monkeypatch.delenv(env_var)
+        cfg.load(config_file)
+        assert cfg[key] != from_env  # without the variable, the file applies
+
+    def test_issue_reproduction(self, tmp_path, monkeypatch):
+        """Settings that were missing from the hand-kept mapping now follow the environment."""
+        (tmp_path / ".git").mkdir()
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", tmp_path / "nonexistent-system-secrets")
+        (tmp_path / CONFIG_FILENAME).write_text(
+            json.dumps(
+                {
+                    "safemode": True,
+                    "database.use_tls": True,
+                    "jobs.keep_completed": False,
+                    "provenance.capture": False,
+                    "database.host": "file-host",
+                }
+            )
+        )
+        for var, value in {
+            "DJ_SAFEMODE": "false",
+            "DJ_USE_TLS": "false",
+            "DJ_JOBS_KEEP_COMPLETED": "true",
+            "DJ_PROVENANCE_CAPTURE": "true",
+            "DJ_HOST": "env-host",
+        }.items():
+            monkeypatch.setenv(var, value)
+
+        cfg = settings._create_config()
+
+        assert cfg.database.host == "env-host"
+        assert cfg.safemode is False
+        assert cfg.database.use_tls is False
+        assert cfg.jobs.keep_completed is True
+        assert cfg.provenance.capture is True
 
 
 class TestStoreSpec:
