@@ -1542,13 +1542,18 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         Notes
         -----
-        Layout direction is controlled via ``dj.config.display.diagram_direction``.
+        Layout direction is controlled via ``dj.config.display.diagram_direction``,
+        and the typeface of node and schema labels via
+        ``dj.config.display.diagram_fontname`` (default ``"Helvetica"``).
+        Graphviz sizes nodes with the face it finds on the rendering machine, so
+        a face that machine lacks changes the layout.
         Tables are grouped by schema, with the Python module name shown as the
         group label when available.
         """
         if not diagram_active:
             raise DataJointError("Install pygraphviz and pydot libraries to enable diagram visualization.")
         direction = self._connection._config.display.diagram_direction
+        fontname = self._connection._config.display.diagram_fontname
         graph = self._make_graph()
 
         # Apply collapse logic if needed
@@ -1688,7 +1693,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             node.set_fontsize(props["fontsize"])
             node.set_fontcolor(props["fontcolor"])
             node.set_shape(props["shape"])
-            node.set_fontname("Helvetica")
+            node.set_fontname(fontname)
             node.set_fixedsize("shape" if props["fixed"] else False)
             node.set_width(props["size"])
             node.set_height(props["size"])
@@ -1800,7 +1805,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     style="rounded,dashed",
                     color=sc_color,
                     fontcolor=sc_fontcolor,
-                    fontname="Helvetica",  # schema label in a sans font, not Graphviz's Times default
+                    fontname=fontname,  # the node font, not Graphviz's Times default
                 )
                 node_by_name = {n.get_name().strip('"'): n for n in nodes}
                 # masters in this schema that have at least one part present
@@ -1898,10 +1903,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         the tier palette is shared from ``_DIAGRAM_THEMES["light"]``; edge
         thickness encodes cardinality (thick = 1:1, thin = one-to-many),
         **not** primary-vs-secondary; renamed foreign keys are drawn in the
-        theme's amber. Three Graphviz features have no Mermaid equivalent and
-        are omitted: the top-right schema-label placement, the Helvetica font,
-        and the underline marking a dimension-introducing table. Dark mode is
-        left to the Mermaid host's theme rather than emitted inline.
+        theme's amber. Two Graphviz features have no Mermaid equivalent and
+        are omitted: the top-right schema-label placement and the underline
+        marking a dimension-introducing table. The typeface and dark mode are
+        left to the Mermaid host rather than emitted inline, so
+        ``display.diagram_fontname`` and ``display.diagram_theme`` do not apply.
 
         Examples
         --------
