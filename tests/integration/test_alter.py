@@ -144,12 +144,12 @@ def test_alter_part_from_another_module(pipeline):
 
 def test_alter_explicit_context(pipeline):
     """An explicit context takes precedence over the declaration context."""
-    # `Parent` resolves only in the explicit context
+    # `Upstream` is defined nowhere else, so it resolves only in the explicit context
     pipeline.Measurement.definition = """
-    -> Parent
+    -> Upstream
     ---
     value : float32
     unit = "" : varchar(16)
     """
-    pipeline.Measurement.alter(prompt=False, context={"Parent": pipeline.Item})
+    pipeline.Measurement.alter(prompt=False, context={"Upstream": pipeline.Item})
     assert pipeline.Measurement.heading.secondary_attributes == ["value", "unit"]
