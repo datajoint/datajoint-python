@@ -96,7 +96,7 @@ test = [
   "matplotlib",
   "ipython",
   "graphviz",
-  "testcontainers[mysql,minio,postgres]>=4.0",
+  "testcontainers[mysql,postgres]>=4.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]
@@ -117,7 +117,7 @@ test = [
   "matplotlib",
   "ipython",
   "s3fs>=2023.1.0",
-  "testcontainers[mysql,minio,postgres]>=4.0",
+  "testcontainers[mysql,postgres]>=4.0",
   "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
@@ -245,7 +245,7 @@ ignore-words-list = "rever,numer,astroid"
 [tool.pytest.ini_options]
 markers = [
     "requires_mysql: marks tests as requiring MySQL database (deselect with '-m \"not requires_mysql\"')",
-    "requires_minio: marks tests as requiring MinIO object storage (deselect with '-m \"not requires_minio\"')",
+    "requires_s3: marks tests as requiring S3-compatible object storage (deselect with '-m \"not requires_s3\"')",
     "mysql: marks tests that run on MySQL backend (select with '-m mysql')",
     "postgresql: marks tests that run on PostgreSQL backend (select with '-m postgresql')",
     "backend_agnostic: marks tests that should pass on all backends (auto-marked for parameterized tests)",
@@ -293,7 +293,7 @@ test-py315 = { features = ["test", "py315"] }
 test = "pytest tests/"
 test-cov = "pytest --cov-report term-missing --cov=datajoint tests/"
 # Optional: use external containers (docker-compose) instead of testcontainers
-services-up = "docker compose up -d db minio"
+services-up = "docker compose up -d db s3"
 services-down = "docker compose down"
 test-external = { cmd = "DJ_USE_EXTERNAL_CONTAINERS=1 pytest tests/", depends-on = ["services-up"] }
 

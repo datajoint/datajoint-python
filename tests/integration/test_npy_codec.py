@@ -257,14 +257,14 @@ class TestNpyCodecUnit:
 
 
 # =============================================================================
-# Integration Tests (require database + MinIO)
+# Integration Tests (require database + S3)
 # =============================================================================
 
 
 class TestNpyCodecIntegration:
     """Integration tests for NpyCodec with real storage."""
 
-    def test_insert_fetch_roundtrip(self, schema_npy, minio_client):
+    def test_insert_fetch_roundtrip(self, schema_npy, s3_client):
         """Basic insert and fetch should preserve array data."""
         rec = Recording()
         rec.delete()
@@ -284,7 +284,7 @@ class TestNpyCodecIntegration:
 
         rec.delete()
 
-    def test_npy_ref_caching(self, schema_npy, minio_client):
+    def test_npy_ref_caching(self, schema_npy, s3_client):
         """NpyRef should cache loaded data."""
         rec = Recording()
         rec.delete()
@@ -304,7 +304,7 @@ class TestNpyCodecIntegration:
 
         rec.delete()
 
-    def test_npy_ref_array_protocol(self, schema_npy, minio_client):
+    def test_npy_ref_array_protocol(self, schema_npy, s3_client):
         """NpyRef should work transparently in numpy operations."""
         rec = Recording()
         rec.delete()
@@ -331,7 +331,7 @@ class TestNpyCodecIntegration:
 
         rec.delete()
 
-    def test_npy_ref_indexing(self, schema_npy, minio_client):
+    def test_npy_ref_indexing(self, schema_npy, s3_client):
         """NpyRef should support indexing/slicing."""
         rec = Recording()
         rec.delete()
@@ -351,7 +351,7 @@ class TestNpyCodecIntegration:
 
         rec.delete()
 
-    def test_bulk_fetch_lazy(self, schema_npy, minio_client):
+    def test_bulk_fetch_lazy(self, schema_npy, s3_client):
         """Fetching via to_dicts should return NpyRefs that are lazy."""
         rec = Recording()
         rec.delete()
@@ -381,7 +381,7 @@ class TestNpyCodecIntegration:
 
         rec.delete()
 
-    def test_different_dtypes(self, schema_npy, minio_client):
+    def test_different_dtypes(self, schema_npy, s3_client):
         """NpyCodec should handle various numpy dtypes."""
         rec = Recording()
         rec.delete()
@@ -405,7 +405,7 @@ class TestNpyCodecIntegration:
 
         rec.delete()
 
-    def test_multidimensional_arrays(self, schema_npy, minio_client):
+    def test_multidimensional_arrays(self, schema_npy, s3_client):
         """NpyCodec should handle various array shapes."""
         rec = Recording()
         rec.delete()
@@ -430,7 +430,7 @@ class TestNpyCodecIntegration:
 
         rec.delete()
 
-    def test_schema_addressed_path(self, schema_npy, minio_client):
+    def test_schema_addressed_path(self, schema_npy, s3_client):
         """NpyCodec should store files with .npy extension."""
         rec = Recording()
         rec.delete()
@@ -453,7 +453,7 @@ class TestNpyCodecIntegration:
 class TestNpyCodecEdgeCases:
     """Edge case tests for NpyCodec."""
 
-    def test_empty_array(self, schema_npy, minio_client):
+    def test_empty_array(self, schema_npy, s3_client):
         """NpyCodec should handle empty arrays."""
         rec = Recording()
         rec.delete()
@@ -470,7 +470,7 @@ class TestNpyCodecEdgeCases:
 
         rec.delete()
 
-    def test_large_array(self, schema_npy, minio_client):
+    def test_large_array(self, schema_npy, s3_client):
         """NpyCodec should handle large arrays."""
         rec = Recording()
         rec.delete()
@@ -488,7 +488,7 @@ class TestNpyCodecEdgeCases:
 
         rec.delete()
 
-    def test_structured_array(self, schema_npy, minio_client):
+    def test_structured_array(self, schema_npy, s3_client):
         """NpyCodec should handle structured arrays."""
         rec = Recording()
         rec.delete()
