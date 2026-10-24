@@ -95,7 +95,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 # =============================================================================
-# Container Fixtures - Auto-start MySQL and MinIO via testcontainers
+# Container Fixtures - Auto-start MySQL, PostgreSQL, and S3 via testcontainers
 # =============================================================================
 
 # Check if we should use external containers (for CI or manual docker-compose)
@@ -164,36 +164,50 @@ def postgres_container():
 
 
 @pytest.fixture(scope="session")
-def minio_container():
-    """Start MinIO container for the test session (or use external)."""
+def s3_container():
+    """Start an S3-compatible object store for the test session (or use external)."""
     if USE_EXTERNAL_CONTAINERS:
         # Use external container - return None, credentials come from env
-        logger.info("Using external MinIO container")
+        logger.info("Using external S3 container")
         yield None
         return
 
-    from testcontainers.minio import MinioContainer
+    import time
 
-    # MinIO withdrew its public images: `minio/minio` on Docker Hub is gone
-    # entirely (any tag, not just `latest`) and `quay.io/minio/minio` now
-    # requires authentication. Chainguard publishes a maintained build that
-    # needs no credentials and is drop-in for this fixture. Overridable so a
-    # deployment can point at its own mirror without editing tests.
-    container = MinioContainer(
-        image=os.environ.get("DJ_TEST_MINIO_IMAGE", "cgr.dev/chainguard/minio:latest"),
-        access_key="datajoint",
-        secret_key="datajoint",
+    from testcontainers.core.container import DockerContainer
+
+    # SeaweedFS replaces MinIO, which withdrew its public images and archived
+    # its source (#1560). It matched MinIO on s3fs directory emulation
+    # (isdir/walk/find over prefixes and zero-byte markers), which GC depends
+    # on. Overridable so a deployment can point at its own mirror.
+    container = (
+        DockerContainer(os.environ.get("DJ_TEST_S3_IMAGE", "chrislusf/seaweedfs:4.48"))
+        .with_command("server -s3 -ip.bind=0.0.0.0")
+        .with_env("AWS_ACCESS_KEY_ID", "datajoint")
+        .with_env("AWS_SECRET_ACCESS_KEY", "datajoint")
+        .with_exposed_ports(8333)
     )
     container.start()
 
     host = container.get_container_host_ip()
-    port = container.get_exposed_port(9000)
-    logger.info(f"MinIO container started at {host}:{port}")
+    port = container.get_exposed_port(8333)
+    # The S3 gateway starts after the master, volume, and filer servers
+    deadline = time.monotonic() + 60
+    while True:
+        try:
+            urllib3.PoolManager().request("GET", f"http://{host}:{port}/", retries=False, timeout=1)
+            break
+        except urllib3.exceptions.HTTPError:
+            if time.monotonic() > deadline:
+                container.stop()
+                raise
+            time.sleep(0.5)
+    logger.info(f"S3 container started at {host}:{port}")
 
     yield container
 
     container.stop()
-    logger.info("MinIO container stopped")
+    logger.info("S3 container stopped")
 
 
 # =============================================================================
@@ -253,12 +267,12 @@ def db_creds_test(mysql_container) -> Dict:
 
 
 @pytest.fixture(scope="session")
-def s3_creds(minio_container) -> Dict:
-    """S3/MinIO credentials from container or environment."""
-    if minio_container is not None:
+def s3_creds(s3_container) -> Dict:
+    """S3 credentials from container or environment."""
+    if s3_container is not None:
         # From testcontainer
-        host = minio_container.get_container_host_ip()
-        port = minio_container.get_exposed_port(9000)
+        host = s3_container.get_container_host_ip()
+        port = s3_container.get_exposed_port(8333)
         return dict(
             endpoint=f"{host}:{port}",
             access_key="datajoint",
