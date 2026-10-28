@@ -165,12 +165,18 @@ class Table(QueryExpression):
                 f"Table class name `{self.class_name}` is invalid. "
                 "Class names must be in CamelCase, starting with a capital letter."
             )
+        foreign_keys = []
         sql, _external_stores, primary_key, fk_attribute_map, pre_ddl, post_ddl = declare(
-            self.full_table_name, self.definition, context, self.connection.adapter, config=self.connection._config
+            self.full_table_name,
+            self.definition,
+            context,
+            self.connection.adapter,
+            config=self.connection._config,
+            foreign_keys=foreign_keys,
         )
 
-        # Call declaration hook for validation (subclasses like AutoPopulate can override)
-        self._declare_check(primary_key, fk_attribute_map)
+        # Call declaration hook for validation (subclasses like AutoPopulate and Part override it)
+        self._declare_check(primary_key, fk_attribute_map, foreign_keys)
 
         sql = _substitute_database(sql, self.database)
         try:
@@ -199,12 +205,13 @@ class Table(QueryExpression):
         # Populate lineage table for this table's attributes
         self._populate_lineage(primary_key, fk_attribute_map)
 
-    def _declare_check(self, primary_key, fk_attribute_map):
+    def _declare_check(self, primary_key, fk_attribute_map, foreign_keys):
         """
         Hook for declaration-time validation. Subclasses can override.
 
         Called before the table is created in the database. Override this method
-        to add validation logic (e.g., AutoPopulate validates FK-only primary keys).
+        to add validation logic (e.g., AutoPopulate validates FK-only primary keys,
+        Part checks its references against its master).
 
         Parameters
         ----------
@@ -212,6 +219,9 @@ class Table(QueryExpression):
             List of primary key attribute names.
         fk_attribute_map : dict
             Dict mapping child_attr -> (parent_table, parent_attr).
+        foreign_keys : list
+            One ``(parent_table, attr_map)`` entry per foreign key,
+            where ``attr_map`` maps child_attr -> parent_attr.
         """
         pass  # Default: no validation
 
