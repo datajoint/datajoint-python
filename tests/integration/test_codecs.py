@@ -72,7 +72,7 @@ def test_codec_graph(schema_codec):
     c.delete()
 
 
-def test_codec_chained(schema_codec, minio_client):
+def test_codec_chained(schema_codec, s3_client):
     """Test codec chaining (layout -> blob)."""
     c = Connectivity()
     c.delete()
