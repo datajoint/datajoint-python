@@ -13,6 +13,7 @@ import decimal
 import inspect
 import json
 import logging
+import math
 import re
 import uuid
 from dataclasses import dataclass
@@ -64,6 +65,40 @@ def translate_attribute(key: str, adapter=None) -> tuple[dict | None, str]:
             return match, "json_value(`{}`, _utf8mb4'$.{}'{})".format(
                 *[((f" returning {v}" if k == "type" else v) if v else "") for k, v in match.items()]
             )
+
+
+# Python values that a JSON path restriction compares as JSON values, not as text
+_JSON_SCALAR_TYPES = (bool, numpy.bool_, int, numpy.integer, float, numpy.floating, decimal.Decimal)
+
+
+def _json_literal(value: Any) -> str:
+    """
+    Render a bool or number as a JSON literal for a JSON path comparison.
+
+    Parameters
+    ----------
+    value : bool, int, float, or decimal.Decimal
+        Value to render (numpy scalars included).
+
+    Returns
+    -------
+    str
+        JSON literal, e.g. ``'true'``, ``'64'``, ``'2.5'``.
+
+    Raises
+    ------
+    DataJointError
+        If the value is NaN or infinite, which JSON cannot represent.
+    """
+    if isinstance(value, (bool, numpy.bool_)):
+        return "true" if value else "false"
+    if isinstance(value, (int, numpy.integer)):
+        return str(int(value))
+    if isinstance(value, decimal.Decimal) and value.is_finite():
+        return str(value)
+    if isinstance(value, (float, numpy.floating)) and math.isfinite(value):
+        return json.dumps(float(value))
+    raise DataJointError(f"Cannot restrict a JSON path by the non-finite number {value}.")
 
 
 class PromiscuousOperand:
@@ -344,6 +379,11 @@ def make_condition(
             return f"{k}='{json.dumps(v)}'"
         if v is None:
             return f"{k} IS NULL"
+        if is_json_path and not key_match["type"] and isinstance(v, _JSON_SCALAR_TYPES):
+            # The extracted value is text: PostgreSQL refuses to compare it with a
+            # bool or number, and MySQL matches no bool. Compare JSON values instead,
+            # which gives the same result on both (64 matches 64.0, true only true).
+            return adapter.json_path_equals(key_match["attr"], key_match["path"], _json_literal(v))
         if key_match is not None and query_expression.heading[key_match["attr"]].uuid:
             if not isinstance(v, uuid.UUID):
                 try:
