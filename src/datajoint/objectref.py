@@ -174,15 +174,8 @@ class ObjectRef:
         protocol = self._backend.protocol
         if protocol == "file":
             return str(Path(self._backend.spec.get("location", "")) / self.path)
-        elif protocol == "s3":
-            bucket = self._backend.spec["bucket"]
-            return f"s3://{bucket}/{self.path}"
-        elif protocol == "gcs":
-            bucket = self._backend.spec["bucket"]
-            return f"gs://{bucket}/{self.path}"
-        elif protocol == "azure":
-            container = self._backend.spec["container"]
-            return f"az://{container}/{self.path}"
+        elif protocol in ("s3", "gcs", "azure"):
+            return self._backend.get_url(self.path)
         else:
             return self.path
 
