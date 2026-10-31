@@ -20,6 +20,7 @@ import functools
 import inspect
 import io
 import logging
+import re
 
 import networkx as nx
 
@@ -154,18 +155,41 @@ def _adaptive_style_block() -> str:
     return "<style>\n@media (prefers-color-scheme: dark) {\n" + body + "\n}\n</style>"
 
 
+def _has_subquery(condition):
+    """Whether a compiled restriction condition contains a subquery."""
+    if not isinstance(condition, str):
+        return False
+    text = re.sub(r"(\\\")|(\\\')", "", condition)  # escaped quotes
+    text = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", "", text)  # quoted text and identifiers
+    return re.search(r"\bselect\b", text, re.IGNORECASE) is not None
+
+
 def _seed_restriction(table_expr):
     """
     Return a traversal seed's restriction and the attributes it names.
 
-    A ``dj.Top`` restriction is an ORDER BY ... LIMIT, not part of the WHERE
-    clause, so a seed restricted by ``Top`` is replaced by the primary keys
-    it selects. Otherwise the traversal would start from every row that
-    matches the seed's other conditions.
+    Two kinds of seed are replaced by the primary keys they select:
+
+    - A ``dj.Top`` restriction is an ORDER BY ... LIMIT, not part of the WHERE
+      clause. Otherwise the traversal would start from every row that matches
+      the seed's other conditions.
+    - A restriction by another query, such as ``Subject & (Session & "quality = 0")``,
+      compiles to a subquery. The traversal applies the seed's conditions again
+      to a fresh copy of the table, which rejects a subquery that names other
+      tables' columns. A delete would also remove the rows the subquery reads,
+      when they are downstream, before it deletes the seed itself.
+
+    Replacing a seed by its keys reads every selected primary key into Python
+    and sends them back as one condition, so a very large seed makes a large
+    query; restrict by the keys in batches if that becomes a problem.
     """
-    if table_expr._top is not None:
+    if table_expr._top is not None or any(_has_subquery(c) for c in table_expr.restriction):
         return AndList([table_expr.keys()]), set(table_expr.primary_key)
-    return AndList(table_expr.restriction), set(table_expr.restriction_attributes)
+    # The seed's conditions are compiled SQL, with each % already escaped as %%
+    # for the driver. The traversal applies them again through restrict(), which
+    # escapes again, so the escape is undone here.
+    restriction = AndList(c.replace("%%", "%") if isinstance(c, str) else c for c in table_expr.restriction)
+    return restriction, set(table_expr.restriction_attributes)
 
 
 class Diagram(nx.MultiDiGraph):  # noqa: C901
