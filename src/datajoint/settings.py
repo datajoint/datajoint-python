@@ -77,6 +77,7 @@ ENV_VAR_MAPPING = {
     "loglevel": "DJ_LOG_LEVEL",
     "display.diagram_direction": "DJ_DIAGRAM_DIRECTION",
     "display.diagram_theme": "DJ_DIAGRAM_THEME",
+    "display.diagram_fontname": "DJ_DIAGRAM_FONTNAME",
 }
 
 Role = Enum("Role", "manual lookup imported computed job")
@@ -258,6 +259,16 @@ class DisplaySettings(BaseSettings):
         description=(
             "Default diagram color theme: 'auto' (single SVG that adapts to the viewer's light/dark "
             "mode; default), 'light', or 'dark' (dark background with adjusted palette)"
+        ),
+    )
+    diagram_fontname: str = Field(
+        default="Helvetica",
+        min_length=1,
+        validation_alias="DJ_DIAGRAM_FONTNAME",
+        description=(
+            "Typeface of node and schema labels in Graphviz diagrams (default 'Helvetica'). Graphviz sizes "
+            "nodes with the face it finds on the rendering machine, so a face that machine lacks changes "
+            "the layout. Set it only where the face is installed. Mermaid output names no typeface."
         ),
     )
 

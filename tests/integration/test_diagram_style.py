@@ -9,6 +9,7 @@ the adaptive `prefers-color-scheme` block. A palette, weight, or theme regressio
 fails here; a layout tweak does not.
 """
 
+import re
 import time
 
 import pytest
@@ -109,6 +110,42 @@ def test_auto_theme_is_adaptive(schema_by_backend):
     assert "@media (prefers-color-scheme: dark)" in svg, "auto theme must inject the adaptive media block"
     # base render is light; the media block maps a light color to its dark counterpart
     assert "#e8f0e9" in svg and "#16281f" in svg, "auto theme must carry both light base and dark override colors"
+
+
+def _fontnames(dot_source):
+    """Every fontname value in a DOT source, in order of appearance."""
+    return [quoted or bare for quoted, bare in re.findall(r'fontname=(?:"([^"]*)"|([^\s,;\]]+))', dot_source)]
+
+
+def test_diagram_font_default_is_helvetica(schema_by_backend):
+    """Without the setting, every node and schema label stays in Helvetica (#1539)."""
+    if not dj.diagram.diagram_active:
+        pytest.skip("networkx/pydot not available")
+    ctx = _build(schema_by_backend)
+    assert dj.config.display.diagram_fontname == "Helvetica"
+    fonts = _fontnames(dj.Diagram(schema_by_backend, context=ctx).make_dot().to_string())
+    # six table nodes (Subject, Params, Session, Session.Note, Scan, Analysis) and one schema cluster
+    assert fonts == ["Helvetica"] * len(fonts) and len(fonts) >= 7
+
+
+def test_diagram_font_setting(schema_by_backend):
+    """``display.diagram_fontname`` sets the face of every node and schema label (#1539)."""
+    if not dj.diagram.diagram_active:
+        pytest.skip("networkx/pydot not available")
+    ctx = _build(schema_by_backend)
+    diagram = dj.Diagram(schema_by_backend, context=ctx)
+    default_count = len(_fontnames(diagram.make_dot().to_string()))
+    default_mermaid = diagram.make_mermaid()
+    with dj.config.override(display__diagram_fontname="Roboto Slab"):
+        dot_source = diagram.make_dot().to_string()
+        svg = diagram.svg_string()
+        mermaid = diagram.make_mermaid()
+    fonts = _fontnames(dot_source)
+    assert fonts == ["Roboto Slab"] * default_count
+    assert "Helvetica" not in dot_source
+    assert 'font-family="Roboto Slab' in svg
+    assert mermaid == default_mermaid  # Mermaid output leaves the typeface to its host
+    assert dj.config.display.diagram_fontname == "Helvetica"  # restored after the override
 
 
 def test_mermaid_matches_modernized_notation(schema_by_backend):
