@@ -1,7 +1,12 @@
-"""Unit tests for condition.py - Top class and merge logic."""
+"""Unit tests for condition.py - Top class and merge logic, JSON path literals."""
 
+import decimal
+
+import numpy as np
 import pytest
-from datajoint.condition import Top
+
+from datajoint.condition import Top, _json_literal
+from datajoint.errors import DataJointError
 
 
 class TestTopMerge:
@@ -93,3 +98,31 @@ class TestTopValidation:
         """Non-integer offset raises TypeError."""
         with pytest.raises(TypeError):
             Top(offset="1")
+
+
+class TestJsonLiteral:
+    """Tests for rendering restriction values as JSON literals (#1564)."""
+
+    @pytest.mark.parametrize(
+        "value, literal",
+        [
+            (True, "true"),
+            (False, "false"),
+            (np.bool_(True), "true"),
+            (64, "64"),
+            (np.int64(-3), "-3"),
+            (2**70, str(2**70)),
+            (64.0, "64.0"),
+            (0.1, "0.1"),
+            (np.float32(2.5), "2.5"),
+            (1e-7, "1e-07"),
+            (decimal.Decimal("20.50"), "20.50"),
+        ],
+    )
+    def test_literal(self, value, literal):
+        assert _json_literal(value) == literal
+
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), np.float64("-inf"), decimal.Decimal("NaN")])
+    def test_non_finite_raises(self, value):
+        with pytest.raises(DataJointError):
+            _json_literal(value)
