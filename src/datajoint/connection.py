@@ -29,6 +29,13 @@ query_log_max_length = 300
 
 cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
 
+# Added to a failed connection whose backend came from the default rather than from the
+# configuration, since a MySQL server reached with the default backend fails this way.
+DEFAULT_BACKEND_HINT = (
+    "The default backend is postgresql since DataJoint 2.4; "
+    "set database.backend='mysql' (DJ_BACKEND=mysql) for a MySQL server."
+)
+
 
 def translate_query_error(client_error: Exception, query: str, adapter) -> Exception:
     """
@@ -163,6 +170,16 @@ class Connection:
         Port number. Overridden if specified in host.
     use_tls : bool or dict, optional
         TLS encryption option.
+    backend : str, optional
+        Database backend: ``"postgresql"`` or ``"mysql"``. Default from
+        ``database.backend`` in config, which is ``"postgresql"`` unless set.
+
+    Raises
+    ------
+    DataJointError
+        If the connection fails while the backend is the default rather than one
+        set by the ``backend`` argument or in config. The message adds how to
+        select the MySQL backend.
 
     Attributes
     ----------
@@ -211,20 +228,27 @@ class Connection:
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
 
-        # Select adapter: explicit backend > config backend
+        # Select adapter: explicit backend > config backend. When neither names one,
+        # the backend is the default and a failure to connect says how to change it.
+        backend_is_default = backend is None and "backend" not in self._config.database.model_fields_set
         if backend is None:
             backend = self._config["database.backend"]
-        self.adapter = get_adapter(backend)
+        try:
+            self.adapter = get_adapter(backend)
 
-        if database_name and self.adapter.backend == "mysql":
-            warnings.warn(
-                "database.name is set but the MySQL backend does not support database selection. "
-                "This setting only applies to PostgreSQL connections.",
-                UserWarning,
-                stacklevel=2,
-            )
+            if database_name and self.adapter.backend == "mysql":
+                warnings.warn(
+                    "database.name is set but the MySQL backend does not support database selection. "
+                    "This setting only applies to PostgreSQL connections.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
-        self.connect()
+            self.connect()
+        except Exception as error:
+            if backend_is_default:
+                raise errors.DataJointError(f"{str(error).rstrip()}\n{DEFAULT_BACKEND_HINT}") from error
+            raise
         if self.is_connected:
             db = self.conn_info.get("database_name")
             db_str = f"/{db}" if db else ""
