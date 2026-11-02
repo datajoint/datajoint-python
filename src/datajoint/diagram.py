@@ -20,6 +20,7 @@ import functools
 import inspect
 import io
 import logging
+import re
 
 import networkx as nx
 
@@ -154,6 +155,43 @@ def _adaptive_style_block() -> str:
     return "<style>\n@media (prefers-color-scheme: dark) {\n" + body + "\n}\n</style>"
 
 
+def _has_subquery(condition):
+    """Whether a compiled restriction condition contains a subquery."""
+    if not isinstance(condition, str):
+        return False
+    text = re.sub(r"(\\\")|(\\\')", "", condition)  # escaped quotes
+    text = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", "", text)  # quoted text and identifiers
+    return re.search(r"\bselect\b", text, re.IGNORECASE) is not None
+
+
+def _seed_restriction(table_expr):
+    """
+    Return a traversal seed's restriction and the attributes it names.
+
+    Two kinds of seed are replaced by the primary keys they select:
+
+    - A ``dj.Top`` restriction is an ORDER BY ... LIMIT, not part of the WHERE
+      clause. Otherwise the traversal would start from every row that matches
+      the seed's other conditions.
+    - A restriction by another query, such as ``Subject & (Session & "quality = 0")``,
+      compiles to a subquery. The traversal applies the seed's conditions again
+      to a fresh copy of the table, which rejects a subquery that names other
+      tables' columns. A delete would also remove the rows the subquery reads,
+      when they are downstream, before it deletes the seed itself.
+
+    Replacing a seed by its keys reads every selected primary key into Python
+    and sends them back as one condition, so a very large seed makes a large
+    query; restrict by the keys in batches if that becomes a problem.
+    """
+    if table_expr._top is not None or any(_has_subquery(c) for c in table_expr.restriction):
+        return AndList([table_expr.keys()]), set(table_expr.primary_key)
+    # The seed's conditions are compiled SQL, with each % already escaped as %%
+    # for the driver. The traversal applies them again through restrict(), which
+    # escapes again, so the escape is undone here.
+    restriction = AndList(c.replace("%%", "%") if isinstance(c, str) else c for c in table_expr.restriction)
+    return restriction, set(table_expr.restriction_attributes)
+
+
 class Diagram(nx.MultiDiGraph):  # noqa: C901
     """
     Schema diagram as a directed acyclic graph (DAG).
@@ -210,9 +248,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             self._expanded_nodes = set(source._expanded_nodes)
             self.context = source.context
             self._connection = source._connection
-            self._cascade_restrictions = copy.deepcopy(source._cascade_restrictions)
-            self._restrict_conditions = copy.deepcopy(source._restrict_conditions)
-            self._restriction_attrs = copy.deepcopy(source._restriction_attrs)
+            # Copy each node's restriction list, not its items: projected
+            # restrictions are query expressions bound to a live connection,
+            # which cannot be deep-copied.
+            self._cascade_restrictions = {k: copy.copy(v) for k, v in source._cascade_restrictions.items()}
+            self._restrict_conditions = {k: copy.copy(v) for k, v in source._restrict_conditions.items()}
+            self._restriction_attrs = {k: set(v) for k, v in source._restriction_attrs.items()}
             super().__init__(source)
             return
 
@@ -471,9 +512,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         result._expanded_nodes = set(descendants)
 
         # Seed restriction
-        restriction = AndList(table_expr.restriction)
+        restriction, restriction_attrs = _seed_restriction(table_expr)
         result._cascade_restrictions[node] = [restriction] if restriction else []
-        result._restriction_attrs[node] = set(table_expr.restriction_attributes)
+        result._restriction_attrs[node] = restriction_attrs
 
         # Propagate downstream
         result._propagate_restrictions(node, mode="cascade", part_integrity=part_integrity)
@@ -557,9 +598,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         result._expanded_nodes = set(ancestors)
 
         # Seed restriction
-        restriction = AndList(table_expr.restriction)
+        restriction, restriction_attrs = _seed_restriction(table_expr)
         result._cascade_restrictions[node] = [restriction] if restriction else []
-        result._restriction_attrs[node] = set(table_expr.restriction_attributes)
+        result._restriction_attrs[node] = restriction_attrs
 
         # Propagate upstream
         result._propagate_restrictions_upstream(node)
@@ -883,16 +924,22 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         Rules (from table.py restriction propagation):
 
-        1. Non-aliased AND parent restriction attrs ⊆ child PK:
+        1. Non-aliased AND parent restriction attrs ⊆ FK attrs ⊆ child PK:
            Copy parent restriction directly.
         2. Aliased FK (attr_map renames columns):
            ``parent.proj(**{fk: pk for fk, pk in attr_map.items()})``
-        3. Non-aliased AND parent restriction attrs ⊄ child PK:
-           ``parent.proj()``
+        3. Otherwise (non-aliased): ``parent.proj()``
+
+        Copying is exact only when the restriction names attributes that this
+        foreign key carries and the foreign key lies in the child's primary
+        key. A restriction on an attribute that the child inherits through
+        another foreign key would select child rows by that attribute instead
+        of by the parent rows they reference. A secondary foreign key may be
+        NULL, and then the child row references no parent row at all.
         """
         child_pk = self.nodes[child_node].get("primary_key", set())
 
-        if not aliased and parent_attrs and parent_attrs <= child_pk:
+        if not aliased and parent_attrs and parent_attrs <= set(attr_map) <= child_pk:
             # Rule 1: copy parent restriction directly
             parent_restr = restrictions.get(
                 parent_ft.full_table_name,
@@ -912,7 +959,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 restrictions.setdefault(child_node, AndList()).append(child_item)
             child_attrs = set(attr_map.keys())
         else:
-            # Rule 3: non-aliased, restriction attrs ⊄ child PK — project
+            # Rule 3: non-aliased, not a pure copy — project
             child_item = parent_ft.proj()
             if mode == "cascade":
                 restrictions.setdefault(child_node, []).append(child_item)
@@ -922,7 +969,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         self._restriction_attrs.setdefault(child_node, set()).update(child_attrs)
 
-    def _apply_propagation_rule_upward(self, child_ft, child_attrs, parent_node, attr_map, aliased, mode, restrictions):
+    def _apply_propagation_rule_upward(
+        self, child_ft, child_attrs, parent_node, attr_map, aliased, mode, restrictions, copy_allowed=True
+    ):
         """
         Apply the symmetric (upward) propagation rule to a parent←child edge.
 
@@ -947,10 +996,15 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
            ``child.proj(*attr_map.keys())`` — project child onto its FK columns
            (which, being non-aliased, share names with parent's PK columns) so
            the subsequent restriction on the parent joins on the right columns.
+
+        ``copy_allowed=False`` disables Rule 1, so the parent is restricted to
+        the rows that the restricted child rows actually reference. Copying
+        the child's condition would also select parent rows that no child row
+        references.
         """
         parent_pk = self.nodes[parent_node].get("primary_key", set())
 
-        if not aliased and child_attrs and child_attrs <= parent_pk:
+        if copy_allowed and not aliased and child_attrs and child_attrs <= parent_pk:
             # Backward Rule 1: copy child restriction directly
             child_restr = restrictions.get(
                 child_ft.full_table_name,
@@ -1044,6 +1098,21 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         if len(real_path) < 2 or real_path[-1] != part_node or real_path[0] != master_name:
             return False
 
+        # The walk restricts the intermediate parts only to carry the
+        # restriction up to the master. Those restrictions reference the
+        # descendant part, which is deleted first, so they are restored once
+        # the master is materialized. The master then cascades back down to
+        # all of its parts.
+        intermediates = real_path[1:-1]
+        # Copy each node's attribute set too: the walk below extends it in place.
+        saved = {
+            node: (
+                copy.copy(restrictions[node]) if node in restrictions else None,
+                set(self._restriction_attrs[node]) if node in self._restriction_attrs else None,
+            )
+            for node in intermediates
+        }
+
         # Walk real_path in reverse (child → parent direction). For each
         # adjacent (parent, child) pair, look up the FK edge props.
         any_propagated = False
@@ -1059,6 +1128,8 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             child_ft = self._restricted_table(child)
             child_attrs = self._restriction_attrs.get(child, set())
 
+            # The lift is existential: a master joins the cascade only if one
+            # of its part rows did, so the part's condition is never copied.
             self._apply_propagation_rule_upward(
                 child_ft,
                 child_attrs,
@@ -1067,6 +1138,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 aliased,
                 mode,
                 restrictions,
+                copy_allowed=False,
             )
             any_propagated = True
 
@@ -1093,6 +1165,16 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     # included with zero matches in counts/iter.
                     restrictions[master_name] = [False]
                 self._restriction_attrs.setdefault(master_name, set())
+
+        for node, (restriction, attrs) in saved.items():
+            if restriction is None:
+                restrictions.pop(node, None)
+            else:
+                restrictions[node] = restriction
+            if attrs is None:
+                self._restriction_attrs.pop(node, None)
+            else:
+                self._restriction_attrs[node] = attrs
 
         return any_propagated
 
@@ -1484,13 +1566,18 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
 
         Notes
         -----
-        Layout direction is controlled via ``dj.config.display.diagram_direction``.
+        Layout direction is controlled via ``dj.config.display.diagram_direction``,
+        and the typeface of node and schema labels via
+        ``dj.config.display.diagram_fontname`` (default ``"Helvetica"``).
+        Graphviz sizes nodes with the face it finds on the rendering machine, so
+        a face that machine lacks changes the layout.
         Tables are grouped by schema, with the Python module name shown as the
         group label when available.
         """
         if not diagram_active:
             raise DataJointError("Install pygraphviz and pydot libraries to enable diagram visualization.")
         direction = self._connection._config.display.diagram_direction
+        fontname = self._connection._config.display.diagram_fontname
         graph = self._make_graph()
 
         # Apply collapse logic if needed
@@ -1630,7 +1717,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             node.set_fontsize(props["fontsize"])
             node.set_fontcolor(props["fontcolor"])
             node.set_shape(props["shape"])
-            node.set_fontname("Helvetica")
+            node.set_fontname(fontname)
             node.set_fixedsize("shape" if props["fixed"] else False)
             node.set_width(props["size"])
             node.set_height(props["size"])
@@ -1742,7 +1829,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     style="rounded,dashed",
                     color=sc_color,
                     fontcolor=sc_fontcolor,
-                    fontname="Helvetica",  # schema label in a sans font, not Graphviz's Times default
+                    fontname=fontname,  # the node font, not Graphviz's Times default
                 )
                 node_by_name = {n.get_name().strip('"'): n for n in nodes}
                 # masters in this schema that have at least one part present
@@ -1840,10 +1927,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         the tier palette is shared from ``_DIAGRAM_THEMES["light"]``; edge
         thickness encodes cardinality (thick = 1:1, thin = one-to-many),
         **not** primary-vs-secondary; renamed foreign keys are drawn in the
-        theme's amber. Three Graphviz features have no Mermaid equivalent and
-        are omitted: the top-right schema-label placement, the Helvetica font,
-        and the underline marking a dimension-introducing table. Dark mode is
-        left to the Mermaid host's theme rather than emitted inline.
+        theme's amber. Two Graphviz features have no Mermaid equivalent and
+        are omitted: the top-right schema-label placement and the underline
+        marking a dimension-introducing table. The typeface and dark mode are
+        left to the Mermaid host rather than emitted inline, so
+        ``display.diagram_fontname`` and ``display.diagram_theme`` do not apply.
 
         Examples
         --------
