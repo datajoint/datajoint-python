@@ -327,6 +327,7 @@ ENV_PRECEDENCE_CASES = {
     "database.create_tables": ("DJ_CREATE_TABLES", "false", True),
     "display.diagram_direction": ("DJ_DIAGRAM_DIRECTION", "TB", "LR"),
     "display.diagram_theme": ("DJ_DIAGRAM_THEME", "dark", "light"),
+    "display.diagram_fontname": ("DJ_DIAGRAM_FONTNAME", "Courier", "Times"),
     "jobs.auto_refresh": ("DJ_JOBS_AUTO_REFRESH", "false", True),
     "jobs.keep_completed": ("DJ_JOBS_KEEP_COMPLETED", "true", False),
     "jobs.stale_timeout": ("DJ_JOBS_STALE_TIMEOUT", "60", 120),
