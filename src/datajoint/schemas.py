@@ -164,21 +164,23 @@ class _Schema:
             if self.exists:
                 return
             raise DataJointError("Please provide a schema_name to activate the schema.")
-        if self.database is not None and self.exists:
-            if self.database == schema_name:  # already activated
-                return
-            raise DataJointError("The schema is already activated for schema {db}.".format(db=self.database))
         if connection is not None:
             self.connection = connection
         if self.connection is None:
             self.connection = _get_singleton_connection()
         if self.connection._config.get("database.database_prefix"):
             warnings.warn(
-                "database_prefix is deprecated and will be removed in DataJoint 2.3. "
-                "Use database.name to select a PostgreSQL database instead.",
+                "database_prefix is deprecated and DataJoint does not apply it. "
+                "Set database.name instead: DataJoint then adds the prefix to schema names on MySQL "
+                "and connects to that database on PostgreSQL, so pipelines write plain schema names.",
                 DeprecationWarning,
                 stacklevel=2,
             )
+        schema_name = self.connection.qualify_schema_name(schema_name)
+        if self.database is not None and self.exists:
+            if self.database == schema_name:  # already activated
+                return
+            raise DataJointError("The schema is already activated for schema {db}.".format(db=self.database))
         self.database = schema_name
         if create_schema is not None:
             self.create_schema = create_schema
@@ -768,7 +770,11 @@ class VirtualModule(types.ModuleType):
 
 def list_schemas(connection: Connection | None = None) -> list[str]:
     """
-    List all accessible schemas on the server.
+    List the accessible schemas in the connection's namespace.
+
+    When ``database.name`` adds a prefix to schema names (MySQL), only schemas
+    with that prefix are listed, and the prefix is removed from their names, so
+    each name can be passed back to ``dj.Schema``.
 
     Parameters
     ----------
@@ -778,10 +784,14 @@ def list_schemas(connection: Connection | None = None) -> list[str]:
     Returns
     -------
     list[str]
-        Names of all accessible schemas.
+        Names of the accessible schemas, as written in pipelines.
     """
     conn = connection or _get_singleton_connection()
-    return [r[0] for r in conn.query(conn.adapter.list_schemas_sql())]
+    names = [r[0] for r in conn.query(conn.adapter.list_schemas_sql())]
+    prefix = conn.schema_prefix
+    if not prefix:
+        return names
+    return [name[len(prefix) :] for name in names if name.startswith(prefix) and len(name) > len(prefix)]
 
 
 def virtual_schema(
