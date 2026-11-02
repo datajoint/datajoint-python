@@ -1094,6 +1094,28 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def statement_timestamp_expr(self, precision: int | None = None) -> str:
+        """
+        Expression for the time at which the current statement began.
+
+        Unlike ``CURRENT_TIMESTAMP`` on PostgreSQL, which is the start of the
+        enclosing transaction, this is the start of the statement itself, so it
+        advances between statements within one transaction.
+
+        Parameters
+        ----------
+        precision : int, optional
+            Fractional seconds precision (0-6).
+
+        Returns
+        -------
+        str
+            SQL expression for the statement's start time (e.g., 'NOW(3)' for
+            MySQL, 'statement_timestamp()' for PostgreSQL).
+        """
+        ...
+
+    @abstractmethod
     def interval_expr(self, value: int, unit: str) -> str:
         """
         Expression for time interval.

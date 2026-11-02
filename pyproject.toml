@@ -9,6 +9,9 @@ dependencies = [
   "numpy",
   "pymysql>=0.7.2",
   "deepdiff",
+  # deepdiff 9 requires cachebox<6, which ships no Python 3.15 wheels and cannot
+  # be built for 3.15 (PyO3 0.27). Drop once deepdiff accepts cachebox 6.
+  "deepdiff<9; python_version >= '3.15'",
   "pyparsing",
   "pandas",
   "tqdm",
@@ -19,7 +22,7 @@ dependencies = [
   "packaging",
 ]
 
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.10,<3.16"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
@@ -62,6 +65,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Healthcare Industry",
@@ -92,7 +96,7 @@ test = [
   "matplotlib",
   "ipython",
   "graphviz",
-  "testcontainers[mysql,minio,postgres]>=4.0",
+  "testcontainers[mysql,postgres]>=4.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]
@@ -113,7 +117,7 @@ test = [
   "matplotlib",
   "ipython",
   "s3fs>=2023.1.0",
-  "testcontainers[mysql,minio,postgres]>=4.0",
+  "testcontainers[mysql,postgres]>=4.0",
   "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
@@ -241,7 +245,7 @@ ignore-words-list = "rever,numer,astroid"
 [tool.pytest.ini_options]
 markers = [
     "requires_mysql: marks tests as requiring MySQL database (deselect with '-m \"not requires_mysql\"')",
-    "requires_minio: marks tests as requiring MinIO object storage (deselect with '-m \"not requires_minio\"')",
+    "requires_s3: marks tests as requiring S3-compatible object storage (deselect with '-m \"not requires_s3\"')",
     "mysql: marks tests that run on MySQL backend (select with '-m mysql')",
     "postgresql: marks tests that run on PostgreSQL backend (select with '-m postgresql')",
     "backend_agnostic: marks tests that should pass on all backends (auto-marked for parameterized tests)",
@@ -263,12 +267,16 @@ datajoint = { path = ".", editable = true, extras = ["test"] }
 datajoint = { path = ".", editable = true, extras = ["dev", "test"] }
 
 # Pin the interpreter for the min/max supported versions so CI can exercise
-# both ends of the requires-python range (see .github/workflows/test.yaml).
+# both ends of the requires-python range, plus the previous newest release
+# (see .github/workflows/test.yaml).
 [tool.pixi.feature.py310.dependencies]
 python = "3.10.*"
 
 [tool.pixi.feature.py314.dependencies]
 python = "3.14.*"
+
+[tool.pixi.feature.py315.dependencies]
+python = "3.15.*"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
@@ -278,18 +286,19 @@ test = { features = ["test"], solve-group = "default" }
 # cannot span different Python versions).
 test-py310 = { features = ["test", "py310"] }
 test-py314 = { features = ["test", "py314"] }
+test-py315 = { features = ["test", "py315"] }
 
 [tool.pixi.tasks]
 # Tests use testcontainers - no manual setup required
 test = "pytest tests/"
 test-cov = "pytest --cov-report term-missing --cov=datajoint tests/"
 # Optional: use external containers (docker-compose) instead of testcontainers
-services-up = "docker compose up -d db minio"
+services-up = "docker compose up -d db s3"
 services-down = "docker compose down"
 test-external = { cmd = "DJ_USE_EXTERNAL_CONTAINERS=1 pytest tests/", depends-on = ["services-up"] }
 
 [tool.pixi.dependencies]
-python = ">=3.10,<3.15"
+python = ">=3.10,<3.16"
 graphviz = ">=13.1.2,<14"
 
 [tool.pixi.activation]
