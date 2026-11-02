@@ -1,5 +1,6 @@
 import collections
 import contextlib
+import copy
 import csv
 import inspect
 import itertools
@@ -316,10 +317,23 @@ class Table(QueryExpression):
     def alter(self, prompt=True, context=None):
         """
         Alter the table definition from self.definition
+
+        Parameters
+        ----------
+        prompt : bool, optional
+            If True (default), show the ALTER statement and ask for confirmation.
+        context : dict, optional
+            Namespace that resolves the definition's foreign key references.
+            Defaults to the table's declaration context, so the table alters the
+            same way wherever this is called from; a table without one uses the
+            caller's namespace.
         """
         if self.connection.in_transaction:
             raise DataJointError("Cannot update table declaration inside a transaction, e.g. from inside a populate/make call")
         if context is None:
+            context = self.declaration_context
+        if context is None:
+            # f_back is alter()'s caller, so this cannot move into a helper
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
@@ -1077,6 +1091,12 @@ class Table(QueryExpression):
         Deletes the table without cascading and without user prompt.
         If this table has populated dependent tables, this will fail.
         """
+        if self._top is not None:
+            # dj.Top is an ORDER BY ... LIMIT, not part of the WHERE clause:
+            # delete exactly the rows it selects.
+            target = copy.copy(self)
+            target._top = None
+            return (target & self.keys()).delete_quick(get_count=get_count)
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
         cursor = self.connection.query(query)
         # Use cursor.rowcount (DB-API 2.0 standard, works for both MySQL and PostgreSQL)
@@ -1241,15 +1261,20 @@ class Table(QueryExpression):
             self.connection.query(query)
             logger.info("Dropped table %s" % self.full_table_name)
 
-            # For PostgreSQL, clean up enum types after dropping the table
+            # For PostgreSQL, clean up enum types after dropping the table. An enum
+            # type is named by its values and shared by every column in the schema
+            # with the same values (every jobs table's status, for one), so it is
+            # dropped only when no column uses it any more.
             if enum_types_to_drop and hasattr(adapter, "drop_enum_type_ddl"):
                 for enum_type in enum_types_to_drop:
                     try:
+                        if self.connection.query(adapter.enum_type_in_use_sql(enum_type)).fetchone():
+                            continue
                         drop_ddl = adapter.drop_enum_type_ddl(enum_type)
                         self.connection.query(drop_ddl)
                         logger.debug("Dropped enum type %s" % enum_type)
                     except Exception:
-                        pass  # Ignore errors - type may be used by other tables
+                        pass  # Ignore errors - enum cleanup is best-effort
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 

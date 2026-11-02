@@ -1,5 +1,6 @@
 """Tests for hidden job metadata in computed tables."""
 
+import datetime
 import time
 
 import pytest
@@ -271,3 +272,80 @@ class TestConfigDisabled:
         finally:
             schema.drop()
             dj.config.jobs.add_job_metadata = original_setting
+
+
+@pytest.fixture
+def schema_by_backend(connection_by_backend, db_creds_by_backend):
+    """A fresh schema with job metadata enabled, on each backend."""
+    backend = db_creds_by_backend["backend"]
+    test_id = str(int(time.time() * 1000))[-8:]
+    schema_name = f"djtest_job_metadata_{backend}_{test_id}"[:64]
+    quoted = connection_by_backend.adapter.quote_identifier(schema_name)
+    original_setting = dj.config.jobs.add_job_metadata
+    dj.config.jobs.add_job_metadata = True
+    connection_by_backend.query(f"DROP DATABASE IF EXISTS {quoted}")
+    schema = dj.Schema(schema_name, connection=connection_by_backend)
+    yield schema
+    dj.config.jobs.add_job_metadata = original_setting
+    if connection_by_backend.is_connected:
+        connection_by_backend.query(f"DROP DATABASE IF EXISTS {quoted}")
+
+
+@pytest.fixture
+def host_time_zone(monkeypatch):
+    """Set the time zone of the populating process; the original is restored afterwards."""
+
+    def set_zone(zone):
+        monkeypatch.setenv("TZ", zone)
+        time.tzset()
+
+    yield set_zone
+    monkeypatch.undo()
+    time.tzset()
+
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="changing the process time zone needs time.tzset")
+def test_job_start_time_uses_server_clock(schema_by_backend, host_time_zone):
+    """
+    _job_start_time is read from the server's clock, whatever time zone the populating host runs in.
+
+    Two populate() calls run as if from hosts on opposite sides of the date line, 26 hours apart.
+    Each start time must fall between two readings of the server's clock taken around the call (#1584).
+    """
+
+    @schema_by_backend
+    class Source(dj.Lookup):
+        definition = """
+        source_id : int16
+        """
+        contents = [{"source_id": 1}, {"source_id": 2}]
+
+    @schema_by_backend
+    class Timed(dj.Computed):
+        definition = """
+        -> Source
+        ---
+        result : float32
+        """
+
+        def make(self, key):
+            time.sleep(0.2)
+            self.insert1(dict(key, result=1.0))
+
+    connection = schema_by_backend.connection
+    tolerance = datetime.timedelta(seconds=1)
+
+    def server_now():
+        return connection.query("SELECT LOCALTIMESTAMP(3)").fetchone()[0]
+
+    for source_id, zone in ((1, "Etc/GMT+12"), (2, "Etc/GMT-14")):
+        host_time_zone(zone)
+        before = server_now()
+        Timed.populate({"source_id": source_id})
+        after = server_now()
+        start_time, duration = connection.query(
+            f"SELECT _job_start_time, _job_duration FROM {Timed.full_table_name} WHERE source_id = {source_id}"
+        ).fetchone()
+        assert before - tolerance <= start_time <= after, f"host zone {zone}: {start_time} is not within [{before}, {after}]"
+        assert duration >= 0.2
+        assert start_time + datetime.timedelta(seconds=duration) <= after + tolerance
