@@ -175,6 +175,13 @@ class AutoPopulate:
             -------
             Job
                 Job management object for this table.
+
+            Raises
+            ------
+            DataJointError
+                If the job table exists with a primary key other than the one
+                this table's job table is declared with, as when it was left by
+                an earlier table of the same name.
             """
             if obj is None:
                 # Accessed on class - instantiate first
@@ -182,9 +189,23 @@ class AutoPopulate:
             if obj._jobs is None:
                 from .jobs import Job
 
-                obj._jobs = Job(obj)
-                if not obj._jobs.is_declared:
-                    obj._jobs.declare()
+                jobs = Job(obj)
+                if not jobs.is_declared:
+                    jobs.declare()
+                else:
+                    # A job table keyed on other attributes matches the wrong keys,
+                    # so populate(reserve_jobs=True) would skip work without an error
+                    expected = [name for name, _ in jobs._pk_attrs]
+                    if set(jobs.primary_key) != set(expected):
+                        class_name = type(obj).__name__
+                        raise DataJointError(
+                            f"Jobs table {jobs.full_table_name} has primary key {jobs.primary_key}, "
+                            f"but the jobs table of {obj.full_table_name} needs {expected}: "
+                            f"it was left by an earlier table of the same name. Remove it with "
+                            f"dj.FreeTable({class_name}.connection, {jobs.full_table_name!r}).drop_quick(); "
+                            f"the next access to {class_name}.jobs declares a new one."
+                        )
+                obj._jobs = jobs
             return obj._jobs
 
     jobs: Job = _JobsDescriptor()
