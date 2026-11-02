@@ -9,10 +9,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import pymysql as client
-
 from .. import errors
-from .base import DatabaseAdapter
+from .base import DatabaseAdapter, import_driver
+
+# The pymysql driver (the ``datajoint[mysql]`` extra), imported when the first
+# MySQLAdapter is created so that ``import datajoint`` loads no database driver.
+client: Any = None
 
 # Core type mapping: DataJoint core types → MySQL types
 CORE_TYPE_MAP = {
@@ -47,6 +49,18 @@ SQL_TO_CORE_MAP = {
 
 class MySQLAdapter(DatabaseAdapter):
     """MySQL database adapter implementation."""
+
+    def __init__(self) -> None:
+        """
+        Initialize MySQL adapter.
+
+        Raises
+        ------
+        DataJointError
+            If pymysql is not installed (``pip install "datajoint[mysql]"``).
+        """
+        global client
+        client = import_driver("pymysql", backend="MySQL", extra="mysql")
 
     # =========================================================================
     # Connection Management
@@ -175,9 +189,7 @@ class MySQLAdapter(DatabaseAdapter):
         Any
             pymysql cursor object.
         """
-        import pymysql
-
-        cursor_class = pymysql.cursors.DictCursor if as_dict else pymysql.cursors.Cursor
+        cursor_class = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         return connection.cursor(cursor=cursor_class)
 
     # =========================================================================

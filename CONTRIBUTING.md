@@ -54,12 +54,13 @@ pixi run -e test pytest -m postgresql            # PostgreSQL tests only
 export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock
 ```
 
-### PostgreSQL Backend
+### Database Backends
 
-DataJoint supports MySQL 8.0.13+ and PostgreSQL 15+ as production database backends. To install the PostgreSQL driver:
+DataJoint supports PostgreSQL 15+ and MySQL 8.0.13+ as production database backends. Each database driver is an optional extra, and the `test` and `dev` extras install both:
 
 ```bash
 pip install -e ".[postgres]"    # Installs psycopg2-binary
+pip install -e ".[mysql]"       # Installs pymysql
 ```
 
 Tests automatically spin up both MySQL and PostgreSQL containers via testcontainers. Backend-parameterized tests (those using the `backend` fixture in `tests/conftest.py`) run against both backends to ensure feature parity.

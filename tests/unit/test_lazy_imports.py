@@ -2,9 +2,11 @@
 Tests for lazy import behavior.
 
 These tests verify that heavy dependencies (networkx, matplotlib, click)
-are not loaded until their associated features are accessed.
+are not loaded until their associated features are accessed, and that
+``import datajoint`` loads no database driver.
 """
 
+import subprocess
 import sys
 
 
@@ -85,3 +87,20 @@ def test_core_imports_available():
     # Heavy modules should still not be loaded
     assert "datajoint.diagram" not in sys.modules
     assert "datajoint.cli" not in sys.modules
+
+
+def test_import_loads_no_database_driver():
+    """import datajoint should not import pymysql or psycopg2.
+
+    Drivers are optional extras, so the import must succeed without them and
+    leave the driver to the adapter that connects. A fresh interpreter is used
+    so that drivers already imported by other tests do not hide the import.
+    """
+    code = (
+        "import sys, warnings\n"
+        "warnings.simplefilter('ignore')\n"
+        "import datajoint\n"
+        "print(sorted(m for m in sys.modules if m.split('.')[0] in ('pymysql', 'psycopg2')))\n"
+    )
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    assert result.stdout.strip() == "[]", f"import datajoint loaded database drivers: {result.stdout.strip()}"

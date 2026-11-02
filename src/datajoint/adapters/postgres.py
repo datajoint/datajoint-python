@@ -10,15 +10,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
-try:
-    import psycopg2 as client
-    from psycopg2 import sql
-except ImportError:
-    client = None  # type: ignore
-    sql = None  # type: ignore
-
 from .. import errors
-from .base import DatabaseAdapter
+from .base import DatabaseAdapter, import_driver
+
+# The psycopg2 driver (the ``datajoint[postgres]`` extra), imported when the first
+# PostgreSQLAdapter is created so that ``import datajoint`` loads no database driver.
+# Either the psycopg2 or the psycopg2-binary distribution provides it.
+client: Any = None
 
 # Core type mapping: DataJoint core types → PostgreSQL types
 CORE_TYPE_MAP = {
@@ -56,11 +54,16 @@ class PostgreSQLAdapter(DatabaseAdapter):
     """PostgreSQL database adapter implementation."""
 
     def __init__(self) -> None:
-        """Initialize PostgreSQL adapter."""
-        if client is None:
-            raise ImportError(
-                "psycopg2 is required for PostgreSQL support. " "Install it with: pip install 'datajoint[postgres]'"
-            )
+        """
+        Initialize PostgreSQL adapter.
+
+        Raises
+        ------
+        DataJointError
+            If psycopg2 is not installed (``pip install "datajoint[postgres]"``).
+        """
+        global client
+        client = import_driver("psycopg2", backend="PostgreSQL", extra="postgres")
 
     # =========================================================================
     # Connection Management
