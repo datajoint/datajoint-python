@@ -551,15 +551,11 @@ class _Schema:
         list[str]
             Table names in topological order.
         """
-        self.connection.dependencies.load()
-        return [
-            t
-            for d, t in (
-                self.connection.adapter.split_full_table_name(table_name)
-                for table_name in self.connection.dependencies.topo_sort()
-            )
-            if d == self.database
-        ]
+        dependencies = self.connection.dependencies
+        dependencies.load()
+        split = self.connection.adapter.split_full_table_name
+        own = [table_name for table_name in dependencies.nodes if split(table_name)[0] == self.database]
+        return [split(table_name)[1] for table_name in dependencies.topo_sort(own)]
 
     def _find_table_name(self, name: str) -> str | None:
         """

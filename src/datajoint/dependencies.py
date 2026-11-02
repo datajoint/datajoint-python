@@ -40,9 +40,25 @@ def extract_master(part_table: str) -> str | None:
     return None
 
 
-def topo_sort(graph: nx.MultiDiGraph) -> list[str]:
+#: How to read a chain of tables joined by `` -> `` in an error message.
+CHAIN_LEGEND = "each table references the one before it or is the master of the part before it"
+
+
+def owned_parts(graph: nx.MultiDiGraph) -> set[str]:
     """
-    Topological sort keeping part tables with their masters.
+    Return the part tables that are owned by their masters.
+
+    A part is owned by its master when a foreign key in the part's primary key
+    references the master, or references another owned part of the same master.
+    The reference may rename the attributes. Only owned parts form a group with
+    their master; every other part (one with no reference to its master, or only a
+    secondary or nullable one, or only one through a part that is not owned) is
+    treated as a separate table.
+
+    Each foreign key is its own edge, renamed ones included, and carries a
+    ``primary`` flag that is True when all its attributes are in the referencing
+    table's primary key. An edge without the flag, as in a graph built by hand,
+    counts as primary.
 
     Parameters
     ----------
@@ -51,30 +67,266 @@ def topo_sort(graph: nx.MultiDiGraph) -> list[str]:
 
     Returns
     -------
-    list[str]
-        Table names in topological order with parts following masters.
+    set[str]
+        Full names of the owned parts.
     """
+    masters = {extract_master(node) for node in graph.nodes} & set(graph.nodes)
+    owned = set()
+    for master in masters:
+        frontier = [master]
+        while frontier:
+            for _, child, props in graph.out_edges(frontier.pop(), data=True):
+                if child not in owned and extract_master(child) == master and props.get("primary", True):
+                    owned.add(child)
+                    frontier.append(child)
+    return owned
 
-    graph = nx.MultiDiGraph(graph)  # make a mutable copy
 
-    # Add parts' dependencies to their masters' dependencies
+def _in_group(table: str, master: str, owned: set[str]) -> bool:
+    """Whether ``table`` is ``master`` or one of its owned parts."""
+    return table == master or (table in owned and extract_master(table) == master)
+
+
+def is_owned(graph: nx.MultiDiGraph, part: str, references: list[tuple[str, bool]]) -> bool:
+    """
+    Tell whether a new part table will be owned by its master (see :func:`owned_parts`).
+
+    Parameters
+    ----------
+    graph : nx.MultiDiGraph
+        Dependency graph of the declared tables, which does not include ``part``.
+    part : str
+        Full name of the part table being declared.
+    references : list[tuple[str, bool]]
+        One ``(parent_table, primary)`` pair per foreign key of the part, where
+        ``primary`` is True when all the foreign key's attributes are in the
+        part's primary key.
+
+    Returns
+    -------
+    bool
+        True if a primary-key reference goes to the master or to an owned part of it.
+    """
+    master = extract_master(part)
+    if master not in graph:
+        return False
+    owned = owned_parts(graph)
+    return any(primary and _in_group(parent, master, owned) for parent, primary in references)
+
+
+def group_graph(graph: nx.MultiDiGraph, owned: set[str] | None = None) -> nx.MultiDiGraph:
+    """
+    Copy a dependency graph and add an edge from each owned part to its master.
+
+    A master's rows are inserted and deleted together with its owned parts' rows,
+    so a master depends on everything its owned parts depend on. With the added
+    edges, ``nx.ancestors`` gives a table's ancestors where reaching a master also
+    reaches all of its owned parts, and ``nx.descendants`` gives the converse,
+    where reaching an owned part also reaches its master. These are the
+    dependencies that :func:`topo_sort` orders. Parts that are not owned are
+    treated as separate tables.
+
+    The added edges form a cycle with each owned part, so the result is for
+    reachability only, not for sorting.
+
+    Parameters
+    ----------
+    graph : nx.MultiDiGraph
+        Dependency graph.
+    owned : set[str], optional
+        The owned parts, if already computed with :func:`owned_parts`.
+
+    Returns
+    -------
+    nx.MultiDiGraph
+        A copy of ``graph`` with an edge from each owned part to its master.
+    """
+    owned = owned_parts(graph) if owned is None else owned
+    graph = nx.MultiDiGraph(graph)
+    for part in list(graph.nodes):
+        if part in owned:
+            graph.add_edge(part, extract_master(part), key="master")
+    return graph
+
+
+def group_ancestors(graph: nx.MultiDiGraph, table: str) -> set[str]:
+    """
+    Return a table and its ancestors, where reaching a master reaches all its owned parts.
+
+    The closure starts from ``table`` and adds the parents of every table in it,
+    and all the owned parts of every master in it, until nothing new is added. An
+    owned part reaches its master through its own references.
+
+    Parameters
+    ----------
+    graph : nx.MultiDiGraph
+        Dependency graph.
+    table : str
+        Full table name.
+
+    Returns
+    -------
+    set[str]
+        ``table`` and every table it depends on.
+    """
+    return {table} | nx.ancestors(group_graph(graph), table)
+
+
+def group_cycle(graph: nx.MultiDiGraph, part: str, parents: list[str]) -> list[str] | None:
+    """
+    Find the cycle that the references of a new owned part would close.
+
+    An owned part may reference its master, an owned part of the same master, or
+    a table outside its master-part group, which includes the master's parts that
+    are not owned. A reference to a table outside the group closes a cycle when
+    that table already depends on the part's master (see :func:`group_ancestors`):
+    the group would then depend on itself, and :func:`topo_sort` could no longer
+    order its tables.
+
+    A new table has no children yet, so only the references of a new owned part
+    to tables outside its group can close such a cycle. A part that is not owned
+    is a separate table and closes none (see :func:`is_owned`). Checking owned
+    parts when they are declared therefore keeps every cycle out.
+
+    Parameters
+    ----------
+    graph : nx.MultiDiGraph
+        Dependency graph of the declared tables, which does not include ``part``.
+    part : str
+        Full name of the owned part table being declared.
+    parents : list[str]
+        Full names of the tables the part references.
+
+    Returns
+    -------
+    list[str] or None
+        The cycle as a chain of tables joined by `` -> `` that starts and
+        ends at the part's master, or None if the references close no cycle.
+    """
+    master = extract_master(part)
+    if master not in graph:
+        return None
+    owned = owned_parts(graph)
+    outside = [p for p in parents if p in graph and not _in_group(p, master, owned)]
+    if not outside:
+        return None
+    extended = group_graph(graph, owned)
+    for parent in outside:
+        try:
+            path = nx.shortest_path(extended, master, parent)
+        except nx.NetworkXNoPath:
+            continue
+        return path + [part, master]
+    return None
+
+
+def _reachable(graph: nx.MultiDiGraph, sources: set[str], upstream: bool) -> set[str]:
+    """Return the tables reachable from any of ``sources``, sources excluded unless reached."""
+    step = graph.predecessors if upstream else graph.successors
+    reached = set()
+    frontier = list(sources)
+    while frontier:
+        for node in step(frontier.pop()):
+            if node not in reached:
+                reached.add(node)
+                frontier.append(node)
+    return reached
+
+
+def _cycle_error(graph: nx.MultiDiGraph) -> DataJointError:
+    """
+    Describe a cycle in the graph that :func:`topo_sort` failed to sort.
+
+    ``graph`` carries the edges ``topo_sort`` adds from a part's parents to its
+    master, each marked with the part it stands for.
+    """
+    edges = nx.find_cycle(graph)
+    # Start the chain at a master that the cycle reaches through one of its parts.
+    added = [i for i, (u, v, k) in enumerate(edges) if graph.edges[u, v, k].get("part")]
+    if added:
+        edges = edges[added[0] + 1 :] + edges[: added[0] + 1]
+    chain = [edges[0][0]]
+    parts = []
+    for u, v, k in edges:
+        if part := graph.edges[u, v, k].get("part"):
+            chain.append(part)
+            parts.append(part)
+        chain.append(v)
+    message = f"Cannot order tables whose dependencies form a cycle: {' -> '.join(chain)} ({CHAIN_LEGEND})."
+    if parts:
+        names = " and ".join(parts)
+        which = f"part table {names} references" if len(parts) == 1 else f"part tables {names} each reference"
+        message += (
+            f" The cycle runs through master-part groups: {which} a table that depends on its own master, which"
+            " can no longer be declared. To restore delete, drop and trace on these tables, drop "
+            f"{'that part' if len(parts) == 1 else 'one of these parts'} with `drop(part_integrity='ignore')` and"
+            " declare it without that reference."
+        )
+    return DataJointError(message)
+
+
+def topo_sort(graph: nx.MultiDiGraph, nodes=None) -> list[str]:
+    """
+    Topological sort keeping owned part tables with their masters.
+
+    Each owned part (see :func:`owned_parts`) is placed right after its master, so
+    the master is ordered after every table its owned parts reference. Parts that
+    are not owned are sorted as separate tables.
+
+    Parameters
+    ----------
+    graph : nx.MultiDiGraph
+        Dependency graph.
+    nodes : iterable of str, optional
+        Tables to sort. If given, only these tables and the tables on dependency
+        paths between them are sorted, so a cycle elsewhere in the graph does not
+        prevent ordering them, and only these tables are returned. Tables not in
+        the graph are ignored. If None (default), all tables are sorted.
+
+    Returns
+    -------
+    list[str]
+        Table names in topological order with owned parts following their masters.
+
+    Raises
+    ------
+    DataJointError
+        If the dependencies of the tables to sort form a cycle, for example one
+        that runs through a master and its owned parts.
+    """
+    owned = owned_parts(graph)
+    if nodes is None:
+        graph = nx.MultiDiGraph(graph)  # make a mutable copy
+    else:
+        # Sort the tables on paths between the requested ones too, so that their
+        # order respects every dependency between them.
+        nodes = set(nodes) & set(graph.nodes)
+        keep = nodes | (_reachable(graph, nodes, upstream=False) & _reachable(graph, nodes, upstream=True))
+        subgraph = nx.MultiDiGraph()
+        subgraph.add_nodes_from(keep)
+        subgraph.add_edges_from((u, v) for u, v in graph.edges(keep) if v in keep)
+        graph = subgraph
+
+    # Add owned parts' dependencies to their masters' dependencies
     # to ensure correct topological ordering of the masters.
+    # Parts that are not owned are sorted as separate tables.
     for part in graph:
-        # find the part's master
-        if (master := extract_master(part)) in graph:
-            for edge in graph.in_edges(part):
-                parent = edge[0]
-                if master not in (parent, extract_master(parent)):
-                    # if parent is neither master nor part of master
-                    graph.add_edge(parent, master)
-    sorted_nodes = list(nx.topological_sort(graph))
+        if part in owned and (master := extract_master(part)) in graph:
+            for parent, _ in graph.in_edges(part):
+                if not _in_group(parent, master, owned):
+                    # if parent is neither master nor owned part of master
+                    graph.add_edge(parent, master, part=part)
+    try:
+        sorted_nodes = list(nx.topological_sort(graph))
+    except nx.NetworkXUnfeasible:
+        raise _cycle_error(graph) from None
 
     # bring parts up to their masters
     pos = len(sorted_nodes) - 1
     placed = set()
     while pos > 1:
         part = sorted_nodes[pos]
-        if (master := extract_master(part)) not in graph or part in placed:
+        if part not in owned or (master := extract_master(part)) not in graph or part in placed:
             pos -= 1
         else:
             placed.add(part)
@@ -84,6 +336,8 @@ def topo_sort(graph: nx.MultiDiGraph) -> list[str]:
                 del sorted_nodes[pos]
                 sorted_nodes.insert(insert_pos, part)
 
+    if nodes is not None:
+        return [node for node in sorted_nodes if node in nodes]
     return sorted_nodes
 
 
@@ -259,7 +513,7 @@ class Dependencies(nx.MultiDiGraph):
             return
         self.load(force=True, schema_names=known_schemas)
 
-    def load_all_upstream(self) -> None:
+    def load_all_upstream(self, schema_names: set[str] | None = None) -> None:
         """
         Load dependencies including all upstream schemas referenced via FK chains.
 
@@ -271,9 +525,15 @@ class Dependencies(nx.MultiDiGraph):
 
         Called automatically by ``Diagram.trace()``. Symmetric to
         :meth:`load_all_downstream`.
+
+        Parameters
+        ----------
+        schema_names : set[str], optional
+            Schemas to start from in addition to the activated schemas, such
+            as the schemas of the tables a new table references.
         """
         adapter = self._conn.adapter
-        known_schemas = set(self._conn.schemas)
+        known_schemas = set(self._conn.schemas) | set(schema_names or ())
         if not known_schemas:
             self.load()
             return
@@ -293,16 +553,21 @@ class Dependencies(nx.MultiDiGraph):
             return
         self.load(force=True, schema_names=known_schemas)
 
-    def topo_sort(self) -> list[str]:
+    def topo_sort(self, nodes=None) -> list[str]:
         """
         Return table names in topological order.
+
+        Parameters
+        ----------
+        nodes : iterable of str, optional
+            Tables to sort; all tables if None. See :func:`topo_sort`.
 
         Returns
         -------
         list[str]
             Table names sorted topologically.
         """
-        return topo_sort(self)
+        return topo_sort(self, nodes)
 
     def parents(self, table_name: str, primary: bool | None = None) -> list[tuple[str, dict]]:
         r"""
