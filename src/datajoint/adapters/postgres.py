@@ -791,52 +791,59 @@ class PostgreSQLAdapter(DatabaseAdapter):
             f"ORDER BY c.ordinal_position"
         )
 
+    # Key and constraint queries read the system catalogs (pg_constraint,
+    # pg_attribute) rather than information_schema. information_schema hides
+    # constraints on tables where the current user holds only SELECT, so a
+    # read-only login would see no primary keys and no foreign keys. The
+    # catalogs are readable by every login.
+
     def get_primary_key_sql(self, schema_name: str, table_name: str) -> str:
-        """Query to get primary key columns."""
+        """Query to get primary key columns, in key order."""
         return (
-            f"SELECT column_name FROM information_schema.key_column_usage "
-            f"WHERE table_schema = {self.quote_string(schema_name)} "
-            f"AND table_name = {self.quote_string(table_name)} "
-            f"AND constraint_name IN ("
-            f"  SELECT constraint_name FROM information_schema.table_constraints "
-            f"  WHERE table_schema = {self.quote_string(schema_name)} "
-            f"  AND table_name = {self.quote_string(table_name)} "
-            f"  AND constraint_type = 'PRIMARY KEY'"
-            f") "
-            f"ORDER BY ordinal_position"
+            f"SELECT a.attname AS column_name "
+            f"FROM pg_constraint c "
+            f"JOIN pg_class cl ON c.conrelid = cl.oid "
+            f"JOIN pg_namespace ns ON cl.relnamespace = ns.oid "
+            f"CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS cols(conkey, ord) "
+            f"JOIN pg_attribute a ON a.attrelid = cl.oid AND a.attnum = cols.conkey "
+            f"WHERE c.contype = 'p' "
+            f"AND ns.nspname = {self.quote_string(schema_name)} "
+            f"AND cl.relname = {self.quote_string(table_name)} "
+            f"ORDER BY cols.ord"
         )
 
     def get_foreign_keys_sql(self, schema_name: str, table_name: str) -> str:
         """Query to get foreign key constraints."""
         return (
-            f"SELECT kcu.constraint_name, kcu.column_name, "
-            f"ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name "
-            f"FROM information_schema.key_column_usage AS kcu "
-            f"JOIN information_schema.constraint_column_usage AS ccu "
-            f"  ON kcu.constraint_name = ccu.constraint_name "
-            f"WHERE kcu.table_schema = {self.quote_string(schema_name)} "
-            f"AND kcu.table_name = {self.quote_string(table_name)} "
-            f"AND kcu.constraint_name IN ("
-            f"  SELECT constraint_name FROM information_schema.table_constraints "
-            f"  WHERE table_schema = {self.quote_string(schema_name)} "
-            f"  AND table_name = {self.quote_string(table_name)} "
-            f"  AND constraint_type = 'FOREIGN KEY'"
-            f") "
-            f"ORDER BY kcu.constraint_name, kcu.ordinal_position"
+            f"SELECT c.conname AS constraint_name, a1.attname AS column_name, "
+            f"cl2.relname AS foreign_table_name, a2.attname AS foreign_column_name "
+            f"FROM pg_constraint c "
+            f"JOIN pg_class cl1 ON c.conrelid = cl1.oid "
+            f"JOIN pg_namespace ns1 ON cl1.relnamespace = ns1.oid "
+            f"JOIN pg_class cl2 ON c.confrelid = cl2.oid "
+            f"CROSS JOIN LATERAL unnest(c.conkey, c.confkey) WITH ORDINALITY AS cols(conkey, confkey, ord) "
+            f"JOIN pg_attribute a1 ON a1.attrelid = cl1.oid AND a1.attnum = cols.conkey "
+            f"JOIN pg_attribute a2 ON a2.attrelid = cl2.oid AND a2.attnum = cols.confkey "
+            f"WHERE c.contype = 'f' "
+            f"AND ns1.nspname = {self.quote_string(schema_name)} "
+            f"AND cl1.relname = {self.quote_string(table_name)} "
+            f"ORDER BY c.conname, cols.ord"
         )
 
     def load_primary_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
         """Query to load all primary key columns across schemas."""
-        tab_expr = "'\"' || kcu.table_schema || '\".\"' || kcu.table_name || '\"'"
+        tab_expr = "'\"' || ns.nspname || '\".\"' || cl.relname || '\"'"
         return (
-            f"SELECT {tab_expr} as tab, kcu.column_name "
-            f"FROM information_schema.key_column_usage kcu "
-            f"JOIN information_schema.table_constraints tc "
-            f"ON kcu.constraint_name = tc.constraint_name "
-            f"AND kcu.table_schema = tc.table_schema "
-            f"WHERE kcu.table_name NOT LIKE {like_pattern} "
-            f"AND kcu.table_schema in ({schemas_list}) "
-            f"AND tc.constraint_type = 'PRIMARY KEY'"
+            f"SELECT {tab_expr} as tab, a.attname as column_name "
+            f"FROM pg_constraint c "
+            f"JOIN pg_class cl ON c.conrelid = cl.oid "
+            f"JOIN pg_namespace ns ON cl.relnamespace = ns.oid "
+            f"CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS cols(conkey, ord) "
+            f"JOIN pg_attribute a ON a.attrelid = cl.oid AND a.attnum = cols.conkey "
+            f"WHERE c.contype = 'p' "
+            f"AND cl.relname NOT LIKE {like_pattern} "
+            f"AND ns.nspname in ({schemas_list}) "
+            f"ORDER BY ns.nspname, cl.relname, cols.ord"
         )
 
     def load_foreign_keys_sql(self, schemas_list: str, like_pattern: str) -> str:
