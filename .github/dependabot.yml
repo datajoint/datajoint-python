@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "monthly"
       day: "wednesday"
-      time: "9:00"
+      time: "09:00"
       timezone: "America/Chicago"
     groups:
       all-actions:
