@@ -4495,21 +4495,21 @@ packages:
   requires_python: '>=3.8'
 - pypi: ./
   name: datajoint
-  version: 2.3.5.dev28+ge3d2a553e.d20261024
-  sha256: 9ac2b52fcb44ab2d1c54ec75a4c390fc2a8d53b0480a2490d897c2dc22f593a3
+  version: 2.3.5.dev42+g3c912c461.d20261105
+  sha256: d1322b6612f5817610862f08fde2d86a402995b9be0cfdf208c8935ef04defe4
   requires_dist:
   - deepdiff
   - deepdiff<9 ; python_full_version >= '3.15'
   - fsspec>=2023.1.0
-  - networkx
-  - numpy
-  - packaging
-  - pandas
+  - networkx>=3.0
+  - numpy>=1.22.4
+  - packaging>=22.0
+  - pandas>=1.5.3
   - pydantic-settings>=2.0.0
-  - pydot
+  - pydot>=3.0.0
   - pymysql>=0.7.2
-  - pyparsing
-  - tqdm
+  - pyparsing>=3.1.1
+  - tqdm>=4.66.3
   - pyarrow>=14.0.0 ; extra == 'arrow'
   - adlfs>=2023.1.0 ; extra == 'azure'
   - codespell ; extra == 'dev'
