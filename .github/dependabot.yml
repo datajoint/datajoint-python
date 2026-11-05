@@ -10,3 +10,18 @@ updates:
     groups:
       all-actions:
         patterns: [ "*" ]
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+      timezone: "America/Chicago"
+    # datajoint is a library: its dependencies declare minimum versions only.
+    # Leave a requirement alone when it already admits the new release, so
+    # users are not pushed onto the newest version of each dependency.
+    versioning-strategy: "increase-if-necessary"
+    groups:
+      python-security:
+        applies-to: security-updates
+        patterns: [ "*" ]
