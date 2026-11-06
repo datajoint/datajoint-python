@@ -53,6 +53,21 @@ class TestTopMerge:
         merged = top1.merge(top2)
         assert merged.offset == 7
 
+    @pytest.mark.parametrize(
+        "first, second, limit, offset",
+        [
+            (Top(limit=2, order_by="id"), Top(limit=None, order_by=None, offset=1), 1, 1),
+            (Top(limit=2, order_by="id"), Top(limit=5, order_by=None, offset=1), 1, 1),
+            (Top(limit=2, order_by="id", offset=3), Top(limit=1, order_by=None, offset=1), 1, 4),
+            (Top(limit=2, order_by="id"), Top(limit=1, order_by=None, offset=5), 0, 5),
+            (Top(limit=None, order_by="id"), Top(limit=None, order_by=None, offset=2), 999999999999, 2),
+        ],
+    )
+    def test_merge_offset_stays_within_first_limit(self, first, second, limit, offset):
+        """The second Top skips rows of the first Top's window and never reaches past its limit."""
+        merged = first.merge(second)
+        assert (merged.limit, merged.offset) == (limit, offset)
+
     def test_merge_preserves_existing_order(self):
         """Merged Top preserves first Top's ordering."""
         top1 = Top(limit=10, order_by=["col1 desc", "col2 asc"])
