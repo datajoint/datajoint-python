@@ -167,15 +167,13 @@ class Top:
         Top
             New Top with merged limit/offset and preserved ordering.
         """
-        # Compute effective limit (minimum of defined limits)
-        if self.limit is None and other.limit is None:
-            new_limit = None
-        elif self.limit is None:
+        # other skips other.offset rows of self's window and takes up to other.limit of the
+        # rest, so the merged window never extends past self's limit
+        if self.limit is None:
             new_limit = other.limit
-        elif other.limit is None:
-            new_limit = self.limit
         else:
-            new_limit = min(self.limit, other.limit)
+            remaining = max(self.limit - other.offset, 0)
+            new_limit = remaining if other.limit is None else min(remaining, other.limit)
 
         return Top(
             limit=new_limit,
@@ -379,6 +377,15 @@ def make_condition(
         negate = not negate
         condition = condition.restriction
 
+    # restrict() applies dj.Top itself; here it was negated or nested in a list or AndList
+    if isinstance(condition, Top):
+        raise DataJointError(
+            "dj.Top must be applied on its own, as `expression & dj.Top(...)`. It cannot be negated "
+            "(with - or dj.Not) or combined with other restrictions in a list, an AndList, or the "
+            "restrictions passed to populate() or progress(). For the rows after the first n, "
+            "use dj.Top(None, order_by=..., offset=n)."
+        )
+
     # restrict by string
     if isinstance(condition, str):
         columns.update(extract_column_names(condition))
@@ -442,7 +449,9 @@ def make_condition(
         # Match on all non-hidden namesakes (hidden attributes excluded)
         common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
         columns.update(common_attributes)
-        if isinstance(condition, Aggregation):
+        # A dj.Top limit stays inside a subquery: it applies to the expression's rows before
+        # they are projected to the common attributes, and MySQL rejects LIMIT inside IN (...).
+        if isinstance(condition, Aggregation) or condition._top is not None:
             condition = condition.make_subquery()
         return (
             # without common attributes, any non-empty set matches everything

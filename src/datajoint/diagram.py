@@ -799,8 +799,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         if node not in result.nodes():
             raise DataJointError(f"Table {node} is not in the diagram.")
         # Seed restriction (AND accumulation)
-        result._restrict_conditions.setdefault(node, AndList()).extend(table_expr.restriction)
-        result._restriction_attrs.setdefault(node, set()).update(table_expr.restriction_attributes)
+        restriction, restriction_attrs = _seed_restriction(table_expr)
+        result._restrict_conditions.setdefault(node, AndList()).extend(restriction)
+        result._restriction_attrs.setdefault(node, set()).update(restriction_attrs)
         # Propagate downstream
         result._propagate_restrictions(node, mode="restrict")
         return result
