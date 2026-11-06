@@ -419,6 +419,11 @@ class QueryExpression:
             need_subquery1 = True
         if len(other.support) > 1 and join_attributes:
             need_subquery2 = True
+        # A left join keeps every row of self, so a restriction on other (including dj.Top)
+        # must be applied before the join, inside a subquery. In the outer WHERE it would
+        # remove the rows of self that have no match. An unrestricted other needs no subquery.
+        if left and (other.restriction or other._top):
+            need_subquery2 = True
         if need_subquery1:
             self = self.make_subquery()
         if need_subquery2:
