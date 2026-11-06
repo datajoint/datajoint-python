@@ -1,4 +1,6 @@
 name: Lint
+permissions:
+  contents: read
 on:
   push:
     branches:
@@ -10,8 +12,6 @@ on:
       - "**" # every branch
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
-permissions:
-  contents: read
 jobs:
   lint:
     runs-on: ubuntu-latest
