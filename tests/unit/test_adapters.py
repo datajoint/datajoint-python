@@ -166,6 +166,11 @@ class TestMySQLAdapter:
         assert adapter.current_timestamp_expr() == "CURRENT_TIMESTAMP"
         assert adapter.current_timestamp_expr(3) == "CURRENT_TIMESTAMP(3)"
 
+    def test_statement_timestamp_expr(self, adapter):
+        """Test statement start time expression."""
+        assert adapter.statement_timestamp_expr() == "NOW()"
+        assert adapter.statement_timestamp_expr(3) == "NOW(3)"
+
     def test_interval_expr(self, adapter):
         """Test INTERVAL expression."""
         assert adapter.interval_expr(5, "second") == "INTERVAL 5 SECOND"
@@ -311,6 +316,11 @@ class TestPostgreSQLAdapter:
         assert adapter.current_timestamp_expr() == "CURRENT_TIMESTAMP"
         assert adapter.current_timestamp_expr(3) == "CURRENT_TIMESTAMP(3)"
 
+    def test_statement_timestamp_expr(self, adapter):
+        """Test statement start time expression: not CURRENT_TIMESTAMP, which is the transaction's start."""
+        assert adapter.statement_timestamp_expr() == "statement_timestamp()"
+        assert adapter.statement_timestamp_expr(3) == "CAST(statement_timestamp() AS timestamptz(3))"
+
     def test_interval_expr(self, adapter):
         """Test INTERVAL expression with PostgreSQL syntax."""
         assert adapter.interval_expr(5, "second") == "INTERVAL '5 seconds'"
@@ -351,6 +361,18 @@ class TestPostgreSQLAdapter:
         assert "AS ENUM" in sql
         assert "'pending'" in sql
         assert "'complete'" in sql
+
+    def test_drop_enum_type_ddl_does_not_cascade(self, adapter):
+        """An enum type shared by other columns must not take them with it."""
+        sql = adapter.drop_enum_type_ddl("myschema.enum_abc")
+        assert sql == 'DROP TYPE IF EXISTS "myschema"."enum_abc"'
+
+    def test_enum_type_in_use_sql(self, adapter):
+        """The usage check looks the type up by its quoted, qualified name."""
+        sql = adapter.enum_type_in_use_sql("myschema.enum_abc")
+        assert "pg_attribute" in sql
+        assert """'"myschema"."enum_abc"'::regtype""" in sql
+        assert "NOT attisdropped" in sql
 
     def test_drop_enum_type_sql(self, adapter):
         """Test PostgreSQL enum type dropping."""
@@ -403,6 +425,7 @@ class TestAdapterInterface:
             "commit_sql",
             "rollback_sql",
             "current_timestamp_expr",
+            "statement_timestamp_expr",
             "interval_expr",
             "json_path_expr",
             "format_column_definition",
@@ -572,3 +595,19 @@ class TestPostgreSQLDDLMethods:
         assert "varchar(64)" in sql[2]
         # PostgreSQL carries no inline comment; it is applied via COMMENT ON.
         assert "COMMENT" not in sql[0].upper()
+
+
+class TestMySQLErrorTranslation:
+    """Tests for MySQL error translation."""
+
+    def test_column_permission_denied(self):
+        """MySQL error 1143 should become AccessError."""
+        from datajoint import errors
+
+        adapter = MySQLAdapter()
+
+        mysql_error = Exception(1143, "SELECT command denied for column 'salary'")
+
+        result = adapter.translate_error(mysql_error)
+
+        assert isinstance(result, errors.AccessError)

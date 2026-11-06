@@ -466,10 +466,12 @@ class TestLineageRefreshOnDecoration:
             schema_semantic.rebuild_lineage()
             Trial._heading = Heading(table_info=old_heading.table_info)
 
-    def test_missing_lineage_error_points_to_rebuild(self, schema_semantic):
+    def test_missing_lineage_is_an_unrelated_namesake(self, schema_semantic):
         """
-        When a join fails because one side has None lineage, the error must
-        point the user at `schema.rebuild_lineage()`.
+        A join on an attribute with no lineage on one side is refused as a join
+        on unrelated namesakes. The error does not send the user to rebuild
+        lineage: an attribute without lineage is usually one that no foreign key
+        brings in, which a rebuild cannot change (#1640).
         """
         from datajoint.lineage import delete_table_lineages
         from datajoint.heading import Heading
@@ -482,10 +484,9 @@ class TestLineageRefreshOnDecoration:
         try:
             assert Enrollment().heading["student_id"].lineage is None
 
-            with pytest.raises(DataJointError) as exc_info:
+            with pytest.raises(DataJointError, match="does not inherit it through a foreign key") as exc_info:
                 Student() * Enrollment()
-            assert "rebuild_lineage" in str(exc_info.value), f"Error must mention rebuild_lineage(); got: {exc_info.value}"
-            assert "stale" in str(exc_info.value).lower() or "missing" in str(exc_info.value).lower()
+            assert "rebuild_lineage" not in str(exc_info.value)
         finally:
             # Restore lineage so subsequent tests see clean state
             schema_semantic.rebuild_lineage()

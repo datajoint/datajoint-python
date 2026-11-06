@@ -77,6 +77,7 @@ ENV_VAR_MAPPING = {
     "loglevel": "DJ_LOG_LEVEL",
     "display.diagram_direction": "DJ_DIAGRAM_DIRECTION",
     "display.diagram_theme": "DJ_DIAGRAM_THEME",
+    "display.diagram_fontname": "DJ_DIAGRAM_FONTNAME",
 }
 
 Role = Enum("Role", "manual lookup imported computed job")
@@ -260,6 +261,16 @@ class DisplaySettings(BaseSettings):
             "mode; default), 'light', or 'dark' (dark background with adjusted palette)"
         ),
     )
+    diagram_fontname: str = Field(
+        default="Helvetica",
+        min_length=1,
+        validation_alias="DJ_DIAGRAM_FONTNAME",
+        description=(
+            "Typeface of node and schema labels in Graphviz diagrams (default 'Helvetica'). Graphviz sizes "
+            "nodes with the face it finds on the rendering machine, so a face that machine lacks changes "
+            "the layout. Set it only where the face is installed. Mermaid output names no typeface."
+        ),
+    )
 
 
 class StoresSettings(BaseSettings):
@@ -294,7 +305,12 @@ class JobsSettings(BaseSettings):
 
     auto_refresh: bool = Field(default=True, description="Auto-refresh jobs queue on populate")
     keep_completed: bool = Field(default=False, description="Keep success records in jobs table")
-    stale_timeout: int = Field(default=3600, ge=0, description="Seconds before pending job is checked for staleness")
+    stale_timeout: int = Field(
+        default=3600,
+        ge=0,
+        description="Grace period in seconds before refresh() removes a job whose key is no longer in key_source. "
+        "0 means no grace period: such jobs are removed on the next refresh.",
+    )
     default_priority: int = Field(default=5, ge=0, le=255, description="Default priority for new jobs (lower = more urgent)")
     version_method: Literal["git", "none"] | None = Field(
         default=None, description="Method to obtain version: 'git' (commit hash), 'none' (empty), or None (disabled)"
