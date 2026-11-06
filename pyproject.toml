@@ -6,20 +6,31 @@ build-backend = "hatchling.build"
 name = "datajoint"
 dynamic = ["version"]
 dependencies = [
-  "numpy",
-  "pymysql>=0.7.2",
-  "deepdiff",
+  "numpy>=1.22.4",
+  # pymysql 1.0 adds the ssl_disabled connection option; 1.1.1 fixes
+  # CVE-2024-36039.
+  "pymysql>=1.1.1",
+  # deepdiff 6.4 adds DeepHash(ignore_iterable_order=...); 6.6 supports numpy 2.
+  # CVE-2025-58367 and CVE-2026-33155 (fixed in 8.6.2) affect Delta and
+  # pickle_load; datajoint uses only DeepHash.
+  "deepdiff>=6.6.0",
   # deepdiff 9 requires cachebox<6, which ships no Python 3.15 wheels and cannot
   # be built for 3.15 (PyO3 0.27). Drop once deepdiff accepts cachebox 6.
   "deepdiff<9; python_version >= '3.15'",
-  "pyparsing",
-  "pandas",
-  "tqdm",
-  "networkx",
-  "pydot",
+  # pyparsing 3.1.0 drops the quotes from quoted defaults (= ""), which
+  # declares the attribute without a default.
+  "pyparsing>=3.1.1",
+  # pandas 2.2.2 is the first release built against numpy 2; older pandas
+  # fails on import when numpy 2 is installed.
+  "pandas>=2.2.2",
+  # CVE-2024-34062
+  "tqdm>=4.66.3",
+  "networkx>=3.0",
+  # pydot 2.x emits DOT that graphviz rejects for datajoint diagrams.
+  "pydot>=3.0.0",
   "fsspec>=2023.1.0",
   "pydantic-settings>=2.0.0",
-  "packaging",
+  "packaging>=22.0",
 ]
 
 requires-python = ">=3.10,<3.16"
