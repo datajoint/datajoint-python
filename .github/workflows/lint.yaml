@@ -10,6 +10,8 @@ on:
       - "**" # every branch
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
+  # The release workflow runs this as its gate.
+  workflow_call:
 jobs:
   lint:
     runs-on: ubuntu-latest

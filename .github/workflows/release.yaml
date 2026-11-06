@@ -1,0 +1,134 @@
+name: Release
+
+# A release is an annotated tag vX.Y.Z on master whose message is the release
+# notes. Pushing it runs the test suite, builds the package at the tag (the
+# version comes from the tag through hatch-vcs), publishes it to PyPI, and
+# creates the GitHub release with the tag's message as its notes.
+#
+# To publish an existing tag to TestPyPI instead, run this workflow by hand from
+# that tag ("Use workflow from" -> Tags) with testpypi checked.
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      testpypi:
+        description: "Publish to TestPyPI, without a GitHub release or notification"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - name: Require a tag
+        if: github.ref_type != 'tag'
+        run: |
+          echo "::error::Run this workflow from a release tag (vX.Y.Z), not from a branch."
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check the tag
+        id: check
+        run: .github/scripts/check_release_tag.sh "$GITHUB_REF_NAME" master
+
+  lint:
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    uses: ./.github/workflows/lint.yaml
+
+  test:
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    uses: ./.github/workflows/test.yaml
+
+  publish:
+    needs: [check, lint, test]
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      # write permission is required to create the GitHub release
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      TEST_PYPI: ${{ github.event_name == 'workflow_dispatch' && inputs.testpypi }}
+      TWINE_USERNAME: ${{ secrets.twine_username }}
+      TWINE_PASSWORD: ${{ secrets.twine_password }}
+      TWINE_TEST_USERNAME: ${{ secrets.twine_test_username }}
+      TWINE_TEST_PASSWORD: ${{ secrets.twine_test_password }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and tags, so hatch-vcs derives the version from the tag.
+          fetch-depth: 0
+      - name: Fetch the tag object
+        # actions/checkout can store an annotated tag as a lightweight ref.
+        run: git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          # The oldest supported Python; the build is pure Python either way.
+          python-version: "3.10"
+      - name: Build
+        run: |
+          python -m pip install build
+          python -m build .
+      - name: Check the built version
+        run: |
+          version="${TAG#v}"
+          for file in dist/*; do
+            case "$(basename "$file")" in
+              "datajoint-$version-"*.whl | "datajoint-$version.tar.gz") ;;
+              *) echo "::error::$file does not carry version $version"; exit 1 ;;
+            esac
+          done
+      - name: Publish to PyPI
+        run: |
+          python -m pip install --upgrade twine
+          if [[ "$TEST_PYPI" == "true" ]]; then
+            export TWINE_REPOSITORY="testpypi"
+            export TWINE_USERNAME="$TWINE_TEST_USERNAME"
+            export TWINE_PASSWORD="$TWINE_TEST_PASSWORD"
+          else
+            export TWINE_REPOSITORY="pypi"
+          fi
+          # --skip-existing keeps re-runs idempotent.
+          python -m twine upload --skip-existing dist/*
+      - name: Create the GitHub release
+        if: env.TEST_PYPI != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git for-each-ref "refs/tags/$TAG" --format='%(contents)' > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --verify-tag --title "DataJoint Library ${TAG#v}" \
+            --notes-file "$RUNNER_TEMP/notes.md" dist/*
+      - name: Post release notification to Slack
+        if: env.TEST_PYPI != 'true'
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "*New Release Published!* :tada: \n*Repository:* ${{ github.repository }}\n*Version:* ${{ github.ref_name }}\n*URL:* ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*New Release Published!* :tada:\n*Repository:* ${{ github.repository }}\n*Version:* ${{ github.ref_name }}\n*URL:* <${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}|View Release>"
+                  }
+                }
+              ]
+            }
