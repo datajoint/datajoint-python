@@ -112,10 +112,10 @@ def test_allow_insert(clean_autopopulate, subject, experiment):
         experiment.insert1(key)
 
 
-def test_populate_antijoin_with_secondary_attrs(clean_autopopulate, subject, experiment):
-    """Test that populate correctly computes pending keys via antijoin.
+def test_populate_pending_keys_with_secondary_attrs(clean_autopopulate, subject, experiment):
+    """Test that populate correctly computes pending keys as the complement key_source - self.
 
-    Verifies that partial populate + antijoin gives correct pending counts.
+    Verifies that partial populate + the complement gives correct pending counts.
     Note: Experiment.make() inserts fake_experiments_per_subject rows per key.
     """
     assert subject, "root tables are empty"
@@ -130,21 +130,21 @@ def test_populate_antijoin_with_secondary_attrs(clean_autopopulate, subject, exp
 
     # key_source - target must return only unpopulated keys
     pending = experiment.key_source - experiment
-    assert len(pending) == total_keys - 2, f"Antijoin returned {len(pending)} pending keys, expected {total_keys - 2}."
+    assert len(pending) == total_keys - 2, f"{len(pending)} pending keys, expected {total_keys - 2}."
 
     # Verify progress() reports correct counts
     remaining, total = experiment.progress()
     assert total == total_keys
     assert remaining == total_keys - 2
 
-    # Populate the rest and verify antijoin returns 0
+    # Populate the rest and verify that no keys are pending
     experiment.populate()
     pending_after = experiment.key_source - experiment
-    assert len(pending_after) == 0, f"Antijoin returned {len(pending_after)} pending keys after full populate, expected 0."
+    assert len(pending_after) == 0, f"{len(pending_after)} pending keys after full populate, expected 0."
 
 
-def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
-    """Regression test: antijoin with overlapping secondary attribute names.
+def test_populate_pending_keys_overlapping_attrs(prefix, connection_test):
+    """Regression test: key_source - self with overlapping secondary attribute names.
 
     This reproduces the bug where `key_source - self` returns ALL keys instead
     of just unpopulated ones. The condition is:
@@ -161,7 +161,7 @@ def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
     quality, processing_datetime as secondary attrs. InitialContainer (target)
     also has those same-named columns with different values.
     """
-    test_schema = dj.Schema(f"{prefix}_antijoin_overlap", connection=connection_test)
+    test_schema = dj.Schema(f"{prefix}_pending_overlap", connection=connection_test)
 
     @test_schema
     class Sensor(dj.Lookup):
@@ -196,7 +196,7 @@ def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
             # Fetch source data (key only contains PK after projection)
             source = (Sensor() & key).fetch1()
             # Values intentionally differ from source — this is what triggers
-            # the bug: the antijoin tries to match on num_samples and quality
+            # the bug: the anti-restriction tries to match on num_samples and quality
             # too, and since values differ, no match is found.
             self.insert1(
                 dict(
@@ -229,7 +229,7 @@ def test_populate_antijoin_overlapping_attrs(prefix, connection_test):
         assert remaining == 0, f"Expected 0 remaining, got {remaining}"
         assert total == 4
 
-        # Verify antijoin with .proj() is correct
+        # Verify the anti-restriction by .proj() is correct
         pending = ProcessedSensor().key_source - ProcessedSensor().proj()
         assert len(pending) == 0
     finally:
