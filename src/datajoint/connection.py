@@ -129,7 +129,7 @@ def _warn_if_old_mysql(version_str: str) -> None:
 
     DataJoint warns rather than refuses: older servers return correct results, but
     cannot decorrelate the NOT EXISTS subquery that DataJoint emits for the complement
-    of a restriction (A - B) in some positions.  MariaDB and unparseable version strings
+    of a restriction (A - B) in some positions.  MariaDB and unparsable version strings
     are ignored.
     """
     match = re.match(r"(\d+)\.(\d+)\.(\d+)", version_str)
