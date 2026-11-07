@@ -1,6 +1,6 @@
 """
-Antirestriction by a query expression (``A - B``, ``A & dj.Not(B)``) compiles to a
-correlated ``NOT EXISTS``.
+The complement of a restriction by a query expression (``A - B``, ``A & dj.Not(B)``)
+compiles to a correlated ``NOT EXISTS``.
 
 Matching uses ``=`` on every shared attribute, so NULL matches nothing and ``A - B``
 is the exact complement of ``A & B``, also when a shared attribute is nullable or the
@@ -17,7 +17,7 @@ import datajoint as dj
 @pytest.fixture(scope="function")
 def schema_by_backend(connection_by_backend, db_creds_by_backend):
     backend = db_creds_by_backend["backend"]
-    schema_name = f"djtest_antirestr_{backend}_{str(int(time.time() * 1000))[-8:]}"
+    schema_name = f"djtest_complement_{backend}_{str(int(time.time() * 1000))[-8:]}"
     schema = dj.Schema(schema_name, connection=connection_by_backend)
     yield schema
     schema.drop(prompt=False)
@@ -98,6 +98,7 @@ def check_complement(A, B, attrs):
     """A & B and A - B partition A, and A - B agrees with SQL equality semantics."""
     keys = A.primary_key
     pos, neg = rows(A & B, keys), rows(A - B, keys)
+    assert pos and neg, "the operand must split A"
     assert len(A & B) + len(A - B) == len(A)
     assert pos | neg == rows(A, keys) and not pos & neg
     assert rows(A & dj.Not(B), keys) == neg
@@ -147,13 +148,14 @@ def test_operand_shapes(tables, operand):
     B = {
         "join": lambda: Session.proj() * Scan,
         "restricted": lambda: Session.proj() & "session > 0",
-        "aggregation": lambda: Subject.aggr(Session, n="count(*)") & "n > 1",
+        "aggregation": lambda: Subject.aggr(Session.proj(), n="count(*)") & "n > 1",
         "u": lambda: dj.U("subject_id") & (Scan & "scan = 1"),
         "union": lambda: (Session.proj() & "session = 1") + (Session.proj() & "session = 2"),
         "top": lambda: Session.proj() & dj.Top(7, order_by="subject_id DESC"),
         "complemented": lambda: Session.proj() - Scan,
     }[operand]()
     expected = expected_anti(rows(Subject, ["subject_id"]), rows(B, ["subject_id"]))
+    assert expected and expected != rows(Subject, ["subject_id"]), "the operand must split Subject"
     assert rows(Subject - B, ["subject_id"]) == expected
     assert len(Subject - B) == len(expected)
     if operand == "top" and Subject.connection.adapter.backend == "mysql":
@@ -178,11 +180,13 @@ def test_union_operand(tables):
 
 def test_or_list_and_not(tables):
     _, Subject, Session, Scan, _ = tables
-    B1 = Session & "session = 1"
-    B2 = Scan.proj()
+    # both match on subject_id alone, and the subjects fall into all four regions
+    B1 = (Session & "session = 1").proj()
+    B2 = (Scan & "session = 0").proj()
     keys = ["subject_id"]
     s1, s2 = rows(Subject & B1, keys), rows(Subject & B2, keys)
     every = rows(Subject, keys)
+    assert s1 - s2 and s2 - s1 and s1 & s2 and every - s1 - s2
     assert rows(Subject - [B1, B2], keys) == every - s1 - s2
     assert rows(Subject - [B1, B2], keys) == rows(Subject - B1 - B2, keys)
     assert rows(Subject & [B1, B2], keys) == s1 | s2
@@ -196,17 +200,19 @@ def test_or_list_and_not(tables):
     assert len(Subject - [B1, True]) == 0
     assert rows(Subject - [B1, False], keys) == every - s1
     # complement with nullable namesakes in an OR-list
-    assert len(Subject & [Session, B2]) + len(Subject - [Session, B2]) == len(Subject)
+    pos, neg = rows(Subject & [Session, B2], keys), rows(Subject - [Session, B2], keys)
+    assert pos and neg and not pos & neg and pos | neg == every
 
 
 def test_complement_aggregation(tables):
     """A restricted aggregation compiles its restriction to HAVING on MySQL, a wrapper on PostgreSQL."""
     _, Subject, Session, Scan, _ = tables
-    counts = Subject.aggr(Session, n="count(*)", exclude_nonmatching=True)
+    counts = Subject.aggr(Session.proj(), n="count(*)", exclude_nonmatching=True)
     keys = ["subject_id"]
-    exclude = Scan & "scan = 1"
+    exclude = Scan & "session = 0"
     for aggr in (counts, counts & "n > 1"):
         expected = rows(aggr, keys) - rows(exclude, keys)
+        assert expected and expected != rows(aggr, keys), "the operand must split the aggregation"
         assert rows(aggr - exclude, keys) == expected
         assert len(aggr - exclude) == len(expected)
         assert len(aggr & exclude) + len(aggr - exclude) == len(aggr)
@@ -252,35 +258,43 @@ def test_populate_key_source_minus_self(tables):
 def test_cascade_delete_from_complement(tables):
     _, Subject, Session, Scan, _ = tables
     keys = ["subject_id"]
+    session_keys, scan_keys = ["subject_id", "session"], ["subject_id", "session", "scan"]
     with_scans = rows(Subject & Scan, keys)
     doomed = rows(Subject - Scan, keys)
     assert doomed and with_scans
+    sessions_kept = {s for s in rows(Session, session_keys) if s[:1] in with_scans}
+    assert sessions_kept != rows(Session, session_keys)
     (Subject - Scan).delete()
     assert rows(Subject, keys) == with_scans
-    assert rows(Session, keys) <= with_scans
+    assert rows(Session, session_keys) == sessions_kept
     # cascade through Session to Scan, seeded by an anti-restriction by a restricted operand
     second = (Session & "session = 1").proj()
     keep = rows(Subject & second, keys)
     assert keep and keep != rows(Subject, keys) and len(Scan - (Subject & second).proj())
+    scans_kept = {s for s in rows(Scan, scan_keys) if s[:1] in keep}
+    assert scans_kept
     (Subject - second).delete()
     assert rows(Subject, keys) == keep
     assert rows(Session, keys) == keep
-    assert rows(Scan, keys) <= keep
+    assert rows(Scan, scan_keys) == scans_kept
 
 
 def test_negated_composite_condition(tables):
     """NOT applies to the whole conjunction of a multi-attribute dict, record or AndList."""
     _, _, Session, _, _ = tables
     key = {"subject_id": 1, "session": 0}
+    keys = ["subject_id", "session"]
     assert len(Session & key) == 1
-    n = len(Session) - 1
-    assert len(Session - key) == n
-    assert len(Session - [key]) == n
-    assert len(Session & dj.Not(key)) == n
-    assert len(Session - dj.AndList(["subject_id = 1", "session = 0"])) == n
+    # subject 1 has two sessions, so a NOT applied to subject_id = 1 alone would differ
+    assert len(Session & "subject_id = 1") == 2
+    expected = rows(Session, keys) - {(1, 0)}
+    assert rows(Session - key, keys) == expected
+    assert rows(Session - [key], keys) == expected
+    assert rows(Session & dj.Not(key), keys) == expected
+    assert rows(Session - dj.AndList(["subject_id = 1", "session = 0"]), keys) == expected
     record = (Session & key).proj().to_arrays()
-    assert len(Session - record[0]) == n
-    assert len(Session - record) == n
+    assert rows(Session - record[0], keys) == expected
+    assert rows(Session - record, keys) == expected
 
 
 def test_percent_in_restriction_strings(tables):
