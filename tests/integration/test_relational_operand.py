@@ -121,7 +121,7 @@ def test_join(schema_simp_pop):
     y = D()
     rel = x * y
     assert len(rel) >= len(x) and len(rel) >= len(y), "incorrect join"
-    assert not rel - cond, "incorrect join, restriction, or antijoin"
+    assert not rel - cond, "incorrect join, restriction, or anti-restriction"
     assert set(x.heading.names).union(y.heading.names) == set(rel.heading.names), "incorrect join heading"
     assert set(x.primary_key).union(y.primary_key) == set(rel.primary_key), "incorrect join primary_key"
 
@@ -176,7 +176,7 @@ def test_project(schema_simp_pop):
 
     # projection after restriction
     cond = L() & "cond_in_l"
-    assert len(D() & cond) + len(D() - cond) == len(D()), "failed semijoin or antijoin"
+    assert len(D() & cond) + len(D() - cond) == len(D()), "restriction and its complement do not partition D"
     assert len((D() & cond).proj()) == len((D() & cond)), "projection failed: altered its arguments cardinality"
 
 
@@ -293,9 +293,9 @@ def test_aggr(schema_simp_pop):
             assert np.isclose(max_, values.max(), rtol=1e-4, atol=1e-5), "aggregation failed (max)"
 
 
-def test_semijoin(schema_simp_pop):
+def test_restriction_by_query(schema_simp_pop):
     """
-    test that semijoins and antijoins are formed correctly
+    test that restrictions by a query and their complements are formed correctly
     """
     x = IJ()
     y = JI()
@@ -341,9 +341,9 @@ def test_restrictions_by_lists(schema_simp_pop):
 
     lenx = len(x)
     assert lenx > 0 and len(y) > 0 and len(x & y) < len(x), "incorrect test setup"
-    assert len(x & y) == len(D * L & "cond_in_l"), "incorrect semijoin"
-    assert len(x - y) == len(x) - len(x & y), "incorrect antijoin"
-    assert len(y - x) == len(y) - len(y & x), "incorrect antijoin"
+    assert len(x & y) == len(D * L & "cond_in_l"), "incorrect restriction"
+    assert len(x - y) == len(x) - len(x & y), "incorrect complement"
+    assert len(y - x) == len(y) - len(y & x), "incorrect complement"
     assert len(x & []) == 0, "incorrect restriction by an empty list"
     assert len(x & ()) == 0, "incorrect restriction by an empty tuple"
     assert len(x & set()) == 0, "incorrect restriction by an empty set"

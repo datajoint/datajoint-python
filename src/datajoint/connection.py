@@ -120,6 +120,34 @@ def _warn_if_mariadb(version_str: str) -> None:
         )
 
 
+MIN_MYSQL_VERSION = (8, 0, 18)
+
+
+def _warn_if_old_mysql(version_str: str) -> None:
+    """
+    Emit a UserWarning if `version_str` is a MySQL release older than MIN_MYSQL_VERSION.
+
+    DataJoint warns rather than refuses: older servers return correct results, but
+    cannot decorrelate the NOT EXISTS subquery that DataJoint emits for the complement
+    of a restriction (A - B) in some positions.  MariaDB and unparsable version strings
+    are ignored.
+    """
+    match = re.match(r"(\d+)\.(\d+)\.(\d+)", version_str)
+    if "MariaDB" in version_str or match is None:
+        return
+    if tuple(int(v) for v in match.groups()) < MIN_MYSQL_VERSION:
+        minimum = ".".join(str(v) for v in MIN_MYSQL_VERSION)
+        warnings.warn(
+            f"DataJoint requires MySQL {minimum} or later (server reports {version_str}). "
+            f"Older servers return correct results, but the complement of a restriction "
+            f"(A - B) inside a DELETE, a HAVING clause or an OR condition can be orders of "
+            f"magnitude slower. This affects deletes restricted by A - B, jobs refresh and "
+            f"populate(reserve_jobs=True). Upgrade the server to MySQL {minimum} or later.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+
 class EmulatedCursor:
     """acts like a cursor"""
 
@@ -234,7 +262,9 @@ class Connection:
             )
             self.connection_id = self.adapter.get_connection_id(self._conn)
             if self.adapter.backend == "mysql":
-                _warn_if_mariadb(self.query("SELECT @@version").fetchone()[0])
+                version = self.query("SELECT @@version").fetchone()[0]
+                _warn_if_mariadb(version)
+                _warn_if_old_mysql(version)
         else:
             raise errors.LostConnectionError(
                 f"Connection failed {self.conn_info['user']}@{self.conn_info['host']}:{self.conn_info['port']}"
