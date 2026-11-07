@@ -400,18 +400,21 @@ class QueryExpression:
         need_subquery1 = need_subquery2 = bool(
             (set(self.original_heading.names) & set(other.original_heading.names)) - join_attributes
         )
-        # need subquery if any of the join attributes are derived
+        # need subquery if any of the join attributes are derived, or if an operand
+        # deduplicates its rows (dj.U & expr): its DISTINCT must apply before the join
         need_subquery1 = (
             need_subquery1
             or isinstance(self, Aggregation)
             or any(n in self.heading.new_attributes for n in join_attributes)
             or isinstance(self, Union)
+            or self._distinct
         )
         need_subquery2 = (
             need_subquery2
             or isinstance(other, Aggregation)
             or any(n in other.heading.new_attributes for n in join_attributes)
             or isinstance(self, Union)
+            or other._distinct
         )
         # With USING clause (instead of NATURAL JOIN), we need subqueries when
         # joining with multi-table expressions to ensure correct column matching
@@ -1156,6 +1159,11 @@ class QueryExpression:
             Number of elements in the result set.
         """
         result = self.make_subquery() if self._top else copy.copy(self)
+        if not result._distinct:
+            # Without DISTINCT, the query returns one row per row of its FROM/WHERE: count them.
+            # The primary key already identifies the rows, so counting distinct keys is redundant.
+            query = f"SELECT count(*) FROM {result.from_clause()}{result.where_clause()}"
+            return result.connection.query(query).fetchone()[0]
         has_left_join = any(is_left for is_left, _ in result._joins)
 
         # Build COUNT query - PostgreSQL requires different syntax for multi-column DISTINCT
@@ -1356,7 +1364,9 @@ class Aggregation(QueryExpression):
         adapter = self.connection.adapter
         fields = self.heading.as_sql(fields or self.heading.names, adapter=adapter)
         assert self._grouping_attributes or not self.restriction
-        distinct = set(self.heading.names) == set(self.primary_key)
+        # GROUP BY already returns one row per primary key; DISTINCT is needed only when
+        # dj.U & aggregation projects the result onto attributes that do not include it.
+        distinct = self._distinct
 
         # PostgreSQL doesn't allow column aliases in HAVING clause (SQL standard).
         # For PostgreSQL with restrictions, wrap aggregation in subquery and use WHERE.
@@ -1443,7 +1453,8 @@ class Union(QueryExpression):
         fields = self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
         sql2 = (arg2 - arg1).proj(..., **{k: "NULL" for k in arg1.heading.secondary_attributes}).make_sql(fields)
-        return "({sql1})  UNION ({sql2})".format(sql1=sql1, sql2=sql2)
+        # The branches are disjoint (arg2 - arg1 excludes arg1's keys): no deduplication needed
+        return "({sql1}) UNION ALL ({sql2})".format(sql1=sql1, sql2=sql2)
 
     def from_clause(self):
         """The union does not use a FROM clause."""
@@ -1510,9 +1521,11 @@ class U:
         if not isinstance(other, QueryExpression):
             raise DataJointError("Set U can only be restricted with a QueryExpression.")
         result = copy.copy(other)
-        result._distinct = True
         result._heading = result.heading.set_primary_key(self.primary_key)
         result = result.proj()
+        # Rows repeat only if the new primary key leaves out part of other's primary key.
+        # Set after proj(), which may wrap other in a subquery: the DISTINCT belongs outside.
+        result._distinct = result._distinct or not set(other.primary_key) <= set(self.primary_key)
         return result
 
     def __mul__(self, other):
@@ -1562,6 +1575,9 @@ class U:
         missing = [attr for attr in self.primary_key if attr not in group.heading.names]
         if missing:
             raise DataJointError(f"Attributes {missing} not found in the group expression.")
+
+        if group._distinct:
+            group = group.make_subquery()  # deduplicate the group before GROUP BY
 
         # Create Aggregation directly without join - just group by U's primary key
         result = Aggregation()
