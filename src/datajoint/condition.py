@@ -291,6 +291,28 @@ def assert_join_compatibility(
             )
 
 
+def _not_exists(adapter, operand: QueryExpression, attributes: list[str]) -> str:
+    """
+    Compile the complement of the restriction by ``operand`` on ``attributes`` as a correlated
+    NOT EXISTS.
+
+    The operand's columns are renamed inside the subquery, so the unqualified outer names
+    cannot resolve to the operand and always refer to the restricted query. The aliases
+    start with ``$``, which no attribute name can (hidden attributes start with ``_``).
+    Each column is matched with its own ``=``: NULL matches nothing, so ``A - B`` is the
+    exact complement of ``A & B``. Unlike ``NOT IN``, both MySQL and PostgreSQL decorrelate
+    this form, also when a matched column is nullable.
+    """
+    q = adapter.quote_identifier
+    keys = [q(f"$k{i}") for i in range(len(attributes))]
+    renamed = ", ".join(f"{q(a)} AS {k}" for a, k in zip(attributes, keys))
+    match = " AND ".join(f"{q('$r')}.{k} = {q(a)}" for a, k in zip(attributes, keys))
+    return (
+        f"NOT EXISTS (SELECT 1 FROM (SELECT {renamed} FROM ({operand.make_sql(attributes)}) AS {q('$s')}) "
+        f"AS {q('$r')} WHERE {match})"
+    )
+
+
 def make_condition(
     query_expression: QueryExpression,
     condition: Any,
@@ -330,7 +352,7 @@ def make_condition(
     - ``numpy.void``: Like dict, from record array
     - ``pandas.DataFrame``: Converted to records, then OR-ed
     """
-    from .expression import Aggregation, QueryExpression, U
+    from .expression import Aggregation, QueryExpression, U, Union
 
     # Get adapter for backend-agnostic SQL generation
     adapter = query_expression.connection.adapter
@@ -372,7 +394,9 @@ def make_condition(
         return f"{k}={v}"
 
     def combine_conditions(negate, conditions):
-        return f"{'NOT ' if negate else ''} ({')AND('.join(conditions)})"
+        combined = f" ({')AND('.join(conditions)})"
+        # NOT binds tighter than AND: negate the whole conjunction, not its first term
+        return f"NOT ({combined})" if negate else combined
 
     negate = False
     while isinstance(condition, Not):
@@ -386,6 +410,9 @@ def make_condition(
 
     # restrict by AndList
     if isinstance(condition, AndList):
+        if negate:
+            # NOT (a AND b) == (NOT a) OR (NOT b): push the negation down to each item
+            return make_condition(query_expression, [Not(cond) for cond in condition], columns, semantic_check)
         # omit all conditions that evaluate to True
         items = [
             item
@@ -442,19 +469,16 @@ def make_condition(
         # Match on all non-hidden namesakes (hidden attributes excluded)
         common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
         columns.update(common_attributes)
-        if isinstance(condition, Aggregation):
+        if isinstance(condition, (Aggregation, Union)):
             condition = condition.make_subquery()
-        return (
+        if not common_attributes:
             # without common attributes, any non-empty set matches everything
-            (not negate if condition else negate)
-            if not common_attributes
-            else (
-                "({fields}) {not_}in ({subquery})".format(
-                    fields=", ".join(adapter.quote_identifier(a) for a in common_attributes),
-                    not_="not " if negate else "",
-                    subquery=condition.make_sql(common_attributes),
-                )
-            )
+            return not negate if condition else negate
+        if negate:
+            return _not_exists(adapter, condition, common_attributes)
+        return "({fields}) in ({subquery})".format(
+            fields=", ".join(adapter.quote_identifier(a) for a in common_attributes),
+            subquery=condition.make_sql(common_attributes),
         )
 
     # restrict by pandas.DataFrames
@@ -463,14 +487,18 @@ def make_condition(
 
     # if iterable (but not a string, a QueryExpression, or an AndList), treat as an OrList
     try:
-        or_list = [make_condition(query_expression, q, columns, semantic_check) for q in condition]
+        items = list(condition)
     except TypeError:
         raise DataJointError("Invalid restriction type %r" % condition)
-    else:
-        or_list = [item for item in or_list if item is not False]  # ignore False conditions
-        if any(item is True for item in or_list):  # if any item is True, entirely True
-            return not negate
-        return f"{'NOT ' if negate else ''} ({' OR '.join(or_list)})" if or_list else negate
+    if negate:
+        # NOT (a OR b) == (NOT a) AND (NOT b): push the negation down to each item so that
+        # query expressions compile to NOT EXISTS rather than NOT (... IN ...)
+        return make_condition(query_expression, AndList(Not(q) for q in items), columns, semantic_check)
+    or_list = [make_condition(query_expression, q, columns, semantic_check) for q in items]
+    or_list = [item for item in or_list if item is not False]  # ignore False conditions
+    if any(item is True for item in or_list):  # if any item is True, entirely True
+        return True
+    return f" ({' OR '.join(or_list)})" if or_list else False
 
 
 def extract_column_names(sql_expression: str) -> set[str]:

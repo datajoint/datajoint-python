@@ -136,3 +136,37 @@ def test_cancel(schema_tx, connection_test):
     connection_test.cancel_transaction()
     assert len(Subjects()) == 1, "Length is not 1. Expected because rollback should have happened."
     assert len(Subjects & "subject_id = 2") == 0, "Length is not 0. Expected because rollback should have happened."
+
+
+def test_connect_warns_below_mysql_floor(db_creds_root, monkeypatch):
+    """Connecting to a MySQL server older than MIN_MYSQL_VERSION warns but still connects."""
+    import warnings
+
+    from datajoint import connection as dj_connection
+
+    real_server = dj.Connection(**db_creds_root)
+    server_version = real_server.query("SELECT @@version").fetchone()[0]
+    real_server.close()
+
+    def connect_reporting(version_str):
+        original_query = dj_connection.Connection.query
+
+        def query(self, sql, *args, **kwargs):
+            if sql == "SELECT @@version":
+                return original_query(self, "SELECT %s", (version_str,))
+            return original_query(self, sql, *args, **kwargs)
+
+        monkeypatch.setattr(dj_connection.Connection, "query", query)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            conn = dj.Connection(**db_creds_root)
+        monkeypatch.setattr(dj_connection.Connection, "query", original_query)
+        assert conn.is_connected
+        conn.close()
+        return [str(w.message) for w in caught if "requires MySQL" in str(w.message)]
+
+    floor = ".".join(str(v) for v in dj_connection.MIN_MYSQL_VERSION)
+    below = connect_reporting("8.0.17")
+    assert len(below) == 1 and f"requires MySQL {floor} or later" in below[0]
+    assert connect_reporting("8.0.18") == []
+    assert connect_reporting(server_version) == []

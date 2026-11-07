@@ -56,7 +56,7 @@ export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock
 
 ### PostgreSQL Backend
 
-DataJoint supports MySQL 8.0.13+ and PostgreSQL 15+ as production database backends. To install the PostgreSQL driver:
+DataJoint supports MySQL 8.0.18+ and PostgreSQL 15+ as production database backends. On connecting to an older MySQL server, DataJoint emits a warning (it does not refuse the connection): older servers can be orders of magnitude slower for the complement of a restriction (`A - B`) inside a `DELETE`, a `HAVING` clause or an `OR` condition. To install the PostgreSQL driver:
 
 ```bash
 pip install -e ".[postgres]"    # Installs psycopg2-binary
