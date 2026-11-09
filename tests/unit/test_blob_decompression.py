@@ -1,5 +1,6 @@
 """Compressed blobs expand only up to the size their header declares."""
 
+import tracemalloc
 import zlib
 
 import numpy as np
@@ -27,13 +28,18 @@ def test_round_trip_uncompressed():
     assert unpack(pack({"a": [1, 2, 3]}, compress=False)) == {"a": [1, 2, 3]}
 
 
-def test_payload_larger_than_declared_size_is_rejected():
-    # a small header in front of ~100 MB of zeros that compress to ~100 kB
+def test_payload_larger_than_declared_size_is_rejected_without_expanding_it():
+    # a short declared size in front of ~100 MB of zeros that compress to ~100 kB
     inner = pack(b"x", compress=False)
-    payload = inner + bytes(100_000_000)
-    blob = compressed_blob(payload, declared_size=len(inner))
-    with pytest.raises(DataJointError, match="size mismatch"):
-        unpack(blob)
+    blob = compressed_blob(inner + bytes(100_000_000), declared_size=len(inner))
+    tracemalloc.start()
+    try:
+        with pytest.raises(DataJointError, match="size mismatch"):
+            unpack(blob)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 10_000_000
 
 
 def test_payload_smaller_than_declared_size_is_rejected():
