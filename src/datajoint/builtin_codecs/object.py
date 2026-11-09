@@ -111,7 +111,8 @@ class ObjectCodec(SchemaCodec):
 
         # Check for pre-computed metadata (from staged insert)
         if isinstance(value, dict) and "path" in value:
-            # Already encoded, pass through
+            # Already encoded, pass through once the path is known to stay in the store
+            self._get_backend(value.get("store"), config=config)._full_path(value["path"])
             return value
 
         # Determine content type and extension
