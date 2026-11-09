@@ -33,13 +33,29 @@ def test_cache_dir_is_per_user_and_private(tempdir):
 
 
 @posix_only
-def test_existing_cache_dir_permissions_tightened(tempdir):
+def test_private_cache_dir_keeps_contents(tempdir):
+    cache_dir = tempdir / f"datajoint_mmap_{os.getuid()}"
+    cache_dir.mkdir(mode=0o700)
+    (cache_dir / "abc.npy").write_bytes(b"cached")
+
+    assert npy._mmap_cache_dir() == cache_dir
+    assert (cache_dir / "abc.npy").read_bytes() == b"cached"
+
+
+@posix_only
+def test_open_cache_dir_restricted_and_cleared(tempdir):
+    """Files in a directory others could write to are not reused once it is made private."""
     cache_dir = tempdir / f"datajoint_mmap_{os.getuid()}"
     cache_dir.mkdir()
     os.chmod(cache_dir, 0o777)
+    (cache_dir / "abc.npy").write_bytes(b"from-another-user")
+    (cache_dir / "subdir").mkdir()
+    (cache_dir / "link.npy").symlink_to(tempdir)
 
     assert npy._mmap_cache_dir() == cache_dir
     assert stat.S_IMODE(os.lstat(cache_dir).st_mode) == 0o700
+    assert list(cache_dir.iterdir()) == []
+    assert tempdir.is_dir()
 
 
 @posix_only
