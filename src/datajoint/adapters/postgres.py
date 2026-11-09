@@ -26,8 +26,21 @@ logger = logging.getLogger(__name__.split(".")[0])
 # use_tls dict keys (PyMySQL ssl names, as for MySQL) → libpq connection parameters
 _LIBPQ_TLS_KEYS = {"ca": "sslrootcert", "cert": "sslcert", "key": "sslkey", "password": "sslpassword"}
 
-# libpq messages for a server without SSL support and for a failed SSL handshake
-_TLS_NEGOTIATION_MESSAGES = ("server does not support SSL", "SSL error:", "SSL SYSCALL error:")
+
+def _tls_rejected(error: Exception) -> bool:
+    """
+    Whether a connection attempt with sslmode=require was refused before authentication
+    because of SSL: the server does not support SSL, or pg_hba.conf has no entry
+    for SSL connections from this client.
+
+    psycopg2 does not report a SQLSTATE for connection failures, so the libpq and
+    server messages are matched. Authentication failures do not match.
+    """
+    message = str(error)
+    if "server does not support SSL" in message:
+        return True
+    # SQLSTATE 28000 from pg_hba.conf; "SSL encryption" (PostgreSQL 14+) or "SSL on" (earlier)
+    return "pg_hba.conf" in message and ("SSL encryption" in message or "SSL on" in message)
 
 
 def _libpq_tls_params(use_tls: dict) -> dict[str, Any]:
@@ -39,13 +52,19 @@ def _libpq_tls_params(use_tls: dict) -> dict[str, Any]:
     ``check_hostname`` is False. Without ``ca``, sslmode is ``require``.
     """
     params = {_LIBPQ_TLS_KEYS[k]: v for k, v in use_tls.items() if k in _LIBPQ_TLS_KEYS and v is not None}
+    supported = set(_LIBPQ_TLS_KEYS)
     if "sslrootcert" in params:
         params["sslmode"] = "verify-full" if use_tls.get("check_hostname", True) else "verify-ca"
+        supported.add("check_hostname")
     else:
         params["sslmode"] = "require"
-    ignored = sorted(set(use_tls) - set(_LIBPQ_TLS_KEYS) - {"check_hostname"})
+    # Keys set to None or False request nothing; other unused keys are reported
+    ignored = sorted(k for k in set(use_tls) - supported if use_tls[k] not in (None, False))
     if ignored:
-        logger.warning("use_tls keys not supported for PostgreSQL are ignored: %s", ", ".join(ignored))
+        logger.warning(
+            "use_tls keys ignored for PostgreSQL: %s. Supported: ca, cert, key, password, and check_hostname with ca.",
+            ", ".join(ignored),
+        )
     return params
 
 
@@ -122,7 +141,9 @@ class PostgreSQLAdapter(DatabaseAdapter):
             - sslmode: SSL mode ('disable', 'allow', 'prefer', 'require',
               'verify-ca', 'verify-full')
             - use_tls: bool or dict - DataJoint's SSL parameter (converted to sslmode).
-              True: 'require'. False: 'disable'. None: 'prefer'.
+              True: 'require'. False: 'disable'.
+              None: 'require', then 'disable' only if the server does not support
+              SSL or pg_hba.conf does not accept SSL connections from this client.
               dict: ``ca``, ``cert``, ``key``, ``password`` map to sslrootcert,
               sslcert, sslkey, sslpassword; sslmode is 'verify-full' with ``ca``
               ('verify-ca' if ``check_hostname`` is False), otherwise 'require'.
@@ -154,19 +175,26 @@ class PostgreSQLAdapter(DatabaseAdapter):
             # use_tls=True → require SSL
             sslmode = "require"
         else:
-            # use_tls=None (default) → prefer SSL but allow fallback
-            sslmode = "prefer"
+            # use_tls=None (default) → require SSL, then fall back below. libpq's
+            # sslmode=prefer also retries without SSL after an authentication failure.
+            sslmode = "require"
 
-        conn = client.connect(
+        params = dict(
             host=host,
             port=port,
             user=user,
             password=password,
             dbname=dbname,
-            sslmode=sslmode,
             connect_timeout=connect_timeout,
             **tls_params,
         )
+        try:
+            conn = client.connect(sslmode=sslmode, **params)
+        except client.OperationalError as error:
+            if "sslmode" in kwargs or use_tls is not None or not _tls_rejected(error):
+                raise
+            logger.debug("Connecting without SSL: %s", str(error).strip())
+            conn = client.connect(sslmode="disable", **params)
         # DataJoint manages transactions explicitly via start_transaction()
         # Set autocommit=True to avoid implicit transactions
         conn.autocommit = True
@@ -175,15 +203,6 @@ class PostgreSQLAdapter(DatabaseAdapter):
         self._register_numpy_adapters()
 
         return conn
-
-    def is_tls_negotiation_error(self, error: Exception) -> bool:
-        """
-        Whether a connection attempt failed while negotiating TLS.
-
-        Matches libpq's errors for a server without SSL support and for a failed
-        SSL handshake. Authentication errors do not match.
-        """
-        return isinstance(error, client.OperationalError) and any(m in str(error) for m in _TLS_NEGOTIATION_MESSAGES)
 
     def _register_numpy_adapters(self) -> None:
         """

@@ -1,4 +1,3 @@
-import logging
 import os
 
 import pytest
@@ -22,19 +21,11 @@ def test_explicit_ssl_connection(db_creds_test, connection_test):
 
 
 @requires_ssl
-def test_ssl_auto_detect(db_creds_test, connection_test, caplog):
-    """When use_tls is not specified, SSL is preferred but fallback is allowed with warning."""
-    with caplog.at_level(logging.WARNING):
-        conn = dj.conn(reset=True, **db_creds_test)
-        result = conn.query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
-
-    if len(result) > 0:
-        # SSL connected successfully
-        assert "SSL connection failed" not in caplog.text
-    else:
-        # SSL failed and fell back - warning should be logged
-        assert "SSL connection failed" in caplog.text
-        assert "Falling back to non-SSL" in caplog.text
+def test_ssl_auto_detect(db_creds_test, connection_test):
+    """When use_tls is not specified, SSL is used if the server supports it."""
+    conn = dj.conn(reset=True, **db_creds_test)
+    result = conn.query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
+    assert len(result) > 0, "SSL should be active when the server supports it"
 
 
 def test_insecure_connection(db_creds_test, connection_test):
