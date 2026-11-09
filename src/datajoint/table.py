@@ -1372,7 +1372,7 @@ class Table(QueryExpression):
             self.connection.dependencies.load()
         parents = self.parents(foreign_key_info=True)
         in_key = True
-        table_comment = _one_line_comment(self.heading.table_status["comment"])
+        table_comment = _one_line(self.heading.table_status["comment"])
         definition = "# " + table_comment + "\n" if table_comment else ""
         attributes_thus_far = set()
         attributes_declared = set()
@@ -1410,15 +1410,15 @@ class Table(QueryExpression):
                             # simple foreign key
                             definition += "->{options} {class_name}\n".format(
                                 options=options_str,
-                                class_name=_definition_token(lookup_class_name(parent_name, context) or parent_name),
+                                class_name=_one_line(lookup_class_name(parent_name, context) or parent_name),
                             )
                         else:
                             # projected foreign key
                             definition += "->{options} {class_name}.proj({proj_list})\n".format(
                                 options=options_str,
-                                class_name=_definition_token(lookup_class_name(parent_name, context) or parent_name),
+                                class_name=_one_line(lookup_class_name(parent_name, context) or parent_name),
                                 proj_list=",".join(
-                                    '{}="{}"'.format(_attribute_name(attr), _attribute_name(ref))
+                                    "{}={}".format(_one_line(attr), _quoted(ref))
                                     for attr, ref in fk_props["attr_map"].items()
                                     if ref != attr
                                 ),
@@ -1428,17 +1428,17 @@ class Table(QueryExpression):
                 attributes_declared.add(attr.name)
                 # Use original_type (core type alias) if available, otherwise use type
                 display_type = attr.original_type or attr.type
-                attr_name = _attribute_name(attr.name)
-                attr_comment = _one_line_comment(attr.comment)
+                attr_name = _one_line(attr.name)
+                attr_comment = _one_line(attr.comment)
                 definition += "%-20s : %-28s %s\n" % (
-                    (attr_name if attr.default is None else "%s=%s" % (attr_name, _definition_token(str(attr.default)))),
-                    "%s%s" % (_definition_token(display_type), " auto_increment" if attr.autoincrement else ""),
+                    (attr_name if attr.default is None else "%s=%s" % (attr_name, _one_line(str(attr.default)))),
+                    "%s%s" % (_one_line(display_type), " auto_increment" if attr.autoincrement else ""),
                     "# " + attr_comment if attr_comment else "",
                 )
         # add remaining indexes
         for k, v in indexes.items():
             definition += "{unique}INDEX ({attrs})\n".format(
-                unique="UNIQUE " if v["unique"] else "", attrs=", ".join(_attribute_name(a) for a in k)
+                unique="UNIQUE " if v["unique"] else "", attrs=", ".join(_one_line(a) for a in k)
             )
         if printout:
             logger.info("\n" + definition)
@@ -1671,26 +1671,14 @@ class Table(QueryExpression):
         return row_to_insert
 
 
-_ATTRIBUTE_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+def _one_line(text):
+    """Return ``text`` with line breaks replaced, so it stays on its line of a definition."""
+    return re.sub(r"[\r\n]+", " ", text) if text else text
 
 
-def _attribute_name(name):
-    """Return ``name`` for a definition string, requiring a plain identifier."""
-    if not _ATTRIBUTE_NAME.fullmatch(name):
-        raise DataJointError(f"Attribute name {name!r} cannot be written in a table definition.")
-    return name
-
-
-def _definition_token(text):
-    """Return ``text`` for a definition string, requiring that it stays on one line."""
-    if "\n" in text or "\r" in text:
-        raise DataJointError(f"{text!r} cannot be written in a table definition.")
-    return text
-
-
-def _one_line_comment(comment):
-    """Return ``comment`` with line breaks replaced so it stays a single comment line."""
-    return re.sub(r"[\r\n]+", " ", comment) if comment else comment
+def _quoted(text):
+    """Return ``text`` as a double-quoted string literal on one line."""
+    return '"{}"'.format(_one_line(text).replace("\\", "\\\\").replace('"', '\\"'))
 
 
 def lookup_class_name(name, context, depth=3):

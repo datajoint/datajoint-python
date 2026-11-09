@@ -177,19 +177,25 @@ def test_alter_projected_foreign_key(pipeline):
     assert pipeline.Link.heading.secondary_attributes == ["weight"]
 
 
-def test_alter_reads_catalog_text_as_data(pipeline, tmp_path):
-    """Text stored in the catalog is reproduced by describe() as data, never run by alter()."""
-    marker = tmp_path / "marker"
+def test_alter_reads_catalog_text_as_data(pipeline):
+    """Text stored in the catalog is reproduced by describe() on one line and only read by alter()."""
+    calls = []
+
+    def record():
+        calls.append(True)
+        return pipeline.Item
+
+    context = dict(vars(pipeline), record=record)
     table = pipeline.Item()
-    comment = f"note\n-> __import__('pathlib').Path({str(marker)!r}).touch()"
+    comment = "note\n-> record()"
     if table.connection.adapter.backend == "postgresql":
         sql = f"COMMENT ON TABLE {table.full_table_name} IS %s"
     else:
         sql = f"ALTER TABLE {table.full_table_name} COMMENT = %s"
     table.connection.query(sql, args=(comment,))
     table.__class__._heading = dj.heading.Heading(table_info=table.heading.table_info)
-    described = table.describe(context=vars(pipeline))
-    assert described.splitlines()[0].startswith("# note -> __import__")
+    described = table.describe(context=context)
+    assert described.splitlines()[0] == "# note -> record()"
     # keep the comment unchanged so that only the new attribute is altered
     table.definition = (
         described.splitlines()[0]
@@ -199,6 +205,18 @@ def test_alter_reads_catalog_text_as_data(pipeline, tmp_path):
     label = "" : varchar(16)
     """
     )
-    table.alter(prompt=False)
-    assert not marker.exists()
+    table.alter(prompt=False, context=context)
+    assert calls == []
     assert table.heading.secondary_attributes == ["label"]
+
+
+def test_alter_unresolved_parent(pipeline):
+    """A parent that is not in the context is reported as unresolved."""
+    pipeline.Measurement.definition = """
+    -> Item
+    ---
+    value : float32
+    unit = "" : varchar(16)
+    """
+    with pytest.raises(dj.DataJointError, match="could not be resolved"):
+        pipeline.Measurement.alter(prompt=False, context={})
