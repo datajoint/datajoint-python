@@ -31,17 +31,22 @@ logger = logging.getLogger(__name__.split(".")[0])
 
 JSON_PATTERN = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$")
 
-# Return types accepted after ``:`` in a JSON attribute key, e.g. ``"attr.path:decimal(10,2)"``
-JSON_TYPE_PATTERN = re.compile(
-    r"\s*(?:(?:un)?signed(?:\s+integer)?|integer|int|bigint|smallint|float|double(?:\s+precision)?|real"
-    r"|decimal|numeric|date|time|datetime|timestamp|year|char|varchar|binary|text|jsonb?|bool(?:ean)?)"
+# Return types accepted after ``:`` in a JSON attribute key, e.g. ``"attr.path:decimal(10,2)"``:
+# type names understood by MySQL (``JSON_VALUE ... RETURNING``) or PostgreSQL (``::`` cast),
+# with an optional length/precision, time zone qualifier, character set, and collation.
+_JSON_TYPE_PATTERN = re.compile(
+    r"\s*(?:(?:un)?signed(?:\s+int(?:eger)?)?|int[248]?|integer|tinyint|smallint|mediumint|bigint"
+    r"|real|float[48]?|double(?:\s+precision)?|decimal|numeric|dec|bool(?:ean)?|bit"
+    r"|char(?:acter)?(?:\s+varying)?|varchar|nchar|text|binary|varbinary|bytea|jsonb?|uuid"
+    r"|date|datetime|year|time(?:tz)?|timestamp(?:tz)?|interval)"
     r"(?:\s*\(\s*\d+\s*(?:,\s*\d+\s*)?\))?"
+    r"(?:\s+with(?:out)?\s+time\s+zone)?"
     r"(?:\s+(?:character\s+set|charset)\s+\w+)?(?:\s+collate\s+\w+)?\s*",
     re.IGNORECASE,
 )
 
-# Text of a numeric value that may appear unquoted in a condition
-NUMERIC_LITERAL_PATTERN = re.compile(r"[+-]?(?:(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|nan|inf)|true|false", re.IGNORECASE)
+# Text of a finite numeric value that may appear unquoted in a condition
+_NUMERIC_LITERAL_PATTERN = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|true|false", re.IGNORECASE)
 
 
 def translate_attribute(key: str, adapter=None) -> tuple[dict | None, str]:
@@ -69,7 +74,7 @@ def translate_attribute(key: str, adapter=None) -> tuple[dict | None, str]:
     if match["path"] is None:
         return match, match["attr"]
     else:
-        if match["type"] is not None and not JSON_TYPE_PATTERN.fullmatch(match["type"]):
+        if match["type"] is not None and not _JSON_TYPE_PATTERN.fullmatch(match["type"]):
             raise DataJointError(f"Unsupported return type `{match['type']}` in JSON attribute `{key}`.")
         # Use adapter's json_path_expr if available, otherwise fall back to MySQL syntax
         if adapter is not None:
@@ -359,7 +364,7 @@ def make_condition(
         key = k
         key_match, k = translate_attribute(k, adapter)
         if key_match is None:
-            raise DataJointError(f"Invalid attribute name `{key}` in restriction.")
+            raise DataJointError(f"Invalid JSON path `{key}` in restriction.")
         is_json_path = key_match.get("path") is not None
 
         if not is_json_path:
@@ -394,8 +399,9 @@ def make_condition(
             return f"{k}={literal(v)}"
         if isinstance(v, (numbers.Number, numpy.number, numpy.bool_)):
             text = f"{v}"
-            if NUMERIC_LITERAL_PATTERN.fullmatch(text):
+            if _NUMERIC_LITERAL_PATTERN.fullmatch(text):
                 return f"{k}={text}"
+            raise DataJointError(f"Cannot restrict by `{key}` with the non-finite or non-real value {text}.")
         raise DataJointError(f"Unsupported value of type {type(v).__name__} in restriction by `{key}`.")
 
     def combine_conditions(negate, conditions):
