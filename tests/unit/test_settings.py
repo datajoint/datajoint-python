@@ -1197,3 +1197,196 @@ class TestBackendConfiguration:
 
         assert "database.backend" in ENV_VAR_MAPPING
         assert ENV_VAR_MAPPING["database.backend"] == "DJ_BACKEND"
+
+
+class TestDiscoveredFileOwnership:
+    """The config search skips files another user could have placed in a world-writable directory."""
+
+    FOREIGN_UID = 54321
+
+    @pytest.fixture
+    def fs(self, monkeypatch, tmp_path):
+        """Patch ``os.stat`` so chosen paths report another owner or world-write permission.
+
+        Returns a dict mapping a path to ``{"uid": ..., "world_writable": ...}``.
+        Paths not in the dict keep their real owner and lose any world-write bit,
+        so the host's own ``/tmp`` does not affect the outcome.
+        """
+        import os
+        import stat as stat_mod
+
+        real_stat = os.stat
+        overrides: dict[Path, dict] = {}
+
+        def fake_stat(path, *args, **kwargs):
+            st = real_stat(path, *args, **kwargs)
+            if isinstance(path, int) or kwargs.get("dir_fd") is not None:
+                return st
+            fields = list(st)
+            spec = overrides.get(Path(os.path.realpath(path)), {})
+            mode = fields[stat_mod.ST_MODE] & ~stat_mod.S_IWOTH
+            if spec.get("world_writable"):
+                mode |= stat_mod.S_IWOTH
+            fields[stat_mod.ST_MODE] = mode
+            if "uid" in spec:
+                fields[stat_mod.ST_UID] = spec["uid"]
+            return os.stat_result(fields)
+
+        monkeypatch.setattr(os, "stat", fake_stat)
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", tmp_path / "nonexistent-system-secrets")
+        return overrides
+
+    @pytest.fixture
+    def shared(self, tmp_path):
+        """A shared parent directory holding a config file, with the user's project below it."""
+        shared = tmp_path / "shared"
+        project = shared / "project"
+        project.mkdir(parents=True)
+        (shared / CONFIG_FILENAME).write_text('{"database": {"host": "from-shared"}}')
+        return shared
+
+    def test_foreign_config_in_world_writable_dir_skipped(self, fs, shared, caplog):
+        fs[shared] = {"world_writable": True}
+        fs[shared / CONFIG_FILENAME] = {"uid": self.FOREIGN_UID}
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_config_file(shared / "project")
+
+        assert found is None
+        assert any("owned by another user" in r.message for r in caplog.records)
+
+    def test_foreign_config_under_world_writable_ancestor_skipped(self, fs, shared, tmp_path):
+        """A world-writable directory anywhere above the file is enough to skip it."""
+        fs[tmp_path] = {"world_writable": True}
+        fs[shared / CONFIG_FILENAME] = {"uid": self.FOREIGN_UID}
+
+        assert find_config_file(shared / "project") is None
+
+    def test_foreign_config_in_protected_dir_used(self, fs, shared):
+        """Another user's file in a directory only its owners can write (e.g. a lab share) is used."""
+        fs[shared / CONFIG_FILENAME] = {"uid": self.FOREIGN_UID}
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_root_owned_config_in_world_writable_dir_used(self, fs, shared):
+        fs[shared] = {"world_writable": True}
+        fs[shared / CONFIG_FILENAME] = {"uid": 0}
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_own_config_in_world_writable_dir_used(self, fs, shared, caplog):
+        fs[shared] = {"world_writable": True}
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_config_file(shared / "project")
+
+        assert found == shared / CONFIG_FILENAME
+        assert not caplog.records
+
+    def test_world_writable_own_config_warns(self, fs, shared, caplog):
+        fs[shared / CONFIG_FILENAME] = {"world_writable": True}
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_config_file(shared / "project")
+
+        assert found == shared / CONFIG_FILENAME
+        assert any("writable by all users" in r.message for r in caplog.records)
+
+    def test_symlink_in_world_writable_dir_to_foreign_file_skipped(self, fs, tmp_path):
+        """A link placed in a world-writable directory is judged by where it was found."""
+        protected = tmp_path / "protected"
+        protected.mkdir()
+        target = protected / CONFIG_FILENAME
+        target.write_text("{}")
+        shared = tmp_path / "shared"
+        (shared / "project").mkdir(parents=True)
+        (shared / CONFIG_FILENAME).symlink_to(target)
+        fs[shared] = {"world_writable": True}
+        fs[target] = {"uid": self.FOREIGN_UID}
+
+        assert find_config_file(shared / "project") is None
+
+    def test_foreign_secrets_dir_in_world_writable_dir_skipped(self, fs, tmp_path):
+        config_file = tmp_path / CONFIG_FILENAME
+        config_file.write_text("{}")
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        fs[tmp_path] = {"world_writable": True}
+        fs[secrets_dir] = {"uid": self.FOREIGN_UID}
+
+        assert find_secrets_dir(config_file) is None
+
+    def test_foreign_secret_file_in_world_writable_secrets_dir_skipped(self, fs, tmp_path):
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "database.password").write_text("planted")
+        (secrets_dir / "stores.main.secret_key").write_text("planted")
+        (secrets_dir / "database.user").write_text("mine")
+        fs[secrets_dir] = {"world_writable": True}
+        fs[secrets_dir / "database.password"] = {"uid": self.FOREIGN_UID}
+        fs[secrets_dir / "stores.main.secret_key"] = {"uid": self.FOREIGN_UID}
+
+        assert read_secret_file(secrets_dir, "database.password") is None
+        assert read_secret_file(secrets_dir, "database.user") == "mine"
+
+        cfg = settings.Config()
+        cfg._load_secrets(secrets_dir)
+        assert cfg.database.password is None
+        assert "main" not in cfg.stores
+
+    def test_no_posix_ownership_keeps_search(self, fs, shared, monkeypatch):
+        """Without os.getuid (Windows) the search behaves as before."""
+        import os
+
+        monkeypatch.delattr(os, "getuid")
+        fs[shared] = {"world_writable": True}
+        fs[shared / CONFIG_FILENAME] = {"uid": self.FOREIGN_UID}
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_create_config_skips_foreign_config(self, fs, shared, monkeypatch):
+        for var in ("DJ_HOST", "DJ_CONFIG_FILE", "DJ_IGNORE_CONFIG_FILE"):
+            monkeypatch.delenv(var, raising=False)
+        monkeypatch.chdir(shared / "project")
+        fs[shared] = {"world_writable": True}
+        fs[shared / CONFIG_FILENAME] = {"uid": self.FOREIGN_UID}
+
+        with pytest.warns(UserWarning, match="No datajoint.json found"):
+            cfg = settings._create_config()
+
+        assert cfg.database.host == "localhost"
+
+    def test_dj_config_file_names_file_explicitly(self, fs, shared, monkeypatch, tmp_path):
+        """DJ_CONFIG_FILE loads the named file, without searching and without the ownership check."""
+        monkeypatch.delenv("DJ_HOST", raising=False)
+        monkeypatch.delenv("DJ_IGNORE_CONFIG_FILE", raising=False)
+        elsewhere = tmp_path / "elsewhere"
+        (elsewhere / ".git").mkdir(parents=True)
+        monkeypatch.chdir(elsewhere)
+        fs[shared] = {"world_writable": True}
+        fs[shared / CONFIG_FILENAME] = {"uid": self.FOREIGN_UID}
+        monkeypatch.setenv("DJ_CONFIG_FILE", str(shared / CONFIG_FILENAME))
+
+        cfg = settings._create_config()
+
+        assert cfg.database.host == "from-shared"
+
+    def test_dj_config_file_ignored_with_ignore_config_file(self, fs, shared, monkeypatch):
+        monkeypatch.delenv("DJ_HOST", raising=False)
+        monkeypatch.setenv("DJ_CONFIG_FILE", str(shared / CONFIG_FILENAME))
+        monkeypatch.setenv("DJ_IGNORE_CONFIG_FILE", "true")
+
+        cfg = settings._create_config()
+
+        assert cfg.database.host == "localhost"
+
+    def test_explicit_load_uses_foreign_file(self, fs, shared, monkeypatch):
+        """dj.config.load(path) is an explicit choice and is not checked."""
+        monkeypatch.delenv("DJ_HOST", raising=False)
+        fs[shared] = {"world_writable": True}
+        fs[shared / CONFIG_FILENAME] = {"uid": self.FOREIGN_UID}
+
+        cfg = settings.Config()
+        cfg.load(shared / CONFIG_FILENAME)
+
+        assert cfg.database.host == "from-shared"
