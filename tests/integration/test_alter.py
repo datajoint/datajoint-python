@@ -87,6 +87,14 @@ class Measurement(dj.Manual):
         ---
         note : varchar(64)
         """
+
+
+@schema
+class Link(dj.Manual):
+    definition = """
+    -> Item
+    -> Item.proj(other_item='item')
+    """
 '''
 
 
@@ -153,3 +161,44 @@ def test_alter_explicit_context(pipeline):
     """
     pipeline.Measurement.alter(prompt=False, context={"Parent": pipeline.Item})
     assert pipeline.Measurement.heading.secondary_attributes == ["value", "unit"]
+
+
+def test_alter_projected_foreign_key(pipeline):
+    """A projected foreign key round-trips through describe() and alter()."""
+    assert '-> Item.proj(other_item="item")' in pipeline.Link.describe(context=vars(pipeline))
+    pipeline.Link.definition = """
+    -> Item
+    -> Item.proj(other_item='item')
+    ---
+    weight = 1 : float32
+    """
+    pipeline.Link.alter(prompt=False)
+    assert pipeline.Link.heading.primary_key == ["item", "other_item"]
+    assert pipeline.Link.heading.secondary_attributes == ["weight"]
+
+
+def test_alter_reads_catalog_text_as_data(pipeline, tmp_path):
+    """Text stored in the catalog is reproduced by describe() as data, never run by alter()."""
+    marker = tmp_path / "marker"
+    table = pipeline.Item()
+    comment = f"note\n-> __import__('pathlib').Path({str(marker)!r}).touch()"
+    if table.connection.adapter.backend == "postgresql":
+        sql = f"COMMENT ON TABLE {table.full_table_name} IS %s"
+    else:
+        sql = f"ALTER TABLE {table.full_table_name} COMMENT = %s"
+    table.connection.query(sql, args=(comment,))
+    table.__class__._heading = dj.heading.Heading(table_info=table.heading.table_info)
+    described = table.describe(context=vars(pipeline))
+    assert described.splitlines()[0].startswith("# note -> __import__")
+    # keep the comment unchanged so that only the new attribute is altered
+    table.definition = (
+        described.splitlines()[0]
+        + """
+    item : int32
+    ---
+    label = "" : varchar(16)
+    """
+    )
+    table.alter(prompt=False)
+    assert not marker.exists()
+    assert table.heading.secondary_attributes == ["label"]
