@@ -86,6 +86,88 @@ def test_foreign_keys(connection_by_backend, backend, prefix):
     schema.drop()
 
 
+def _lineage_table(schema):
+    adapter = schema.connection.adapter
+    return f"{adapter.quote_identifier(schema.database)}.{adapter.quote_identifier('~lineage')}"
+
+
+@pytest.mark.backend_agnostic
+def test_rebuild_lineage(connection_by_backend, backend, prefix):
+    """Test that rebuild_lineage restores lineage from the keys on both backends."""
+    schema = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_rebuild",
+        connection=connection_by_backend,
+    )
+
+    @schema
+    class Animal(dj.Manual):
+        definition = """
+        animal_id : int
+        """
+
+    @schema
+    class Observation(dj.Manual):
+        definition = """
+        -> Animal
+        obs_id : int
+        """
+
+    connection_by_backend.query(f"DELETE FROM {_lineage_table(schema)}")
+    assert schema.lineage == {}
+
+    schema.rebuild_lineage()
+
+    db = schema.database
+    assert schema.lineage == {
+        f"{db}.animal.animal_id": f"{db}.animal.animal_id",
+        f"{db}.observation.animal_id": f"{db}.animal.animal_id",
+        f"{db}.observation.obs_id": f"{db}.observation.obs_id",
+    }
+
+    # Cleanup
+    schema.drop()
+
+
+@pytest.mark.backend_agnostic
+def test_failed_rebuild_lineage_keeps_entries(connection_by_backend, backend, prefix):
+    """Test that a rebuild that cannot resolve a key leaves ~lineage unchanged."""
+    upstream = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_rebuild_up",
+        connection=connection_by_backend,
+    )
+    downstream = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_rebuild_down",
+        connection=connection_by_backend,
+    )
+
+    @upstream
+    class Animal(dj.Manual):
+        definition = """
+        animal_id : int
+        """
+
+    @downstream
+    class Observation(dj.Manual):
+        definition = """
+        -> Animal
+        obs_id : int
+        """
+
+    before = downstream.lineage
+    assert before
+
+    connection_by_backend.query(f"DELETE FROM {_lineage_table(upstream)}")
+
+    with pytest.raises(dj.errors.DataJointError, match="has no lineage"):
+        downstream.rebuild_lineage()
+
+    assert downstream.lineage == before
+
+    # Cleanup
+    downstream.drop()
+    upstream.drop()
+
+
 @pytest.mark.backend_agnostic
 def test_data_types(connection_by_backend, backend, prefix):
     """Test that core data types work on both backends."""
