@@ -11,23 +11,18 @@ from typing import Any
 
 from ..codecs import Codec
 from ..errors import DataJointError
+from ..utils import is_plain_file_name
 
 
 def _check_file_name(filename: str) -> None:
     """
     Raise unless ``filename`` is a plain file name with no directory part.
 
-    ``encode`` stores only the base name of the attached file, so a stored name
-    with separators, ``..``, a NUL byte, or (on Windows) a drive or stream
-    marker ``:`` did not come from it.
+    ``encode`` stores only the base name of the attached file. A stored name
+    with path separators (``/`` or ``\\``), ``..``, a NUL byte, or (on Windows)
+    a drive or stream marker ``:`` is refused.
     """
-    if (
-        filename in ("", ".", "..")
-        or "/" in filename
-        or "\\" in filename
-        or "\x00" in filename
-        or (os.name == "nt" and ":" in filename)
-    ):
+    if not is_plain_file_name(filename):
         raise DataJointError(f"<attach> stored file name {filename!r} is not a plain file name.")
 
 

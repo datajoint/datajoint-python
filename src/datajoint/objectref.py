@@ -7,6 +7,7 @@ access and direct fsspec-based file operations.
 """
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,7 @@ import fsspec
 from .errors import DataJointError
 from .hash_registry import compute_hash
 from .storage import StorageBackend
+from .utils import is_plain_file_name
 
 
 class IntegrityError(DataJointError):
@@ -169,8 +171,15 @@ class ObjectRef:
         Return full URI (e.g., 's3://bucket/path').
 
         This is the complete path including protocol and bucket/location.
+
+        Raises
+        ------
+        DataJointError
+            If the stored path leads outside the store location.
         """
         self._ensure_backend()
+        if getattr(self._backend, "confine_paths", False):
+            self._backend._check_confined(self.path)
         protocol = self._backend.protocol
         if protocol == "file":
             return str(Path(self._backend.spec.get("location", "")) / self.path)
@@ -285,6 +294,12 @@ class ObjectRef:
         -------
         Path
             Path to downloaded file/directory.
+
+        Raises
+        ------
+        DataJointError
+            If ``destination`` is a directory and the last component of the
+            stored path is not a plain file name.
         """
         self._ensure_backend()
         destination = Path(destination)
@@ -304,7 +319,9 @@ class ObjectRef:
         else:
             # Download single file
             if destination.is_dir():
-                filename = remote_path.split("/")[-1]
+                filename = re.split(r"[\\/]", remote_path)[-1]
+                if not is_plain_file_name(filename):
+                    raise DataJointError(f"Cannot download {remote_path!r}: {filename!r} is not a plain file name.")
                 destination = destination / filename
             destination.parent.mkdir(parents=True, exist_ok=True)
             self._backend.get_file(remote_path, destination)
