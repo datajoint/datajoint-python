@@ -120,7 +120,7 @@ BACKENDS = [
     ),
 ]
 
-HOSTILE_STRINGS = [
+SPECIAL_CHARACTER_STRINGS = [
     "' OR 1=1 --",
     "x' OR '1'='1",
     "\\' OR 1=1 -- ",
@@ -132,6 +132,48 @@ HOSTILE_STRINGS = [
     "%s",
     "line\nbreak; DROP TABLE x; --",
     "\x00\x1a",
+]
+
+
+# JSON return types accepted by previous releases on MySQL or PostgreSQL
+VALID_JSON_TYPES = [
+    # MySQL JSON_VALUE ... RETURNING
+    "unsigned",
+    "signed",
+    "UNSIGNED INTEGER",
+    "float",
+    "double",
+    "decimal(4, 1)",
+    "decimal(10,2)",
+    "char(20)",
+    "char(20) character set utf8mb4",
+    "DATETIME",
+    "datetime(6)",
+    "date",
+    "time",
+    "year",
+    "json",
+    # PostgreSQL casts
+    "integer",
+    "int",
+    "int4",
+    "bigint",
+    "smallint",
+    "numeric",
+    "numeric(10,2)",
+    "double precision",
+    "real",
+    "text",
+    "varchar(32)",
+    "character varying(32)",
+    "boolean",
+    "bool",
+    "jsonb",
+    "timestamp",
+    "timestamptz",
+    "timestamp with time zone",
+    "timestamp(3) without time zone",
+    "uuid",
 ]
 
 
@@ -195,25 +237,25 @@ def _json_lhs(backend, path):
 class TestRestrictionLiterals:
     """Values in mapping restrictions are rendered as single, complete literals."""
 
-    @pytest.mark.parametrize("value", HOSTILE_STRINGS)
+    @pytest.mark.parametrize("value", SPECIAL_CHARACTER_STRINGS)
     def test_string_value(self, backend, value):
         cond = _condition(backend, {"name": value})
         expected = value if backend == "mysql" else value.replace("\\", "\\\\")
         assert _literal_value(backend, cond, _quoted(backend, "name")) == expected
 
-    @pytest.mark.parametrize("value", HOSTILE_STRINGS)
+    @pytest.mark.parametrize("value", SPECIAL_CHARACTER_STRINGS)
     def test_json_path_string_value(self, backend, value):
         cond = _condition(backend, {"car.name": value})
         expected = value if backend == "mysql" else value.replace("\\", "\\\\")
         assert _literal_value(backend, cond, _json_lhs(backend, "name")) == expected
 
-    @pytest.mark.parametrize("value", HOSTILE_STRINGS)
+    @pytest.mark.parametrize("value", SPECIAL_CHARACTER_STRINGS)
     def test_list_value(self, backend, value):
         items = [value, 1, 'a"b', "c'd"]
         cond = _condition(backend, {"car.tags": items})
         assert _literal_value(backend, cond, _json_lhs(backend, "tags")) == str(items)
 
-    @pytest.mark.parametrize("value", HOSTILE_STRINGS)
+    @pytest.mark.parametrize("value", SPECIAL_CHARACTER_STRINGS)
     def test_json_dict_value(self, backend, value):
         obj = {"side": value, value: True, "nested": {"k": [value]}}
         cond = _condition(backend, {"car.headlights[1]": obj})
@@ -252,19 +294,26 @@ class TestRestrictionLiterals:
         with pytest.raises(DataJointError):
             _condition(backend, {f"car.length:{type_spec}": 1})
 
-    @pytest.mark.parametrize(
-        "type_spec", ["unsigned", "signed", "float", "double", "decimal(4, 1)", "decimal(10,2)", "char(20)", "DATETIME"]
-    )
+    @pytest.mark.parametrize("type_spec", VALID_JSON_TYPES)
     def test_valid_json_type_accepted(self, backend, type_spec):
         cond = _condition(backend, {f"car.length:{type_spec}": 1})
         assert cond.endswith("=1)")
+
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), np.float64("nan"), np.float32("inf")])
+    def test_non_finite_number_rejected(self, backend, value):
+        with pytest.raises(DataJointError, match="non-finite"):
+            _condition(backend, {"name": value})
+
+    def test_invalid_json_path_message(self, backend):
+        with pytest.raises(DataJointError, match="Invalid JSON path `car.na'me`"):
+            _condition(backend, {"car.na'me": 1})
 
     @pytest.mark.parametrize("value", [b"x' OR 1=1 --", object(), {"a": 1}, (1, 2), np.datetime64("2020-01-01"), 1 + 2j])
     def test_unsupported_value_type_rejected(self, backend, value):
         with pytest.raises(DataJointError):
             _condition(backend, {"name": value})
 
-    def test_negated_hostile_value(self, backend):
+    def test_negated_value_with_quote_characters(self, backend):
         from datajoint.condition import Not
 
         cond = make_condition(_fake_expression(backend), Not({"name": "' OR 1=1 --"}), set())
@@ -316,3 +365,29 @@ def test_json_path_expression_unchanged(backend):
         assert translate_attribute("car.headlights[0].side", adapter)[1] == (
             "jsonb_extract_path_text(\"car\", 'headlights', '0', 'side')"
         )
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("type_spec", VALID_JSON_TYPES)
+def test_json_type_in_projection_and_index(backend, type_spec):
+    """JSON return types accepted in restrictions are also accepted in projections and index declarations."""
+    from datajoint.declare import compile_index
+
+    adapter = get_adapter(backend)
+    expr = translate_attribute(f"car.length:{type_spec}", adapter)[1]
+    assert expr.startswith("json_value(" if backend == "mysql" else "(jsonb_extract_path_text(")
+    index_sql = []
+    compile_index(f"index(car.length:{type_spec})", index_sql, adapter)
+    assert index_sql == [f"index (({expr}))"]
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("type_spec", ["unsigned) OR (1", "nonsense"])
+def test_invalid_json_type_in_projection_and_index(backend, type_spec):
+    from datajoint.declare import compile_index
+
+    adapter = get_adapter(backend)
+    with pytest.raises(DataJointError):
+        translate_attribute(f"car.length:{type_spec}", adapter)
+    with pytest.raises(DataJointError):
+        compile_index(f"index(car.length:{type_spec})", [], adapter)
