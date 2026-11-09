@@ -55,26 +55,6 @@ class DatabaseAdapter(ABC):
         """
         ...
 
-    def is_tls_negotiation_error(self, error: Exception) -> bool:
-        """
-        Whether a connection attempt failed while negotiating TLS.
-
-        When ``use_tls`` is not set, a connection that fails to negotiate TLS
-        (the server does not support it, or the TLS handshake fails) is retried
-        without TLS. Authentication and other errors are not retried.
-
-        Parameters
-        ----------
-        error : Exception
-            Exception raised by :meth:`connect`.
-
-        Returns
-        -------
-        bool
-            True if the failure is in TLS negotiation. Default False.
-        """
-        return False
-
     @abstractmethod
     def close(self, connection: Any) -> None:
         """
