@@ -430,6 +430,16 @@ class Config(BaseSettings):
     loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO", validation_alias="DJ_LOG_LEVEL")
     safemode: bool = True
 
+    prune_subqueries: bool = Field(
+        default=True,
+        validation_alias="DJ_PRUNE_SUBQUERIES",
+        description="If True (default), nested subqueries select only the attributes their enclosing query uses "
+        "(the primary key plus any attribute it names). Avoids carrying unused columns, such as blobs, "
+        "through subqueries the database materializes (ORDER BY/LIMIT, GROUP BY, UNION). Set to False "
+        "to render every nested subquery with all of its attributes, as before 2.4. Applies to query "
+        "expressions built after the setting changes. *New in 2.4*.",
+    )
+
     ignore_config_file: bool = Field(
         default=False,
         validation_alias="DJ_IGNORE_CONFIG_FILE",

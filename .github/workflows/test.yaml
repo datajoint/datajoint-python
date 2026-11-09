@@ -54,6 +54,27 @@ jobs:
           DJ_TEST_MYSQL_IMAGE: ${{ matrix.mysql-image }}
         run: pixi run -e ${{ matrix.environment }} test-cov
 
+  # Subquery pruning (#1665) is on by default; keep the fallback path working
+  # while the prune_subqueries switch exists.
+  test-no-pruning:
+    runs-on: ubuntu-latest
+    name: test (test-py314, mysql=datajoint/mysql:8.0, prune_subqueries=False)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.9.3
+        with:
+          cache: true
+          locked: false
+          environments: test-py314
+
+      - name: Run tests
+        env:
+          DJ_TEST_MYSQL_IMAGE: datajoint/mysql:8.0
+          DJ_PRUNE_SUBQUERIES: "0"
+        run: pixi run -e test-py314 test
+
   # Unit tests run without containers (faster feedback)
   unit-tests:
     runs-on: ubuntu-latest

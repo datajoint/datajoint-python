@@ -1197,3 +1197,22 @@ class TestBackendConfiguration:
 
         assert "database.backend" in ENV_VAR_MAPPING
         assert ENV_VAR_MAPPING["database.backend"] == "DJ_BACKEND"
+
+
+class TestPruneSubqueries:
+    """Test the prune_subqueries switch (#1665)."""
+
+    def test_default_on(self, monkeypatch):
+        monkeypatch.delenv("DJ_PRUNE_SUBQUERIES", raising=False)
+        assert settings.Config().prune_subqueries is True
+
+    @pytest.mark.parametrize("value, expected", [("0", False), ("false", False), ("1", True), ("true", True)])
+    def test_env_var(self, monkeypatch, value, expected):
+        monkeypatch.setenv("DJ_PRUNE_SUBQUERIES", value)
+        assert settings.Config().prune_subqueries is expected
+
+    def test_override(self):
+        original = dj.config.prune_subqueries
+        with dj.config.override(prune_subqueries=not original):
+            assert dj.config["prune_subqueries"] is (not original)
+        assert dj.config.prune_subqueries is original
