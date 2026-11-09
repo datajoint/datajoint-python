@@ -6,6 +6,8 @@ cover: ``<attach>`` names must be plain file names, and store paths used by
 ``<filepath@>``, ``<object@>``, and hash-addressed storage must stay inside the
 store location. ``allow_filepath_outside_store`` lifts the store check for
 ``<filepath@>`` only.
+
+No test reads a device or opens a pipe: a regression must fail, not hang.
 """
 
 import importlib
@@ -14,7 +16,7 @@ import sys
 
 import pytest
 
-posix_only = pytest.mark.skipif(sys.platform == "win32", reason="needs POSIX symlinks, devices, or pipes")
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="needs POSIX paths and symlinks")
 
 
 @pytest.fixture(autouse=True)
@@ -26,10 +28,11 @@ def _live_modules():
     names bound at collection time would then refer to stale classes, and
     ``pytest.raises(DataJointError)`` would miss the error actually raised.
     """
-    global AttachCodec, FilepathCodec, ObjectCodec, DataJointError, Config, StorageBackend
+    global AttachCodec, FilepathCodec, ObjectCodec, ObjectRef, DataJointError, Config, StorageBackend
     AttachCodec = importlib.import_module("datajoint.builtin_codecs.attach").AttachCodec
     FilepathCodec = importlib.import_module("datajoint.builtin_codecs.filepath").FilepathCodec
     ObjectCodec = importlib.import_module("datajoint.builtin_codecs.object").ObjectCodec
+    ObjectRef = importlib.import_module("datajoint.objectref").ObjectRef
     DataJointError = importlib.import_module("datajoint.errors").DataJointError
     Config = importlib.import_module("datajoint.settings").Config
     StorageBackend = importlib.import_module("datajoint.storage").StorageBackend
@@ -37,14 +40,14 @@ def _live_modules():
 
 @pytest.fixture
 def layout(tmp_path):
-    """A file store, a sibling directory sharing its name as a prefix, and a download path."""
+    """A file store, a sibling directory whose name extends the store's, a file outside both, and a download path."""
     store = tmp_path / "store"
     store.mkdir()
     (store / "data").mkdir()
     (store / "data" / "inside.txt").write_text("inside")
-    sibling = tmp_path / "store-evil"
-    sibling.mkdir()
-    (sibling / "secret.txt").write_text("secret")
+    sibling_prefix = tmp_path / "store-sibling"
+    sibling_prefix.mkdir()
+    (sibling_prefix / "sibling.txt").write_text("sibling")
     (tmp_path / "outside.txt").write_text("outside")
     downloads = tmp_path / "downloads"
     return tmp_path, store, downloads
@@ -60,38 +63,54 @@ def cfg(layout):
     return config
 
 
-HOSTILE_RELATIVE = [
+PATHS_WITH_PARENT_REF = [
     "../outside.txt",
     "data/../../outside.txt",
-    "../store-evil/secret.txt",
+    "../store-sibling/sibling.txt",
     "..\\outside.txt",
     "data/..\\..\\outside.txt",
-    "data/x\x00y",
     "data/sub/../inside.txt",
     "data/..",
 ]
+
+
+def _outside_paths(root, store):
+    """Absolute paths outside the store: a plain outside file and a sibling directory sharing the store's name prefix."""
+    return [str(root / "outside.txt"), str(root / "store-sibling" / "sibling.txt"), str(store) + "-sibling/sibling.txt"]
 
 
 # --------------------------------------------------------------------------- #
 # StorageBackend._full_path
 # --------------------------------------------------------------------------- #
 class TestStorePathConfinement:
-    @pytest.mark.parametrize("path", HOSTILE_RELATIVE)
-    def test_file_store_rejects_relative_escape(self, layout, path):
+    @pytest.mark.parametrize("path", PATHS_WITH_PARENT_REF + ["data/x\x00y"])
+    def test_file_store_rejects_parent_ref_and_nul(self, layout, path):
         _, store, _ = layout
         backend = StorageBackend({"protocol": "file", "location": str(store)})
         with pytest.raises(DataJointError, match="outside the store location"):
             backend._full_path(path)
 
-    def test_file_store_rejects_absolute_paths(self, layout):
+    @posix_only
+    def test_file_store_rejects_absolute_paths_outside_location(self, layout):
         root, store, _ = layout
         backend = StorageBackend({"protocol": "file", "location": str(store)})
-        for path in (str(root / "outside.txt"), str(store / "data" / "inside.txt"), "/dev/zero"):
-            with pytest.raises(DataJointError, match="outside the store location"):
+        for path in _outside_paths(root, store) + [str(store / "data" / ".." / ".." / "outside.txt")]:
+            with pytest.raises(DataJointError, match="allow_filepath_outside_store"):
                 backend._full_path(path)
 
+    @posix_only
+    def test_file_store_accepts_absolute_paths_inside_location(self, layout):
+        _, store, _ = layout
+        backend = StorageBackend({"protocol": "file", "location": str(store)})
+        inside = str(store / "data" / "inside.txt")
+        assert backend._full_path(inside) == inside
+        assert backend._full_path(str(store) + "/./data//inside.txt")
+        assert backend.get_buffer(inside) == b"inside"
+        assert backend._path_in_location(inside) == "data/inside.txt"
+        assert backend._path_in_location(str(store) + "-sibling/sibling.txt") is None
+
     @pytest.mark.parametrize("path", ["data/inside.txt", "./data/inside.txt", "data//inside.txt", ""])
-    def test_file_store_accepts_paths_inside(self, layout, path):
+    def test_file_store_accepts_relative_paths_inside(self, layout, path):
         _, store, _ = layout
         backend = StorageBackend({"protocol": "file", "location": str(store)})
         assert backend._full_path(path) == (store / path).as_posix()
@@ -100,7 +119,7 @@ class TestStorePathConfinement:
         root, store, _ = layout
         backend = StorageBackend({"protocol": "file", "location": str(store)})
         with pytest.raises(DataJointError):
-            backend.get_buffer("/dev/zero")
+            backend.get_buffer(str(root / "outside.txt"))
         with pytest.raises(DataJointError):
             backend.get_buffer("../outside.txt")
         with pytest.raises(DataJointError):
@@ -135,18 +154,45 @@ class TestStorePathConfinement:
 # <filepath@>
 # --------------------------------------------------------------------------- #
 class TestFilepathConfinement:
-    @pytest.mark.parametrize("path", HOSTILE_RELATIVE[:3])
-    def test_encode_rejects_relative_escape(self, cfg, path):
+    @pytest.mark.parametrize("path", PATHS_WITH_PARENT_REF[:3])
+    def test_encode_rejects_parent_ref(self, cfg, path):
         with pytest.raises(DataJointError, match="outside the store location"):
             FilepathCodec().encode(path, store_name="local", context={"config": cfg})
 
-    def test_encode_rejects_absolute_paths(self, cfg, layout):
+    @posix_only
+    def test_encode_rejects_absolute_paths_outside_store(self, cfg, layout):
         root, store, _ = layout
-        for path in (str(root / "outside.txt"), str(store / "data" / "inside.txt"), "/dev/zero"):
+        for path in _outside_paths(root, store):
             with pytest.raises(DataJointError, match="outside the store location"):
                 FilepathCodec().encode(path, store_name="local", context={"config": cfg})
 
-    @pytest.mark.parametrize("path", ["./_hash/x.bin", "././_schema/x", ".//_hash/x", "_hash"])
+    @posix_only
+    def test_encode_records_absolute_path_inside_store_as_relative(self, cfg, layout):
+        _, store, _ = layout
+        codec = FilepathCodec()
+        meta = codec.encode(str(store / "data" / "inside.txt"), store_name="local", context={"config": cfg})
+        assert meta["path"] == "data/inside.txt"
+        assert codec.decode(meta, context={"config": cfg}).read() == b"inside"
+
+    @posix_only
+    def test_decode_of_existing_absolute_path_inside_store(self, cfg, layout):
+        _, store, _ = layout
+        stored = {"path": str(store / "data" / "inside.txt"), "store": "local", "size": 6}
+        ref = FilepathCodec().decode(stored, context={"config": cfg})
+        assert ref.read() == b"inside"
+        assert ref.full_path == stored["path"]
+
+    @posix_only
+    def test_encode_absolute_path_into_reserved_section(self, cfg, layout):
+        _, store, _ = layout
+        (store / "_hash").mkdir()
+        (store / "_hash" / "x.bin").write_bytes(b"x")
+        with pytest.raises(ValueError, match="reserved section"):
+            FilepathCodec().encode(str(store / "_hash" / "x.bin"), store_name="local", context={"config": cfg})
+
+    @pytest.mark.parametrize(
+        "path", ["./_hash/x.bin", "././_schema/x", ".//_hash/x", "_hash", "_HASH/x.bin", "_Schema/x", "./_Hash"]
+    )
     def test_encode_reserved_sections_after_normalizing(self, cfg, path):
         with pytest.raises(ValueError, match="reserved section"):
             FilepathCodec().encode(path, store_name="local", context={"config": cfg})
@@ -168,18 +214,19 @@ class TestFilepathConfinement:
         meta = codec.encode("data/inside.txt", store_name="local", context={"config": cfg})
         assert codec.decode(meta, context={"config": cfg}).read() == b"inside"
 
-    @pytest.mark.parametrize("kind", ["absolute", "relative", "sibling", "device"])
-    def test_decode_of_hostile_row_does_not_read_outside(self, cfg, layout, kind):
-        root, _, _ = layout
+    @pytest.mark.parametrize("kind", ["absolute", "parent_ref", "sibling_prefix"])
+    def test_decode_of_row_outside_store_does_not_reach_it(self, cfg, layout, kind):
+        root, store, _ = layout
         path = {
             "absolute": str(root / "outside.txt"),
-            "relative": "../outside.txt",
-            "sibling": "../store-evil/secret.txt",
-            "device": "/dev/zero",
+            "parent_ref": "../outside.txt",
+            "sibling_prefix": str(store) + "-sibling/sibling.txt",
         }[kind]
         ref = FilepathCodec().decode({"path": path, "store": "local", "size": None}, context={"config": cfg})
         with pytest.raises(DataJointError, match="outside the store location"):
             ref.read()
+        with pytest.raises(DataJointError, match="outside the store location"):
+            ref.full_path
         with pytest.raises(DataJointError, match="outside the store location"):
             ref.download(root / "dl")
 
@@ -201,10 +248,10 @@ class TestFilepathConfinement:
 
 
 # --------------------------------------------------------------------------- #
-# <object@>
+# <object@> and ObjectRef
 # --------------------------------------------------------------------------- #
 class TestObjectConfinement:
-    @pytest.mark.parametrize("path", ["../outside.txt", "/dev/zero", "_schema/../../outside.txt"])
+    @pytest.mark.parametrize("path", ["../outside.txt", "/outside.txt", "_schema/../../outside.txt"])
     def test_encode_rejects_precomputed_metadata_outside_store(self, cfg, path):
         with pytest.raises(DataJointError, match="outside the store location"):
             ObjectCodec().encode({"path": path, "store": "local", "size": 1}, context={"config": cfg})
@@ -213,11 +260,35 @@ class TestObjectConfinement:
         meta = {"path": "_schema/s/t/k/f_tok", "store": "local", "size": 1}
         assert ObjectCodec().encode(meta, context={"config": cfg}) is meta
 
-    def test_decode_of_hostile_row_does_not_read_outside(self, cfg, layout):
+    def test_decode_of_row_outside_store_does_not_reach_it(self, cfg, layout):
         root, _, _ = layout
         ref = ObjectCodec().decode({"path": str(root / "outside.txt"), "store": "local", "size": 7}, context={"config": cfg})
         with pytest.raises(DataJointError, match="outside the store location"):
             ref.read()
+        with pytest.raises(DataJointError, match="outside the store location"):
+            ref.full_path
+
+    @pytest.mark.parametrize(
+        "subpath",
+        ["sub/C:\\x\\y.dll", "sub/\\\\server\\share\\y.dll", "sub\\..", "sub/x:y"],
+        ids=["drive", "unc", "parent_ref", "colon"],
+    )
+    def test_download_into_directory_uses_last_component_only(self, cfg, layout, subpath):
+        """The local file name is the last component, split on both separators, and must be plain."""
+        _, store, downloads = layout
+        backend = StorageBackend({"protocol": "file", "location": str(store)})
+        backend.confine_paths = False  # isolate the local-name check
+        downloads.mkdir()
+        ref = ObjectRef(path="data", size=None, hash=None, ext=None, is_dir=True, timestamp=None, _backend=backend)
+        name = subpath.replace("\\", "/").split("/")[-1]
+        if name in ("", ".", "..") or (os.name == "nt" and ":" in name):
+            with pytest.raises(DataJointError, match="not a plain file name"):
+                ref.download(downloads, subpath=subpath)
+        else:
+            # Missing source file: the error comes from the store, after the name was accepted
+            with pytest.raises(FileNotFoundError):
+                ref.download(downloads, subpath=subpath)
+        assert not any(downloads.iterdir())
 
 
 # --------------------------------------------------------------------------- #
@@ -230,16 +301,18 @@ def _attach_blob(name: str, contents: bytes) -> bytes:
 class TestAttachConfinement:
     @pytest.mark.parametrize(
         "name",
-        ["../evil.txt", "../../evil.txt", "sub/evil.txt", "..\\evil.txt", "..", ".", "", "/evil.txt"],
+        ["../outside.txt", "../../outside.txt", "sub/outside.txt", "..\\outside.txt", "back\\slash.txt", "..", ".", ""],
+        ids=["parent_ref", "parent_ref_twice", "subdir", "backslash_parent_ref", "backslash", "dotdot", "dot", "empty"],
     )
-    def test_decode_rejects_names_that_are_not_plain(self, cfg, layout, name):
+    def test_decode_rejects_stored_name_that_is_not_plain(self, cfg, layout, name):
         root, _, downloads = layout
+        (root / "outside.txt").unlink()
         with pytest.raises(DataJointError, match="not a plain file name"):
             AttachCodec().decode(_attach_blob(name, b"payload"), context={"config": cfg})
-        assert not (root / "evil.txt").exists()
+        assert not (root / "outside.txt").exists()
         assert not (downloads / "sub").exists()
 
-    def test_decode_rejects_absolute_name(self, cfg, layout):
+    def test_decode_rejects_absolute_stored_name(self, cfg, layout):
         root, _, _ = layout
         target = root / "absolute.txt"
         with pytest.raises(DataJointError, match="not a plain file name"):
@@ -262,34 +335,24 @@ class TestAttachConfinement:
         assert (downloads / "notes.txt").read_bytes() == b"hello"
         assert (downloads / "notes_1.txt").read_bytes() == b"changed"
 
-    @posix_only
-    def test_decode_does_not_read_device_behind_link(self, cfg, layout):
+    def test_decode_skips_directory_with_the_same_name(self, cfg, layout):
+        """A non-regular file in the way is never opened; the next free name is used."""
         _, _, downloads = layout
-        downloads.mkdir()
-        (downloads / "zero").symlink_to("/dev/zero")
-        result = AttachCodec().decode(_attach_blob("zero", b"payload"), context={"config": cfg})
-        assert result == str(downloads / "zero_1")
-        assert os.readlink(downloads / "zero") == "/dev/zero"
+        (downloads / "notes.txt").mkdir(parents=True)
+        result = AttachCodec().decode(_attach_blob("notes.txt", b"payload"), context={"config": cfg})
+        assert result == str(downloads / "notes_1.txt")
 
     @posix_only
-    def test_decode_does_not_open_pipe(self, cfg, layout):
-        _, _, downloads = layout
-        downloads.mkdir()
-        os.mkfifo(downloads / "pipe")
-        result = AttachCodec().decode(_attach_blob("pipe", b"payload"), context={"config": cfg})
-        assert result == str(downloads / "pipe_1")
-
-    @posix_only
-    def test_decode_does_not_write_through_link(self, cfg, layout):
+    def test_decode_does_not_reuse_or_write_through_link(self, cfg, layout):
         root, _, downloads = layout
         downloads.mkdir()
-        (downloads / "outside.txt").symlink_to(root / "outside.txt")
-        result = AttachCodec().decode(_attach_blob("outside.txt", b"overwritten"), context={"config": cfg})
-        assert result == str(downloads / "outside_1.txt")
+        (downloads / "linked.txt").symlink_to(root / "outside.txt")
+        result = AttachCodec().decode(_attach_blob("linked.txt", b"changed"), context={"config": cfg})
+        assert result == str(downloads / "linked_1.txt")
         assert (root / "outside.txt").read_text() == "outside"
         # A link is not reused even when its target holds the same content
-        result = AttachCodec().decode(_attach_blob("outside.txt", b"outside"), context={"config": cfg})
-        assert result == str(downloads / "outside_2.txt")
+        result = AttachCodec().decode(_attach_blob("linked.txt", b"outside"), context={"config": cfg})
+        assert result == str(downloads / "linked_2.txt")
 
     @posix_only
     def test_decode_does_not_follow_dangling_link(self, cfg, layout):

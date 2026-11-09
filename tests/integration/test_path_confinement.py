@@ -52,9 +52,9 @@ def schema_paths(connection_test, mock_stores, prefix):
 @pytest.fixture
 def outside(tmp_path):
     """A file outside every store and download path."""
-    path = tmp_path / "outside" / "secret.txt"
+    path = tmp_path / "outside" / "outside.txt"
     path.parent.mkdir()
-    path.write_bytes(b"secret")
+    path.write_bytes(b"outside")
     return path
 
 
@@ -77,8 +77,12 @@ def _json(table, attr, **key):
     return json.loads(raw) if isinstance(raw, (str, bytes)) else dict(raw)
 
 
-@pytest.mark.parametrize("name", ["../escaped.txt", "../../escaped.txt", "sub/escaped.txt", "/tmp/escaped-dj.txt"])
-def test_attach_fetch_refuses_name_with_directory(schema_paths, tmp_path, name):
+@pytest.mark.parametrize(
+    "name",
+    ["../outside.txt", "../../outside.txt", "sub/outside.txt", "/outside-of-download-path.txt"],
+    ids=["parent_ref", "parent_ref_twice", "subdir", "absolute"],
+)
+def test_attach_fetch_refuses_stored_name_with_directory(schema_paths, tmp_path, name):
     source = tmp_path / "report.txt"
     source.write_bytes(b"report")
     Document.insert1(dict(doc_id=1, inline_file=source, stored_file=source))
@@ -88,8 +92,8 @@ def test_attach_fetch_refuses_name_with_directory(schema_paths, tmp_path, name):
     with dj.config.override(download_path=str(download)):
         with pytest.raises(dj.DataJointError, match="not a plain file name"):
             (Document & "doc_id=1").fetch1("inline_file")
-    assert not (tmp_path / "a" / "b" / "escaped.txt").exists()
-    assert not (tmp_path / "a" / "escaped.txt").exists()
+    assert not (tmp_path / "a" / "b" / "outside.txt").exists()
+    assert not (tmp_path / "a" / "outside.txt").exists()
     assert not (download / "sub").exists()
 
 
@@ -125,8 +129,8 @@ def test_filepath_insert_refuses_path_outside_store(schema_paths, outside):
     assert len(Reference()) == 0
 
 
-@pytest.mark.parametrize("hostile", ["absolute", "relative", "device"])
-def test_filepath_fetch_refuses_path_outside_store(schema_paths, outside, hostile):
+@pytest.mark.parametrize("kind", ["absolute", "parent_ref"])
+def test_filepath_fetch_refuses_path_outside_store(schema_paths, outside, kind):
     repo = Path(dj.config.stores["repo"]["location"])
     (repo / "inside.txt").write_bytes(b"inside")
     Reference.insert1(dict(ref_id=1, file_ref="inside.txt"))
@@ -135,19 +139,30 @@ def test_filepath_fetch_refuses_path_outside_store(schema_paths, outside, hostil
     meta = _json(Reference, "file_ref", ref_id=1)
     meta["path"] = {
         "absolute": str(outside),
-        "relative": "../" * len(repo.parts) + str(outside).lstrip("/"),
-        "device": "/dev/zero",
-    }[hostile]
+        "parent_ref": "../" * len(repo.parts) + str(outside).lstrip("/"),
+    }[kind]
     _overwrite(Reference, "file_ref", json.dumps(meta), ref_id=1)
     ref = (Reference & "ref_id=1").fetch1("file_ref")
     with pytest.raises(dj.DataJointError, match="outside the store location"):
         ref.read()
 
 
+def test_filepath_absolute_path_inside_store(schema_paths):
+    repo = Path(dj.config.stores["repo"]["location"])
+    (repo / "inside.txt").write_bytes(b"inside")
+    Reference.insert1(dict(ref_id=1, file_ref=str(repo / "inside.txt")))
+    assert _json(Reference, "file_ref", ref_id=1)["path"] == "inside.txt"
+    # Rows written before paths were recorded relative to the store stay readable
+    meta = _json(Reference, "file_ref", ref_id=1)
+    meta["path"] = str(repo / "inside.txt")
+    _overwrite(Reference, "file_ref", json.dumps(meta), ref_id=1)
+    assert (Reference & "ref_id=1").fetch1("file_ref").read() == b"inside"
+
+
 def test_filepath_outside_store_when_allowed(schema_paths, outside):
     with dj.config.override(allow_filepath_outside_store=True):
         Reference.insert1(dict(ref_id=1, file_ref=str(outside)))
-        assert (Reference & "ref_id=1").fetch1("file_ref").read() == b"secret"
+        assert (Reference & "ref_id=1").fetch1("file_ref").read() == b"outside"
     with pytest.raises(dj.DataJointError, match="outside the store location"):
         (Reference & "ref_id=1").fetch1("file_ref").read()
 
