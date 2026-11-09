@@ -102,11 +102,47 @@ class QueryExpression:
 
     _subquery_alias_count = count()  # count for alias names used in the FROM clause
 
-    def from_clause(self):
+    def _level_text(self, fields):
+        """
+        SQL text of this level, apart from its subqueries: the select list, WHERE,
+        ORDER BY, and USING lists. Any attribute of a subquery that this level uses
+        is named somewhere in it.
+        """
         adapter = self.connection.adapter
+        parts = [self.heading.as_sql(fields or self.heading.names, adapter=adapter), self.sorting_clauses()]
+        parts += map(str, self.restriction)
+        parts += (a for _, using_attrs in self._joins for a in using_attrs)
+        return " ".join(parts)
+
+    def _required_fields(self, words):
+        """
+        Attributes an enclosing query needs from this expression used as a subquery:
+        the primary key, which keeps rows distinct, plus any attribute whose name is
+        among ``words``. Names are matched as whole words of the enclosing SQL, which
+        may keep an attribute that is not needed but never drops one that is.
+        """
+        if self._top:
+            words = words | _words(self.sorting_clauses())
+        return [n for n in self.heading.names if n in self.primary_key or n.lower() in words]
+
+    def from_clause(self, fields=None):
+        """
+        The FROM clause, with each subquery rendered as SQL.
+
+        Parameters
+        ----------
+        fields : list, optional
+            Attributes this level selects. With ``config["prune_subqueries"]``, each
+            subquery selects only the attributes this level uses.
+        """
+        adapter = self.connection.adapter
+        words = _words(self._level_text(fields)) if self.connection._config["prune_subqueries"] else None
         support = (
             (
-                "({}) as {}".format(src.make_sql(), adapter.quote_identifier(f"${next(self._subquery_alias_count):x}"))
+                "({}) as {}".format(
+                    src.make_sql(None if words is None else src._required_fields(words)),
+                    adapter.quote_identifier(f"${next(self._subquery_alias_count):x}"),
+                )
                 if isinstance(src, QueryExpression)
                 else src
             )
@@ -161,7 +197,7 @@ class QueryExpression:
         return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names, adapter=self.connection.adapter),
-            from_=self.from_clause(),
+            from_=self.from_clause(fields),
             where=self.where_clause(),
             sorting=self.sorting_clauses(),
         )
@@ -1160,18 +1196,14 @@ class QueryExpression:
 
         # Build COUNT query - PostgreSQL requires different syntax for multi-column DISTINCT
         adapter = result.connection.adapter
+        fields = result.heading.as_sql(result.primary_key, include_aliases=False, adapter=adapter)
+        from_ = result.from_clause(result.primary_key)
         if has_left_join or len(result.primary_key) > 1:
             # Use subquery with DISTINCT for multi-column primary keys (backend-agnostic)
-            fields = result.heading.as_sql(result.primary_key, include_aliases=False, adapter=adapter)
-            query = (
-                f"SELECT count(*) FROM ("
-                f"SELECT DISTINCT {fields} FROM {result.from_clause()}{result.where_clause()}"
-                f") AS distinct_count"
-            )
+            query = f"SELECT count(*) FROM (SELECT DISTINCT {fields} FROM {from_}{result.where_clause()}) AS distinct_count"
         else:
             # Single column - can use count(DISTINCT col) directly
-            fields = result.heading.as_sql(result.primary_key, include_aliases=False, adapter=adapter)
-            query = f"SELECT count(DISTINCT {fields}) FROM {result.from_clause()}{result.where_clause()}"
+            query = f"SELECT count(DISTINCT {fields}) FROM {from_}{result.where_clause()}"
 
         return result.connection.query(query).fetchone()[0]
 
@@ -1188,7 +1220,9 @@ class QueryExpression:
         """
         return bool(
             self.connection.query(
-                "SELECT EXISTS(SELECT 1 FROM {from_}{where})".format(from_=self.from_clause(), where=self.where_clause())
+                "SELECT EXISTS(SELECT 1 FROM {from_}{where})".format(
+                    from_=self.from_clause(self.primary_key), where=self.where_clause()
+                )
             ).fetchone()[0]
         )
 
@@ -1352,8 +1386,29 @@ class Aggregation(QueryExpression):
     def where_clause(self):
         return "" if not self._left_restrict else " WHERE (%s)" % ")AND(".join(str(s) for s in self._left_restrict)
 
+    def _level_text(self, fields):
+        # also the pre-GROUP BY WHERE, HAVING, and GROUP BY
+        return " ".join(
+            [
+                super()._level_text(fields),
+                *map(str, self._left_restrict or []),
+                *(self._grouping_attributes or []),
+            ]
+        )
+
+    def _required_fields(self, words):
+        """
+        As for QueryExpression, plus the attributes HAVING refers to, which must stay
+        in the same SELECT list. Without GROUP BY, all attributes are kept: dropping
+        every aggregate would return one row per input row instead of one row.
+        """
+        if not self.primary_key:
+            return None
+        return super()._required_fields(words | _words(" ".join(map(str, self.restriction))))
+
     def make_sql(self, fields=None):
         adapter = self.connection.adapter
+        from_ = self.from_clause(fields)
         fields = self.heading.as_sql(fields or self.heading.names, adapter=adapter)
         assert self._grouping_attributes or not self.restriction
         distinct = set(self.heading.names) == set(self.primary_key)
@@ -1367,7 +1422,7 @@ class Aggregation(QueryExpression):
             inner_sql = "SELECT {distinct}{fields} FROM {from_}{where}{group_by}".format(
                 distinct="DISTINCT " if distinct else "",
                 fields=fields,
-                from_=self.from_clause(),
+                from_=from_,
                 where=self.where_clause(),
                 group_by=" GROUP BY {}".format(", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes)),
             )
@@ -1380,7 +1435,7 @@ class Aggregation(QueryExpression):
             return "SELECT {distinct}{fields} FROM {from_}{where}{group_by}{sorting}".format(
                 distinct="DISTINCT " if distinct else "",
                 fields=fields,
-                from_=self.from_clause(),
+                from_=from_,
                 where=self.where_clause(),
                 group_by=(
                     ""
@@ -1395,10 +1450,12 @@ class Aggregation(QueryExpression):
 
     def __len__(self):
         alias = self.connection.adapter.quote_identifier(f"${next(self._subquery_alias_count):x}")
-        return self.connection.query(f"SELECT count(1) FROM ({self.make_sql()}) {alias}").fetchone()[0]
+        sql = self.make_sql(self._required_fields(set()))
+        return self.connection.query(f"SELECT count(1) FROM ({sql}) {alias}").fetchone()[0]
 
     def __bool__(self):
-        return bool(self.connection.query("SELECT EXISTS({sql})".format(sql=self.make_sql())).fetchone()[0])
+        sql = self.make_sql(self._required_fields(set()))
+        return bool(self.connection.query(f"SELECT EXISTS({sql})").fetchone()[0])
 
 
 class Union(QueryExpression):
@@ -1429,23 +1486,37 @@ class Union(QueryExpression):
         result._support = [arg1, arg2]
         return result
 
-    def make_sql(self):
+    def make_sql(self, fields=None):
+        """
+        Make the SQL for the union.
+
+        Parameters
+        ----------
+        fields : list, optional
+            Attributes to select, in order. Defaults to all attributes. Both
+            branches select the same list so that columns line up by position.
+        """
         arg1, arg2 = self._support
-        if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:
-            # no secondary attributes: use UNION DISTINCT
-            fields = arg1.primary_key
+        fields = list(fields or self.heading.names)
+        if not any(f in self.heading.secondary_attributes for f in fields):
+            # only key attributes requested: UNION removes duplicates
             alias_name = f"_u{next(self.__count)}{self.sorting_clauses()}"
             alias_quoted = self.connection.adapter.quote_identifier(alias_name)
-            sql1 = arg1.make_sql() if isinstance(arg1, Union) else arg1.make_sql(fields)
-            sql2 = arg2.make_sql() if isinstance(arg2, Union) else arg2.make_sql(fields)
+            # an Aggregation's HAVING may refer to aliases outside `fields`, so select from it as a subquery
+            sql1, sql2 = (
+                (arg.make_subquery() if isinstance(arg, Aggregation) else arg).make_sql(fields) for arg in (arg1, arg2)
+            )
             return f"SELECT * FROM (({sql1}) UNION ({sql2})) as {alias_quoted}"
-        # with secondary attributes, use union of left join with anti-restriction
-        fields = self.heading.names
+        # with secondary attributes: left join of arg1 with arg2, plus the rows of arg2
+        # whose keys are not in arg1 (complement of restriction).
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
         sql2 = (arg2 - arg1).proj(..., **{k: "NULL" for k in arg1.heading.secondary_attributes}).make_sql(fields)
-        return "({sql1})  UNION ({sql2})".format(sql1=sql1, sql2=sql2)
+        # The two branches have disjoint primary keys, so when the primary key is selected
+        # no row can repeat and UNION ALL skips the comparison of whole rows (blobs included).
+        union = "UNION ALL" if set(self.primary_key) <= set(fields) else "UNION"
+        return f"({sql1}) {union} ({sql2})"
 
-    def from_clause(self):
+    def from_clause(self, fields=None):
         """The union does not use a FROM clause."""
         raise NotImplementedError("Union does not use a FROM clause")
 
@@ -1454,11 +1525,17 @@ class Union(QueryExpression):
         raise NotImplementedError("Union does not use a WHERE clause")
 
     def __len__(self):
+        # rows of a union are unique by primary key, so counting keys suffices
         alias = self.connection.adapter.quote_identifier(f"${next(QueryExpression._subquery_alias_count):x}")
-        return self.connection.query(f"SELECT count(1) FROM ({self.make_sql()}) {alias}").fetchone()[0]
+        sql = self.make_sql(self.primary_key)
+        return self.connection.query(f"SELECT count(1) FROM ({sql}) {alias}").fetchone()[0]
 
     def __bool__(self):
-        return bool(self.connection.query("SELECT EXISTS({sql})".format(sql=self.make_sql())).fetchone()[0])
+        if not self._top:
+            # a union is non-empty when either operand is
+            return any(bool(arg) for arg in self._support)
+        sql = self.make_sql(self.primary_key)
+        return bool(self.connection.query(f"SELECT EXISTS({sql})").fetchone()[0])
 
 
 class U:
@@ -1575,6 +1652,11 @@ class U:
         return result.proj(**named_attributes)
 
     aggregate = aggr  # alias for aggr
+
+
+def _words(sql):
+    """The set of lowercase words in an SQL fragment, quoted identifiers included."""
+    return set(re.findall(r"\w+", sql.lower()))
 
 
 def _flatten_attribute_list(primary_key, attrs):

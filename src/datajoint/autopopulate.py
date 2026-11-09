@@ -796,8 +796,9 @@ class AutoPopulate:
         else:
             # Build a single query that computes both total and remaining
             # Using LEFT JOIN with COUNT(DISTINCT) to handle 1:many relationships
-            todo_sql = todo.make_sql()
-            target_sql = self.make_sql()
+            # select only the attributes the counting query below refers to
+            todo_sql = todo.proj().make_sql()
+            target_sql = self.make_sql(common_attrs)
 
             # Get adapter for backend-specific quoting
             adapter = self.connection.adapter

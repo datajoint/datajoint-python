@@ -385,9 +385,14 @@ class Table(QueryExpression):
                     if prompt:
                         logger.info("Table altered")
 
-    def from_clause(self):
+    def from_clause(self, fields=None):
         """
         Return the FROM clause of SQL SELECT statements.
+
+        Parameters
+        ----------
+        fields : list, optional
+            Ignored: a table has no subqueries to narrow.
 
         Returns
         -------
