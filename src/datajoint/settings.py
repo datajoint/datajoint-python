@@ -16,6 +16,13 @@ A value set by a higher source is not overridden by a lower one. In particular
 ``datajoint.json`` takes precedence over ``.secrets/``: the secrets directory
 only supplies values the config file and environment leave unset.
 
+The search for ``datajoint.json`` and ``.secrets/`` skips, with a warning, any
+file or directory owned by another user that sits under a world-writable
+directory such as ``/tmp``, since anyone on the machine could have placed it
+there. To use such a file, name it explicitly: ``dj.config.load(path)`` or the
+``DJ_CONFIG_FILE`` environment variable. ``DJ_IGNORE_CONFIG_FILE=true`` turns
+the search off.
+
 Examples
 --------
 >>> import datajoint as dj
@@ -47,6 +54,7 @@ import copy
 import json
 import logging
 import os
+import stat
 import warnings
 from contextlib import contextmanager
 from enum import Enum
@@ -61,6 +69,7 @@ from .errors import DataJointError
 CONFIG_FILENAME = "datajoint.json"
 SECRETS_DIRNAME = ".secrets"
 SYSTEM_SECRETS_DIR = Path("/run/secrets/datajoint")
+CONFIG_FILE_ENV_VAR = "DJ_CONFIG_FILE"
 DEFAULT_SUBFOLDING = (2, 2)
 
 # Mapping of config keys to environment variables
@@ -92,12 +101,77 @@ prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix))
 logger = logging.getLogger(__name__.split(".")[0])
 
 
+_SECRETS_HINT = " Supply its values through environment variables instead."
+
+
+def _is_world_writable(mode: int) -> bool:
+    return bool(mode & stat.S_IWOTH)
+
+
+def _check_discovered_path(path: Path, hint: str = "") -> bool:
+    """
+    Decide whether a config file or secrets path found by searching may be used.
+
+    A path owned by another user (other than root) is rejected when it, or any
+    directory above it, is world-writable: anyone on the machine could have
+    created it there. A path owned by the current user or by root is used, as
+    is another user's path in a directory tree that only its owners can write
+    (e.g. a shared project directory). A world-writable path that is used
+    produces a warning.
+
+    Platforms without POSIX ownership (``os.getuid`` absent, e.g. Windows)
+    accept every path.
+
+    Parameters
+    ----------
+    path : Path
+        File or directory found by the search.
+    hint : str, optional
+        Advice appended to the warning when the path is not used.
+
+    Returns
+    -------
+    bool
+        True if the path may be used.
+    """
+    getuid = getattr(os, "getuid", None)
+    if getuid is None:
+        return True
+    try:
+        st = os.stat(path)
+    except OSError:
+        return False
+
+    if st.st_uid not in (getuid(), 0):
+        # Check the directories the path was found in as well as those of its
+        # target, in case the path is a symbolic link.
+        found, resolved = path.absolute(), path.resolve()
+        locations = dict.fromkeys((found, *found.parents, resolved, *resolved.parents))
+        for location in locations:
+            try:
+                mode = os.stat(location).st_mode
+            except OSError:
+                continue
+            if _is_world_writable(mode):
+                logger.warning(
+                    f"Ignoring {path}: it is owned by another user (uid {st.st_uid}) and "
+                    f"{location} is writable by all users.{hint}"
+                )
+                return False
+
+    if _is_world_writable(st.st_mode):
+        logger.warning(f"{path} is writable by all users; restrict its permissions (e.g. chmod o-w).")
+    return True
+
+
 def find_config_file(start: Path | None = None) -> Path | None:
     """
     Search for datajoint.json in current and parent directories.
 
     Searches upward from ``start`` until finding the config file or hitting
-    a project boundary (``.git``, ``.hg``) or filesystem root.
+    a project boundary (``.git``, ``.hg``) or filesystem root. A file owned by
+    another user under a world-writable directory ends the search without a
+    result (see ``_check_discovered_path``).
 
     Parameters
     ----------
@@ -114,7 +188,8 @@ def find_config_file(start: Path | None = None) -> Path | None:
     while True:
         config_path = current / CONFIG_FILENAME
         if config_path.is_file():
-            return config_path
+            hint = f" To use it, pass its path to dj.config.load() or set {CONFIG_FILE_ENV_VAR}."
+            return config_path if _check_discovered_path(config_path, hint) else None
 
         # Stop at project/repo root
         if (current / ".git").exists() or (current / ".hg").exists():
@@ -136,6 +211,9 @@ def find_secrets_dir(config_path: Path | None = None) -> Path | None:
     1. ``.secrets/`` in same directory as datajoint.json (project secrets)
     2. ``/run/secrets/datajoint/`` (Docker/Kubernetes secrets)
 
+    A directory owned by another user under a world-writable directory is not
+    used (see ``_check_discovered_path``).
+
     Parameters
     ----------
     config_path : Path, optional
@@ -149,12 +227,12 @@ def find_secrets_dir(config_path: Path | None = None) -> Path | None:
     # Check project secrets directory (next to config file)
     if config_path is not None:
         project_secrets = config_path.parent / SECRETS_DIRNAME
-        if project_secrets.is_dir():
+        if project_secrets.is_dir() and _check_discovered_path(project_secrets, _SECRETS_HINT):
             return project_secrets
 
     # Check system secrets directory (Docker/Kubernetes)
     if SYSTEM_SECRETS_DIR.is_dir():
-        return SYSTEM_SECRETS_DIR
+        return SYSTEM_SECRETS_DIR if _check_discovered_path(SYSTEM_SECRETS_DIR, _SECRETS_HINT) else None
 
     return None
 
@@ -179,7 +257,7 @@ def read_secret_file(secrets_dir: Path | None, name: str) -> str | None:
         return None
 
     secret_path = secrets_dir / name
-    if secret_path.is_file():
+    if secret_path.is_file() and _check_discovered_path(secret_path, _SECRETS_HINT):
         return secret_path.read_text().strip()
 
     return None
@@ -792,6 +870,8 @@ class Config(BaseSettings):
 
                 parts = secret_file.name.split(".")
                 if len(parts) == 3 and parts[0] == "stores":
+                    if not _check_discovered_path(secret_file, _SECRETS_HINT):
+                        continue
                     store_name, attr = parts[1], parts[2]
                     value = secret_file.read_text().strip()
                     # Initialize store dict if needed
@@ -1081,7 +1161,10 @@ def _create_config() -> Config:
 
     config_path: Path | None = None
     if not cfg.ignore_config_file:
-        config_path = find_config_file()
+        # DJ_CONFIG_FILE names the config file explicitly; it is used as given,
+        # like dj.config.load(), without searching.
+        explicit_path = os.environ.get(CONFIG_FILE_ENV_VAR)
+        config_path = Path(explicit_path).expanduser() if explicit_path else find_config_file()
         if config_path is not None:
             try:
                 cfg.load(config_path)

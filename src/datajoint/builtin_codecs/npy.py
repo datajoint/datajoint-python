@@ -4,10 +4,70 @@ NumPy array codec using .npy format.
 
 from __future__ import annotations
 
+import logging
+import os
+import stat
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from ..errors import DataJointError
 from .schema import SchemaCodec
+
+logger = logging.getLogger(__name__.split(".")[0])
+
+# Private directory created for this process when the per-user cache path is unusable
+_fallback_mmap_cache_dir: Path | None = None
+
+
+def _mmap_cache_dir() -> Path:
+    """
+    Return the current user's cache directory for remote arrays opened with ``mmap_mode``.
+
+    On POSIX systems the directory is ``<tempdir>/datajoint_mmap_<uid>``, created
+    with mode 0700. An existing directory is used only if it is a directory (not
+    a symbolic link) owned by the current user; its permissions are reset to 0700
+    if other users have access. If the path exists but cannot be used, a new
+    private directory is created for this process instead.
+
+    Where ``os.getuid`` is unavailable (Windows), the temporary directory is
+    already per-user and ``<tempdir>/datajoint_mmap`` is used.
+
+    Returns
+    -------
+    Path
+        Directory for cached ``.npy`` files.
+    """
+    global _fallback_mmap_cache_dir
+
+    getuid = getattr(os, "getuid", None)
+    if getuid is None:
+        cache_dir = Path(tempfile.gettempdir()) / "datajoint_mmap"
+        cache_dir.mkdir(exist_ok=True)
+        return cache_dir
+
+    if _fallback_mmap_cache_dir is not None and _fallback_mmap_cache_dir.is_dir():
+        return _fallback_mmap_cache_dir
+
+    uid = getuid()
+    cache_dir = Path(tempfile.gettempdir()) / f"datajoint_mmap_{uid}"
+    try:
+        cache_dir.mkdir(mode=0o700)
+    except FileExistsError:
+        pass
+
+    st = os.lstat(cache_dir)
+    if stat.S_ISDIR(st.st_mode) and st.st_uid == uid:
+        if stat.S_IMODE(st.st_mode) & 0o077:
+            os.chmod(cache_dir, 0o700)
+        return cache_dir
+
+    _fallback_mmap_cache_dir = Path(tempfile.mkdtemp(prefix="datajoint_mmap_"))
+    logger.warning(
+        f"Not using {cache_dir} to cache arrays: it is not a directory owned by the current user. "
+        f"Using {_fallback_mmap_cache_dir} for this session."
+    )
+    return _fallback_mmap_cache_dir
 
 
 class NpyRef:
@@ -165,15 +225,11 @@ class NpyRef:
                 local_path = self._backend._full_path(self.path)
                 return np.load(local_path, mmap_mode=mmap_mode, allow_pickle=False)
             else:
-                # Remote storage - download to local cache first
+                # Remote storage - download to the user's local cache first
                 import hashlib
-                import tempfile
-                from pathlib import Path
 
                 path_hash = hashlib.md5(self.path.encode()).hexdigest()[:12]
-                cache_dir = Path(tempfile.gettempdir()) / "datajoint_mmap"
-                cache_dir.mkdir(exist_ok=True)
-                cache_path = cache_dir / f"{path_hash}.npy"
+                cache_path = _mmap_cache_dir() / f"{path_hash}.npy"
 
                 if not cache_path.exists():
                     buffer = self._backend.get_buffer(self.path)
