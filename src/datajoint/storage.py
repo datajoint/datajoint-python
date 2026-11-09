@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import secrets
 import urllib.parse
 from datetime import datetime, timezone
@@ -43,6 +44,16 @@ def is_url(path: str) -> bool:
         True if path starts with a supported URL protocol.
     """
     return path.lower().startswith(URL_PROTOCOLS)
+
+
+def _has_parent_reference(path: str) -> bool:
+    """
+    Check whether a path has a ``..`` component.
+
+    Both ``/`` and ``\\`` count as separators so the result does not depend on the
+    platform.
+    """
+    return ".." in re.split(r"[\\/]", path)
 
 
 def _path_to_file_url(resolved_path: Path | PurePosixPath) -> str:
@@ -309,7 +320,13 @@ class StorageBackend:
         Storage configuration dictionary.
     protocol : str
         Storage protocol (``'file'``, ``'s3'``, ``'gcs'``, ``'azure'``).
+    confine_paths : bool
+        If True (default), paths passed to the backend must stay inside the
+        store location: absolute paths (for ``file`` stores) and paths with
+        ``..`` components are rejected.
     """
+
+    confine_paths: bool = True
 
     def __init__(self, spec: dict[str, Any]) -> None:
         """
@@ -429,8 +446,16 @@ class StorageBackend:
         -------
         str
             Full path suitable for fsspec operations.
+
+        Raises
+        ------
+        DataJointError
+            If ``confine_paths`` is set and the path leads outside the store
+            location.
         """
         path = str(path)
+        if self.confine_paths:
+            self._check_confined(path)
         if self.protocol == "s3":
             bucket = self.spec["bucket"]
             location = self.spec.get("location", "")
@@ -450,6 +475,14 @@ class StorageBackend:
             return path
         else:
             return self._require_adapter().full_path(self.spec, path)
+
+    def _check_confined(self, path: str) -> None:
+        """Raise if ``path`` does not stay inside the store location."""
+        if "\x00" in path or _has_parent_reference(path) or (self.protocol == "file" and Path(path).anchor):
+            raise errors.DataJointError(
+                f"Path {path!r} may lead outside the store location: "
+                "store paths must be relative and have no '..' components."
+            )
 
     def get_url(self, path: str | PurePosixPath) -> str:
         """
