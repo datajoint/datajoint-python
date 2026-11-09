@@ -79,7 +79,9 @@ def conn(
         If True, reset existing connection. Default False.
     use_tls : bool or dict, optional
         TLS encryption option: True (required), False (no TLS),
-        None (preferred, default), or dict for manual configuration.
+        None (preferred, default), or dict for manual configuration
+        (TLS required; ``ca``, ``cert``, ``key``; with ``ca``, the server
+        certificate is verified).
 
     Returns
     -------
@@ -162,7 +164,10 @@ class Connection:
     port : int, optional
         Port number. Overridden if specified in host.
     use_tls : bool or dict, optional
-        TLS encryption option.
+        TLS encryption option: True (required), False (no TLS),
+        None (preferred, default), or dict for manual configuration
+        (TLS required; ``ca``, ``cert``, ``key``; with ``ca``, the server
+        certificate is verified).
 
     Attributes
     ----------
@@ -276,8 +281,10 @@ class Connection:
             try:
                 self._conn = self.adapter.connect(**self._build_connect_kwargs())
             except Exception as ssl_error:
-                # If SSL fails, retry without SSL (if it was auto-detected)
-                if self.conn_info.get("ssl_input") is None:
+                # If SSL negotiation fails (server without SSL, or failed handshake), retry
+                # without SSL when it was auto-detected. Other errors, such as authentication
+                # failures, are not retried.
+                if self.conn_info.get("ssl_input") is None and self.adapter.is_tls_negotiation_error(ssl_error):
                     logger.warning(
                         "SSL connection failed (%s). Falling back to non-SSL connection. "
                         "To require SSL, set use_tls=True explicitly.",
