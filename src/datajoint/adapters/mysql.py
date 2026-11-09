@@ -892,7 +892,7 @@ class MySQLAdapter(DatabaseAdapter):
         """
         quoted_col = self.quote_identifier(column)
         return_clause = f" returning {return_type}" if return_type else ""
-        return f"json_value({quoted_col}, _utf8mb4'$.{path}'{return_clause})"
+        return f"json_value({quoted_col}, _utf8mb4{self.quote_string('$.' + path)}{return_clause})"
 
     def translate_expression(self, expr: str) -> str:
         """

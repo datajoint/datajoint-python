@@ -1136,7 +1136,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
                 path_parts.extend(indices)
             else:
                 path_parts.append(part)
-        path_args = ", ".join(f"'{part}'" for part in path_parts)
+        path_args = ", ".join(self.quote_string(part) for part in path_parts)
         expr = f"jsonb_extract_path_text({quoted_col}, {path_args})"
         # Add cast if return type specified
         if return_type:

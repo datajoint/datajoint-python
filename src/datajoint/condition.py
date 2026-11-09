@@ -13,6 +13,7 @@ import decimal
 import inspect
 import json
 import logging
+import numbers
 import re
 import uuid
 from dataclasses import dataclass
@@ -29,6 +30,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__.split(".")[0])
 
 JSON_PATTERN = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$")
+
+# Return types accepted after ``:`` in a JSON attribute key, e.g. ``"attr.path:decimal(10,2)"``
+JSON_TYPE_PATTERN = re.compile(
+    r"\s*(?:(?:un)?signed(?:\s+integer)?|integer|int|bigint|smallint|float|double(?:\s+precision)?|real"
+    r"|decimal|numeric|date|time|datetime|timestamp|year|char|varchar|binary|text|jsonb?|bool(?:ean)?)"
+    r"(?:\s*\(\s*\d+\s*(?:,\s*\d+\s*)?\))?"
+    r"(?:\s+(?:character\s+set|charset)\s+\w+)?(?:\s+collate\s+\w+)?\s*",
+    re.IGNORECASE,
+)
+
+# Text of a numeric value that may appear unquoted in a condition
+NUMERIC_LITERAL_PATTERN = re.compile(r"[+-]?(?:(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|nan|inf)|true|false", re.IGNORECASE)
 
 
 def translate_attribute(key: str, adapter=None) -> tuple[dict | None, str]:
@@ -56,6 +69,8 @@ def translate_attribute(key: str, adapter=None) -> tuple[dict | None, str]:
     if match["path"] is None:
         return match, match["attr"]
     else:
+        if match["type"] is not None and not JSON_TYPE_PATTERN.fullmatch(match["type"]):
+            raise DataJointError(f"Unsupported return type `{match['type']}` in JSON attribute `{key}`.")
         # Use adapter's json_path_expr if available, otherwise fall back to MySQL syntax
         if adapter is not None:
             return match, adapter.json_path_expr(match["attr"], match["path"], match["type"])
@@ -335,18 +350,25 @@ def make_condition(
     # Get adapter for backend-agnostic SQL generation
     adapter = query_expression.connection.adapter
 
+    def literal(text):
+        """quoted string literal; % is doubled for the driver's parameter substitution"""
+        return adapter.quote_string(text).replace("%", "%%")
+
     def prep_value(k, v):
         """prepare SQL condition"""
+        key = k
         key_match, k = translate_attribute(k, adapter)
-        is_json_path = key_match is not None and key_match.get("path") is not None
+        if key_match is None:
+            raise DataJointError(f"Invalid attribute name `{key}` in restriction.")
+        is_json_path = key_match.get("path") is not None
 
         if not is_json_path:
             k = adapter.quote_identifier(k)
         if is_json_path and isinstance(v, dict):
-            return f"{k}='{json.dumps(v)}'"
+            return f"{k}={literal(json.dumps(v))}"
         if v is None:
             return f"{k} IS NULL"
-        if key_match is not None and query_expression.heading[key_match["attr"]].uuid:
+        if query_expression.heading[key_match["attr"]].uuid:
             if not isinstance(v, uuid.UUID):
                 try:
                     v = uuid.UUID(v)
@@ -363,13 +385,18 @@ def make_condition(
                 list,
             ),
         ):
-            # Use single quotes for string literals (works for both MySQL and PostgreSQL)
-            return f"{k}='{v}'"
+            return f"{k}={literal(str(v))}"
         if isinstance(v, str):
-            # Escape single quotes by doubling them, and escape % for driver
-            v = v.replace("'", "''").replace("%", "%%").replace("\\", "\\\\")
-            return f"{k}='{v}'"
-        return f"{k}={v}"
+            if adapter.backend == "postgresql":
+                # Backslashes are doubled as in previous releases so that string
+                # restrictions keep matching the same rows.
+                v = v.replace("\\", "\\\\")
+            return f"{k}={literal(v)}"
+        if isinstance(v, (numbers.Number, numpy.number, numpy.bool_)):
+            text = f"{v}"
+            if NUMERIC_LITERAL_PATTERN.fullmatch(text):
+                return f"{k}={text}"
+        raise DataJointError(f"Unsupported value of type {type(v).__name__} in restriction by `{key}`.")
 
     def combine_conditions(negate, conditions):
         return f"{'NOT ' if negate else ''} ({')AND('.join(conditions)})"
