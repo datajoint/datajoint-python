@@ -7,6 +7,7 @@ type mapping, error translation, and connection management.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
@@ -19,6 +20,34 @@ except ImportError:
 
 from .. import errors
 from .base import DatabaseAdapter
+
+logger = logging.getLogger(__name__.split(".")[0])
+
+# use_tls dict keys (PyMySQL ssl names, as for MySQL) → libpq connection parameters
+_LIBPQ_TLS_KEYS = {"ca": "sslrootcert", "cert": "sslcert", "key": "sslkey", "password": "sslpassword"}
+
+# libpq messages for a server without SSL support and for a failed SSL handshake
+_TLS_NEGOTIATION_MESSAGES = ("server does not support SSL", "SSL error:", "SSL SYSCALL error:")
+
+
+def _libpq_tls_params(use_tls: dict) -> dict[str, Any]:
+    """
+    Map a ``use_tls`` dict to libpq SSL connection parameters.
+
+    With ``ca``, the server certificate is verified against it: sslmode
+    ``verify-full`` (certificate and host name), or ``verify-ca`` when
+    ``check_hostname`` is False. Without ``ca``, sslmode is ``require``.
+    """
+    params = {_LIBPQ_TLS_KEYS[k]: v for k, v in use_tls.items() if k in _LIBPQ_TLS_KEYS and v is not None}
+    if "sslrootcert" in params:
+        params["sslmode"] = "verify-full" if use_tls.get("check_hostname", True) else "verify-ca"
+    else:
+        params["sslmode"] = "require"
+    ignored = sorted(set(use_tls) - set(_LIBPQ_TLS_KEYS) - {"check_hostname"})
+    if ignored:
+        logger.warning("use_tls keys not supported for PostgreSQL are ignored: %s", ", ".join(ignored))
+    return params
+
 
 # Core type mapping: DataJoint core types → PostgreSQL types
 CORE_TYPE_MAP = {
@@ -90,8 +119,13 @@ class PostgreSQLAdapter(DatabaseAdapter):
         **kwargs : Any
             Additional PostgreSQL-specific parameters:
             - dbname: Database name
-            - sslmode: SSL mode ('disable', 'allow', 'prefer', 'require')
-            - use_tls: bool or dict - DataJoint's SSL parameter (converted to sslmode)
+            - sslmode: SSL mode ('disable', 'allow', 'prefer', 'require',
+              'verify-ca', 'verify-full')
+            - use_tls: bool or dict - DataJoint's SSL parameter (converted to sslmode).
+              True: 'require'. False: 'disable'. None: 'prefer'.
+              dict: ``ca``, ``cert``, ``key``, ``password`` map to sslrootcert,
+              sslcert, sslkey, sslpassword; sslmode is 'verify-full' with ``ca``
+              ('verify-ca' if ``check_hostname`` is False), otherwise 'require'.
             - connect_timeout: Connection timeout in seconds
 
         Returns
@@ -105,14 +139,19 @@ class PostgreSQLAdapter(DatabaseAdapter):
         # Handle use_tls parameter (from DataJoint Connection)
         # Convert to PostgreSQL's sslmode
         use_tls = kwargs.get("use_tls")
+        tls_params = {}
         if "sslmode" in kwargs:
             # Explicit sslmode takes precedence
             sslmode = kwargs["sslmode"]
         elif use_tls is False:
             # use_tls=False → disable SSL
             sslmode = "disable"
-        elif use_tls is True or isinstance(use_tls, dict):
-            # use_tls=True or dict → require SSL
+        elif isinstance(use_tls, dict):
+            # use_tls=dict → require SSL, verified when a CA is given
+            tls_params = _libpq_tls_params(use_tls)
+            sslmode = tls_params.pop("sslmode")
+        elif use_tls is True:
+            # use_tls=True → require SSL
             sslmode = "require"
         else:
             # use_tls=None (default) → prefer SSL but allow fallback
@@ -126,6 +165,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
             dbname=dbname,
             sslmode=sslmode,
             connect_timeout=connect_timeout,
+            **tls_params,
         )
         # DataJoint manages transactions explicitly via start_transaction()
         # Set autocommit=True to avoid implicit transactions
@@ -135,6 +175,15 @@ class PostgreSQLAdapter(DatabaseAdapter):
         self._register_numpy_adapters()
 
         return conn
+
+    def is_tls_negotiation_error(self, error: Exception) -> bool:
+        """
+        Whether a connection attempt failed while negotiating TLS.
+
+        Matches libpq's errors for a server without SSL support and for a failed
+        SSL handshake. Authentication errors do not match.
+        """
+        return isinstance(error, client.OperationalError) and any(m in str(error) for m in _TLS_NEGOTIATION_MESSAGES)
 
     def _register_numpy_adapters(self) -> None:
         """

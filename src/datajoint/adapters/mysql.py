@@ -7,9 +7,11 @@ type mapping, error translation, and connection management.
 
 from __future__ import annotations
 
+import ssl
 from typing import Any
 
 import pymysql as client
+from pymysql.constants import CLIENT, CR
 
 from .. import errors
 from .base import DatabaseAdapter
@@ -45,6 +47,39 @@ SQL_TO_CORE_MAP = {
 }
 
 
+class _TLSUnavailableError(client.err.OperationalError):
+    """TLS is required but the server does not offer it."""
+
+    def __init__(self):
+        super().__init__(
+            CR.CR_SSL_CONNECTION_ERROR,
+            "TLS is required (use_tls) but the server does not support it",
+        )
+
+
+class _TLSRequiredConnection(client.connections.Connection):
+    """
+    PyMySQL connection that does not authenticate without TLS.
+
+    PyMySQL continues without TLS when the server does not offer it, even when
+    TLS is configured. This check runs after the server greeting, before the
+    credentials are sent.
+    """
+
+    def _request_authentication(self):
+        if not self.server_capabilities & CLIENT.SSL:
+            raise _TLSUnavailableError()
+        super()._request_authentication()
+
+
+def _unverified_tls_context() -> ssl.SSLContext:
+    """TLS context that encrypts without verifying the server certificate."""
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    return context
+
+
 class MySQLAdapter(DatabaseAdapter):
     """MySQL database adapter implementation."""
 
@@ -76,7 +111,11 @@ class MySQLAdapter(DatabaseAdapter):
         **kwargs : Any
             Additional MySQL-specific parameters:
             - ssl: TLS/SSL configuration dict (deprecated, use use_tls)
-            - use_tls: bool or dict - DataJoint's SSL parameter (preferred)
+            - use_tls: bool or dict - DataJoint's SSL parameter (preferred).
+              True: TLS required, server certificate not verified.
+              dict: TLS required, configured with PyMySQL ``ssl`` keys
+              (``ca``, ``cert``, ``key``, ``check_hostname``, ...); with ``ca``,
+              the server certificate is verified. False: TLS disabled.
             - charset: Character set (default from kwargs)
 
         Returns
@@ -86,9 +125,10 @@ class MySQLAdapter(DatabaseAdapter):
         """
         # Handle both ssl (old) and use_tls (new) parameter names
         ssl_config = kwargs.get("use_tls", kwargs.get("ssl"))
-        # Convert boolean True to dict for PyMySQL (PyMySQL expects dict or SSLContext)
-        if ssl_config is True:
-            ssl_config = {}  # Enable SSL with default settings
+        # PyMySQL treats an empty dict as "no TLS"; True and {} require TLS
+        # without verifying the server certificate.
+        if ssl_config is True or (isinstance(ssl_config, dict) and not ssl_config):
+            ssl_config = _unverified_tls_context()
         charset = kwargs.get("charset", "")
 
         # Prepare connection parameters
@@ -108,12 +148,28 @@ class MySQLAdapter(DatabaseAdapter):
             # Explicitly disable SSL
             conn_params["ssl_disabled"] = True
         elif ssl_config is not None:
-            # Enable SSL with config dict (can be empty for defaults)
+            # Require SSL, configured by the dict or SSLContext
             conn_params["ssl"] = ssl_config
             # Explicitly enable SSL by setting ssl_disabled=False
             conn_params["ssl_disabled"] = False
+            connection = _TLSRequiredConnection(**conn_params)
+            # Checked again in case a PyMySQL version bypasses the hook above
+            if not connection.server_capabilities & CLIENT.SSL:
+                connection.close()
+                raise _TLSUnavailableError()
+            return connection
 
         return client.connect(**conn_params)
+
+    def is_tls_negotiation_error(self, error: Exception) -> bool:
+        """
+        Whether a connection attempt failed while negotiating TLS.
+
+        Matches a server that does not offer TLS, and a failed TLS handshake
+        (reported by PyMySQL as ``OperationalError`` carrying the ``SSLError``).
+        Both happen before the credentials are sent.
+        """
+        return isinstance(error, _TLSUnavailableError) or isinstance(getattr(error, "original_exception", None), ssl.SSLError)
 
     def close(self, connection: Any) -> None:
         """Close the MySQL connection."""
