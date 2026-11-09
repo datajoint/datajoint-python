@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import stat
 import tempfile
 from pathlib import Path
@@ -26,9 +27,10 @@ def _mmap_cache_dir() -> Path:
 
     On POSIX systems the directory is ``<tempdir>/datajoint_mmap_<uid>``, created
     with mode 0700. An existing directory is used only if it is a directory (not
-    a symbolic link) owned by the current user; its permissions are reset to 0700
-    if other users have access. If the path exists but cannot be used, a new
-    private directory is created for this process instead.
+    a symbolic link) owned by the current user. If other users have access to
+    it, its permissions are reset to 0700 and its contents are removed, since
+    they may not have been written by the current user. If the path exists but
+    cannot be used, a new private directory is created for this process instead.
 
     Where ``os.getuid`` is unavailable (Windows), the temporary directory is
     already per-user and ``<tempdir>/datajoint_mmap`` is used.
@@ -58,15 +60,25 @@ def _mmap_cache_dir() -> Path:
 
     st = os.lstat(cache_dir)
     if stat.S_ISDIR(st.st_mode) and st.st_uid == uid:
-        if stat.S_IMODE(st.st_mode) & 0o077:
+        if not stat.S_IMODE(st.st_mode) & 0o077:
+            return cache_dir
+        try:
             os.chmod(cache_dir, 0o700)
-        return cache_dir
+            for entry in os.scandir(cache_dir):
+                if entry.is_dir(follow_symlinks=False):
+                    shutil.rmtree(entry.path)
+                else:
+                    os.unlink(entry.path)
+        except OSError as e:
+            reason = f"its contents could not be removed after other users had access to it ({e})"
+        else:
+            logger.info(f"Cleared {cache_dir} and restricted it to the current user.")
+            return cache_dir
+    else:
+        reason = "it is not a directory owned by the current user"
 
     _fallback_mmap_cache_dir = Path(tempfile.mkdtemp(prefix="datajoint_mmap_"))
-    logger.warning(
-        f"Not using {cache_dir} to cache arrays: it is not a directory owned by the current user. "
-        f"Using {_fallback_mmap_cache_dir} for this session."
-    )
+    logger.warning(f"Not using {cache_dir} to cache arrays: {reason}. Using {_fallback_mmap_cache_dir} for this session.")
     return _fallback_mmap_cache_dir
 
 
@@ -195,7 +207,8 @@ class NpyRef:
 
         For local filesystem stores, memory mapping accesses the file directly
         with no download. For remote stores (S3, etc.), the file is downloaded
-        to a local cache (``{tempdir}/datajoint_mmap/``) before memory mapping.
+        to a per-user local cache (``{tempdir}/datajoint_mmap_{uid}/``, or
+        ``{tempdir}/datajoint_mmap/`` on Windows) before memory mapping.
 
         Examples
         --------

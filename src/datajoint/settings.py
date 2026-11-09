@@ -16,12 +16,14 @@ A value set by a higher source is not overridden by a lower one. In particular
 ``datajoint.json`` takes precedence over ``.secrets/``: the secrets directory
 only supplies values the config file and environment leave unset.
 
-The search for ``datajoint.json`` and ``.secrets/`` skips, with a warning, any
-file or directory owned by another user that sits under a world-writable
-directory such as ``/tmp``, since anyone on the machine could have placed it
-there. To use such a file, name it explicitly: ``dj.config.load(path)`` or the
-``DJ_CONFIG_FILE`` environment variable. ``DJ_IGNORE_CONFIG_FILE=true`` turns
-the search off.
+The search for ``datajoint.json`` and ``.secrets/`` skips, with a warning, a
+file or directory owned by another user (other than root) that anyone on the
+machine could have placed there: one in a world-writable directory such as
+``/tmp``, or below a world-writable directory that lacks the sticky bit. Files
+in a shared project directory (e.g. a group directory under a sticky
+``/scratch``) are still used. To use a skipped file, name it explicitly:
+``dj.config.load(path)`` or the ``DJ_CONFIG_FILE`` environment variable.
+``DJ_IGNORE_CONFIG_FILE=true`` turns the search off.
 
 Examples
 --------
@@ -59,7 +61,7 @@ import warnings
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterator, Literal
+from typing import Any, Iterable, Iterator, Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -103,66 +105,174 @@ logger = logging.getLogger(__name__.split(".")[0])
 
 
 _SECRETS_HINT = " Supply its values through environment variables instead."
+_CONFIG_HINT = " To use it, pass its path to dj.config.load() or set " + CONFIG_FILE_ENV_VAR + "."
 
 
-def _is_world_writable(mode: int) -> bool:
-    return bool(mode & stat.S_IWOTH)
+def _is_foreign(uid: int) -> bool:
+    """True if ``uid`` is neither the current user nor root."""
+    return uid not in (os.getuid(), 0)
 
 
-def _check_discovered_path(path: Path, hint: str = "") -> bool:
+def _open_location(directory: Path) -> Path | None:
     """
-    Decide whether a config file or secrets path found by searching may be used.
+    Find a directory that lets any user create or replace entries in ``directory``.
 
-    A path owned by another user (other than root) is rejected when it, or any
-    directory above it, is world-writable: anyone on the machine could have
-    created it there. A path owned by the current user or by root is used, as
-    is another user's path in a directory tree that only its owners can write
-    (e.g. a shared project directory). A world-writable path that is used
-    produces a warning.
+    That is ``directory`` itself if it is world-writable (sticky or not), or an
+    ancestor that is world-writable without the sticky bit. A world-writable
+    ancestor with the sticky bit (``/tmp``, ``/scratch``) does not count: other
+    users cannot rename or remove the entries below it that they do not own.
 
-    Platforms without POSIX ownership (``os.getuid`` absent, e.g. Windows)
-    accept every path.
+    Returns
+    -------
+    Path or None
+        The directory that makes the location writable by all users, or None.
+    """
+    for location in (directory, *directory.parents):
+        try:
+            mode = os.stat(location).st_mode
+        except OSError:
+            continue
+        if mode & stat.S_IWOTH and (location == directory or not mode & stat.S_ISVTX):
+            return location
+    return None
+
+
+def _reject_foreign(path: Path, uid: int, directories: Iterable[Path], hint: str) -> bool:
+    """
+    Decide whether a path owned by another user is ignored, and say so if it is.
+
+    The path is ignored if any of ``directories`` (where it was found, and
+    where it resolves to) is a location any user can write
+    (see ``_open_location``).
+    """
+    for directory in dict.fromkeys(directories):
+        location = _open_location(directory)
+        if location is not None:
+            logger.warning(
+                f"Ignoring {path}: it is owned by another user (uid {uid}) and {location} is writable by all users.{hint}"
+            )
+            return True
+    return False
+
+
+def _read_found_file(path: Path, hint: str = "") -> str | None:
+    """
+    Read a config or secret file found by searching, if it may be used.
+
+    A file owned by the current user or by root is read. A file owned by another
+    user is read only if the directory it was found in, or the one it resolves
+    to, is not a location any user can write (see ``_open_location``); a shared
+    project directory qualifies, ``/tmp`` does not. A symbolic link owned by
+    another user is judged the same way. The ownership check uses the open file
+    descriptor, and the contents are read from that descriptor. A world-writable
+    file that is read produces a warning.
+
+    Platforms without POSIX ownership (``os.getuid`` absent, e.g. Windows) read
+    every file.
 
     Parameters
     ----------
     path : Path
-        File or directory found by the search.
+        File found by the search.
     hint : str, optional
-        Advice appended to the warning when the path is not used.
+        Advice appended to the warning when the file is ignored.
 
     Returns
     -------
-    bool
-        True if the path may be used.
+    str or None
+        File contents, or None if the file is missing, not a regular file, or
+        ignored.
     """
-    getuid = getattr(os, "getuid", None)
-    if getuid is None:
-        return True
+    if not hasattr(os, "getuid"):
+        try:
+            return path.read_text()
+        except OSError:
+            return None
+
+    found_in = path.absolute().parent
     try:
+        link_st = os.lstat(path)
+    except OSError:
+        return None
+    if stat.S_ISLNK(link_st.st_mode) and _is_foreign(link_st.st_uid):
+        if _reject_foreign(path, link_st.st_uid, [found_in], hint):
+            return None
+
+    resolved = Path(os.path.realpath(path))
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    try:
+        fd = os.open(resolved, flags)
+    except FileNotFoundError:
+        return None
+    except OSError as e:
+        logger.warning(f"Could not read {path}: {e}")
+        return None
+    with os.fdopen(fd) as f:
+        st = os.fstat(f.fileno())
+        if not stat.S_ISREG(st.st_mode):
+            return None
+        if _is_foreign(st.st_uid) and _reject_foreign(path, st.st_uid, [found_in, resolved.parent], hint):
+            return None
+        if st.st_mode & stat.S_IWOTH:
+            logger.warning(f"{path} is writable by all users; restrict its permissions (e.g. chmod o-w).")
+        return f.read()
+
+
+def _use_found_dir(path: Path, hint: str = "") -> bool:
+    """
+    Decide whether a secrets directory found by searching may be used.
+
+    The rules of ``_read_found_file`` apply to the directory. The files in a
+    directory that is used are each checked again when read.
+    """
+    if not hasattr(os, "getuid"):
+        return path.is_dir()
+    found_in = path.absolute().parent
+    try:
+        link_st = os.lstat(path)
         st = os.stat(path)
     except OSError:
         return False
-
-    if st.st_uid not in (getuid(), 0):
-        # Check the directories the path was found in as well as those of its
-        # target, in case the path is a symbolic link.
-        found, resolved = path.absolute(), path.resolve()
-        locations = dict.fromkeys((found, *found.parents, resolved, *resolved.parents))
-        for location in locations:
-            try:
-                mode = os.stat(location).st_mode
-            except OSError:
-                continue
-            if _is_world_writable(mode):
-                logger.warning(
-                    f"Ignoring {path}: it is owned by another user (uid {st.st_uid}) and "
-                    f"{location} is writable by all users.{hint}"
-                )
-                return False
-
-    if _is_world_writable(st.st_mode):
+    if not stat.S_ISDIR(st.st_mode):
+        return False
+    if stat.S_ISLNK(link_st.st_mode) and _is_foreign(link_st.st_uid):
+        if _reject_foreign(path, link_st.st_uid, [found_in], hint):
+            return False
+    if _is_foreign(st.st_uid):
+        if _reject_foreign(path, st.st_uid, [found_in, Path(os.path.realpath(path)).parent], hint):
+            return False
+    if st.st_mode & stat.S_IWOTH:
         logger.warning(f"{path} is writable by all users; restrict its permissions (e.g. chmod o-w).")
     return True
+
+
+def _search_config_file(start: Path | None = None) -> tuple[Path | None, str | None]:
+    """
+    Search for datajoint.json and read it.
+
+    Returns
+    -------
+    tuple
+        ``(path, text)``: ``(None, None)`` if no file was found, ``(path, None)``
+        if the file found was ignored (see ``_read_found_file``), otherwise the
+        path and its contents.
+    """
+    current = (start or Path.cwd()).resolve()
+
+    while True:
+        config_path = current / CONFIG_FILENAME
+        if config_path.is_file():
+            return config_path, _read_found_file(config_path, _CONFIG_HINT)
+
+        # Stop at project/repo root
+        if (current / ".git").exists() or (current / ".hg").exists():
+            return None, None
+
+        # Stop at filesystem root
+        if current == current.parent:
+            return None, None
+
+        current = current.parent
 
 
 def find_config_file(start: Path | None = None) -> Path | None:
@@ -170,9 +280,10 @@ def find_config_file(start: Path | None = None) -> Path | None:
     Search for datajoint.json in current and parent directories.
 
     Searches upward from ``start`` until finding the config file or hitting
-    a project boundary (``.git``, ``.hg``) or filesystem root. A file owned by
-    another user under a world-writable directory ends the search without a
-    result (see ``_check_discovered_path``).
+    a project boundary (``.git``, ``.hg``) or filesystem root. A file that
+    another user could have placed there ends the search without a result:
+    one owned by another user (not root) in a world-writable directory such as
+    ``/tmp``, or below a world-writable directory without the sticky bit.
 
     Parameters
     ----------
@@ -184,23 +295,8 @@ def find_config_file(start: Path | None = None) -> Path | None:
     Path or None
         Path to config file if found, None otherwise.
     """
-    current = (start or Path.cwd()).resolve()
-
-    while True:
-        config_path = current / CONFIG_FILENAME
-        if config_path.is_file():
-            hint = f" To use it, pass its path to dj.config.load() or set {CONFIG_FILE_ENV_VAR}."
-            return config_path if _check_discovered_path(config_path, hint) else None
-
-        # Stop at project/repo root
-        if (current / ".git").exists() or (current / ".hg").exists():
-            return None
-
-        # Stop at filesystem root
-        if current == current.parent:
-            return None
-
-        current = current.parent
+    config_path, text = _search_config_file(start)
+    return config_path if text is not None else None
 
 
 def find_secrets_dir(config_path: Path | None = None) -> Path | None:
@@ -212,8 +308,8 @@ def find_secrets_dir(config_path: Path | None = None) -> Path | None:
     1. ``.secrets/`` in same directory as datajoint.json (project secrets)
     2. ``/run/secrets/datajoint/`` (Docker/Kubernetes secrets)
 
-    A directory owned by another user under a world-writable directory is not
-    used (see ``_check_discovered_path``).
+    A directory that another user could have placed there is not used, under
+    the same rule as ``find_config_file``.
 
     Parameters
     ----------
@@ -228,12 +324,12 @@ def find_secrets_dir(config_path: Path | None = None) -> Path | None:
     # Check project secrets directory (next to config file)
     if config_path is not None:
         project_secrets = config_path.parent / SECRETS_DIRNAME
-        if project_secrets.is_dir() and _check_discovered_path(project_secrets, _SECRETS_HINT):
+        if project_secrets.is_dir() and _use_found_dir(project_secrets, _SECRETS_HINT):
             return project_secrets
 
     # Check system secrets directory (Docker/Kubernetes)
     if SYSTEM_SECRETS_DIR.is_dir():
-        return SYSTEM_SECRETS_DIR if _check_discovered_path(SYSTEM_SECRETS_DIR, _SECRETS_HINT) else None
+        return SYSTEM_SECRETS_DIR if _use_found_dir(SYSTEM_SECRETS_DIR, _SECRETS_HINT) else None
 
     return None
 
@@ -241,6 +337,9 @@ def find_secrets_dir(config_path: Path | None = None) -> Path | None:
 def read_secret_file(secrets_dir: Path | None, name: str) -> str | None:
     """
     Read a secret value from a file in the secrets directory.
+
+    A file that another user could have placed there is ignored, under the
+    same rule as ``find_config_file``.
 
     Parameters
     ----------
@@ -257,11 +356,8 @@ def read_secret_file(secrets_dir: Path | None, name: str) -> str | None:
     if secrets_dir is None:
         return None
 
-    secret_path = secrets_dir / name
-    if secret_path.is_file() and _check_discovered_path(secret_path, _SECRETS_HINT):
-        return secret_path.read_text().strip()
-
-    return None
+    value = _read_found_file(secrets_dir / name, _SECRETS_HINT)
+    return value.strip() if value is not None else None
 
 
 class DatabaseSettings(BaseSettings):
@@ -827,12 +923,15 @@ class Config(BaseSettings):
         if not filepath.exists():
             raise FileNotFoundError(f"Config file not found: {filepath}")
 
-        logger.info(f"Loading configuration from {filepath.absolute()}")
-
         with open(filepath) as f:
-            data = json.load(f)
+            text = f.read()
 
-        self._update_from_flat_dict(data)
+        self._load_text(text, filepath)
+
+    def _load_text(self, text: str, filepath: Path) -> None:
+        """Apply the JSON settings in ``text``, read from ``filepath``."""
+        logger.info(f"Loading configuration from {filepath.absolute()}")
+        self._update_from_flat_dict(json.loads(text))
         self._config_path = filepath
 
     def _update_from_flat_dict(self, data: dict[str, Any]) -> None:
@@ -920,10 +1019,11 @@ class Config(BaseSettings):
 
                 parts = secret_file.name.split(".")
                 if len(parts) == 3 and parts[0] == "stores":
-                    if not _check_discovered_path(secret_file, _SECRETS_HINT):
+                    text = _read_found_file(secret_file, _SECRETS_HINT)
+                    if text is None:
                         continue
                     store_name, attr = parts[1], parts[2]
-                    value = secret_file.read_text().strip()
+                    value = text.strip()
                     # Initialize store dict if needed
                     if store_name not in self.stores:
                         self.stores[store_name] = {}
@@ -1214,12 +1314,21 @@ def _create_config() -> Config:
         # DJ_CONFIG_FILE names the config file explicitly; it is used as given,
         # like dj.config.load(), without searching.
         explicit_path = os.environ.get(CONFIG_FILE_ENV_VAR)
-        config_path = Path(explicit_path).expanduser() if explicit_path else find_config_file()
-        if config_path is not None:
+        if explicit_path:
+            config_path = Path(explicit_path).expanduser()
+            if not config_path.is_file():
+                raise FileNotFoundError(f"{CONFIG_FILE_ENV_VAR} is set to {explicit_path!r}, which is not a file.")
+            text: str | None = config_path.read_text()
+        else:
+            config_path, text = _search_config_file()
+        if text is not None and config_path is not None:
             try:
-                cfg.load(config_path)
+                cfg._load_text(text, config_path)
             except Exception as e:
                 warnings.warn(f"Failed to load config from {config_path}: {e}")
+        elif config_path is not None:
+            # The file found was not read; _read_found_file logged why.
+            config_path = None
         else:
             warnings.warn(
                 f"No {CONFIG_FILENAME} found. Using defaults and environment variables. "
