@@ -169,8 +169,107 @@ def build_attribute_parser() -> pp.ParserElement:
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
 
+def build_reference_parser() -> pp.ParserElement:
+    """
+    Build a pyparsing parser for the table reference in a foreign key line.
+
+    Returns
+    -------
+    pp.ParserElement
+        Parser for a dotted name such as ``Parent``, ``module.Parent`` or
+        ``Master.Part``, optionally followed by ``()`` or by a projection
+        ``.proj(new_name="old_name", ...)`` whose arguments are string literals.
+    """
+    identifier = pp.Word(pp.alphas + "_", pp.alphanums + "_")
+    name = pp.Group(pp.DelimitedList(identifier, delim=".")).set_results_name("name")
+    string = pp.QuotedString('"', esc_char="\\") ^ pp.QuotedString("'", esc_char="\\")
+    keyword_arg = pp.Group(identifier + pp.Literal("=").suppress() + string)
+    positional_arg = pp.Group(string)
+    argument = keyword_arg ^ positional_arg
+    arguments = pp.Optional(pp.DelimitedList(argument, allow_trailing_delim=True))
+    call = pp.Group(pp.Literal("(").suppress() + arguments + pp.Literal(")").suppress()).set_results_name("call")
+    return name + pp.Optional(call) + pp.Optional(pp.python_style_comment).suppress() + pp.StringEnd()
+
+
 foreign_key_parser = build_foreign_key_parser()
+reference_parser = build_reference_parser()
 attribute_parser = build_attribute_parser()
+
+
+def resolve_foreign_key_reference(ref_table: str, context: dict):
+    """
+    Resolve the table reference of a foreign key line in a namespace.
+
+    The reference is parsed, never evaluated: it must be a dotted name looked up
+    in ``context`` attribute by attribute, optionally instantiated with ``()``
+    or projected with ``.proj(...)`` whose arguments are string literals.
+
+    Parameters
+    ----------
+    ref_table : str
+        The reference, e.g. ``"Parent"``, ``"Master.Part"`` or
+        ``"Parent.proj(new_id='parent_id')"``.
+    context : dict
+        Namespace containing referenced table objects.
+
+    Returns
+    -------
+    object
+        The referenced table class, table, or projection.
+
+    Raises
+    ------
+    DataJointError
+        If the reference is not of a supported form or cannot be resolved.
+    """
+    from .expression import QueryExpression
+    from .table import Table
+
+    try:
+        parsed = reference_parser.parse_string(ref_table.strip())
+    except pp.ParseException:
+        raise DataJointError(
+            'Foreign key reference "%s" is not supported. Use a table name such as '
+            "Parent, module.Parent or Master.Part, optionally projected with "
+            "Parent.proj(new_name='old_name')." % ref_table.strip()
+        ) from None
+    path = list(parsed.name)
+    call = parsed.get("call")
+    if any(part.startswith("__") for part in path):
+        raise DataJointError('Foreign key reference "%s" is not supported.' % ref_table.strip())
+    method = None
+    if call is not None and len(path) > 1 and path[-1] == "proj":
+        method = path.pop()
+    elif call is not None and len(call):
+        raise DataJointError(
+            'Foreign key reference "%s" is not supported. Only .proj() may take arguments.' % ref_table.strip()
+        )
+    if path[0] not in context:
+        raise DataJointError("Foreign key reference %s could not be resolved" % ref_table.strip())
+    ref = context[path[0]]
+    for part in path[1:]:
+        try:
+            ref = getattr(ref, part)
+        except Exception:
+            raise DataJointError("Foreign key reference %s could not be resolved" % ref_table.strip()) from None
+    if not (isinstance(ref, QueryExpression) or (isinstance(ref, type) and issubclass(ref, Table))):
+        raise DataJointError("Foreign key reference %s does not name a table" % ref_table.strip())
+    if call is None:
+        return ref
+    if method is None:  # Parent()
+        if not isinstance(ref, type):
+            raise DataJointError('Foreign key reference "%s" is not supported.' % ref_table.strip())
+        return ref()
+    if isinstance(ref, type):
+        ref = ref()
+    args = [arg[0] for arg in call if len(arg) == 1]
+    kwargs = {arg[0]: arg[1] for arg in call if len(arg) == 2}
+    try:
+        return ref.proj(*args, **kwargs)
+    except DataJointError:
+        raise
+    except Exception as error:
+        raise DataJointError("Foreign key reference %s could not be resolved: %s" % (ref_table.strip(), error)) from None
 
 
 def is_foreign_key(line: str) -> bool:
@@ -254,10 +353,7 @@ def compile_foreign_key(
     except pp.ParseException as err:
         raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
 
-    try:
-        ref = eval(result.ref_table, context)
-    except Exception:
-        raise DataJointError("Foreign key reference %s could not be resolved" % result.ref_table)
+    ref = resolve_foreign_key_reference(result.ref_table, context)
 
     options = [opt.upper() for opt in result.options]
     for opt in options:  # check for invalid options
