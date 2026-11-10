@@ -26,12 +26,12 @@ def schema_by_backend(connection_by_backend, db_creds_by_backend):
     backend = db_creds_by_backend["backend"]
     test_id = str(int(time.time() * 1000))[-8:]
     schema_name = f"djtest_partks_{backend}_{test_id}"[:64]
-    quote = connection_by_backend.adapter.quote_identifier
-    connection_by_backend.query(f"DROP DATABASE IF EXISTS {quote(schema_name)}")
+    drop = connection_by_backend.adapter.drop_schema_sql(schema_name)
+    connection_by_backend.query(drop)
     schema = dj.Schema(schema_name, connection=connection_by_backend)
     yield schema
     if connection_by_backend.is_connected:
-        connection_by_backend.query(f"DROP DATABASE IF EXISTS {quote(schema_name)}")
+        connection_by_backend.query(drop)
 
 
 @pytest.fixture
@@ -305,3 +305,52 @@ def test_refresh_pages_through_candidates(one_master, monkeypatch):
         result = Summary.jobs.refresh(stale_timeout=0)
         assert result["removed"] == 5
         assert _master_statuses(Summary.jobs) == {2: "success", 3: "success", 5: "pending", 7: "pending"}
+
+
+def test_refresh_moves_past_keys_that_do_not_match_themselves(schema_by_backend, monkeypatch):
+    """A page whose keys cannot be matched by value does not stop the cleanup.
+
+    A float32 key such as 0.1 is stored inexactly, so restricting by its fetched
+    value finds no row. A page of such keys is neither found present nor deleted;
+    the cleanup must still move on to the next page instead of reading the same
+    page again.
+    """
+
+    @schema_by_backend
+    class Source(dj.Manual):
+        definition = """
+        x : float32
+        """
+
+    @schema_by_backend
+    class Target(dj.Computed):
+        definition = """
+        -> Source
+        """
+
+        def make(self, key):
+            self.insert1(key)
+
+    Source.insert([{"x": x} for x in (0.1, 0.2, 0.3, 0.5, 1.0, 2.0)])
+    Target.jobs.refresh()
+    assert len(Target.jobs) == 6
+
+    monkeypatch.setattr(dj.jobs, "VANISHED_DELETE_BATCH", 3)
+    calls = 0
+    keys = dj.expression.QueryExpression.keys
+
+    def counted_keys(self, *args, **kwargs):
+        nonlocal calls
+        calls += 1
+        assert calls < 50, "refresh() keeps reading the same page"
+        return keys(self, *args, **kwargs)
+
+    monkeypatch.setattr(dj.expression.QueryExpression, "keys", counted_keys)
+    (Source & {"x": 2.0}).delete_quick()
+
+    result = Target.jobs.refresh(stale_timeout=0)
+
+    # The first page (0.1, 0.2, 0.3) cannot be matched and is skipped; on the
+    # second page, 2.0 has vanished and is removed.
+    assert result["removed"] == 1
+    assert len(Target.jobs) == 5

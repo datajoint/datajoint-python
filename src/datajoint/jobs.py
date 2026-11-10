@@ -465,8 +465,8 @@ class Job(Table):
         Otherwise the candidates are compared with ``key_source`` one page of
         ``VANISHED_DELETE_BATCH`` keys at a time, so memory stays bounded however
         many jobs the table holds. Each page's vanished jobs are deleted in one
-        statement, restricted again by ``candidates``, so a job whose status changed
-        since the page was read is left for the next refresh.
+        statement, restricted again by ``candidates``, so a job that has left the
+        candidates since the page was read is kept.
 
         Parameters
         ----------
@@ -490,7 +490,7 @@ class Job(Table):
         deleted = kept = 0
         while True:
             # Pages are ordered by key and deletions only remove keys before the
-            # cursor, so the next page starts after the keys kept so far.
+            # cursor, so the next page starts after the keys left in place so far.
             page = candidates.keys(order_by="KEY", limit=VANISHED_DELETE_BATCH, offset=kept)
             if not page:
                 break
@@ -499,9 +499,12 @@ class Job(Table):
                 tuple(key[name] for name in shared) for key in key_source.restrict(in_page.proj(), semantic_check=False).keys()
             }
             vanished = [key for key in page if tuple(key[name] for name in shared) not in present]
-            if vanished:
-                deleted += (candidates & vanished).delete_quick(get_count=True)
-            kept += len(page) - len(vanished)
+            n_deleted = (candidates & vanished).delete_quick(get_count=True) if vanished else 0
+            deleted += n_deleted
+            # Advance by the rows actually left in place. A key that does not match its
+            # own value as a restriction, such as an inexact float, is neither found
+            # present nor deleted; counting it as kept moves the cursor past it.
+            kept += len(page) - n_deleted
             if len(page) < VANISHED_DELETE_BATCH:
                 break
         return deleted
