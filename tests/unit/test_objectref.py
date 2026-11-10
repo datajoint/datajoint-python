@@ -36,3 +36,18 @@ def test_full_path_includes_store_location(spec, prefix):
     """full_path points where the backend stores the object, location included."""
     ref = _object_ref(spec)
     assert ref.full_path == prefix + ref.path
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"protocol": "s3", "endpoint": "localhost:9000", "bucket": "bkt", "location": "proj/outbox"},
+        {"protocol": "s3", "endpoint": "localhost:9000", "bucket": "bkt", "location": "proj/outbox/"},
+        {"protocol": "gcs", "bucket": "bkt", "location": "proj/"},
+        {"protocol": "azure", "container": "ctr", "location": "proj/"},
+    ],
+)
+def test_full_path_matches_backend_url(spec):
+    """full_path is the URL the backend reads and writes, whatever shape location has."""
+    ref = _object_ref(spec)
+    assert ref.full_path == ref._backend.get_url(ref.path)
