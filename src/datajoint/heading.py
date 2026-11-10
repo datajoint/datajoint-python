@@ -775,5 +775,6 @@ class Heading:
         """
         return Heading(
             (dict(v.todict(), attribute_expression=None) for v in self.attributes.values()),
+            table_info=self.table_info,  # keep the adapter, so a later rename quotes for the backend
             lineage_available=self._lineage_available,
         )
