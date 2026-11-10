@@ -22,7 +22,7 @@ jobs:
       # Drafts your next Release notes as Pull Requests are merged into "master"
       - name: Draft release notes
         id: create_gh_release
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@v7
         with:
           config-name: release_drafter.yaml
           disable-autolabeler: true
