@@ -20,7 +20,6 @@ The ~lineage table stores lineage information for each schema, populated at tabl
 declaration time. Use schema.rebuild_lineage() to restore lineage for legacy schemas.
 """
 
-import contextlib
 import logging
 
 from .errors import DataJointError
@@ -286,8 +285,13 @@ def rebuild_schema_lineage(connection, database):
     Raises
     ------
     DataJointError
-        If a referenced attribute in another schema has no lineage entry.
+        If a referenced attribute in another schema has no lineage entry,
+        or if called inside a transaction.
     """
+    # CREATE TABLE IF NOT EXISTS below commits an open transaction on MySQL, as declare does
+    if connection.in_transaction:
+        raise DataJointError("Cannot rebuild lineage inside a transaction.")
+
     # Ensure the lineage table exists
     ensure_lineage_table(connection, database)
 
@@ -372,8 +376,7 @@ def rebuild_schema_lineage(connection, database):
     # Replace the existing entries only now that every lineage has resolved, in one
     # transaction so a failed insert rolls the DELETE back and keeps the old entries
     entries = [(table, col, lineage) for (table, col), lineage in lineage_cache.items()]
-    # An open transaction already covers both statements; nesting one would raise
-    with contextlib.nullcontext() if connection.in_transaction else connection.transaction:
+    with connection.transaction:
         connection.query(f"DELETE FROM {lineage_table}")
         if entries:
             _upsert_lineages(connection, lineage_table, entries)

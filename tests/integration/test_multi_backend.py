@@ -205,7 +205,11 @@ def test_failed_lineage_insert_keeps_entries(connection_by_backend, backend, pre
 
 @pytest.mark.backend_agnostic
 def test_rebuild_lineage_in_open_transaction(connection_by_backend, backend, prefix):
-    """Test that rebuild_lineage works inside a transaction the caller already opened."""
+    """Test that rebuild_lineage refuses to run inside a transaction and leaves it intact.
+
+    On MySQL the CREATE TABLE IF NOT EXISTS for ~lineage would commit the caller's
+    transaction, so the rebuild raises before it, as declare does.
+    """
     schema = dj.Schema(
         f"{prefix}_multi_backend_{backend}_rebuild_txn",
         connection=connection_by_backend,
@@ -218,8 +222,13 @@ def test_rebuild_lineage_in_open_transaction(connection_by_backend, backend, pre
         """
 
     before = schema.lineage
-    with connection_by_backend.transaction:
-        schema.rebuild_lineage()
+    with pytest.raises(dj.DataJointError, match="inside a transaction"):
+        with connection_by_backend.transaction:
+            Animal.insert1(dict(animal_id=1))
+            schema.rebuild_lineage()
+    # The caller's rollback still undid the insert, and ~lineage is unchanged
+    assert not connection_by_backend.in_transaction
+    assert len(Animal()) == 0
     assert schema.lineage == before
 
     # Cleanup
