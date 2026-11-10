@@ -169,6 +169,64 @@ def test_failed_rebuild_lineage_keeps_entries(connection_by_backend, backend, pr
 
 
 @pytest.mark.backend_agnostic
+def test_failed_lineage_insert_keeps_entries(connection_by_backend, backend, prefix, monkeypatch):
+    """Test that a rebuild whose insert fails rolls back the DELETE and keeps ~lineage."""
+    import datajoint.lineage
+
+    schema = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_rebuild_insert",
+        connection=connection_by_backend,
+    )
+
+    @schema
+    class Animal(dj.Manual):
+        definition = """
+        animal_id : int
+        """
+
+    before = schema.lineage
+    assert before
+
+    def failing_upsert(connection, lineage_table, entries):
+        raise dj.errors.LostConnectionError("connection dropped during the insert")
+
+    monkeypatch.setattr(datajoint.lineage, "_upsert_lineages", failing_upsert)
+
+    with pytest.raises(dj.errors.LostConnectionError):
+        schema.rebuild_lineage()
+
+    monkeypatch.undo()
+    assert not connection_by_backend.in_transaction
+    assert schema.lineage == before
+
+    # Cleanup
+    schema.drop()
+
+
+@pytest.mark.backend_agnostic
+def test_rebuild_lineage_in_open_transaction(connection_by_backend, backend, prefix):
+    """Test that rebuild_lineage works inside a transaction the caller already opened."""
+    schema = dj.Schema(
+        f"{prefix}_multi_backend_{backend}_rebuild_txn",
+        connection=connection_by_backend,
+    )
+
+    @schema
+    class Animal(dj.Manual):
+        definition = """
+        animal_id : int
+        """
+
+    before = schema.lineage
+    with connection_by_backend.transaction:
+        schema.rebuild_lineage()
+    assert schema.lineage == before
+
+    # Cleanup
+    schema.drop()
+
+
+@pytest.mark.backend_agnostic
 def test_data_types(connection_by_backend, backend, prefix):
     """Test that core data types work on both backends."""
     schema = dj.Schema(

@@ -20,6 +20,7 @@ The ~lineage table stores lineage information for each schema, populated at tabl
 declaration time. Use schema.rebuild_lineage() to restore lineage for legacy schemas.
 """
 
+import contextlib
 import logging
 
 from .errors import DataJointError
@@ -207,12 +208,20 @@ def insert_lineages(connection, database, entries):
 
     adapter = connection.adapter
     lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+    _upsert_lineages(connection, lineage_table, entries)
 
-    # Build backend-agnostic upsert statement
+
+def _upsert_lineages(connection, lineage_table, entries):
+    """
+    Upsert lineage entries into an existing ~lineage table.
+
+    Unlike insert_lineages, this does not create the table, so it can run inside
+    a transaction (MySQL commits an open transaction before any CREATE TABLE).
+    """
     columns = ["table_name", "attribute_name", "lineage"]
     primary_key = ["table_name", "attribute_name"]
 
-    sql = adapter.upsert_on_duplicate_sql(
+    sql = connection.adapter.upsert_on_duplicate_sql(
         lineage_table,
         columns,
         primary_key,
@@ -360,10 +369,11 @@ def rebuild_schema_lineage(connection, database):
             if not col.startswith("_"):
                 resolve_lineage(table, col)
 
-    # Replace the existing entries only now that every lineage has resolved
-    connection.query(f"DELETE FROM {lineage_table}")
-
-    # Insert all lineages in one batch
-    if lineage_cache:
-        entries = [(table, col, lineage) for (table, col), lineage in lineage_cache.items()]
-        insert_lineages(connection, database, entries)
+    # Replace the existing entries only now that every lineage has resolved, in one
+    # transaction so a failed insert rolls the DELETE back and keeps the old entries
+    entries = [(table, col, lineage) for (table, col), lineage in lineage_cache.items()]
+    # An open transaction already covers both statements; nesting one would raise
+    with contextlib.nullcontext() if connection.in_transaction else connection.transaction:
+        connection.query(f"DELETE FROM {lineage_table}")
+        if entries:
+            _upsert_lineages(connection, lineage_table, entries)
