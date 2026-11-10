@@ -1,26 +1,22 @@
-import os
+"""TLS connection tests.
+
+The official MySQL images generate a CA and a server certificate when the
+server first starts, so every test server, from testcontainers or from
+docker-compose, accepts TLS connections.
+"""
 
 import pytest
 from pymysql.err import OperationalError
 
 import datajoint as dj
 
-# SSL tests require docker-compose with datajoint/mysql image (has SSL configured)
-# Testcontainers with official mysql image doesn't have SSL certificates
-requires_ssl = pytest.mark.skipif(
-    os.environ.get("DJ_USE_EXTERNAL_CONTAINERS", "").lower() not in ("1", "true", "yes"),
-    reason="SSL tests require external containers (docker-compose) with SSL configured",
-)
 
-
-@requires_ssl
 def test_explicit_ssl_connection(db_creds_test, connection_test):
     """When use_tls=True is specified, SSL must be active."""
     result = dj.conn(use_tls=True, reset=True, **db_creds_test).query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
     assert len(result) > 0, "SSL should be active when use_tls=True"
 
 
-@requires_ssl
 def test_ssl_auto_detect(db_creds_test, connection_test):
     """When use_tls is not specified, SSL is used if the server supports it."""
     conn = dj.conn(reset=True, **db_creds_test)
@@ -46,7 +42,6 @@ def test_insecure_connection(db_creds_test, connection_test):
     assert conn.query("SELECT 1").fetchone()[0] == 1
 
 
-@requires_ssl
 def test_reject_insecure(db_creds_test, connection_test):
     """Users with REQUIRE SSL cannot connect without SSL."""
     with pytest.raises(OperationalError):

@@ -49,6 +49,8 @@ pixi run -e test pytest -m mysql                 # MySQL tests only
 pixi run -e test pytest -m postgresql            # PostgreSQL tests only
 ```
 
+MySQL tests run on the official `mysql:8.0` image. To test another MySQL version, set `DJ_TEST_MYSQL_IMAGE` (for example, `DJ_TEST_MYSQL_IMAGE=mysql:8.4`); with docker compose, set `MYSQL_VER=8.4`.
+
 **macOS Docker Desktop users:** If tests fail to connect:
 ```bash
 export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock

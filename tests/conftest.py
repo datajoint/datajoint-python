@@ -114,10 +114,11 @@ def mysql_container():
     from testcontainers.mysql import MySqlContainer
 
     container = MySqlContainer(
-        # Default: the datajoint image (SSL configured, for TLS tests under
-        # external containers). CI overrides via DJ_TEST_MYSQL_IMAGE to exercise
-        # multiple supported server versions (e.g. the 8.4 LTS line). See #1497.
-        image=os.environ.get("DJ_TEST_MYSQL_IMAGE", "datajoint/mysql:8.0"),
+        # Default: the official MySQL 8.0 image, which generates its own TLS
+        # certificates on first start. CI overrides via DJ_TEST_MYSQL_IMAGE to
+        # exercise multiple supported server versions (e.g. the 8.4 LTS line).
+        # See #1497.
+        image=os.environ.get("DJ_TEST_MYSQL_IMAGE", "mysql:8.0"),
         username="root",
         password="password",
         dbname="test",
