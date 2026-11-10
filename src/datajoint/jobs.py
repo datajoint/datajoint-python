@@ -20,7 +20,7 @@ from .table import Table
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = "...truncated"
-VANISHED_DELETE_BATCH = 1000  # job keys per DELETE when refresh() removes vanished jobs
+VANISHED_DELETE_BATCH = 1000  # job keys compared and deleted per page when refresh() removes vanished jobs
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -462,6 +462,12 @@ class Job(Table):
         those parts, whose size is the product of their rows. Most refreshes find
         nothing vanished, which two counts establish without fetching keys.
 
+        Otherwise the candidates are compared with ``key_source`` one page of
+        ``VANISHED_DELETE_BATCH`` keys at a time, so memory stays bounded however
+        many jobs the table holds. Each page's vanished jobs are deleted in one
+        statement, restricted again by ``candidates``, so a job whose status changed
+        since the page was read is left for the next refresh.
+
         Parameters
         ----------
         candidates : QueryExpression
@@ -476,17 +482,28 @@ class Job(Table):
         if not n_candidates:
             return 0
         key_source = self._target.key_source.proj()
-        present = key_source.restrict(candidates.proj(), semantic_check=False)
         same_key = set(self.primary_key) == set(key_source.primary_key)
-        if same_key and len(present) == n_candidates:
+        if same_key and len(key_source.restrict(candidates.proj(), semantic_check=False)) == n_candidates:
             return 0
 
         shared = [name for name in self.primary_key if name in key_source.primary_key]
-        present_keys = {tuple(key[name] for name in shared) for key in present.keys()}
-        vanished = [key for key in candidates.keys() if tuple(key[name] for name in shared) not in present_keys]
-        deleted = 0
-        for start in range(0, len(vanished), VANISHED_DELETE_BATCH):
-            deleted += (candidates & vanished[start : start + VANISHED_DELETE_BATCH]).delete_quick(get_count=True)
+        deleted = kept = 0
+        while True:
+            # Pages are ordered by key and deletions only remove keys before the
+            # cursor, so the next page starts after the keys kept so far.
+            page = candidates.keys(order_by="KEY", limit=VANISHED_DELETE_BATCH, offset=kept)
+            if not page:
+                break
+            in_page = candidates & page
+            present = {
+                tuple(key[name] for name in shared) for key in key_source.restrict(in_page.proj(), semantic_check=False).keys()
+            }
+            vanished = [key for key in page if tuple(key[name] for name in shared) not in present]
+            if vanished:
+                deleted += (candidates & vanished).delete_quick(get_count=True)
+            kept += len(page) - len(vanished)
+            if len(page) < VANISHED_DELETE_BATCH:
+                break
         return deleted
 
     def reserve(self, key: dict) -> bool:

@@ -155,3 +155,153 @@ def test_refresh_does_not_join_the_parts(pipeline, connection_by_backend, db_cre
     assert result["removed"] == 0
     assert len(Figure.jobs.completed) == 2
     assert elapsed < 2, f"refresh() took {elapsed:.1f} s"
+
+
+@pytest.fixture
+def one_master(schema_by_backend):
+    """A master with two part tables; key_source requires rows in both."""
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        master_id : int32
+        """
+
+        class PartA(dj.Part):
+            definition = """
+            -> master
+            a : int32
+            """
+
+        class PartB(dj.Part):
+            definition = """
+            -> master
+            b : int32
+            """
+
+    @schema_by_backend
+    class Summary(dj.Computed):
+        definition = """
+        -> Master
+        ---
+        n : int32
+        """
+
+        @property
+        def key_source(self):
+            return Master & Master.PartA & Master.PartB
+
+        def make(self, key):
+            if key["master_id"] >= 4:
+                raise ValueError("fails on purpose")
+            self.insert1(dict(key, n=len(Master.PartA & key) * len(Master.PartB & key)))
+
+    return Master, Summary
+
+
+def _add_master(Master, master_id, n_parts=3):
+    Master.insert1(dict(master_id=master_id))
+    Master.PartA.insert([dict(master_id=master_id, a=i) for i in range(n_parts)])
+    Master.PartB.insert([dict(master_id=master_id, b=i) for i in range(n_parts)])
+
+
+def _master_statuses(jobs):
+    return {row["master_id"]: row["status"] for row in jobs.proj("status").to_dicts()}
+
+
+def _populate_and_vanish(Master, Summary):
+    """Six masters: 0-3 succeed, 4-5 fail; then the keys of 0, 1 and 4 leave key_source."""
+    for m in range(6):
+        _add_master(Master, m)
+    Summary.populate(reserve_jobs=True, suppress_errors=True)
+    assert _master_statuses(Summary.jobs) == {
+        0: "success",
+        1: "success",
+        2: "success",
+        3: "success",
+        4: "error",
+        5: "error",
+    }
+    (Master & {"master_id": 0}).delete(prompt=False)  # key and target row go
+    (Master.PartA & {"master_id": 1}).delete_quick()  # key leaves key_source; the target row stays
+    (Master.PartB & {"master_id": 4}).delete_quick()  # an error whose key left key_source
+
+
+def test_refresh_master_with_two_parts(one_master):
+    """Vanished success and error records are removed; the others are kept."""
+    Master, Summary = one_master
+    with dj.config.override(jobs={"keep_completed": True}):
+        _populate_and_vanish(Master, Summary)
+
+        # 3a: success/error records whose key is in neither key_source nor the target
+        result = Summary.jobs.refresh()
+        assert result["removed"] == 2
+        assert _master_statuses(Summary.jobs) == {1: "success", 2: "success", 3: "success", 5: "error"}
+
+        # 3b: the success record of master 1 still has a target row; it goes once stale
+        result = Summary.jobs.refresh(stale_timeout=0)
+        assert result["removed"] == 1
+        assert _master_statuses(Summary.jobs) == {2: "success", 3: "success", 5: "error"}
+
+        # nothing left to remove
+        assert Summary.jobs.refresh(stale_timeout=0)["removed"] == 0
+
+
+def _negated_subqueries(sql):
+    """The text of every ``NOT IN (...)`` subquery in ``sql``."""
+    found = []
+    lowered = sql.lower()
+    pos = lowered.find("not in (")
+    while pos >= 0:
+        start = pos + len("not in (")
+        depth, end = 1, start
+        while depth and end < len(sql):
+            depth += {"(": 1, ")": -1}.get(sql[end], 0)
+            end += 1
+        found.append(lowered[start:end])
+        pos = lowered.find("not in (", start)
+    return found
+
+
+def test_refresh_never_negates_key_source(one_master, monkeypatch):
+    """No refresh statement nests the part-restricted key_source inside NOT IN."""
+    Master, Summary = one_master
+    parts = [Master.PartA.table_name.lower(), Master.PartB.table_name.lower()]
+    with dj.config.override(jobs={"keep_completed": True}):
+        _populate_and_vanish(Master, Summary)
+        jobs = Summary.jobs
+        queries = []
+        query = jobs.connection.query
+
+        def recording_query(sql, *args, **kwargs):
+            queries.append(sql)
+            return query(sql, *args, **kwargs)
+
+        monkeypatch.setattr(jobs.connection, "query", recording_query)
+        removed = jobs.refresh(stale_timeout=0)["removed"]
+        monkeypatch.undo()
+
+    assert removed == 3
+    offending = [sql for sql in queries if any(p in sub for sub in _negated_subqueries(sql) for p in parts)]
+    assert not offending, offending
+
+
+def test_refresh_pages_through_candidates(one_master, monkeypatch):
+    """With more candidates than one page, every vanished job is found and the rest kept."""
+    Master, Summary = one_master
+    monkeypatch.setattr(dj.jobs, "VANISHED_DELETE_BATCH", 2)
+    with dj.config.override(jobs={"keep_completed": True}):
+        for m in range(4):
+            _add_master(Master, m)
+        Summary.populate(reserve_jobs=True)
+        for m in range(4, 9):  # jobs that make() never ran: pending
+            _add_master(Master, m)
+        Summary.jobs.refresh()
+        assert len(Summary.jobs) == 9
+        # vanish keys on page boundaries and inside pages
+        for m in (0, 1, 4, 6, 8):
+            (Master.PartB & {"master_id": m}).delete_quick()
+
+        result = Summary.jobs.refresh(stale_timeout=0)
+        assert result["removed"] == 5
+        assert _master_statuses(Summary.jobs) == {2: "success", 3: "success", 5: "pending", 7: "pending"}
