@@ -28,9 +28,10 @@ git fetch --quiet --force origin "refs/tags/$tag:refs/tags/$tag"
 git fetch --quiet --no-tags origin "+refs/heads/$branch:refs/remotes/origin/$branch"
 
 if [[ "$(git cat-file -t "refs/tags/$tag")" != "tag" ]]; then
-  fail "$tag is a lightweight tag. A release tag is annotated, with the release notes as its message:" \
-    "  git tag -d $tag" \
-    "  git tag -a $tag <commit> --cleanup=verbatim -F notes.md" \
+  fail "$tag is a lightweight tag. A release tag is annotated, with the release notes as its message." \
+    "Nothing was published, so replace it with an annotated tag on the same commit:" \
+    "  git fetch --force origin refs/tags/$tag:refs/tags/$tag" \
+    "  git tag -a -f $tag '$tag^{commit}' --cleanup=verbatim -F -  # notes on stdin, see RELEASE_MEMO.md" \
     "  git push --force origin refs/tags/$tag"
 fi
 

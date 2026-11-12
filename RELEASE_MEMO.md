@@ -22,12 +22,17 @@ GitHub release mirrors them. There is no changelog file.
    gh pr list --state merged --base master --search "merged:>YYYY-MM-DD" --json number,title
    ```
 
-2. **Write `notes.md`.** The first line is one sentence that says what the release is about.
+2. **Write the notes.** The first line is one sentence that says what the release is about.
    Then, after a blank line, the changes grouped by area (queries, diagrams, jobs, storage, the
    backends, packaging, ...), each naming its pull request. Put anything users must act on
    first.
 
-   ```markdown
+3. **Tag the release commit on `master` with the notes as its message, and push the tag.**
+   The notes go to `git tag` on standard input, so no notes file is left in the working tree
+   to be committed by accident:
+
+   ```bash
+   git tag -a vX.Y.Z --cleanup=verbatim -F - <<'EOF'
    Deletes remove only the rows they reach, and jobs record when they finished.
 
    ## Deletes
@@ -35,16 +40,18 @@ GitHub release mirrors them. There is no changelog file.
 
    ## Jobs
    - `completed_time` is recorded to the millisecond (#1235)
-   ```
-
-3. **Tag the release commit on `master` and push the tag:**
-
-   ```bash
-   git tag -a vX.Y.Z --cleanup=verbatim -F notes.md && git push origin vX.Y.Z
+   EOF
+   git tag -n99 vX.Y.Z  # check the message
+   git push origin vX.Y.Z
    ```
 
    `--cleanup=verbatim` keeps lines that start with `#`, such as Markdown headings, which git
-   would otherwise drop as comments.
+   would otherwise drop as comments. The quoted `'EOF'` keeps the shell from expanding the
+   backticks and `$` in the notes. Do not use `-e` (the editor) with `--cleanup=verbatim`: the
+   editor's own `#` instructions would stay in the message.
+
+   Create the tag with git, not from the Releases page on GitHub: "Create new tag on publish"
+   makes a lightweight tag, which the Release workflow refuses, so nothing is published.
 
 4. **The [Release workflow](.github/workflows/release.yaml) does the rest:**
    - checks that the tag is annotated and on `master`;
@@ -57,8 +64,14 @@ GitHub release mirrors them. There is no changelog file.
 
 If a step fails after the tag is pushed, fix the cause and run the workflow again from the tag:
 Actions -> Release -> Run workflow -> "Use workflow from" the tag, with **testpypi** unchecked.
-To publish a tag to TestPyPI only, run it the same way with **testpypi** checked. Never move or
-delete a pushed tag: the version on PyPI and the GitHub release are tied to it.
+Re-runs are safe: the upload skips files already on PyPI, and an existing GitHub release is
+updated rather than created again. To publish a tag to TestPyPI only, run it the same way with
+**testpypi** checked.
+
+Never move or delete a tag the Release workflow has published: the version on PyPI and the
+GitHub release are tied to it. The one exception is a tag the workflow refused before
+publishing anything (a lightweight tag, for instance): replace it with an annotated tag on
+the same commit, as the workflow's error message shows, and push it again.
 
 Pull request titles still state the user-visible change, since they are what the notes are
 written from. Labels are not used for release notes.

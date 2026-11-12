@@ -111,8 +111,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           git for-each-ref "refs/tags/$TAG" --format='%(contents)' > "$RUNNER_TEMP/notes.md"
-          gh release create "$TAG" --verify-tag --title "DataJoint Library ${TAG#v}" \
-            --notes-file "$RUNNER_TEMP/notes.md" dist/*
+          title="DataJoint Library ${TAG#v}"
+          # Update a release that already exists (a re-run, or one drafted on
+          # GitHub), so re-runs stay idempotent.
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --verify-tag --draft=false --title "$title" \
+              --notes-file "$RUNNER_TEMP/notes.md"
+            gh release upload "$TAG" --clobber dist/*
+          else
+            gh release create "$TAG" --verify-tag --title "$title" \
+              --notes-file "$RUNNER_TEMP/notes.md" dist/*
+          fi
       - name: Post release notification to Slack
         if: env.TEST_PYPI != 'true'
         uses: slackapi/slack-github-action@v2.0.0
