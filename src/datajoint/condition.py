@@ -390,7 +390,13 @@ def make_condition(
                 list,
             ),
         ):
-            return f"{k}={literal(str(v))}"
+            text = str(v)
+            if isinstance(v, list) and adapter.backend == "postgresql" and "\\" in text:
+                # An E'' literal reads backslashes the same way whether or not
+                # standard_conforming_strings is on.
+                escaped = text.replace("\\", "\\\\").replace("'", "''").replace("%", "%%")
+                return f"{k}=E'{escaped}'"
+            return f"{k}={literal(text)}"
         if isinstance(v, str):
             if adapter.backend == "postgresql":
                 # Backslashes are doubled as in previous releases so that string
