@@ -201,7 +201,7 @@ def test_configured_stale_timeout_zero_means_no_grace_period(pipeline):
 def test_refresh_cleanup_is_set_based(pipeline, monkeypatch):
     """Cleanup issues a fixed number of statements, not one per vanished key."""
     Raw, Proc = pipeline
-    n = 20
+    n = 50  # more vanished keys than refresh() issues statements in all
     with dj.config.override(jobs={"keep_completed": True}):
         Raw.insert([dict(raw_id=i, v=float(i)) for i in range(n)])
         Proc.populate(reserve_jobs=True)

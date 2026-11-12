@@ -20,6 +20,7 @@ from .table import Table
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = "...truncated"
+VANISHED_DELETE_BATCH = 1000  # job keys compared and deleted per page when refresh() removes vanished jobs
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -423,24 +424,21 @@ class Job(Table):
         # 3. Remove jobs whose keys have vanished. Judge against the unrestricted key_source:
         # jobs outside the restrictions (e.g. reserved by other workers) are not stale.
         # Disable semantic_check for Job table operations (job table PK has different lineage than target)
-        vanished = self.restrict(Not(self._target.key_source.proj()), semantic_check=False)
 
         # 3a. Success and error records describe rows that no longer exist once their key
         # has left both key_source and the target, regardless of age.
-        result["removed"] += (
-            (vanished & "status in ('success', 'error')")
-            .restrict(Not(self._target.proj()), semantic_check=False)
-            .delete_quick(get_count=True)
+        result["removed"] += self._delete_vanished(
+            (self & "status in ('success', 'error')").restrict(Not(self._target.proj()), semantic_check=False)
         )
 
         # 3b. Remove stale jobs (not ignore status) once older than stale_timeout, a grace period
         # for a key_source that is still being filled. stale_timeout=0 means no grace period.
         # Age is judged on the server's CURRENT_TIMESTAMP for consistent timing.
-        stale_jobs = vanished & "status != 'ignore'"
+        stale_jobs = self & "status != 'ignore'"
         if stale_timeout > 0:
             stale_interval = self.adapter.interval_expr(stale_timeout, "second")
             stale_jobs = stale_jobs & f"created_time < CURRENT_TIMESTAMP - {stale_interval}"
-        result["removed"] += stale_jobs.delete_quick(get_count=True)
+        result["removed"] += self._delete_vanished(stale_jobs)
 
         # 4. Handle orphaned reserved jobs - use server CURRENT_TIMESTAMP for consistent timing
         if orphan_timeout is not None and orphan_timeout > 0:
@@ -453,6 +451,63 @@ class Job(Table):
                 result["orphaned"] += 1
 
         return result
+
+    def _delete_vanished(self, candidates) -> int:
+        """
+        Delete the jobs in ``candidates`` whose keys are no longer in key_source.
+
+        ``key_source`` is queried at the top level, restricted to the candidates, and
+        never nested in ``NOT IN``: MySQL materializes a ``NOT IN`` subquery, and a
+        ``key_source`` restricted by several part tables is then built as the join of
+        those parts, whose size is the product of their rows. Most refreshes find
+        nothing vanished, which two counts establish without fetching keys.
+
+        Otherwise the candidates are compared with ``key_source`` one page of
+        ``VANISHED_DELETE_BATCH`` keys at a time, so memory stays bounded however
+        many jobs the table holds. Each page's vanished jobs are deleted in one
+        statement, restricted again by ``candidates``, so a job that has left the
+        candidates since the page was read is kept.
+
+        Parameters
+        ----------
+        candidates : QueryExpression
+            A restriction of this jobs table.
+
+        Returns
+        -------
+        int
+            Number of jobs deleted.
+        """
+        n_candidates = len(candidates)
+        if not n_candidates:
+            return 0
+        key_source = self._target.key_source.proj()
+        same_key = set(self.primary_key) == set(key_source.primary_key)
+        if same_key and len(key_source.restrict(candidates.proj(), semantic_check=False)) == n_candidates:
+            return 0
+
+        shared = [name for name in self.primary_key if name in key_source.primary_key]
+        deleted = kept = 0
+        while True:
+            # Pages are ordered by key and deletions only remove keys before the
+            # cursor, so the next page starts after the keys left in place so far.
+            page = candidates.keys(order_by="KEY", limit=VANISHED_DELETE_BATCH, offset=kept)
+            if not page:
+                break
+            in_page = candidates & page
+            present = {
+                tuple(key[name] for name in shared) for key in key_source.restrict(in_page.proj(), semantic_check=False).keys()
+            }
+            vanished = [key for key in page if tuple(key[name] for name in shared) not in present]
+            n_deleted = (candidates & vanished).delete_quick(get_count=True) if vanished else 0
+            deleted += n_deleted
+            # Advance by the rows actually left in place. A key that does not match its
+            # own value as a restriction, such as an inexact float, is neither found
+            # present nor deleted; counting it as kept moves the cursor past it.
+            kept += len(page) - n_deleted
+            if len(page) < VANISHED_DELETE_BATCH:
+                break
+        return deleted
 
     def reserve(self, key: dict) -> bool:
         """
