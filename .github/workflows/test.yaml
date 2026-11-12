@@ -29,6 +29,9 @@ on:
       - ".github/scripts/minimum_requirements.py"
       - ".github/workflows/test.yaml"
 
+  # The release workflow runs this as its gate.
+  workflow_call:
+
 jobs:
   test:
     runs-on: ubuntu-latest

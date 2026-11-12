@@ -8,97 +8,91 @@
 
 ---
 
-## Writing Release Notes
+## Releases Are Annotated Tags
 
-Good release notes help users understand what changed and whether they need to take action.
+A release is an annotated tag `vX.Y.Z` whose message is the release notes. The tag is the
+record of the release: `git show vX.Y.Z` or `git tag -n99 vX.Y.Z` prints its notes, and the
+GitHub release mirrors them. There is no changelog file.
 
-### Categories
+### Cutting a Release
 
-Organize changes into these categories (in order):
+1. **Collect the changes** merged since the last release:
 
-| Category | When to Use | Example |
-|----------|-------------|---------|
-| **BREAKING** | Changes that require user action | API changes, removed features |
-| **Added** | New features | New methods, new options |
-| **Changed** | Behavior changes (non-breaking) | Performance improvements, defaults |
-| **Deprecated** | Features marked for removal | Old syntax warnings |
-| **Fixed** | Bug fixes | Error corrections |
-| **Security** | Security patches | Vulnerability fixes |
+   ```bash
+   gh pr list --state merged --base master --search "merged:>YYYY-MM-DD" --json number,title
+   ```
 
-### Format
+2. **Write the notes.** The first line is one sentence that says what the release is about.
+   Then, after a blank line, the changes grouped by area (queries, diagrams, jobs, storage, the
+   backends, packaging, ...), each naming its pull request. Put anything users must act on
+   first.
 
-```markdown
-## What's Changed
+3. **Tag the release commit on `master` with the notes as its message, and push the tag.**
+   The notes go to `git tag` on standard input, so no notes file is left in the working tree
+   to be committed by accident:
 
-### BREAKING CHANGES
-- **`fetch()` removed** — Use `to_dicts()`, `to_pandas()`, or `to_arrays()` instead (#123)
+   ```bash
+   git tag -a vX.Y.Z --cleanup=verbatim -F - <<'EOF'
+   Deletes remove only the rows they reach, and jobs record when they finished.
 
-### Added
-- New `to_polars()` method for Polars DataFrame output (#456)
-- Support for custom codecs via `@codec` decorator (#789)
+   ## Deletes
+   - `(T & dj.Top(n)).delete()` deletes the rows the `Top` selects, not every matching row (#1234)
 
-### Changed
-- Improved query performance for complex joins (2-3x faster)
-- Default connection timeout increased to 30s
+   ## Jobs
+   - `completed_time` is recorded to the millisecond (#1235)
+   EOF
+   git tag -n99 vX.Y.Z  # check the message
+   git push origin vX.Y.Z
+   ```
 
-### Fixed
-- Fixed incorrect NULL handling in aggregations (#234)
+   `--cleanup=verbatim` keeps lines that start with `#`, such as Markdown headings, which git
+   would otherwise drop as comments. The quoted `'EOF'` keeps the shell from expanding the
+   backticks and `$` in the notes. Do not use `-e` (the editor) with `--cleanup=verbatim`: the
+   editor's own `#` instructions would stay in the message.
 
-### Full Changelog
-https://github.com/datajoint/datajoint-python/compare/v2.0.0...v2.1.0
-```
+   Create the tag with git, not from the Releases page on GitHub: "Create new tag on publish"
+   makes a lightweight tag, which the Release workflow refuses, so nothing is published.
 
-### Guidelines
+4. **The [Release workflow](.github/workflows/release.yaml) does the rest:**
+   - checks that the tag is annotated and on `master`;
+   - runs the lint and test workflows;
+   - builds the package at the tag;
+   - publishes it to PyPI;
+   - creates the GitHub release, with the tag's message as its notes and the wheel and sdist
+     attached;
+   - posts to Slack.
 
-1. **Lead with breaking changes** — Users need to see these first
-2. **Explain the "why"** — Not just what changed, but why it matters
-3. **Link to PRs/issues** — For users who want details
-4. **Use imperative mood** — "Add feature" not "Added feature"
-5. **Be concise** — One line per change, details in PR
+If a step fails after the tag is pushed, fix the cause and run the workflow again from the tag:
+Actions -> Release -> Run workflow -> "Use workflow from" the tag, with **testpypi** unchecked.
+Re-runs are safe: the upload skips files already on PyPI, and an existing GitHub release is
+updated rather than created again. To publish a tag to TestPyPI only, run it the same way with
+**testpypi** checked.
 
-### PR Labels
+Never move or delete a tag the Release workflow has published: the version on PyPI and the
+GitHub release are tied to it. The one exception is a tag the workflow refused before
+publishing anything (a lightweight tag, for instance): replace it with an annotated tag on
+the same commit, as the workflow's error message shows, and push it again.
 
-The release drafter uses PR labels to categorize changes:
+Pull request titles still state the user-visible change, since they are what the notes are
+written from. Labels are not used for release notes.
 
-| Label | Category |
-|-------|----------|
-| `breaking` | 💥 Breaking Changes |
-| `feature` | 🚀 Features |
-| `enhancement` | ⚡️ Enhancements |
-| `bug` | 🐛 Bug Fixes |
-| `documentation` | 📝 Documentation |
-
-Ensure PRs have appropriate labels before merging.
-
----
-
-## PyPI Release Process
-
-### Steps
-
-1. **Add labels to merged PRs** for release-drafter categorization
-2. **Run "Manual Draft Release" workflow** on GitHub Actions
-3. **Edit the draft release**:
-   - Set release name to `Release X.Y.Z`
-   - Set tag to `vX.Y.Z`
-   - Review and edit release notes
-4. **Publish the release** — this creates the `vX.Y.Z` tag.
-5. Automation will:
-   - Build from the tag and publish to PyPI
-   - Attach the wheel/sdist as release assets
-
-### Version Note
-
-The release drafter computes the version from the previous tag. You may need to
-**manually edit** the release name/tag for major version changes.
+### Versions
 
 The package version is **derived from the git tag** at build time by
 [hatch-vcs](https://github.com/ofek/hatch-vcs) (see `[tool.hatch.version]` in
 `pyproject.toml`) — the tag is the single source of truth. There is **no
-`version.py` value to bump** and **no follow-up version PR**: publishing the
+`version.py` value to bump** and **no follow-up version PR**: pushing the
 `vX.Y.Z` tag is what sets the version everywhere (`pip install`, `pip show`, and
 `datajoint.__version__`). Do not hand-edit `src/datajoint/version.py`; it only
 re-exports the build-generated `_version.py`.
+
+### Releases Before This Process
+
+Every earlier release that has notes was re-tagged as an annotated tag on the same commit,
+with those notes as its message: from the former changelog for 0.3.2 through 0.14.3, and from
+the GitHub release for later versions. Such a message ends with a `Retroactive:` line, and the
+Release workflow never publishes a tag that has one. A few early versions had no notes
+anywhere; their tags stay as they were.
 
 ---
 
@@ -110,7 +104,7 @@ DataJoint has a [conda-forge feedstock](https://github.com/conda-forge/datajoint
 
 Conda-forge has **automated bots** that detect new PyPI releases and create PRs automatically:
 
-1. **You publish to PyPI** (via the GitHub release workflow)
+1. **You publish to PyPI** (by pushing the release tag)
 2. **regro-cf-autotick-bot** detects the new version within ~24 hours
 3. **Bot creates a PR** to the feedstock with updated version and hash
 4. **Maintainers review and merge**
