@@ -416,12 +416,13 @@ def dj():
 
 @pytest.fixture
 def adapter(monkeypatch, dj):
-    """Mock adapter returned by get_adapter for every Connection."""
+    """Mock adapter returned by get_adapter for every Connection, with database.use_tls unset."""
     adapter = mock.Mock(name="adapter")
     adapter.backend = "postgresql"  # skips the MySQL server-version query
     adapter.get_connection_id.return_value = 1
     monkeypatch.setattr(importlib.import_module("datajoint.connection"), "get_adapter", lambda backend: adapter)
-    return adapter
+    with dj.config.override(database__use_tls=None):  # DJ_USE_TLS must not change the None cases
+        yield adapter
 
 
 def _use_tls_calls(adapter):
@@ -433,6 +434,25 @@ class TestConnectionUseTLS:
     def test_use_tls_reaches_adapter(self, dj, adapter, use_tls):
         dj.Connection("localhost", "alice", "secret", 5432, use_tls)
         assert _use_tls_calls(adapter) == [use_tls]
+
+    def test_use_tls_from_config(self, dj, adapter):
+        with dj.config.override(database__use_tls=True):
+            dj.Connection("localhost", "alice", "secret", 5432)
+        assert _use_tls_calls(adapter) == [True]
+
+    def test_use_tls_argument_overrides_config(self, dj, adapter):
+        with dj.config.override(database__use_tls=True):
+            dj.Connection("localhost", "alice", "secret", 5432, False)
+        assert _use_tls_calls(adapter) == [False]
+
+    @pytest.mark.parametrize("use_tls", [True, False])
+    def test_instance_use_tls_from_config(self, dj, adapter, use_tls):
+        dj.Instance("localhost", "alice", "secret", database__use_tls=use_tls)
+        assert _use_tls_calls(adapter) == [use_tls]
+
+    def test_instance_use_tls_argument_overrides_config(self, dj, adapter):
+        dj.Instance("localhost", "alice", "secret", use_tls=False, database__use_tls=True)
+        assert _use_tls_calls(adapter) == [False]
 
     def test_reconnect_keeps_use_tls(self, dj, adapter):
         connection = dj.Connection("localhost", "alice", "secret", 5432, False)
