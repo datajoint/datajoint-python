@@ -1,6 +1,7 @@
 """Tests for DataJoint settings module."""
 
 import os
+import signal
 import stat
 import warnings
 from pathlib import Path
@@ -1204,6 +1205,13 @@ class TestDiscoveredFileOwnership:
 
         assert find_config_file(lab / "project") is None
 
+    def test_foreign_config_in_non_sticky_world_writable_dir_skipped(self, mark, shared):
+        """Another user's datajoint.json in a directory anyone can write (e.g. a 0777 volume) is skipped."""
+        mark(shared, world_writable=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        assert find_config_file(shared / "project") is None
+
     def test_foreign_config_in_protected_dir_used(self, mark, shared):
         """Another user's file in a directory only its owners can write (e.g. a lab share) is used."""
         mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
@@ -1213,6 +1221,20 @@ class TestDiscoveredFileOwnership:
     def test_root_owned_config_in_world_writable_dir_used(self, mark, shared):
         mark(shared, world_writable=True, sticky=True)
         mark(shared / CONFIG_FILENAME, uid=0)
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_foreign_config_in_world_writable_dir_skipped_as_root(self, mark, shared, monkeypatch):
+        """Running as root does not make another user's file in a world-writable directory trusted."""
+        monkeypatch.setattr(os, "getuid", lambda: 0)
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        assert find_config_file(shared / "project") is None
+
+    def test_foreign_config_in_protected_dir_used_as_root(self, mark, shared, monkeypatch):
+        monkeypatch.setattr(os, "getuid", lambda: 0)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
 
         assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
 
@@ -1297,6 +1319,58 @@ class TestDiscoveredFileOwnership:
         cfg._load_secrets(secrets_dir)
         assert cfg.database.password is None
         assert "main" not in cfg.stores
+
+    def test_root_owned_sticky_system_secrets_dir_used_without_warning(self, mark, tmp_path, monkeypatch, caplog):
+        """A Kubernetes secret volume (root-owned, mode 1777) is used; only the files in it are checked."""
+        secrets_dir = tmp_path / "system-secrets"
+        secrets_dir.mkdir()
+        (secrets_dir / "database.password").write_text("from-root")
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", secrets_dir)
+        mark(secrets_dir, uid=0, world_writable=True, sticky=True)
+        mark(secrets_dir / "database.password", uid=0)
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_secrets_dir(None)
+            value = read_secret_file(found, "database.password")
+
+        assert found == secrets_dir
+        assert value == "from-root"
+        assert not any("writable by all users" in r.message for r in caplog.records)
+
+    def test_root_owned_non_sticky_system_secrets_dir_warns(self, mark, tmp_path, monkeypatch, caplog):
+        secrets_dir = tmp_path / "system-secrets"
+        secrets_dir.mkdir()
+        (secrets_dir / "database.password").write_text("from-root")
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", secrets_dir)
+        mark(secrets_dir, uid=0, world_writable=True)
+        mark(secrets_dir / "database.password", uid=0)
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_secrets_dir(None)
+            value = read_secret_file(found, "database.password")
+
+        assert found == secrets_dir
+        assert value == "from-root"
+        assert any(str(secrets_dir) in r.message and "writable by all users" in r.message for r in caplog.records)
+
+    def test_fifo_secret_file_not_read(self, tmp_path):
+        """A named pipe in place of a secret file is skipped without waiting for a writer."""
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        os.mkfifo(secrets_dir / "database.password")
+
+        def blocked(signum, frame):
+            pytest.fail("opening the named pipe blocked")
+
+        previous = signal.signal(signal.SIGALRM, blocked)
+        signal.alarm(5)
+        try:
+            value = read_secret_file(secrets_dir, "database.password")
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, previous)
+
+        assert value is None
 
     def test_no_posix_ownership_keeps_search(self, mark, shared, monkeypatch):
         """Without os.getuid (Windows) the search behaves as before."""
