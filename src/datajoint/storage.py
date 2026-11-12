@@ -515,8 +515,9 @@ class StorageBackend:
         ):
             raise errors.DataJointError(
                 f"Path {path!r} may lead outside the store location. Use a path relative to the "
-                "store location, without '..' components. For <filepath@> references that "
-                "deliberately point outside the store, set dj.config.allow_filepath_outside_store = True."
+                "store location, without '..' components. (<filepath@> only: "
+                "dj.config.allow_filepath_outside_store = True accepts such paths for every <filepath@> "
+                "value; use it only with trusted data.)"
             )
 
     def _path_in_location(self, path: str) -> str | None:

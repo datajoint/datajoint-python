@@ -290,6 +290,48 @@ class TestObjectConfinement:
                 ref.download(downloads, subpath=subpath)
         assert not any(downloads.iterdir())
 
+    @pytest.fixture
+    def memory_backend(self):
+        """A backend over fsspec's in-memory filesystem, whose keys may contain '..' as object stores' keys can."""
+        from fsspec.implementations.memory import MemoryFileSystem
+
+        class MemoryBackend:
+            fs = MemoryFileSystem()
+
+            def _full_path(self, path):
+                return f"dj-test-bucket/loc/{path}"
+
+        backend = MemoryBackend()
+        yield backend
+        backend.fs.rm("/dj-test-bucket", recursive=True)
+
+    def test_download_folder_rejects_key_leading_outside(self, memory_backend, tmp_path):
+        """Every key is checked before any file is written."""
+        memory_backend.fs.pipe(
+            {
+                "/dj-test-bucket/loc/obj/a.txt": b"a",
+                "/dj-test-bucket/loc/obj/sub/b.txt": b"b",
+                "/dj-test-bucket/loc/obj/sub/../../../../x": b"x",
+            }
+        )
+        dest = tmp_path / "work" / "dest"  # dest/obj/sub/../../../../x is tmp_path/x
+        ref = ObjectRef(path="obj", size=None, hash=None, ext=None, is_dir=True, timestamp=None, _backend=memory_backend)
+        with pytest.raises(DataJointError, match="leads outside the destination"):
+            ref.download(dest)
+        assert not (tmp_path / "x").exists()
+        assert [p for p in tmp_path.rglob("*") if not p.is_dir()] == []
+        assert not (dest / "obj").exists()
+
+    def test_download_folder_round_trip(self, memory_backend, tmp_path):
+        """Files land in destination/<object name>/..., as fsspec's recursive get placed them."""
+        memory_backend.fs.pipe({"/dj-test-bucket/loc/obj/a.txt": b"a", "/dj-test-bucket/loc/obj/sub/b.txt": b"b"})
+        dest = tmp_path / "dest"
+        ref = ObjectRef(path="obj", size=None, hash=None, ext=None, is_dir=True, timestamp=None, _backend=memory_backend)
+        assert ref.download(dest) == dest
+        assert sorted(p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file()) == ["obj/a.txt", "obj/sub/b.txt"]
+        assert (dest / "obj" / "a.txt").read_bytes() == b"a"
+        assert (dest / "obj" / "sub" / "b.txt").read_bytes() == b"b"
+
 
 # --------------------------------------------------------------------------- #
 # <attach>
