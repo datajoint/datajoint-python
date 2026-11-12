@@ -126,6 +126,35 @@ def test_string_with_backslash(item, backend):
         assert ids(item & {"data.label": "back\\slash"}) == [5]
 
 
+def test_mysql_values_without_backslash_escapes(item, backend):
+    """On MySQL, string values stay closed literals when the session enables NO_BACKSLASH_ESCAPES."""
+    if backend != "mysql":
+        pytest.skip("sql_mode is MySQL-specific")
+    connection = item.connection
+    sql_mode = connection.query("SELECT @@SESSION.sql_mode").fetchone()[0]
+    try:
+        connection.query("SET SESSION sql_mode = %s", (",".join(filter(None, [sql_mode, "NO_BACKSLASH_ESCAPES"])),))
+        assert ids(item & {"name": "' OR 1=1 --"}) == []
+        assert ids(item & {"name": "o'brien"}) == [2]
+    finally:
+        connection.query("SET SESSION sql_mode = %s", (sql_mode,))
+
+
+def test_postgresql_list_values_without_standard_conforming_strings(item, backend):
+    """On PostgreSQL, list values stay closed literals when standard_conforming_strings is off."""
+    if backend != "postgresql":
+        pytest.skip("standard_conforming_strings is PostgreSQL-specific")
+    item.insert1(dict(item_id=5, name=str(["back\\slash"])))
+    connection = item.connection
+    setting = connection.query("SHOW standard_conforming_strings").fetchone()[0]
+    try:
+        connection.query("SET standard_conforming_strings = off")
+        assert ids(item & {"name": ["'OR 1=1 -- \""]}) == []
+        assert ids(item & {"name": ["back\\slash"]}) == [5]
+    finally:
+        connection.query(f"SET standard_conforming_strings = {setting}")
+
+
 NUMERIC_JSON_TYPES = {
     "mysql": ["unsigned", "signed", "decimal(4, 1)", "double", "float"],
     "postgresql": ["integer", "int", "bigint", "numeric(10,2)", "double precision", "real", "unsigned", "double"],

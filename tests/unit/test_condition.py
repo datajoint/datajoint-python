@@ -188,18 +188,26 @@ def _condition(backend, restriction):
     return make_condition(_fake_expression(backend), restriction, set())
 
 
-def _read_literal(backend, sql):
+def _read_literal(backend, sql, backslash_escapes=None):
     """
     Read one quoted string literal at the start of ``sql`` using the backend's rules
-    (MySQL with backslash escapes; PostgreSQL with standard_conforming_strings on).
+    (MySQL with backslash escapes; PostgreSQL with standard_conforming_strings on,
+    where backslashes are escapes only in an E'...' literal).
+
+    ``backslash_escapes=False`` reads a MySQL literal as under NO_BACKSLASH_ESCAPES;
+    ``backslash_escapes=True`` reads a PostgreSQL literal as with standard_conforming_strings off.
 
     Returns the literal's value and the text that follows it.
     """
+    if backslash_escapes is None:
+        backslash_escapes = backend == "mysql"
+    if backend == "postgresql" and sql.startswith("E'"):
+        sql, backslash_escapes = sql[1:], True
     assert sql[0] == "'", sql
     out, i = [], 1
     while i < len(sql):
         c = sql[i]
-        if c == "\\" and backend == "mysql":
+        if c == "\\" and backslash_escapes:
             nxt = sql[i + 1]
             out.append({"n": "\n", "r": "\r", "0": "\x00", "Z": "\x1a", "t": "\t", "b": "\b"}.get(nxt, nxt))
             i += 2
@@ -215,12 +223,12 @@ def _read_literal(backend, sql):
     raise AssertionError(f"unterminated literal in {sql!r}")
 
 
-def _literal_value(backend, condition, lhs):
+def _literal_value(backend, condition, lhs, backslash_escapes=None):
     """Value of the single literal compared with ``lhs`` in a one-term condition."""
     sql = condition % ()  # the driver's parameter substitution turns %% into %
     prefix = f" ({lhs}="
     assert sql.startswith(prefix), sql
-    value, rest = _read_literal(backend, sql[len(prefix) :])
+    value, rest = _read_literal(backend, sql[len(prefix) :], backslash_escapes)
     assert rest == ")", f"text after the literal: {rest!r}"
     return value
 
@@ -319,6 +327,25 @@ class TestRestrictionLiterals:
         cond = make_condition(_fake_expression(backend), Not({"name": "' OR 1=1 --"}), set())
         assert cond.startswith("NOT ")
         assert _literal_value(backend, cond[4:], _quoted(backend, "name")) == "' OR 1=1 --"
+
+
+@pytest.mark.parametrize("value", SPECIAL_CHARACTER_STRINGS)
+@pytest.mark.parametrize("key", ["name", "car.name", "car.tags", "car.headlights[1]"])
+def test_mysql_literal_closed_without_backslash_escapes(key, value):
+    """MySQL literals stay closed when read with NO_BACKSLASH_ESCAPES in the session's sql_mode."""
+    restriction = {"car.tags": [value, 'a"b', "c'd"], "car.headlights[1]": {"side": value}}.get(key, value)
+    lhs = _quoted("mysql", key) if key == "name" else _json_lhs("mysql", key.split(".", 1)[1])
+    # _literal_value asserts that the literal's closing quote is followed only by ")"
+    _literal_value("mysql", _condition("mysql", {key: restriction}), lhs, backslash_escapes=False)
+
+
+@pytest.mark.skipif(importlib.util.find_spec("psycopg2") is None, reason="psycopg2 not installed")
+@pytest.mark.parametrize("value", SPECIAL_CHARACTER_STRINGS)
+def test_postgresql_list_value_without_standard_conforming_strings(value):
+    """PostgreSQL list values read back exactly when standard_conforming_strings is off."""
+    items = [value, 1, 'a"b', "c'd"]
+    cond = _condition("postgresql", {"car.tags": items})
+    assert _literal_value("postgresql", cond, _json_lhs("postgresql", "tags"), backslash_escapes=True) == str(items)
 
 
 @pytest.mark.parametrize("backend", BACKENDS)

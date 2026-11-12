@@ -219,8 +219,8 @@ class MySQLAdapter(DatabaseAdapter):
         str
             Quoted and escaped string literal.
         """
-        # Use pymysql's escape_string for proper escaping
-        escaped = client.converters.escape_string(value)
+        # Use pymysql's escape_string, but double quotes so the literal stays closed even under NO_BACKSLASH_ESCAPES
+        escaped = client.converters.escape_string(value).replace("\\'", "''")
         return f"'{escaped}'"
 
     def get_master_table_name(self, part_table: str) -> str | None:
