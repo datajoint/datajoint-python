@@ -81,8 +81,8 @@ def conn(
         TLS encryption option: True (required), False (no TLS),
         None (preferred, default), or dict for manual configuration
         (TLS required; ``ca``, ``cert``, ``key``; with ``ca``, the server
-        certificate is verified). If the existing connection was made with
-        weaker TLS settings, it is reconnected with these.
+        certificate is verified). The existing connection is reconnected with
+        these unless it already satisfies them.
 
     Returns
     -------
@@ -168,9 +168,10 @@ class Connection:
         Port number. Overridden if specified in host.
     use_tls : bool or dict, optional
         TLS encryption option: True (required), False (no TLS),
-        None (preferred, default), or dict for manual configuration
-        (TLS required; ``ca``, ``cert``, ``key``; with ``ca``, the server
-        certificate is verified).
+        None (default; ``database.use_tls`` from config, and TLS if the
+        server supports it when that is unset), or dict for manual
+        configuration (TLS required; ``ca``, ``cert``, ``key``; with ``ca``,
+        the server certificate is verified).
 
     Attributes
     ----------
@@ -204,6 +205,8 @@ class Connection:
         if database_name is None:
             database_name = self._config.get("database.name")
         self.conn_info = dict(host=host, port=port, user=user, passwd=password, database_name=database_name)
+        if use_tls is None:
+            use_tls = self._config["database.use_tls"]
         self._set_use_tls(use_tls)
         self._conn = None
         self._query_cache = None
@@ -264,7 +267,7 @@ class Connection:
 
     def _ensure_tls(self, use_tls: bool | dict | None) -> None:
         """
-        Reconnect with ``use_tls`` if the connection was made with weaker TLS settings.
+        Reconnect with ``use_tls`` unless the existing connection already satisfies it.
 
         ``use_tls=True`` is met by a connection made with True or a dict;
         a dict is met only by a connection made with the same dict.
