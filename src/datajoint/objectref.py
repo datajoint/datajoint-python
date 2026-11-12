@@ -299,7 +299,8 @@ class ObjectRef:
         ------
         DataJointError
             If ``destination`` is a directory and the last component of the
-            stored path is not a plain file name.
+            stored path is not a plain file name, or if a key inside a folder
+            object is not made of plain file names.
         """
         self._ensure_backend()
         destination = Path(destination)
@@ -314,8 +315,38 @@ class ObjectRef:
         if self.is_dir and not subpath:
             # Download entire directory
             destination.mkdir(parents=True, exist_ok=True)
+            fs = self._backend.fs
             full_path = self._backend._full_path(remote_path)
-            self._backend.fs.get(full_path, str(destination), recursive=True)
+            root = fs._strip_protocol(full_path).rstrip("/")
+            # Same layout as fsspec's recursive get: destination/<object name>/...
+            name = root.rsplit("/", 1)[-1]
+            target = destination / name
+            # Check every key before writing anything: each must be made of plain
+            # names below the object, so that no file lands outside target
+            entries = fs.find(full_path, withdirs=True, detail=True)
+            if not entries:
+                raise FileNotFoundError(full_path)
+            rpaths, lpaths, ldirs = [], [], []
+            for rpath, info in entries.items():
+                key = rpath.rstrip("/")
+                if key == root:
+                    continue  # the object itself
+                rel = key[len(root) + 1 :] if key.startswith(root + "/") else ""
+                parts = rel.split("/")
+                if not all(is_plain_file_name(p) for p in [name, *parts]):
+                    raise DataJointError(f"Cannot download {remote_path!r}: entry {rpath!r} leads outside the destination.")
+                if info["type"] == "directory":
+                    ldirs.append(target.joinpath(*parts))
+                else:
+                    rpaths.append(rpath)
+                    lpaths.append(str(target.joinpath(*parts)))
+            target.mkdir(exist_ok=True)
+            for ldir in ldirs:
+                ldir.mkdir(parents=True, exist_ok=True)
+            for lpath in lpaths:
+                Path(lpath).parent.mkdir(parents=True, exist_ok=True)
+            if rpaths:
+                fs.get(rpaths, lpaths)
         else:
             # Download single file
             if destination.is_dir():
