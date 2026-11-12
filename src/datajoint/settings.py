@@ -223,7 +223,9 @@ def _use_found_dir(path: Path, hint: str = "") -> bool:
     Decide whether a secrets directory found by searching may be used.
 
     The rules of ``_read_found_file`` apply to the directory. The files in a
-    directory that is used are each checked again when read.
+    directory that is used are each checked again when read. For that reason a
+    world-writable directory with the sticky bit (such as a Kubernetes secret
+    volume) produces no warning; one without it does.
     """
     if not hasattr(os, "getuid"):
         return path.is_dir()
@@ -241,7 +243,7 @@ def _use_found_dir(path: Path, hint: str = "") -> bool:
     if _is_foreign(st.st_uid):
         if _reject_foreign(path, st.st_uid, [found_in, Path(os.path.realpath(path)).parent], hint):
             return False
-    if st.st_mode & stat.S_IWOTH:
+    if st.st_mode & stat.S_IWOTH and not st.st_mode & stat.S_ISVTX:
         logger.warning(f"{path} is writable by all users; restrict its permissions (e.g. chmod o-w).")
     return True
 
