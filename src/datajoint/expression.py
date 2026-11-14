@@ -586,7 +586,7 @@ class QueryExpression:
         # check that all mentioned names are present in heading
         mentions = attributes.union(replicate_map.values()).union(rename_map.values())
         try:
-            raise DataJointError("Attribute '%s' not found." % next(a for a in mentions if not self.heading.names))
+            raise DataJointError("Attribute `%s` not found." % next(a for a in mentions if a not in self.heading.names))
         except StopIteration:
             pass  # all ok
 
