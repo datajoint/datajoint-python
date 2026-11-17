@@ -25,8 +25,8 @@ def test_declare_json_path_index(schema_by_backend):
         item_id : int32
         ---
         data = null : json
-        index(data.size:integer)
-        unique index(item_id, data.name:varchar(20))
+        index(data.size:decimal(4,1))
+        unique index(item_id, data.name:char(20))
         """
 
     Indexed.insert([dict(item_id=1, data={"size": 3, "name": "a"}), dict(item_id=2, data=None)])
