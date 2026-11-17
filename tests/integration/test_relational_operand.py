@@ -608,12 +608,14 @@ class TestDjTop:
             L() & dj.Top(order_by=1)
         with pytest.raises(TypeError) as err5:
             L() & dj.Top(offset="1")
-        assert "datajoint.errors.DataJointError: Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)" == str(
-            err1.exconly()
+        nested_top = (
+            "datajoint.errors.DataJointError: dj.Top must be applied on its own, as `expression & dj.Top(...)`. "
+            "It cannot be negated (with - or dj.Not) or combined with other restrictions in a list, an AndList, "
+            "or the restrictions passed to populate() or progress(). For the rows after the first n, "
+            "use dj.Top(None, order_by=..., offset=n)."
         )
-        assert "datajoint.errors.DataJointError: Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)" == str(
-            err2.exconly()
-        )
+        assert nested_top == str(err1.exconly())
+        assert nested_top == str(err2.exconly())
         assert "TypeError: Top limit must be an integer" == str(err3.exconly())
         assert "TypeError: Top order_by attributes must all be strings" == str(err4.exconly())
         assert "TypeError: The offset argument must be an integer" == str(err5.exconly())
