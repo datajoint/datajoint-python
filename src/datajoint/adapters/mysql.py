@@ -283,8 +283,8 @@ class MySQLAdapter(DatabaseAdapter):
         str
             Quoted and escaped string literal.
         """
-        # Use pymysql's escape_string for proper escaping
-        escaped = client.converters.escape_string(value)
+        # Use pymysql's escape_string, but double quotes so the literal stays closed even under NO_BACKSLASH_ESCAPES
+        escaped = client.converters.escape_string(value).replace("\\'", "''")
         return f"'{escaped}'"
 
     def get_master_table_name(self, part_table: str) -> str | None:
@@ -936,7 +936,7 @@ class MySQLAdapter(DatabaseAdapter):
         """
         quoted_col = self.quote_identifier(column)
         return_clause = f" returning {return_type}" if return_type else ""
-        return f"json_value({quoted_col}, _utf8mb4'$.{path}'{return_clause})"
+        return f"json_value({quoted_col}, _utf8mb4{self.quote_string('$.' + path)}{return_clause})"
 
     def translate_expression(self, expr: str) -> str:
         """
