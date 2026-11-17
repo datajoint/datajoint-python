@@ -115,6 +115,21 @@ class TestStorePathConfinement:
         backend = StorageBackend({"protocol": "file", "location": str(store)})
         assert backend._full_path(path) == (store / path).as_posix()
 
+    @posix_only
+    @pytest.mark.parametrize("location", [".", ""])
+    def test_file_store_in_working_directory_rejects_protocol_and_home_paths(self, layout, monkeypatch, location):
+        root, store, _ = layout
+        monkeypatch.chdir(store)
+        monkeypatch.setenv("HOME", str(root))
+        backend = StorageBackend({"protocol": "file", "location": location})
+        outside = str(root / "outside.txt")
+        for path in ("file://" + outside, "file:" + outside, "local://" + outside, "local:" + outside, "~/outside.txt"):
+            with pytest.raises(DataJointError, match="outside the store location"):
+                backend._full_path(path)
+        with pytest.raises(DataJointError):
+            backend.get_buffer("file://" + outside)
+        assert backend.get_buffer("data/inside.txt") == b"inside"
+
     def test_io_never_reaches_outside(self, layout):
         root, store, _ = layout
         backend = StorageBackend({"protocol": "file", "location": str(store)})

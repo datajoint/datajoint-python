@@ -18,6 +18,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import fsspec
+from fsspec.implementations.local import LocalFileSystem
 
 from . import errors
 
@@ -500,9 +501,15 @@ class StorageBackend:
             return f"{bucket}/{path}"
         elif self.protocol == "file":
             location = self.spec.get("location", "")
-            if location:
-                return (Path(location) / path).as_posix()
-            return path
+            full = (Path(location) / path).as_posix() if location else path
+            # A location of "" or "." adds no prefix, and fsspec reads a leading "file:" or
+            # "local:" as a protocol and expands "~", so compare where fsspec resolves both
+            if self.confine_paths:
+                root = LocalFileSystem._strip_protocol(Path(location or ".").as_posix()).rstrip("/")
+                resolved = LocalFileSystem._strip_protocol(full)
+                if resolved != root and not resolved.startswith(root + "/"):
+                    raise self._confinement_error(path)
+            return full
         else:
             return self._require_adapter().full_path(self.spec, path)
 
@@ -513,12 +520,16 @@ class StorageBackend:
             or _has_parent_reference(path)
             or (self.protocol == "file" and Path(path).anchor and self._path_in_location(path) is None)
         ):
-            raise errors.DataJointError(
-                f"Path {path!r} may lead outside the store location. Use a path relative to the "
-                "store location, without '..' components. (<filepath@> only: "
-                "dj.config.allow_filepath_outside_store = True accepts such paths for every <filepath@> "
-                "value; use it only with trusted data.)"
-            )
+            raise self._confinement_error(path)
+
+    @staticmethod
+    def _confinement_error(path: str) -> errors.DataJointError:
+        return errors.DataJointError(
+            f"Path {path!r} may lead outside the store location. Use a path relative to the "
+            "store location, without '..' components. (<filepath@> only: "
+            "dj.config.allow_filepath_outside_store = True accepts such paths for every <filepath@> "
+            "value; use it only with trusted data.)"
+        )
 
     def _path_in_location(self, path: str) -> str | None:
         """Express an absolute path inside a ``file`` store's location relative to it (see :func:`path_in_location`)."""
