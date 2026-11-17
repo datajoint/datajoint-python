@@ -1123,9 +1123,11 @@ class Table(QueryExpression):
         order (leaves first).
 
         With ``safemode=True`` (the default), delete previews all affected
-        tables and row counts, executes within a transaction, and asks for
-        confirmation before committing. Declining rolls back all changes —
-        effectively a built-in dry run.
+        tables and row counts and asks for confirmation before deleting
+        anything. The prompt runs before the transaction starts, so an
+        unanswered prompt holds no database locks. If the rows deleted differ
+        from the preview (the data changed after the prompt), the delete is
+        rolled back.
 
         To preview cascade impact without executing, use ``Diagram``::
 
@@ -1159,31 +1161,42 @@ class Table(QueryExpression):
         conn = self.connection
         prompt = conn._config["safemode"] if prompt is None else prompt
 
-        # Preview
-        if prompt:
-            for ft in diagram:
-                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=len(ft)))
-
-        # Start transaction
-        if transaction:
-            if not conn.in_transaction:
-                conn.start_transaction()
+        if transaction and conn.in_transaction:
+            if not prompt:
+                transaction = False
             else:
-                if not prompt:
-                    transaction = False
-                else:
-                    raise DataJointError(
-                        "Delete cannot use a transaction within an "
-                        "ongoing transaction. Set transaction=False "
-                        "or prompt=False."
-                    )
+                raise DataJointError(
+                    "Delete cannot use a transaction within an "
+                    "ongoing transaction. Set transaction=False "
+                    "or prompt=False."
+                )
+
+        # Preview and confirm before the transaction starts, so that an
+        # unanswered prompt does not hold locks on the affected tables.
+        preview = None
+        if prompt:
+            preview = {}
+            for ft in diagram:
+                preview[ft.full_table_name] = len(ft)
+                logger.info("{table} ({count} tuples)".format(table=ft.full_table_name, count=preview[ft.full_table_name]))
+            if not preview.get(self.full_table_name):
+                logger.warning("Nothing to delete.")
+                return 0
+            if user_choice("Commit deletes?", default="no") != "yes":
+                logger.warning("Delete cancelled")
+                return 0
+
+        if transaction:
+            conn.start_transaction()
 
         # Execute deletes in reverse topological order (leaves first)
         root_count = 0
         deleted_tables = set()
+        deleted_counts = {}
         try:
             for ft in reversed(diagram):
                 count = ft.delete_quick(get_count=True)
+                deleted_counts[ft.full_table_name] = count
                 if count > 0:
                     deleted_tables.add(ft.full_table_name)
                 logger.info("Deleting {count} rows from {table}".format(count=count, table=ft.full_table_name))
@@ -1219,26 +1232,26 @@ class Table(QueryExpression):
                         f"or use part_integrity='ignore' or 'cascade'."
                     )
 
-        # Confirm and commit
+        # The user confirmed the preview: refuse to commit anything else.
+        if preview is not None and deleted_counts != preview:
+            if transaction:
+                conn.cancel_transaction()
+                raise DataJointError(
+                    "The data changed after the delete preview, so the delete was rolled back. "
+                    "Run the delete again to review the new counts."
+                )
+            logger.warning("The rows deleted differ from the preview because the data changed after it.")
+
+        # Commit
         if root_count == 0:
-            if prompt:
-                logger.warning("Nothing to delete.")
             if transaction:
                 conn.cancel_transaction()
         elif not transaction:
             logger.info("Delete completed")
         else:
-            if not prompt or user_choice("Commit deletes?", default="no") == "yes":
-                if transaction:
-                    conn.commit_transaction()
-                if prompt:
-                    logger.info("Delete committed.")
-            else:
-                if transaction:
-                    conn.cancel_transaction()
-                if prompt:
-                    logger.warning("Delete cancelled")
-                root_count = 0
+            conn.commit_transaction()
+            if prompt:
+                logger.info("Delete committed.")
         return root_count
 
     def drop_quick(self):

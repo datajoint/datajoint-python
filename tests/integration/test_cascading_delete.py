@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 import datajoint as dj
@@ -146,3 +148,41 @@ def test_delete_1159(thing_tables):
 
     assert len(tbl_a) == 6, "Failed to cascade restriction attributes"
     assert len(tbl_e) == 3, "Failed to cascade restriction attributes"
+
+
+def test_delete_prompt_runs_outside_transaction(schema_simp_pop):
+    """The confirmation prompt must not hold a transaction open (#1682)."""
+    conn = A().connection
+    in_transaction = []
+
+    def answer(_):
+        in_transaction.append(conn.in_transaction)
+        return "no"
+
+    with patch.object(dj.utils, "input", create=True, side_effect=answer):
+        assert (A() & "id_a < 3").delete(prompt=True) == 0
+    assert in_transaction == [False]
+    assert len(A() & "id_a < 3") == 3, "declined delete removed rows"
+
+
+def test_delete_prompt_confirmed(schema_simp_pop):
+    with patch.object(dj.utils, "input", create=True, return_value="yes"):
+        assert (A() & "id_a < 3").delete(prompt=True) == 3
+    assert not (A() & "id_a < 3")
+    assert not (B() & "id_a < 3")
+
+
+def test_delete_rolls_back_when_data_changes_after_preview(schema_simp_pop):
+    """Rows added between the preview and the delete abort the delete."""
+
+    def answer(_):
+        A().insert1((100, 0))
+        return "yes"
+
+    try:
+        with patch.object(dj.utils, "input", create=True, side_effect=answer):
+            with pytest.raises(dj.DataJointError, match="changed after the delete preview"):
+                (A() & "id_a >= 5").delete(prompt=True)
+        assert len(A() & "id_a >= 5") == 6, "delete was not rolled back"
+    finally:
+        (A() & "id_a = 100").delete()
