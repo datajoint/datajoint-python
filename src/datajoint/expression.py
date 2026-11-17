@@ -401,13 +401,15 @@ class QueryExpression:
             (set(self.original_heading.names) & set(other.original_heading.names)) - join_attributes
         )
         # need subquery if any of the join attributes are derived, or if an operand
-        # deduplicates its rows (dj.U & expr): its DISTINCT must apply before the join
+        # deduplicates its rows (dj.U & expr) or is limited by dj.Top: its DISTINCT
+        # or ORDER BY/LIMIT must apply to the operand before the join
         need_subquery1 = (
             need_subquery1
             or isinstance(self, Aggregation)
             or any(n in self.heading.new_attributes for n in join_attributes)
             or isinstance(self, Union)
             or self._distinct
+            or self._top is not None
         )
         need_subquery2 = (
             need_subquery2
@@ -415,12 +417,18 @@ class QueryExpression:
             or any(n in other.heading.new_attributes for n in join_attributes)
             or isinstance(self, Union)
             or other._distinct
+            or other._top is not None
         )
         # With USING clause (instead of NATURAL JOIN), we need subqueries when
         # joining with multi-table expressions to ensure correct column matching
         if len(self.support) > 1 and join_attributes:
             need_subquery1 = True
         if len(other.support) > 1 and join_attributes:
+            need_subquery2 = True
+        # A left join keeps every row of self, so a restriction on other (including dj.Top)
+        # must be applied before the join, inside a subquery. In the outer WHERE it would
+        # remove the rows of self that have no match. An unrestricted other needs no subquery.
+        if left and (other.restriction or other._top):
             need_subquery2 = True
         if need_subquery1:
             self = self.make_subquery()
@@ -617,6 +625,22 @@ class QueryExpression:
         if not need_subquery and self.restriction:
             # need a subquery if the restriction applies to attributes that have been renamed
             need_subquery = any(name in self.restriction_attributes for name in self.heading.new_attributes)
+        if not need_subquery and self._top is not None:
+            # need a subquery if dj.Top's ORDER BY names an attribute that the projection redefines,
+            # or a computed or renamed attribute that it drops. A dropped table column needs none.
+            projected = self.heading.select(
+                attributes, rename_map=dict(**rename_map, **replicate_map), compute_map=compute_map
+            )
+            ordering = ", ".join(_flatten_attribute_list(self.primary_key, self._top.order_by or ["KEY"]))
+            need_subquery = any(
+                (
+                    projected[name].attribute_expression != self.heading[name].attribute_expression
+                    if name in projected.names
+                    else self.heading[name].attribute_expression is not None
+                )
+                for name in extract_column_names(ordering)
+                if name in self.heading.names
+            )
 
         result = self.make_subquery() if need_subquery else copy.copy(self)
         result._original_heading = result.original_heading
@@ -1194,6 +1218,8 @@ class QueryExpression:
         bool
             True if the result is not empty.
         """
+        if self._top is not None:
+            return bool(self.make_subquery())  # EXISTS must see the ORDER BY/LIMIT
         return bool(
             self.connection.query(
                 "SELECT EXISTS(SELECT 1 FROM {from_}{where})".format(from_=self.from_clause(), where=self.where_clause())
@@ -1444,16 +1470,18 @@ class Union(QueryExpression):
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:
             # no secondary attributes: use UNION DISTINCT
             fields = arg1.primary_key
-            alias_name = f"_u{next(self.__count)}{self.sorting_clauses()}"
-            alias_quoted = self.connection.adapter.quote_identifier(alias_name)
+            alias_quoted = self.connection.adapter.quote_identifier(f"_u{next(self.__count)}")
             sql1 = arg1.make_sql() if isinstance(arg1, Union) else arg1.make_sql(fields)
             sql2 = arg2.make_sql() if isinstance(arg2, Union) else arg2.make_sql(fields)
-            return f"SELECT * FROM (({sql1}) UNION ({sql2})) as {alias_quoted}"
+            return f"SELECT * FROM (({sql1}) UNION ({sql2})) as {alias_quoted}{self.sorting_clauses()}"
         # with secondary attributes, use union of left join with anti-restriction
         fields = self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
         sql2 = (arg2 - arg1).proj(..., **{k: "NULL" for k in arg1.heading.secondary_attributes}).make_sql(fields)
         # The branches are disjoint (arg2 - arg1 excludes arg1's keys): no deduplication needed
+        if self._top is not None:
+            alias_quoted = self.connection.adapter.quote_identifier(f"_u{next(self.__count)}")
+            return f"SELECT * FROM (({sql1}) UNION ALL ({sql2})) as {alias_quoted}{self.sorting_clauses()}"
         return "({sql1}) UNION ALL ({sql2})".format(sql1=sql1, sql2=sql2)
 
     def from_clause(self):
@@ -1520,6 +1548,8 @@ class U:
             other = other()  # instantiate if a class
         if not isinstance(other, QueryExpression):
             raise DataJointError("Set U can only be restricted with a QueryExpression.")
+        if other._top is not None:
+            other = other.make_subquery()  # apply the limit before DISTINCT
         result = copy.copy(other)
         result._heading = result.heading.set_primary_key(self.primary_key)
         result = result.proj()
@@ -1576,8 +1606,8 @@ class U:
         if missing:
             raise DataJointError(f"Attributes {missing} not found in the group expression.")
 
-        if group._distinct:
-            group = group.make_subquery()  # deduplicate the group before GROUP BY
+        if group._distinct or group._top is not None:
+            group = group.make_subquery()  # deduplicate or apply the limit before GROUP BY
 
         # Create Aggregation directly without join - just group by U's primary key
         result = Aggregation()
