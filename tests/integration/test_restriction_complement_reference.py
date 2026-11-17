@@ -240,8 +240,6 @@ def test_matches_reference(matrix, nulls, operand):
 
     assert key_set(Left - B, pk) == expected_outside
     assert key_set(Left & dj.Not(B), pk) == expected_outside
-    if operand == "top" and Left.connection.adapter.backend == "mysql":
-        pytest.skip("positive restriction by a LIMIT query fails on MySQL (error 1235), see #1657")
     inside, outside = assert_partition(Left, B)
     assert inside == expected_inside
     assert outside == expected_outside

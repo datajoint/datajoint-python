@@ -158,8 +158,6 @@ def test_operand_shapes(tables, operand):
     assert expected and expected != rows(Subject, ["subject_id"]), "the operand must split Subject"
     assert rows(Subject - B, ["subject_id"]) == expected
     assert len(Subject - B) == len(expected)
-    if operand == "top" and Subject.connection.adapter.backend == "mysql":
-        pytest.skip("positive restriction by a LIMIT query fails on MySQL (error 1235), see #1657")
     assert len(Subject & B) + len(Subject - B) == len(Subject)
 
 
