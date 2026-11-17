@@ -7,6 +7,8 @@ to support multiple database backends (MySQL, PostgreSQL, etc.) in DataJoint.
 
 from __future__ import annotations
 
+import hashlib
+import re
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -683,7 +685,8 @@ class DatabaseAdapter(ABC):
         full_table_name : str
             Fully qualified table name (with quotes).
         columns : list[str]
-            Column names to index (unquoted).
+            Column names to index (unquoted), or parenthesized expressions
+            such as a JSON path, which are emitted as they are.
         unique : bool, optional
             If True, create a unique index.
         index_name : str, optional
@@ -694,13 +697,18 @@ class DatabaseAdapter(ABC):
         str
             CREATE INDEX SQL statement.
         """
-        quoted_cols = ", ".join(self.quote_identifier(col) for col in columns)
+        quoted_cols = ", ".join(col if col.startswith("(") else self.quote_identifier(col) for col in columns)
         # Generate index name from table and columns if not provided
         if index_name is None:
             # Extract table name from full_table_name for index naming
             _, table_part = self.split_full_table_name(full_table_name)
             col_part = "_".join(columns)[:30]  # Truncate for long column lists
-            index_name = f"idx_{table_part}_{col_part}"
+            if any(col.startswith("(") for col in columns):
+                # Expressions are not valid in an identifier: keep the word
+                # characters and add a hash so distinct expressions get distinct names.
+                digest = hashlib.md5("_".join(columns).encode()).hexdigest()[:8]
+                col_part = re.sub(r"\W+", "_", col_part).strip("_") + "_" + digest
+            index_name = f"idx_{table_part}_{col_part}"[:63]
         unique_clause = "UNIQUE " if unique else ""
         return f"CREATE {unique_clause}INDEX {self.quote_identifier(index_name)} ON {full_table_name} ({quoted_cols})"
 

@@ -615,13 +615,12 @@ def declare(
         create_table_indexes = []
         for idx_def in index_sql:
             # Parse index definition: "unique index (cols)" or "index (cols)"
-            idx_match = re.match(r"(unique\s+)?index\s*\(([^)]+)\)", idx_def, re.I)
+            idx_match = re.match(r"(unique\s+)?index\s*\((.+)\)\s*$", idx_def, re.I)
             if idx_match:
                 is_unique = idx_match.group(1) is not None
-                # Extract column names (may be quoted or have expressions)
-                cols_str = idx_match.group(2)
-                # Simple split on comma - columns are already quoted
-                columns = [c.strip().strip('`"') for c in cols_str.split(",")]
+                # Items are quoted columns or parenthesized expressions (JSON paths).
+                # Split on top-level commas only, and keep expressions as they are.
+                columns = [c if c.startswith("(") else c.strip('`"') for c in _parse_index_args(idx_match.group(2))]
                 # Generate CREATE INDEX DDL
                 create_idx_ddl = adapter.create_index_ddl(full_table_name, columns, unique=is_unique)
                 post_ddl.append(create_idx_ddl)
