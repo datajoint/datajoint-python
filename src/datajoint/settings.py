@@ -428,6 +428,15 @@ class Config(BaseSettings):
     # Download path for attachments and filepaths
     download_path: str = "."
 
+    allow_filepath_outside_store: bool = Field(
+        default=False,
+        description="If True, <filepath@store> values may point outside the store location "
+        "(absolute paths outside a file store's location, or paths with '..' components). "
+        "By default such paths are rejected on insert and on access. Enable only for "
+        "trusted data whose references deliberately point elsewhere, such as rows "
+        "migrated from DataJoint 0.14. Set via DJ_ALLOW_FILEPATH_OUTSIDE_STORE.",
+    )
+
     # Internal: track where config was loaded from
     _config_path: Path | None = None
     _secrets_dir: Path | None = None
