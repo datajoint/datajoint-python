@@ -127,9 +127,11 @@ class GarbageCollector:
         spec = self.config.get_store_spec(store)
         self._hash_prefix = spec["hash_prefix"].strip("/")  # settings applies the "_hash" default
         self._schema_prefix = spec["schema_prefix"].strip("/")  # ... "_schema" default
-        # Per-collect() scan errors (walk failures in list_*_paths). Non-empty
-        # blocks destructive deletion in collect(dry_run=False). Reset at the
-        # start of each collect() call.
+        # Per-collect() scan errors: schemas, tables or attributes whose
+        # references could not be read (_references) and walk failures in
+        # list_*_paths.
+        # Non-empty blocks destructive deletion in collect(dry_run=False).
+        # Reset at the start of each collect() call.
         self._scan_errors: list[str] = []
 
     # ------------------------------------------------------------------ #
@@ -144,6 +146,12 @@ class GarbageCollector:
         external ``<blob@>``/``<attach@>``). Paths are taken verbatim from each
         row's metadata (independent of the store's current prefixes) and
         filtered to this collector's store.
+
+        A schema, table or attribute that fails to scan is logged and recorded
+        in the collector's scan errors rather than silently skipped; its
+        references are missing from the returned set. The errors stay recorded
+        until the next ``collect()``, whose report lists them under
+        ``scan_errors`` (use ``collect(dry_run=True)`` to check a scan).
         """
         return self._references("hash_objects", verbose)
 
@@ -156,15 +164,35 @@ class GarbageCollector:
         ``SchemaCodec`` (``<object@>``, ``<npy@>``, custom subclasses,
         recognized by type per #1469). For a directory-valued object the
         recorded path is the directory prefix, not its individual files.
+
+        Scan failures are handled as in :meth:`hash_references`: recorded in
+        the collector's scan errors rather than silently skipped, with the
+        affected references missing from the returned set.
         """
         return self._references("schema_objects", verbose)
 
     def _references(self, heading_attr: str, verbose: bool) -> set[str]:
+        """
+        Collect the referenced paths of every column classified by
+        ``heading_attr``. A failure to list a schema's tables or to read a
+        table or attribute leaves the set partial, so it is recorded in
+        ``_scan_errors`` (which blocks deletion in collect) rather than only
+        logged. Called outside collect(), errors accumulate until the next
+        collect() resets them.
+        """
+        label = "hash_references" if heading_attr == "hash_objects" else "schema_references"
         referenced: set[str] = set()
         for schema in self.schemas:
             if verbose:
                 logger.info(f"Scanning schema {schema.database} for {heading_attr}")
-            for table_name in schema.list_tables():
+            try:
+                table_names = schema.list_tables()
+            except Exception as e:
+                # Fail closed but keep scanning, so a dry run still reports.
+                logger.warning(f"Error listing tables of {schema.database}: {e}")
+                self._scan_errors.append(f"{label}({schema.database}): {e}")
+                continue
+            for table_name in table_names:
                 try:
                     table = schema.get_table(table_name)
                     # Classification lives on the heading — one source of truth.
@@ -184,8 +212,10 @@ class GarbageCollector:
                                         referenced.add(path)
                         except Exception as e:
                             logger.warning(f"Error scanning {table_name}.{attr_name}: {e}")
+                            self._scan_errors.append(f"{label}({schema.database}.{table_name}.{attr_name}): {e}")
                 except Exception as e:
                     logger.warning(f"Error accessing table {table_name}: {e}")
+                    self._scan_errors.append(f"{label}({schema.database}.{table_name}): {e}")
         return referenced
 
     # ------------------------------------------------------------------ #
@@ -339,9 +369,18 @@ class GarbageCollector:
           / schema_paths_orphaned_bytes
         - orphaned_schema_paths: orphaned schema files as full relative store paths
         - hash_paths_deleted / schema_paths_deleted / deleted / bytes_freed (0 when
-          dry_run) / errors / dry_run
+          dry_run) / errors (deletion failures) / dry_run
+        - scan_errors: ``"<method>(<scope>): <exception>"`` for each schema,
+          table or attribute whose references could not be read and each store
+          listing that failed; empty on a clean scan
+
+        Raises
+        ------
+        DataJointError
+            With ``dry_run=False``, when any scan error occurred. A partial scan
+            could classify live files as orphaned, so nothing is deleted.
         """
-        self._scan_errors = []  # reset per-call; populated by list_*_paths below
+        self._scan_errors = []  # reset per-call; populated by _references and list_*_paths
         # References can be gathered across all schemas at once: because paths
         # embed the schema, a file under schema X is only ever covered by an X
         # reference, so combined coverage equals per-schema coverage.
@@ -368,7 +407,7 @@ class GarbageCollector:
             if self._scan_errors:
                 raise DataJointError(
                     f"Refusing to delete: {len(self._scan_errors)} scan error(s) — "
-                    f"partial listing risks classifying live files as orphaned. "
+                    f"partial scan risks classifying live files as orphaned. "
                     f"Errors: {self._scan_errors}"
                 )
             # The size maps from the scan above are reused for the byte tally —

@@ -948,6 +948,94 @@ class TestScanErrorGuard:
         assert "s3 access denied" in stats["scan_errors"][0]
 
 
+class TestReferenceScanErrorGuard:
+    """#1478: a table or attribute whose references cannot be read leaves the
+    reference set partial, so files referenced only from it look orphaned.
+    The error is recorded as a scan error: collect(dry_run=False) refuses to
+    delete and the dry-run report lists it. Runs on both backends."""
+
+    @pytest.fixture
+    def schema_blob(self, connection_by_backend, backend, prefix, mock_stores):
+        schema = dj.Schema(
+            f"{prefix}_test_gc_scan_err_blob_{backend}",
+            context={"GcBlobTest": GcBlobTest},
+            connection=connection_by_backend,
+        )
+        schema(GcBlobTest)
+        yield schema
+        schema.drop(prompt=False)
+
+    @pytest.fixture
+    def schema_object(self, connection_by_backend, backend, prefix, mock_stores):
+        schema = dj.Schema(
+            f"{prefix}_test_gc_scan_err_object_{backend}",
+            context={"GcObjectTest": GcObjectTest},
+            connection=connection_by_backend,
+        )
+        schema(GcObjectTest)
+        yield schema
+        schema.drop(prompt=False)
+
+    def test_attribute_scan_error_blocks_deletion(self, schema_blob):
+        """The codec's reference enumeration raises for the <blob@> column:
+        nothing is deleted, the error names the attribute, and once the scan
+        is clean the true orphan is reclaimed and the live file kept."""
+        GcBlobTest.insert1({"rid": 1, "payload": np.arange(64, dtype="uint8")})
+        GcBlobTest.insert1({"rid": 2, "payload": np.arange(128, dtype="uint8")})
+        collector = _gc(schema_blob)
+        refs_all = collector.hash_references()
+        assert len(refs_all) == 2
+        (GcBlobTest & {"rid": 1}).delete(prompt=False)
+        live = collector.hash_references()
+        (dead,) = refs_all - live
+        (live,) = live
+
+        codec_cls = type(GcBlobTest.heading.attributes["payload"].codec)
+        with patch.object(codec_cls, "referenced_paths", side_effect=RuntimeError("codec failure")):
+            stats = collector.collect()  # dry run
+            with pytest.raises(DataJointError, match="Refusing to delete"):
+                collector.collect(dry_run=False)
+
+        assert len(stats["scan_errors"]) == 1
+        error = stats["scan_errors"][0]
+        assert error.startswith(f"hash_references({schema_blob.database}.") and ".payload): codec failure" in error
+        assert live in stats["orphaned_hash_paths"]  # the partial set inflates orphans
+        stored = set(collector.list_hash_paths(schema_blob.database))
+        assert {live, dead} <= stored, "a refused collect() must delete nothing"
+
+        stats = collector.collect(dry_run=False)
+        assert stats["scan_errors"] == []
+        stored = set(collector.list_hash_paths(schema_blob.database))
+        assert live in stored and dead not in stored
+
+    def test_table_scan_error_blocks_deletion(self, schema_object):
+        """Loading the table fails: every reference from it is missing, so
+        nothing is deleted and the errors name the table."""
+        from pathlib import Path
+
+        GcObjectTest.insert1({"rid": 1, "results": b"live"})
+        collector = _gc(schema_object)
+        (live,) = collector.schema_references()
+        store_root = Path(schema_object.connection._config.get_store_spec("local")["location"])
+
+        with patch.object(schema_object, "get_table", side_effect=RuntimeError("table unavailable")):
+            stats = collector.collect()  # dry run
+            with pytest.raises(DataJointError, match="Refusing to delete"):
+                collector.collect(dry_run=False)
+
+        # Both reference scans load the table, so each records the failure.
+        db = schema_object.database
+        assert sorted(e.split("(")[0] for e in stats["scan_errors"]) == ["hash_references", "schema_references"]
+        for error in stats["scan_errors"]:
+            assert error.split("(", 1)[1].startswith(f"{db}.") and error.endswith("): table unavailable")
+        assert live in stats["orphaned_schema_paths"]  # the partial set inflates orphans
+        assert (store_root / live).exists(), "a refused collect() must delete nothing"
+
+        stats = collector.collect(dry_run=False)
+        assert stats["scan_errors"] == [] and live not in stats["orphaned_schema_paths"]
+        assert (store_root / live).exists()
+
+
 class TestDeleteSchemaPathPruning:
     """Finding #8 (audit deferred): ``GarbageCollector.delete_schema_path``
     prunes now-empty parent directories after removing the orphaned file
