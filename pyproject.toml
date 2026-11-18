@@ -251,7 +251,8 @@ skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
 # Rever -- nobody knows
 # numer -- numerator variable
 # astroid -- Python library name (not "asteroid")
-ignore-words-list = "rever,numer,astroid"
+# acter -- regex fragment char(?:acter)?
+ignore-words-list = "rever,numer,astroid,acter"
 
 [tool.pytest.ini_options]
 markers = [
