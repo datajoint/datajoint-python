@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import collections
 import datetime
+import sys
 import uuid
 import zlib
 from decimal import Decimal
@@ -58,7 +59,32 @@ serialize_lookup = {
 }
 
 
-compression = {b"ZL123\0": zlib.decompress}
+def _zlib_decompress(data, size):
+    """
+    Decompress zlib ``data`` that is declared to expand to exactly ``size`` bytes.
+
+    Output is capped at ``size`` bytes, so a payload that expands beyond its
+    declared size is rejected without being expanded in full.
+    """
+    if size > sys.maxsize:
+        raise DataJointError(f"Blob size mismatch: declared size {size} is not supported")
+    decompressor = zlib.decompressobj()
+    try:
+        # max_length=0 would mean "no limit", so ask for at least one byte
+        blob = decompressor.decompress(data, max(size, 1))
+        if not decompressor.eof:
+            # check whether the stream holds more than the declared size
+            blob += decompressor.decompress(decompressor.unconsumed_tail, 1)
+    except zlib.error as error:
+        raise DataJointError(f"Corrupt compressed blob: {error}") from None
+    if len(blob) > size:
+        raise DataJointError(f"Blob size mismatch: expected {size} bytes, compressed data holds more")
+    if len(blob) != size or not decompressor.eof:
+        raise DataJointError(f"Blob size mismatch: expected {size}, got {len(blob)}")
+    return blob
+
+
+compression = {b"ZL123\0": _zlib_decompress}
 
 # runtime setting to read integers as 32-bit to read blobs created by the 32-bit
 # version of the mYm library for MATLAB
@@ -161,10 +187,7 @@ class Blob:
         else:
             self._pos += len(prefix)
             blob_size = self.read_value()
-            blob = compression[prefix](self._blob[self._pos :])
-            if len(blob) != blob_size:
-                raise DataJointError(f"Blob size mismatch: expected {blob_size}, got {len(blob)}")
-            self._blob = blob
+            self._blob = compression[prefix](self._blob[self._pos :], int(blob_size))
             self._pos = 0
         blob_format = self.read_zero_terminated_string()
         if blob_format in ("mYm", "dj0"):

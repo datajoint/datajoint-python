@@ -1,6 +1,10 @@
 """Tests for DataJoint settings module."""
 
 import json
+import os
+import signal
+import stat
+import warnings
 from pathlib import Path
 
 import pytest
@@ -342,6 +346,7 @@ ENV_PRECEDENCE_CASES = {
     "ignore_config_file": ("DJ_IGNORE_CONFIG_FILE", "true", False),
     "query_cache": ("DJ_QUERY_CACHE", "/env/cache", "/file/cache"),
     "download_path": ("DJ_DOWNLOAD_PATH", "/env/downloads", "/file/downloads"),
+    "allow_filepath_outside_store": ("DJ_ALLOW_FILEPATH_OUTSIDE_STORE", "true", False),
 }
 
 
@@ -1316,3 +1321,328 @@ class TestBackendConfiguration:
 
         assert "database.backend" in ENV_VAR_MAPPING
         assert ENV_VAR_MAPPING["database.backend"] == "DJ_BACKEND"
+
+
+@pytest.mark.skipif(not hasattr(os, "getuid"), reason="requires POSIX file ownership")
+class TestDiscoveredFileOwnership:
+    """The config search skips files another user could have placed where they are found."""
+
+    FOREIGN_UID = 54321
+
+    @pytest.fixture
+    def mark(self, monkeypatch, tmp_path):
+        """Patch ``os.stat``/``lstat``/``fstat`` to report chosen owners and permissions.
+
+        Returns ``mark(path, uid=None, world_writable=False, sticky=False, only=None)``,
+        which applies to the directory entry at ``path`` itself (a symbolic link
+        is marked, not its target). ``only`` limits the change to the named
+        functions. Entries not marked keep their real owner and lose any
+        world-write and sticky bits, so the host's own ``/tmp`` does not affect
+        the outcome.
+        """
+        real = {name: getattr(os, name) for name in ("stat", "lstat", "fstat")}
+        overrides: dict[tuple[int, int], dict] = {}
+
+        def wrap(name):
+            def fake(*args, **kwargs):
+                st = real[name](*args, **kwargs)
+                fields = list(st)
+                mode = fields[stat.ST_MODE] & ~(stat.S_IWOTH | stat.S_ISVTX)
+                spec = overrides.get((st.st_dev, st.st_ino))
+                if spec is not None and name in spec["only"]:
+                    mode |= spec["bits"]
+                    if spec["uid"] is not None:
+                        fields[stat.ST_UID] = spec["uid"]
+                fields[stat.ST_MODE] = mode
+                return os.stat_result(fields)
+
+            return fake
+
+        for name in real:
+            monkeypatch.setattr(os, name, wrap(name))
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", tmp_path / "nonexistent-system-secrets")
+
+        def mark(path, *, uid=None, world_writable=False, sticky=False, only=("stat", "lstat", "fstat")):
+            st = real["lstat"](path)
+            bits = (stat.S_IWOTH if world_writable else 0) | (stat.S_ISVTX if sticky else 0)
+            overrides[(st.st_dev, st.st_ino)] = {"uid": uid, "bits": bits, "only": only}
+
+        return mark
+
+    @pytest.fixture
+    def shared(self, tmp_path):
+        """A shared directory holding a config file, with the user's project below it."""
+        shared = tmp_path / "shared"
+        project = shared / "project"
+        project.mkdir(parents=True)
+        (shared / CONFIG_FILENAME).write_text('{"database": {"host": "from-shared"}}')
+        return shared
+
+    def test_foreign_config_in_world_writable_dir_skipped(self, mark, shared, caplog):
+        """Another user's datajoint.json directly in /tmp (world-writable, sticky) is skipped."""
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_config_file(shared / "project")
+
+        assert found is None
+        messages = [r.message for r in caplog.records]
+        assert any(str(shared / CONFIG_FILENAME) in m and "DJ_CONFIG_FILE" in m for m in messages)
+
+    def test_group_config_under_sticky_world_writable_root_used(self, mark, tmp_path):
+        """/scratch (1777) / lab (2770, PI-owned) / datajoint.json owned by the PI is used."""
+        scratch = tmp_path / "scratch"
+        lab = scratch / "lab"
+        (lab / "project").mkdir(parents=True)
+        (lab / CONFIG_FILENAME).write_text("{}")
+        mark(scratch, world_writable=True, sticky=True)
+        mark(lab, uid=self.FOREIGN_UID)
+        mark(lab / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        assert find_config_file(lab / "project") == lab / CONFIG_FILENAME
+
+    def test_foreign_config_below_non_sticky_world_writable_dir_skipped(self, mark, tmp_path):
+        """A world-writable ancestor without the sticky bit lets anyone replace what is below it."""
+        open_dir = tmp_path / "open"
+        lab = open_dir / "lab"
+        (lab / "project").mkdir(parents=True)
+        (lab / CONFIG_FILENAME).write_text("{}")
+        mark(open_dir, world_writable=True)
+        mark(lab / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        assert find_config_file(lab / "project") is None
+
+    def test_foreign_config_in_non_sticky_world_writable_dir_skipped(self, mark, shared):
+        """Another user's datajoint.json in a directory anyone can write (e.g. a 0777 volume) is skipped."""
+        mark(shared, world_writable=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        assert find_config_file(shared / "project") is None
+
+    def test_foreign_config_in_protected_dir_used(self, mark, shared):
+        """Another user's file in a directory only its owners can write (e.g. a lab share) is used."""
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_root_owned_config_in_world_writable_dir_used(self, mark, shared):
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=0)
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_foreign_config_in_world_writable_dir_skipped_as_root(self, mark, shared, monkeypatch):
+        """Running as root does not make another user's file in a world-writable directory trusted."""
+        monkeypatch.setattr(os, "getuid", lambda: 0)
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        assert find_config_file(shared / "project") is None
+
+    def test_foreign_config_in_protected_dir_used_as_root(self, mark, shared, monkeypatch):
+        monkeypatch.setattr(os, "getuid", lambda: 0)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_own_config_in_world_writable_dir_used(self, mark, shared, caplog):
+        mark(shared, world_writable=True, sticky=True)
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_config_file(shared / "project")
+
+        assert found == shared / CONFIG_FILENAME
+        assert not caplog.records
+
+    def test_world_writable_own_config_warns(self, mark, shared, caplog):
+        mark(shared / CONFIG_FILENAME, world_writable=True)
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_config_file(shared / "project")
+
+        assert found == shared / CONFIG_FILENAME
+        assert any("writable by all users" in r.message for r in caplog.records)
+
+    def test_foreign_symlink_to_own_file_skipped(self, mark, tmp_path):
+        """A link owned by another user in a world-writable directory is skipped, whatever it points at."""
+        own = tmp_path / "own"
+        own.mkdir()
+        target = own / "mine.json"
+        target.write_text("{}")
+        shared = tmp_path / "shared"
+        (shared / "project").mkdir(parents=True)
+        link = shared / CONFIG_FILENAME
+        link.symlink_to(target)
+        mark(shared, world_writable=True, sticky=True)
+        mark(link, uid=self.FOREIGN_UID)
+
+        assert find_config_file(shared / "project") is None
+
+    def test_own_symlink_to_foreign_file_skipped(self, mark, tmp_path):
+        """A link in a world-writable directory to another user's file is judged by where it was found."""
+        protected = tmp_path / "protected"
+        protected.mkdir()
+        target = protected / CONFIG_FILENAME
+        target.write_text("{}")
+        shared = tmp_path / "shared"
+        (shared / "project").mkdir(parents=True)
+        (shared / CONFIG_FILENAME).symlink_to(target)
+        mark(shared, world_writable=True, sticky=True)
+        mark(target, uid=self.FOREIGN_UID)
+
+        assert find_config_file(shared / "project") is None
+
+    def test_owner_checked_on_opened_file(self, mark, shared):
+        """The owner is taken from the opened file, so a file replaced after the search is still checked."""
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID, only=("fstat",))
+
+        assert find_config_file(shared / "project") is None
+
+    def test_foreign_secrets_dir_in_world_writable_dir_skipped(self, mark, tmp_path):
+        config_file = tmp_path / CONFIG_FILENAME
+        config_file.write_text("{}")
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        mark(tmp_path, world_writable=True, sticky=True)
+        mark(secrets_dir, uid=self.FOREIGN_UID)
+
+        assert find_secrets_dir(config_file) is None
+
+    def test_foreign_secret_file_in_world_writable_secrets_dir_skipped(self, mark, tmp_path):
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        (secrets_dir / "database.password").write_text("from-other-user")
+        (secrets_dir / "stores.main.secret_key").write_text("from-other-user")
+        (secrets_dir / "database.user").write_text("mine")
+        mark(secrets_dir, world_writable=True)
+        mark(secrets_dir / "database.password", uid=self.FOREIGN_UID)
+        mark(secrets_dir / "stores.main.secret_key", uid=self.FOREIGN_UID)
+
+        assert read_secret_file(secrets_dir, "database.password") is None
+        assert read_secret_file(secrets_dir, "database.user") == "mine"
+
+        cfg = settings.Config()
+        cfg._load_secrets(secrets_dir)
+        assert cfg.database.password is None
+        assert "main" not in cfg.stores
+
+    def test_root_owned_sticky_system_secrets_dir_used_without_warning(self, mark, tmp_path, monkeypatch, caplog):
+        """A Kubernetes secret volume (root-owned, mode 1777) is used; only the files in it are checked."""
+        secrets_dir = tmp_path / "system-secrets"
+        secrets_dir.mkdir()
+        (secrets_dir / "database.password").write_text("from-root")
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", secrets_dir)
+        mark(secrets_dir, uid=0, world_writable=True, sticky=True)
+        mark(secrets_dir / "database.password", uid=0)
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_secrets_dir(None)
+            value = read_secret_file(found, "database.password")
+
+        assert found == secrets_dir
+        assert value == "from-root"
+        assert not any("writable by all users" in r.message for r in caplog.records)
+
+    def test_root_owned_non_sticky_system_secrets_dir_warns(self, mark, tmp_path, monkeypatch, caplog):
+        secrets_dir = tmp_path / "system-secrets"
+        secrets_dir.mkdir()
+        (secrets_dir / "database.password").write_text("from-root")
+        monkeypatch.setattr(settings, "SYSTEM_SECRETS_DIR", secrets_dir)
+        mark(secrets_dir, uid=0, world_writable=True)
+        mark(secrets_dir / "database.password", uid=0)
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            found = find_secrets_dir(None)
+            value = read_secret_file(found, "database.password")
+
+        assert found == secrets_dir
+        assert value == "from-root"
+        assert any(str(secrets_dir) in r.message and "writable by all users" in r.message for r in caplog.records)
+
+    def test_fifo_secret_file_not_read(self, tmp_path):
+        """A named pipe in place of a secret file is skipped without waiting for a writer."""
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        os.mkfifo(secrets_dir / "database.password")
+
+        def blocked(signum, frame):
+            pytest.fail("opening the named pipe blocked")
+
+        previous = signal.signal(signal.SIGALRM, blocked)
+        signal.alarm(5)
+        try:
+            value = read_secret_file(secrets_dir, "database.password")
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, previous)
+
+        assert value is None
+
+    def test_no_posix_ownership_keeps_search(self, mark, shared, monkeypatch):
+        """Without os.getuid (Windows) the search behaves as before."""
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+        monkeypatch.delattr(os, "getuid", raising=False)
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_create_config_skips_foreign_config_with_one_warning(self, mark, shared, monkeypatch, caplog):
+        for var in ("DJ_HOST", "DJ_CONFIG_FILE", "DJ_IGNORE_CONFIG_FILE"):
+            monkeypatch.delenv(var, raising=False)
+        monkeypatch.chdir(shared / "project")
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        with warnings.catch_warnings(record=True) as caught, caplog.at_level("WARNING", logger="datajoint"):
+            warnings.simplefilter("always")
+            cfg = settings._create_config()
+
+        assert cfg.database.host == "localhost"
+        assert not [w for w in caught if "No datajoint.json found" in str(w.message)]
+        skipped = [r.message for r in caplog.records if "Ignoring" in r.message]
+        assert len(skipped) == 1
+        assert "DJ_CONFIG_FILE" in skipped[0] and "dj.config.load()" in skipped[0]
+
+    def test_dj_config_file_names_file_explicitly(self, mark, shared, monkeypatch, tmp_path):
+        """DJ_CONFIG_FILE loads the named file, without searching and without the ownership check."""
+        monkeypatch.delenv("DJ_HOST", raising=False)
+        monkeypatch.delenv("DJ_IGNORE_CONFIG_FILE", raising=False)
+        elsewhere = tmp_path / "elsewhere"
+        (elsewhere / ".git").mkdir(parents=True)
+        monkeypatch.chdir(elsewhere)
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+        monkeypatch.setenv("DJ_CONFIG_FILE", str(shared / CONFIG_FILENAME))
+
+        cfg = settings._create_config()
+
+        assert cfg.database.host == "from-shared"
+
+    def test_dj_config_file_missing_raises(self, mark, monkeypatch, tmp_path):
+        monkeypatch.delenv("DJ_IGNORE_CONFIG_FILE", raising=False)
+        monkeypatch.setenv("DJ_CONFIG_FILE", str(tmp_path / "missing.json"))
+
+        with pytest.raises(FileNotFoundError, match="DJ_CONFIG_FILE"):
+            settings._create_config()
+
+    def test_dj_config_file_ignored_with_ignore_config_file(self, mark, shared, monkeypatch):
+        monkeypatch.delenv("DJ_HOST", raising=False)
+        monkeypatch.setenv("DJ_CONFIG_FILE", str(shared / CONFIG_FILENAME))
+        monkeypatch.setenv("DJ_IGNORE_CONFIG_FILE", "true")
+
+        cfg = settings._create_config()
+
+        assert cfg.database.host == "localhost"
+
+    def test_explicit_load_uses_foreign_file(self, mark, shared, monkeypatch):
+        """dj.config.load(path) is an explicit choice and is not checked."""
+        monkeypatch.delenv("DJ_HOST", raising=False)
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        cfg = settings.Config()
+        cfg.load(shared / CONFIG_FILENAME)
+
+        assert cfg.database.host == "from-shared"
