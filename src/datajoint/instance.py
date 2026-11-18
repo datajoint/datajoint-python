@@ -90,12 +90,10 @@ class Instance:
         # Create fresh config with defaults loaded from env/file
         self.config = _create_config()
 
-        # Apply backend override before other kwargs (port default depends on it)
+        # Apply backend override before other kwargs. A port that was not set follows
+        # the backend, and a port set in config (DJ_PORT, datajoint.json) is kept.
         if backend is not None:
             self.config.database.backend = backend
-            # Re-derive port default since _create_config resolved it before backend was set
-            if port is None and "database__port" not in kwargs:
-                self.config.database.port = 5432 if backend == "postgresql" else 3306
 
         # Apply any config overrides from kwargs
         for key, value in kwargs.items():

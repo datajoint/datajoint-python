@@ -278,6 +278,14 @@ class TestInstancePortFromBackend:
         assert inst.config.database.backend == "mysql"
         assert port == 3306
 
+    @pytest.mark.parametrize("override", ["backend", "database__backend"])
+    def test_backend_override_keeps_configured_port(self, monkeypatch, override):
+        """A port set by DJ_PORT is kept when the Instance selects the backend."""
+        monkeypatch.setenv("DJ_PORT", "3307")
+        inst, port = self._connect(**{override: "mysql"})
+        assert inst.config.database.backend == "mysql"
+        assert port == 3307
+
 
 class TestCrossConnectionValidation:
     """Test that cross-connection operations are rejected."""
