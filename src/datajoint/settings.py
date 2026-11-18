@@ -21,10 +21,10 @@ Examples
 >>> import datajoint as dj
 >>> dj.config.database.host
 'localhost'
->>> dj.config.database.backend
-'mysql'
->>> dj.config.database.port  # Auto-detects: 3306 for MySQL, 5432 for PostgreSQL
-3306
+>>> dj.config.database.backend  # PostgreSQL is the default; set 'mysql' for a MySQL server
+'postgresql'
+>>> dj.config.database.port  # Follows the backend unless set: 5432 for PostgreSQL, 3306 for MySQL
+5432
 >>> with dj.config.override(safemode=False):
 ...     # dangerous operations here
 ...     pass
@@ -186,6 +186,9 @@ def read_secret_file(secrets_dir: Path | None, name: str) -> str | None:
     return None
 
 
+VALID_BACKENDS = ("mysql", "postgresql")
+
+
 class DatabaseSettings(BaseSettings):
     """Database connection settings."""
 
@@ -200,11 +203,16 @@ class DatabaseSettings(BaseSettings):
     user: str | None = Field(default=None, validation_alias="DJ_USER")
     password: SecretStr | None = Field(default=None, validation_alias="DJ_PASS")
     backend: Literal["mysql", "postgresql"] = Field(
-        default="mysql",
+        default="postgresql",
         validation_alias="DJ_BACKEND",
-        description="Database backend: 'mysql' or 'postgresql'",
+        description="Database backend: 'postgresql' (default) or 'mysql'",
     )
-    port: int | None = Field(default=None, validation_alias="DJ_PORT")
+    port: int | None = Field(
+        default=None,
+        validation_alias="DJ_PORT",
+        description="Database port. Defaults to the backend's port: 5432 for PostgreSQL, 3306 for MySQL. "
+        "Port 3306 with the backend not set raises an error on connecting; set the backend explicitly.",
+    )
     name: str | None = Field(
         default=None,
         validation_alias="DJ_DATABASE_NAME",
@@ -224,11 +232,64 @@ class DatabaseSettings(BaseSettings):
         "Set to False for production mode to prevent automatic table creation.",
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def ignore_empty_backend_env(cls, data: Any) -> Any:
+        """
+        Treat an empty ``DJ_BACKEND`` as not set, so the backend stays at its default.
+
+        An empty variable leaves ``backend`` out of the fields set, as if
+        ``DJ_BACKEND`` were absent; the port check on connecting then still
+        applies.
+        """
+        if not isinstance(data, dict):
+            return data
+        empty = [
+            key
+            for key, value in data.items()
+            if isinstance(key, str) and key.lower() == "dj_backend" and isinstance(value, str) and not value.strip()
+        ]
+        return {key: value for key, value in data.items() if key not in empty} if empty else data
+
+    @field_validator("backend", mode="before")
+    @classmethod
+    def normalize_backend(cls, value: Any) -> Any:
+        """
+        Accept the backend name in any case; refuse any other value with the valid names.
+
+        Raises
+        ------
+        DataJointError
+            If the value is not ``"mysql"`` or ``"postgresql"`` (in any case).
+        """
+        if isinstance(value, str) and value.strip().lower() in VALID_BACKENDS:
+            return value.strip().lower()
+        raise DataJointError(
+            f"Invalid database backend {value!r} (database.backend, DJ_BACKEND). "
+            f"Valid values: {', '.join(repr(b) for b in VALID_BACKENDS)}."
+        )
+
     @model_validator(mode="after")
     def set_default_port_from_backend(self) -> "DatabaseSettings":
-        """Set default port based on backend if not explicitly provided."""
+        """
+        Use the backend's default port unless a port was set explicitly.
+
+        The validator also runs when a setting is assigned, so a port that was
+        not set follows later changes of the backend (for example
+        ``backend: "mysql"`` in ``datajoint.json``). Setting the port to None
+        returns it to the backend's default.
+
+        The backend is never inferred from the port. A port of 3306 with the
+        backend not set is refused when a connection is made, not here: the
+        settings are assigned one at a time (from ``datajoint.json`` or by
+        ``dj.config[...]``), so the port may legitimately be set before the
+        backend.
+        """
         if self.port is None:
-            self.port = 5432 if self.backend == "postgresql" else 3306
+            self.model_fields_set.discard("port")
+        if "port" not in self.model_fields_set:
+            # Write the derived port directly so that it is not recorded as set explicitly.
+            self.__dict__["port"] = 5432 if self.backend == "postgresql" else 3306
         return self
 
 
@@ -897,9 +958,16 @@ class Config(BaseSettings):
         ...     # config.safemode is False here
         ...     pass
         >>> # config.safemode is restored
+
+        Notes
+        -----
+        On exit each overridden setting gets back its value and whether it was
+        set explicitly. A setting that was not set before the block is not set
+        after it, and a default derived from other settings (``database.port``
+        from ``database.backend``) is derived again.
         """
-        # Store original values
-        backup = {}
+        # key parts -> (settings object, original value, whether it was set explicitly)
+        backup: dict[tuple[str, ...], tuple[Any, Any, bool]] = {}
 
         # Convert double underscore to nested access
         converted = {}
@@ -914,28 +982,34 @@ class Config(BaseSettings):
             # Save originals and apply overrides
             for key_parts, value in converted.items():
                 if len(key_parts) == 1:
-                    key = key_parts[0]
-                    if hasattr(self, key):
-                        backup[key_parts] = copy.deepcopy(getattr(self, key))
-                        setattr(self, key, value)
+                    obj, attr = self, key_parts[0]
                 elif len(key_parts) == 2:
                     group, attr = key_parts
-                    if hasattr(self, group):
-                        group_obj = getattr(self, group)
-                        if hasattr(group_obj, attr):
-                            backup[key_parts] = copy.deepcopy(getattr(group_obj, attr))
-                            setattr(group_obj, attr, value)
+                    obj = getattr(self, group, None)
+                else:
+                    continue
+                if obj is None or not hasattr(obj, attr):
+                    continue
+                if key_parts not in backup:
+                    backup[key_parts] = (obj, copy.deepcopy(getattr(obj, attr)), attr in obj.model_fields_set)
+                setattr(obj, attr, value)
 
             yield self
 
         finally:
-            # Restore original values
-            for key_parts, original in backup.items():
-                if len(key_parts) == 1:
-                    setattr(self, key_parts[0], original)
-                elif len(key_parts) == 2:
-                    group, attr = key_parts
-                    setattr(getattr(self, group), attr, original)
+            # Restore in reverse order, with the fields-set state: a setting that was not
+            # set explicitly before the block gets its value back and is not set after it.
+            for key_parts, (obj, original, was_set) in reversed(list(backup.items())):
+                attr = key_parts[-1]
+                if was_set:
+                    setattr(obj, attr, original)
+                    continue
+                field = type(obj).model_fields.get(attr)
+                # A field whose default is None may hold a value derived from other settings
+                # (database.port from database.backend). Assigning None runs the validators,
+                # which derive it again from the restored settings.
+                setattr(obj, attr, None if field is not None and field.default is None else original)
+                obj.model_fields_set.discard(attr)
 
     @staticmethod
     def save_template(
@@ -954,6 +1028,11 @@ class Config(BaseSettings):
 
         Set ``DJ_IGNORE_CONFIG_FILE=true`` to skip both ``datajoint.json`` and
         the secrets directory entirely (env-var-only configuration).
+
+        The template selects the PostgreSQL backend on port 5432. For a MySQL
+        server, set ``backend`` to ``"mysql"`` and ``port`` to 3306. Changing
+        only the port is not enough: the template sets the backend explicitly,
+        so port 3306 with ``"postgresql"`` is taken as a PostgreSQL server.
 
         Parameters
         ----------
@@ -989,15 +1068,17 @@ class Config(BaseSettings):
         if minimal:
             template = {
                 "database": {
+                    "backend": "postgresql",
                     "host": "localhost",
-                    "port": 3306,
+                    "port": 5432,
                 },
             }
         else:
             template = {
                 "database": {
+                    "backend": "postgresql",
                     "host": "localhost",
-                    "port": 3306,
+                    "port": 5432,
                     "reconnect": True,
                     "use_tls": None,
                 },

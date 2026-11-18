@@ -2,6 +2,7 @@
 Collection of test cases to test the dj cli
 """
 
+import os
 import subprocess
 import sys
 
@@ -80,7 +81,8 @@ def test_cli_schemas(prefix, connection_root, db_creds_root):
         """
         contents = list(dict(i=i, j=j + 2) for i in range(3) for j in range(3))
 
-    # Pass credentials via CLI args to avoid prompting for username
+    # Pass credentials via CLI args to avoid prompting for username. The test server
+    # is MySQL and PostgreSQL is the default backend, so select MySQL for the subprocess.
     process = subprocess.Popen(
         [
             sys.executable,
@@ -99,6 +101,7 @@ def test_cli_schemas(prefix, connection_root, db_creds_root):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        env={**os.environ, "DJ_BACKEND": "mysql"},
     )
 
     process.stdin.write("test_schema.__dict__['__name__']\n")
