@@ -207,7 +207,8 @@ class DatabaseSettings(BaseSettings):
     port: int | None = Field(
         default=None,
         validation_alias="DJ_PORT",
-        description="Database port. Defaults to the backend's port: 5432 for PostgreSQL, 3306 for MySQL.",
+        description="Database port. Defaults to the backend's port: 5432 for PostgreSQL, 3306 for MySQL. "
+        "Port 3306 with the backend not set raises an error on connecting; set the backend explicitly.",
     )
     name: str | None = Field(
         default=None,
@@ -237,6 +238,12 @@ class DatabaseSettings(BaseSettings):
         not set follows later changes of the backend (for example
         ``backend: "mysql"`` in ``datajoint.json``). Setting the port to None
         returns it to the backend's default.
+
+        The backend is never inferred from the port. A port of 3306 with the
+        backend not set is refused when a connection is made, not here: the
+        settings are assigned one at a time (from ``datajoint.json`` or by
+        ``dj.config[...]``), so the port may legitimately be set before the
+        backend.
         """
         if self.port is None:
             self.model_fields_set.discard("port")

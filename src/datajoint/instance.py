@@ -54,7 +54,9 @@ class Instance:
     password : str
         Database password.
     port : int, optional
-        Database port. Defaults to 5432 for PostgreSQL, 3306 for MySQL.
+        Database port. Defaults to 5432 for PostgreSQL, 3306 for MySQL. Port
+        3306 requires the backend to be set, by ``backend`` or in config: the
+        backend is never inferred from the port.
     use_tls : bool or dict, optional
         TLS configuration.
     backend : str, optional
@@ -62,6 +64,12 @@ class Instance:
         which is ``"postgresql"`` unless set.
     **kwargs : Any
         Additional config overrides applied to this instance's config.
+
+    Raises
+    ------
+    DataJointError
+        If the port is 3306, MySQL's default port, and the backend is not set
+        (by ``backend``, ``DJ_BACKEND``, ``datajoint.json``, or ``kwargs``).
 
     Attributes
     ----------

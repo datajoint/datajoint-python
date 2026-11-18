@@ -145,6 +145,10 @@ def conn(
     ------
     ThreadSafetyError
         If thread_safe mode is enabled.
+    DataJointError
+        If the port (``database.port``, ``DJ_PORT``, or ``host:port``) is 3306,
+        MySQL's default port, and the backend is not set. Set
+        ``database.backend`` (``DJ_BACKEND``) to ``"mysql"`` for a MySQL server.
     """
     import datajoint.instance as instance_module
     from pydantic import SecretStr
