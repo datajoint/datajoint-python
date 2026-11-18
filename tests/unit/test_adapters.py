@@ -4,9 +4,14 @@ Unit tests for database adapters.
 Tests adapter functionality without requiring actual database connections.
 """
 
+import re
+import sys
+
 import pytest
 
 from datajoint.adapters import DatabaseAdapter, MySQLAdapter, PostgreSQLAdapter, get_adapter
+from datajoint.connection import Connection
+from datajoint.errors import DataJointError
 
 
 class TestAdapterRegistry:
@@ -46,6 +51,45 @@ class TestAdapterRegistry:
         """Test error on invalid backend name."""
         with pytest.raises(ValueError, match="Unknown database backend"):
             get_adapter("sqlite")
+
+
+# Each backend, the driver module its adapter imports, and the extra that installs it.
+MISSING_DRIVER_CASES = [
+    ("mysql", "pymysql", "mysql"),
+    ("postgresql", "psycopg2", "postgres"),
+    ("postgres", "psycopg2", "postgres"),
+]
+
+
+class TestMissingDriver:
+    """A missing database driver is reported with the extra that installs it."""
+
+    @pytest.mark.parametrize("backend, driver, extra", MISSING_DRIVER_CASES)
+    def test_get_adapter_names_extra(self, monkeypatch, backend, driver, extra):
+        """Creating the adapter without its driver raises a DataJointError naming the extra."""
+        # A None entry in sys.modules makes `import <driver>` raise ImportError.
+        monkeypatch.setitem(sys.modules, driver, None)
+        with pytest.raises(DataJointError, match=re.escape(f'pip install "datajoint[{extra}]"')) as info:
+            get_adapter(backend)
+        assert driver in str(info.value)
+        assert isinstance(info.value.__cause__, ImportError)
+
+    @pytest.mark.parametrize("backend, driver, extra", MISSING_DRIVER_CASES)
+    def test_connection_names_extra(self, monkeypatch, backend, driver, extra):
+        """Connecting without the driver fails before contacting any server."""
+        monkeypatch.setitem(sys.modules, driver, None)
+        with pytest.raises(DataJointError, match=re.escape(f'pip install "datajoint[{extra}]"')):
+            Connection("localhost", "user", "password", backend=backend)
+
+    def test_other_driver_not_required(self, monkeypatch):
+        """Each backend needs only its own driver."""
+        pytest.importorskip("psycopg2")
+        with monkeypatch.context() as patch:
+            patch.setitem(sys.modules, "pymysql", None)
+            assert isinstance(get_adapter("postgresql"), PostgreSQLAdapter)
+        with monkeypatch.context() as patch:
+            patch.setitem(sys.modules, "psycopg2", None)
+            assert isinstance(get_adapter("mysql"), MySQLAdapter)
 
 
 class TestMySQLAdapter:

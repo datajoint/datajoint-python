@@ -7,8 +7,47 @@ to support multiple database backends (MySQL, PostgreSQL, etc.) in DataJoint.
 
 from __future__ import annotations
 
+import importlib
 from abc import ABC, abstractmethod
+from types import ModuleType
 from typing import Any
+
+from ..errors import DataJointError
+
+
+def import_driver(module: str, backend: str, extra: str) -> ModuleType:
+    """
+    Import a database driver, or name the extra that installs it.
+
+    Database drivers are optional extras, so adapters import them when they are
+    created rather than when ``datajoint`` is imported.
+
+    Parameters
+    ----------
+    module : str
+        Import name of the driver, e.g. ``'pymysql'`` or ``'psycopg2'``.
+    backend : str
+        Backend name for the error message, e.g. ``'MySQL'``.
+    extra : str
+        The ``datajoint`` extra that installs the driver, e.g. ``'mysql'``.
+
+    Returns
+    -------
+    ModuleType
+        The imported driver module.
+
+    Raises
+    ------
+    DataJointError
+        If the driver is not installed.
+    """
+    try:
+        return importlib.import_module(module)
+    except ImportError as error:
+        raise DataJointError(
+            f"The {backend} backend requires the {module} driver, which is not installed. "
+            f'Install it with: pip install "datajoint[{extra}]"'
+        ) from error
 
 
 class DatabaseAdapter(ABC):
