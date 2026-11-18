@@ -458,7 +458,7 @@ def test_part_with_nullable_master_reference_is_a_separate_table(schema_by_backe
         schema(Grown)
     message = str(not_owned_warnings(record)[0].message)
     assert Grown.Annotation.full_table_name in message and Master.full_table_name in message
-    assert "from DataJoint 2.4 delete and trace will also treat it as a separate table" in message
+    assert "in a later DataJoint 2.4 release delete and trace will also treat it as a separate table" in message
 
     tables = schema.list_tables()
     assert tables.index(Master.table_name) < tables.index(X.table_name) < tables.index(Grown.Annotation.table_name)

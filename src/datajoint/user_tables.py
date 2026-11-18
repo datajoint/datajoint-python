@@ -282,9 +282,9 @@ class Part(UserTable, metaclass=PartMeta):
             warnings.warn(
                 f"Part table {part} is not owned by its master {master}: it has no primary-key reference to the "
                 "master, either directly or through another part that has one. DataJoint sorts it as a separate "
-                "table, and from DataJoint 2.4 delete and trace will also treat it as a separate table rather than "
-                "as a part of its master. To make it a part of the master, reference the master in its primary key "
-                "(`-> master` above the `---` line).",
+                "table, and in a later DataJoint 2.4 release delete and trace will also treat it as a separate table "
+                "rather than as a part of its master. To make it a part of the master, reference the master in its "
+                "primary key (`-> master` above the `---` line).",
                 UserWarning,
                 stacklevel=2,
             )
