@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 import secrets
 import urllib.parse
 from datetime import datetime, timezone
@@ -16,6 +18,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import fsspec
+from fsspec.implementations.local import LocalFileSystem
 
 from . import errors
 
@@ -43,6 +46,45 @@ def is_url(path: str) -> bool:
         True if path starts with a supported URL protocol.
     """
     return path.lower().startswith(URL_PROTOCOLS)
+
+
+def _has_parent_reference(path: str) -> bool:
+    """
+    Check whether a path has a ``..`` component.
+
+    Both ``/`` and ``\\`` count as separators so the result does not depend on the
+    platform.
+    """
+    return ".." in re.split(r"[\\/]", path)
+
+
+def path_in_location(location: str, path: str) -> str | None:
+    """
+    Express an absolute local path inside ``location`` relative to it.
+
+    The comparison is lexical: symbolic links are not resolved.
+
+    Parameters
+    ----------
+    location : str
+        Local directory (a ``file`` store's location).
+    path : str
+        Path to express relative to ``location``.
+
+    Returns
+    -------
+    str or None
+        The path relative to ``location`` with POSIX separators, or None if
+        ``path`` is not absolute, has ``..`` components, or lies outside
+        ``location``.
+    """
+    if not Path(path).anchor or _has_parent_reference(path):
+        return None
+    root = Path(os.path.abspath(location or "."))
+    try:
+        return Path(os.path.abspath(path)).relative_to(root).as_posix()
+    except ValueError:
+        return None
 
 
 def _path_to_file_url(resolved_path: Path | PurePosixPath) -> str:
@@ -309,7 +351,13 @@ class StorageBackend:
         Storage configuration dictionary.
     protocol : str
         Storage protocol (``'file'``, ``'s3'``, ``'gcs'``, ``'azure'``).
+    confine_paths : bool
+        If True (default), paths passed to the backend must stay inside the
+        store location: paths with ``..`` components and, for ``file`` stores,
+        absolute paths outside the location are rejected.
     """
+
+    confine_paths: bool = True
 
     def __init__(self, spec: dict[str, Any]) -> None:
         """
@@ -429,8 +477,16 @@ class StorageBackend:
         -------
         str
             Full path suitable for fsspec operations.
+
+        Raises
+        ------
+        DataJointError
+            If ``confine_paths`` is set and the path leads outside the store
+            location.
         """
         path = str(path)
+        if self.confine_paths:
+            self._check_confined(path)
         if self.protocol == "s3":
             bucket = self.spec["bucket"]
             location = self.spec.get("location", "")
@@ -445,11 +501,41 @@ class StorageBackend:
             return f"{bucket}/{path}"
         elif self.protocol == "file":
             location = self.spec.get("location", "")
-            if location:
-                return (Path(location) / path).as_posix()
-            return path
+            full = (Path(location) / path).as_posix() if location else path
+            # A location of "" or "." adds no prefix, and fsspec reads a leading "file:" or
+            # "local:" as a protocol and expands "~", so compare where fsspec resolves both
+            if self.confine_paths:
+                root = LocalFileSystem._strip_protocol(Path(location or ".").as_posix()).rstrip("/")
+                resolved = LocalFileSystem._strip_protocol(full)
+                if resolved != root and not resolved.startswith(root + "/"):
+                    raise self._confinement_error(path)
+            return full
         else:
             return self._require_adapter().full_path(self.spec, path)
+
+    def _check_confined(self, path: str) -> None:
+        """Raise if ``path`` does not stay inside the store location."""
+        if (
+            "\x00" in path
+            or _has_parent_reference(path)
+            or (self.protocol == "file" and Path(path).anchor and self._path_in_location(path) is None)
+        ):
+            raise self._confinement_error(path)
+
+    @staticmethod
+    def _confinement_error(path: str) -> errors.DataJointError:
+        return errors.DataJointError(
+            f"Path {path!r} may lead outside the store location. Use a path relative to the "
+            "store location, without '..' components. (<filepath@> only: "
+            "dj.config.allow_filepath_outside_store = True accepts such paths for every <filepath@> "
+            "value; use it only with trusted data.)"
+        )
+
+    def _path_in_location(self, path: str) -> str | None:
+        """Express an absolute path inside a ``file`` store's location relative to it (see :func:`path_in_location`)."""
+        if self.protocol != "file":
+            return None
+        return path_in_location(self.spec.get("location", ""), path)
 
     def get_url(self, path: str | PurePosixPath) -> str:
         """
