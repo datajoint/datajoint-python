@@ -96,7 +96,7 @@ test = [
   "ipython",
   "graphviz",
   "testcontainers[mysql,postgres]>=4.0",
-  "pymysql>=0.7.2",
+  "pymysql>=1.1.1",
   "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
@@ -108,7 +108,9 @@ gcs = ["gcsfs>=2023.1.0"]
 azure = ["adlfs>=2023.1.0"]
 # Database drivers: install the extra for each backend in use.
 postgres = ["psycopg2-binary>=2.9.0"]
-mysql = ["pymysql>=0.7.2"]
+# pymysql 1.0 adds the ssl_disabled connection option; 1.1.1 fixes
+# CVE-2024-36039.
+mysql = ["pymysql>=1.1.1"]
 polars = ["polars>=0.20.0"]
 arrow = ["pyarrow>=14.0.0"]
 viz = ["matplotlib", "ipython"]
@@ -121,7 +123,7 @@ test = [
   "ipython",
   "s3fs>=2023.1.0",
   "testcontainers[mysql,postgres]>=4.0",
-  "pymysql>=0.7.2",
+  "pymysql>=1.1.1",
   "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
@@ -133,7 +135,7 @@ dev = [
   # including test
   "pytest",
   "pytest-cov",
-  "pymysql>=0.7.2",
+  "pymysql>=1.1.1",
   "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",

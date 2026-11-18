@@ -155,7 +155,7 @@ If the bot doesn't create a PR, manually update the feedstock:
      run:
        - python >={{ python_min }}
        - numpy
-       - pymysql >=0.7.2
+       - pymysql >=1.1.1
        - psycopg2 >=2.9.0
        - deepdiff
        - pyparsing

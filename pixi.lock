@@ -4492,8 +4492,8 @@ packages:
   requires_python: '>=3.8'
 - pypi: ./
   name: datajoint
-  version: 2.3.5.dev44+g215175ada
-  sha256: 93aa78078608348c30e7d6a88ad78f218220990a716b35a4a52f62fb5d7955d6
+  version: 2.3.5.dev45+g6760c26d6.d20261118
+  sha256: f0c20862d49a5540137f14a5b54cdc8efdaa572b77c49792c5338eec6b2b3d26
   requires_dist:
   - deepdiff
   - deepdiff<9 ; python_full_version >= '3.15'
@@ -4513,12 +4513,12 @@ packages:
   - pre-commit ; extra == 'dev'
   - psycopg2-binary>=2.9.0 ; extra == 'dev'
   - pyarrow>=14.0.0 ; extra == 'dev'
-  - pymysql>=0.7.2 ; extra == 'dev'
+  - pymysql>=1.1.1 ; extra == 'dev'
   - pytest ; extra == 'dev'
   - pytest-cov ; extra == 'dev'
   - ruff ; extra == 'dev'
   - gcsfs>=2023.1.0 ; extra == 'gcs'
-  - pymysql>=0.7.2 ; extra == 'mysql'
+  - pymysql>=1.1.1 ; extra == 'mysql'
   - polars>=0.20.0 ; extra == 'polars'
   - psycopg2-binary>=2.9.0 ; extra == 'postgres'
   - s3fs>=2023.1.0 ; extra == 's3'
@@ -4528,7 +4528,7 @@ packages:
   - polars>=0.20.0 ; extra == 'test'
   - psycopg2-binary>=2.9.0 ; extra == 'test'
   - pyarrow>=14.0.0 ; extra == 'test'
-  - pymysql>=0.7.2 ; extra == 'test'
+  - pymysql>=1.1.1 ; extra == 'test'
   - pytest ; extra == 'test'
   - pytest-cov ; extra == 'test'
   - requests ; extra == 'test'
