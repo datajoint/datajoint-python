@@ -39,7 +39,7 @@ DEFAULT_BACKEND_HINT = (
 MYSQL_DEFAULT_PORT = 3306
 
 
-def _check_mysql_port_without_backend(host: str, port, backend_is_default: bool) -> None:
+def _check_mysql_port_without_backend(host: str, port, backend_is_default: bool, uses_global_config: bool = True) -> None:
     """
     Refuse MySQL's default port when the backend was left at its default.
 
@@ -48,24 +48,57 @@ def _check_mysql_port_without_backend(host: str, port, backend_is_default: bool)
     connection stops before any network access and says how to set the backend.
     A backend set explicitly, including ``"postgresql"``, allows any port.
 
+    Parameters
+    ----------
+    host : str
+        Hostname, for the message.
+    port : int or str
+        The resolved port. A value that is not an integer is left to the adapter.
+    backend_is_default : bool
+        True when neither the ``backend`` argument nor the config set the backend.
+    uses_global_config : bool, optional
+        True when the connection reads the global ``dj.config`` (``dj.conn``,
+        ``dj.Connection``). False for a ``dj.Instance``, whose own config
+        ``dj.config`` does not reach, so the message names the ways an
+        Instance takes the backend instead.
+
     Raises
     ------
     DataJointError
         If ``backend_is_default`` and the port is 3306.
     """
-    if not backend_is_default or str(port) != str(MYSQL_DEFAULT_PORT):
+    if not backend_is_default:
         return
+    try:
+        is_mysql_port = int(port) == MYSQL_DEFAULT_PORT
+    except (TypeError, ValueError):
+        return
+    if not is_mysql_port:
+        return
+    if uses_global_config:
+        how_to_set = (
+            "For a MySQL server, set the backend to 'mysql' in one of these ways:\n"
+            "  - environment: DJ_BACKEND=mysql\n"
+            '  - datajoint.json: {"database": {"backend": "mysql"}}\n'
+            "  - in Python: dj.config['database.backend'] = 'mysql'\n"
+            "  - keyword: dj.Connection(..., backend='mysql')\n"
+        )
+    else:
+        how_to_set = (
+            "This connection belongs to a dj.Instance, which reads its settings only from the "
+            "environment, datajoint.json, and its keyword arguments; dj.config does not reach it.\n"
+            "For a MySQL server, set the backend to 'mysql' in one of these ways:\n"
+            "  - keyword: dj.Instance(..., backend='mysql') or dj.Instance(..., database__backend='mysql')\n"
+            "  - environment: DJ_BACKEND=mysql\n"
+            '  - datajoint.json: {"database": {"backend": "mysql"}}\n'
+        )
     raise errors.DataJointError(
         f"Connecting to {host}:{port} with the database backend not set. "
         f"Port {MYSQL_DEFAULT_PORT} is MySQL's default port, but the backend defaults to PostgreSQL "
         "since DataJoint 2.4, and DataJoint does not infer the backend from the port.\n"
-        "For a MySQL server, set the backend to 'mysql' in one of these ways:\n"
-        "  - environment: DJ_BACKEND=mysql\n"
-        '  - datajoint.json: {"database": {"backend": "mysql"}}\n'
-        "  - in Python: dj.config['database.backend'] = 'mysql'\n"
-        "  - keyword: dj.Instance(..., backend='mysql') or dj.Connection(..., backend='mysql')\n"
-        "For a PostgreSQL server, use its port, 5432 by default, or set the backend to "
-        "'postgresql' explicitly to keep port 3306."
+        f"{how_to_set}"
+        f"PostgreSQL's default port is 5432. To reach a PostgreSQL server on port {MYSQL_DEFAULT_PORT}, "
+        "set the backend to 'postgresql' explicitly."
     )
 
 
@@ -274,7 +307,8 @@ class Connection:
         backend_is_default = backend is None and "backend" not in self._config.database.model_fields_set
         if backend is None:
             backend = self._config["database.backend"]
-        _check_mysql_port_without_backend(host, port, backend_is_default)
+        # Only the global config is reached by dj.config; any other config here is a dj.Instance's.
+        _check_mysql_port_without_backend(host, port, backend_is_default, uses_global_config=self._config is config)
         try:
             self.adapter = get_adapter(backend)
 

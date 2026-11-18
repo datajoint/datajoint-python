@@ -6,7 +6,10 @@ the port. A connection on port 3306 whose backend was left at the default raises
 a DataJointError before any network access, whichever way the port was given:
 ``DJ_PORT``, ``datajoint.json``, ``dj.config`` assignment, ``dj.Instance`` and
 ``dj.Connection`` arguments, or ``host:port``. A backend set explicitly, to
-``"mysql"`` or to ``"postgresql"``, allows port 3306. No database server is needed.
+``"mysql"`` or to ``"postgresql"``, allows port 3306. The message suggests
+``dj.config`` for a connection that reads the global config, and the Instance's
+own sources (keywords, ``DJ_BACKEND``, ``datajoint.json``) for a ``dj.Instance``.
+No database server is needed.
 """
 
 import importlib
@@ -100,12 +103,27 @@ def _instance(**kwargs):
     return lambda: Instance(host="localhost", user="user", password="password", use_tls=False, **kwargs)
 
 
-# --- The error message --------------------------------------------------------
+# --- The error message ------------------------------------------------------------
+
+REWORDED = (
+    "PostgreSQL's default port is 5432. To reach a PostgreSQL server on port 3306, set the backend to 'postgresql' explicitly."
+)
 
 
-def test_message_says_why_and_how_to_fix(_isolate):
-    """The message names port 3306 as MySQL's, the PostgreSQL default, each fix, and port 5432."""
-    message = _refused(_connection(Config(), 3306), _isolate)
+def _use_global_config(monkeypatch):
+    """Give dj.conn and dj.Connection a fresh global config, shared as in a real session."""
+    config = Config()
+    monkeypatch.setattr(_module("datajoint.connection"), "config", config)
+    monkeypatch.setattr(_module("datajoint"), "_global_config", config)
+    monkeypatch.setattr(_module("datajoint.instance"), "_global_config", config)
+    monkeypatch.setattr(_module("datajoint.instance"), "_singleton_connection", None)
+    return config
+
+
+def test_message_for_global_config(monkeypatch, _isolate):
+    """Through dj.config, the message names port 3306 as MySQL's, each fix including dj.config, and 5432."""
+    _use_global_config(monkeypatch)
+    message = _refused(lambda: Connection("localhost", "user", "password", 3306, use_tls=False), _isolate)
     assert "localhost:3306" in message
     assert "MySQL's default port" in message
     assert "backend not set" in message
@@ -114,7 +132,72 @@ def test_message_says_why_and_how_to_fix(_isolate):
     assert '{"database": {"backend": "mysql"}}' in message
     assert "dj.config['database.backend'] = 'mysql'" in message
     assert "backend='mysql'" in message
-    assert "5432" in message
+    assert "dj.Instance" not in message
+    assert message.endswith(REWORDED)
+
+
+def test_message_for_dj_conn(monkeypatch, _isolate):
+    """dj.conn reads the global config, so its message suggests dj.config."""
+    dj = _module("datajoint")
+    config = _use_global_config(monkeypatch)
+    config["database.port"] = 3306
+    message = _refused(lambda: dj.conn("localhost", "user", "password", reset=True, use_tls=False), _isolate)
+    assert "dj.config['database.backend'] = 'mysql'" in message
+    assert "dj.Instance" not in message
+    assert message.endswith(REWORDED)
+
+
+def test_message_for_instance(_isolate):
+    """An Instance's config is not dj.config, so the message names the Instance's own sources."""
+    message = _refused(_instance(port=3306), _isolate)
+    assert "localhost:3306" in message
+    assert "MySQL's default port" in message
+    assert (
+        "dj.Instance, which reads its settings only from the environment, datajoint.json, and its keyword arguments"
+    ) in message
+    assert "dj.config does not reach it" in message
+    assert "dj.Instance(..., backend='mysql')" in message
+    assert "database__backend='mysql'" in message
+    assert "DJ_BACKEND=mysql" in message
+    assert "dj.config['database.backend']" not in message
+    assert message.endswith(REWORDED)
+
+
+def test_message_for_instance_from_env_port(monkeypatch, _isolate):
+    monkeypatch.setenv("DJ_PORT", "3306")
+    message = _refused(_instance(), _isolate)
+    assert "dj.Instance(..., backend='mysql')" in message
+    assert "dj.config['database.backend']" not in message
+
+
+# --- The port is compared as a number ------------------------------------------------
+
+
+@pytest.mark.parametrize("port", [3306, "3306", "03306", 3306.0])
+def test_port_compared_numerically(port):
+    check = _module("datajoint.connection")._check_mysql_port_without_backend
+    with pytest.raises(_module("datajoint.errors").DataJointError, match="MySQL's default port"):
+        check("localhost", port, True)
+
+
+@pytest.mark.parametrize("port", [None, "", "mysql", 3307, "5432"])
+def test_other_or_unparsable_port_passes(port):
+    check = _module("datajoint.connection")._check_mysql_port_without_backend
+    check("localhost", port, True)
+    check("localhost", 3306, False)
+
+
+# --- override() leaves no backend set behind ---------------------------------------
+
+
+def test_override_backend_then_port_3306_raises(_isolate):
+    """After an override of the backend ends, the backend is not set, so port 3306 is refused."""
+    config = Config()
+    with config.override(database__backend="mysql"):
+        pass
+    config["database.port"] = 3306
+    assert "backend" not in config.database.model_fields_set
+    _refused(_connection(config), _isolate)
 
 
 # --- Each way of setting port 3306 without a backend raises ---------------------
@@ -166,10 +249,9 @@ def test_port_in_host_raises(_isolate):
 def test_dj_conn_raises(monkeypatch, _isolate):
     """dj.conn takes no port, but a port in the host or in config counts."""
     dj = _module("datajoint")
-    monkeypatch.setattr(dj, "_global_config", Config())
-    monkeypatch.setattr(_module("datajoint.instance"), "_singleton_connection", None)
+    config = _use_global_config(monkeypatch)
     _refused(lambda: dj.conn("localhost:3306", "user", "password", use_tls=False), _isolate)
-    dj._global_config["database.port"] = 3306
+    config["database.port"] = 3306
     _refused(lambda: dj.conn("localhost", "user", "password", reset=True, use_tls=False), _isolate)
 
 

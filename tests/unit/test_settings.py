@@ -247,6 +247,40 @@ class TestContextManager:
             assert dj.config.database.host == "override_host"
         assert dj.config.database.host == original
 
+    def test_override_restores_fields_set(self):
+        """A setting not set before the block is not set after it; a set one stays set."""
+        from datajoint.settings import Config
+
+        cfg = Config()
+        assert "backend" not in cfg.database.model_fields_set
+        with cfg.override(database__backend="mysql"):
+            assert (cfg.database.backend, cfg.database.port) == ("mysql", 3306)
+        assert (cfg.database.backend, cfg.database.port) == ("postgresql", 5432)
+        assert "backend" not in cfg.database.model_fields_set
+        assert "port" not in cfg.database.model_fields_set
+
+        cfg.database.host = "db.example.com"
+        with cfg.override(database__host="other", safemode=False):
+            pass
+        assert cfg.database.host == "db.example.com"
+        assert "host" in cfg.database.model_fields_set
+        assert "safemode" not in cfg.model_fields_set
+
+    def test_override_rederives_port(self):
+        """An overridden port that was not set returns to following the backend."""
+        from datajoint.settings import Config
+
+        cfg = Config()
+        with cfg.override(database__port=3306, database__backend="mysql"):
+            assert cfg.database.port == 3306
+        assert (cfg.database.backend, cfg.database.port) == ("postgresql", 5432)
+        assert "port" not in cfg.database.model_fields_set
+
+        with cfg.override(database__port=6543):
+            cfg.database.backend = "mysql"  # a lasting change made inside the block
+        assert cfg.database.port == 3306
+        assert "port" not in cfg.database.model_fields_set
+
     def test_override_restores_on_exception(self):
         """Test that override restores values even when exception occurs."""
         original = dj.config.safemode
@@ -1155,12 +1189,72 @@ class TestBackendConfiguration:
         assert settings.port == 8888
 
     def test_invalid_backend(self, monkeypatch):
-        """Test invalid backend raises validation error."""
+        """An invalid backend raises a DataJointError that lists the valid values."""
+        # Imported here: another unit test re-imports the datajoint modules.
+        from datajoint.errors import DataJointError
         from datajoint.settings import DatabaseSettings
 
         monkeypatch.setenv("DJ_BACKEND", "sqlite")
-        with pytest.raises(ValidationError, match="Input should be 'mysql' or 'postgresql'"):
+        with pytest.raises(DataJointError, match="Valid values: 'mysql', 'postgresql'"):
             DatabaseSettings()
+
+    def test_invalid_backend_assignment(self):
+        """Assigning an invalid backend raises the same error and keeps the backend."""
+        # Imported here: another unit test re-imports the datajoint modules.
+        from datajoint.errors import DataJointError
+        from datajoint.settings import DatabaseSettings
+
+        settings = DatabaseSettings()
+        with pytest.raises(DataJointError, match="'oracle'.*Valid values: 'mysql', 'postgresql'"):
+            settings.backend = "oracle"
+        with pytest.raises(DataJointError, match="Valid values"):
+            settings.backend = ""
+        assert settings.backend == "postgresql"
+        assert "backend" not in settings.model_fields_set
+
+    @pytest.mark.parametrize("value", ["MySQL", "MYSQL", " mysql "])
+    def test_backend_env_any_case(self, monkeypatch, value):
+        """DJ_BACKEND is read in any case and normalized to lowercase."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", value)
+        settings = DatabaseSettings()
+        assert settings.backend == "mysql"
+        assert settings.port == 3306
+        assert "backend" in settings.model_fields_set
+
+    def test_backend_assignment_any_case(self):
+        from datajoint.settings import DatabaseSettings
+
+        settings = DatabaseSettings()
+        settings.backend = "MySQL"
+        assert (settings.backend, settings.port) == ("mysql", 3306)
+        settings.backend = "PostgreSQL"
+        assert (settings.backend, settings.port) == ("postgresql", 5432)
+
+    @pytest.mark.parametrize("value", ["", "  "])
+    def test_empty_backend_env_is_not_set(self, monkeypatch, value):
+        """An empty DJ_BACKEND counts as not set: the default backend, not set explicitly."""
+        from datajoint.settings import DatabaseSettings
+
+        monkeypatch.setenv("DJ_BACKEND", value)
+        settings = DatabaseSettings()
+        assert settings.backend == "postgresql"
+        assert settings.port == 5432
+        assert "backend" not in settings.model_fields_set
+
+    def test_empty_backend_env_does_not_hide_config_file(self, monkeypatch, tmp_path):
+        """With DJ_BACKEND empty, the backend in datajoint.json applies."""
+        import json
+
+        from datajoint.settings import Config
+
+        monkeypatch.setenv("DJ_BACKEND", "")
+        config_file = tmp_path / "datajoint.json"
+        config_file.write_text(json.dumps({"database": {"backend": "mysql"}}))
+        cfg = Config()
+        cfg.load(config_file)
+        assert (cfg.database.backend, cfg.database.port) == ("mysql", 3306)
 
     def test_config_file_backend(self, tmp_path, monkeypatch):
         """Test loading backend from config file."""
@@ -1262,3 +1356,47 @@ class TestBackendConfiguration:
 
         assert "database.backend" in ENV_VAR_MAPPING
         assert ENV_VAR_MAPPING["database.backend"] == "DJ_BACKEND"
+
+
+class TestBackendEnvAtImport:
+    """DJ_BACKEND as set before ``import datajoint``, checked in a fresh interpreter."""
+
+    SCRIPT = "import datajoint as dj\ndb = dj.config.database\nprint(db.backend, db.port, 'backend' in db.model_fields_set)\n"
+
+    @staticmethod
+    def _import_with(tmp_path, backend):
+        import os
+        import subprocess
+        import sys
+
+        env = {k: v for k, v in os.environ.items() if not k.startswith("DJ_")}
+        env.update(DJ_BACKEND=backend, DJ_IGNORE_CONFIG_FILE="true")
+        return subprocess.run(
+            [sys.executable, "-c", TestBackendEnvAtImport.SCRIPT],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+    @pytest.mark.parametrize(
+        ("backend", "expected"),
+        [
+            ("MySQL", "mysql 3306 True"),
+            ("POSTGRESQL", "postgresql 5432 True"),
+            ("", "postgresql 5432 False"),
+        ],
+    )
+    def test_import_succeeds(self, tmp_path, backend, expected):
+        result = self._import_with(tmp_path, backend)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip().splitlines()[-1] == expected
+
+    def test_import_invalid_backend_lists_valid_values(self, tmp_path):
+        result = self._import_with(tmp_path, "oracle")
+        assert result.returncode != 0
+        assert "DataJointError" in result.stderr
+        assert "Invalid database backend 'oracle'" in result.stderr
+        assert "Valid values: 'mysql', 'postgresql'" in result.stderr
+        assert "literal_error" not in result.stderr

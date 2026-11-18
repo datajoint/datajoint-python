@@ -130,6 +130,7 @@ For `DJ_USE_EXTERNAL_CONTAINERS=1`:
 | `DJ_PASS` | `password` | MySQL password |
 
 The test suite reads `DJ_HOST`, `DJ_PORT`, `DJ_USER`, and `DJ_PASS` as the MySQL server. Outside the tests, these variables configure whichever backend `DJ_BACKEND` selects, PostgreSQL by default. The backend is never inferred from the port: `DJ_PORT=3306` without `DJ_BACKEND` raises an error on connecting, so set `DJ_BACKEND=mysql` for a MySQL server.
+A `datajoint.json` made with `dj.config.save_template()` sets the backend to `"postgresql"` explicitly, so for a MySQL server change its `backend` to `"mysql"` rather than only changing the port.
 
 ### Object Storage
 

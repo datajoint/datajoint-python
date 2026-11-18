@@ -186,6 +186,9 @@ def read_secret_file(secrets_dir: Path | None, name: str) -> str | None:
     return None
 
 
+VALID_BACKENDS = ("mysql", "postgresql")
+
+
 class DatabaseSettings(BaseSettings):
     """Database connection settings."""
 
@@ -228,6 +231,43 @@ class DatabaseSettings(BaseSettings):
         description="Default for Schema create_tables parameter. "
         "Set to False for production mode to prevent automatic table creation.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def ignore_empty_backend_env(cls, data: Any) -> Any:
+        """
+        Treat an empty ``DJ_BACKEND`` as not set, so the backend stays at its default.
+
+        An empty variable leaves ``backend`` out of the fields set, as if
+        ``DJ_BACKEND`` were absent; the port check on connecting then still
+        applies.
+        """
+        if not isinstance(data, dict):
+            return data
+        empty = [
+            key
+            for key, value in data.items()
+            if isinstance(key, str) and key.lower() == "dj_backend" and isinstance(value, str) and not value.strip()
+        ]
+        return {key: value for key, value in data.items() if key not in empty} if empty else data
+
+    @field_validator("backend", mode="before")
+    @classmethod
+    def normalize_backend(cls, value: Any) -> Any:
+        """
+        Accept the backend name in any case; refuse any other value with the valid names.
+
+        Raises
+        ------
+        DataJointError
+            If the value is not ``"mysql"`` or ``"postgresql"`` (in any case).
+        """
+        if isinstance(value, str) and value.strip().lower() in VALID_BACKENDS:
+            return value.strip().lower()
+        raise DataJointError(
+            f"Invalid database backend {value!r} (database.backend, DJ_BACKEND). "
+            f"Valid values: {', '.join(repr(b) for b in VALID_BACKENDS)}."
+        )
 
     @model_validator(mode="after")
     def set_default_port_from_backend(self) -> "DatabaseSettings":
@@ -918,9 +958,16 @@ class Config(BaseSettings):
         ...     # config.safemode is False here
         ...     pass
         >>> # config.safemode is restored
+
+        Notes
+        -----
+        On exit each overridden setting gets back its value and whether it was
+        set explicitly. A setting that was not set before the block is not set
+        after it, and a default derived from other settings (``database.port``
+        from ``database.backend``) is derived again.
         """
-        # Store original values
-        backup = {}
+        # key parts -> (settings object, original value, whether it was set explicitly)
+        backup: dict[tuple[str, ...], tuple[Any, Any, bool]] = {}
 
         # Convert double underscore to nested access
         converted = {}
@@ -935,28 +982,34 @@ class Config(BaseSettings):
             # Save originals and apply overrides
             for key_parts, value in converted.items():
                 if len(key_parts) == 1:
-                    key = key_parts[0]
-                    if hasattr(self, key):
-                        backup[key_parts] = copy.deepcopy(getattr(self, key))
-                        setattr(self, key, value)
+                    obj, attr = self, key_parts[0]
                 elif len(key_parts) == 2:
                     group, attr = key_parts
-                    if hasattr(self, group):
-                        group_obj = getattr(self, group)
-                        if hasattr(group_obj, attr):
-                            backup[key_parts] = copy.deepcopy(getattr(group_obj, attr))
-                            setattr(group_obj, attr, value)
+                    obj = getattr(self, group, None)
+                else:
+                    continue
+                if obj is None or not hasattr(obj, attr):
+                    continue
+                if key_parts not in backup:
+                    backup[key_parts] = (obj, copy.deepcopy(getattr(obj, attr)), attr in obj.model_fields_set)
+                setattr(obj, attr, value)
 
             yield self
 
         finally:
-            # Restore original values
-            for key_parts, original in backup.items():
-                if len(key_parts) == 1:
-                    setattr(self, key_parts[0], original)
-                elif len(key_parts) == 2:
-                    group, attr = key_parts
-                    setattr(getattr(self, group), attr, original)
+            # Restore in reverse order, with the fields-set state: a setting that was not
+            # set explicitly before the block gets its value back and is not set after it.
+            for key_parts, (obj, original, was_set) in reversed(list(backup.items())):
+                attr = key_parts[-1]
+                if was_set:
+                    setattr(obj, attr, original)
+                    continue
+                field = type(obj).model_fields.get(attr)
+                # A field whose default is None may hold a value derived from other settings
+                # (database.port from database.backend). Assigning None runs the validators,
+                # which derive it again from the restored settings.
+                setattr(obj, attr, None if field is not None and field.default is None else original)
+                obj.model_fields_set.discard(attr)
 
     @staticmethod
     def save_template(
@@ -977,7 +1030,9 @@ class Config(BaseSettings):
         the secrets directory entirely (env-var-only configuration).
 
         The template selects the PostgreSQL backend on port 5432. For a MySQL
-        server, set ``backend`` to ``"mysql"`` and ``port`` to 3306.
+        server, set ``backend`` to ``"mysql"`` and ``port`` to 3306. Changing
+        only the port is not enough: the template sets the backend explicitly,
+        so port 3306 with ``"postgresql"`` is taken as a PostgreSQL server.
 
         Parameters
         ----------
