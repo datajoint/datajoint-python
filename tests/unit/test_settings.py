@@ -1102,6 +1102,20 @@ class TestBackendConfiguration:
         assert settings.port == 3306
         assert "backend" in settings.model_fields_set
 
+    @pytest.mark.parametrize(("backend", "port"), [(None, 5432), ("postgresql", 5432), ("mysql", 3306)])
+    def test_created_config_port_follows_dj_backend(self, monkeypatch, backend, port):
+        """The config that connections read takes its port from DJ_BACKEND when DJ_PORT is unset."""
+        from datajoint.settings import _create_config
+
+        monkeypatch.setenv("DJ_IGNORE_CONFIG_FILE", "true")
+        if backend is not None:
+            monkeypatch.setenv("DJ_BACKEND", backend)
+        cfg = _create_config()
+        assert cfg.database.backend == (backend or "postgresql")
+        assert cfg.database.port == port
+        assert cfg["database.port"] == port
+        assert "port" not in cfg.database.model_fields_set
+
     def test_backend_postgresql(self, monkeypatch):
         """Test PostgreSQL backend with auto port."""
         from datajoint.settings import DatabaseSettings

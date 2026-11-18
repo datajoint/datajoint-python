@@ -230,6 +230,55 @@ class TestInstanceBackend:
             assert args[3] == 3306
 
 
+class TestInstancePortFromBackend:
+    """An Instance with no port connects on the default port of the backend it ends up with."""
+
+    @pytest.fixture(autouse=True)
+    def _isolate_config(self, monkeypatch):
+        """Keep the shell environment and any datajoint.json from supplying a backend or port."""
+        monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        monkeypatch.setenv("DJ_IGNORE_CONFIG_FILE", "true")
+        for var in ("DJ_BACKEND", "DJ_PORT"):
+            monkeypatch.delenv(var, raising=False)
+
+    @staticmethod
+    def _connect(**kwargs):
+        """Create an Instance with the connection mocked; return it and the port it connects on."""
+        from unittest.mock import patch
+
+        from datajoint.instance import Instance
+
+        with patch("datajoint.instance.Connection") as MockConn:
+            inst = Instance(host="localhost", user="user", password="secret", **kwargs)
+        args, _ = MockConn.call_args
+        return inst, args[3]  # port is the 4th positional arg
+
+    def test_default_backend_uses_port_5432(self):
+        """With no backend set anywhere, the backend is postgresql on port 5432."""
+        inst, port = self._connect()
+        assert inst.config.database.backend == "postgresql"
+        assert port == 5432
+
+    @pytest.mark.parametrize(
+        ("backend", "port"),
+        [("mysql", 3306), ("postgresql", 5432)],
+    )
+    def test_database_backend_override_sets_port(self, monkeypatch, backend, port):
+        """Instance(database__backend=...) derives the port, whatever DJ_BACKEND selected."""
+        monkeypatch.setenv("DJ_BACKEND", "postgresql" if backend == "mysql" else "mysql")
+        inst, connected_port = self._connect(database__backend=backend)
+        assert inst.config.database.backend == backend
+        assert inst.config.database.port == port
+        assert connected_port == port
+
+    def test_dj_backend_env_uses_port_3306(self, monkeypatch):
+        """DJ_BACKEND=mysql with no DJ_PORT connects on port 3306."""
+        monkeypatch.setenv("DJ_BACKEND", "mysql")
+        inst, port = self._connect()
+        assert inst.config.database.backend == "mysql"
+        assert port == 3306
+
+
 class TestCrossConnectionValidation:
     """Test that cross-connection operations are rejected."""
 
