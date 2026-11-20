@@ -511,7 +511,7 @@ class StorageBackend:
                     raise self._confinement_error(path)
                 # Normalize older fsspec's relative paths, and compare with the
                 # OS-native path module (also when Path is mocked in tests).
-                root = os.path.normcase(os.path.abspath(location or "."))
+                root = os.path.normcase(os.path.abspath(Path(location or ".").as_posix()))
                 resolved = os.path.normcase(os.path.abspath(LocalFileSystem._strip_protocol(full)))
                 try:
                     confined = os.path.commonpath((root, resolved)) == root
