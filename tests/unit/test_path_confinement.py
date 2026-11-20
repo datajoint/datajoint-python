@@ -10,6 +10,7 @@ store location. ``allow_filepath_outside_store`` lifts the store check for
 No test reads a device or opens a pipe: a regression must fail, not hang.
 """
 
+import errno
 import importlib
 import os
 import sys
@@ -129,6 +130,25 @@ class TestStorePathConfinement:
         with pytest.raises(DataJointError):
             backend.get_buffer("file://" + outside)
         assert backend.get_buffer("data/inside.txt") == b"inside"
+
+    @posix_only
+    @pytest.mark.parametrize("location", [".", ""])
+    def test_file_store_with_relative_fsspec_path(self, layout, monkeypatch, location):
+        """Older fsspec can leave relative paths unexpanded."""
+        from fsspec.implementations.local import LocalFileSystem
+
+        _, store, _ = layout
+        monkeypatch.chdir(store)
+        original = LocalFileSystem._strip_protocol
+
+        def old_strip_protocol(path):
+            if path in (".", "data/inside.txt"):
+                return path
+            return original(path)
+
+        monkeypatch.setattr(LocalFileSystem, "_strip_protocol", staticmethod(old_strip_protocol))
+        backend = StorageBackend({"protocol": "file", "location": location})
+        assert backend._full_path("data/inside.txt") == "data/inside.txt"
 
     def test_io_never_reaches_outside(self, layout):
         root, store, _ = layout
@@ -300,9 +320,15 @@ class TestObjectConfinement:
             with pytest.raises(DataJointError, match="not a plain file name"):
                 ref.download(downloads, subpath=subpath)
         else:
-            # Missing source file: the error comes from the store, after the name was accepted
-            with pytest.raises(FileNotFoundError):
-                ref.download(downloads, subpath=subpath)
+            # The source is missing. On Windows, a drive marker embedded inside
+            # a path is not a legal file name, so the OS rejects it before lookup.
+            if os.name == "nt" and subpath.startswith("sub/C:"):
+                with pytest.raises(OSError) as exc_info:
+                    ref.download(downloads, subpath=subpath)
+                assert exc_info.value.errno == errno.EINVAL
+            else:
+                with pytest.raises(FileNotFoundError):
+                    ref.download(downloads, subpath=subpath)
         assert not any(downloads.iterdir())
 
     @pytest.fixture

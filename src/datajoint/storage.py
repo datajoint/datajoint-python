@@ -505,9 +505,11 @@ class StorageBackend:
             # A location of "" or "." adds no prefix, and fsspec reads a leading "file:" or
             # "local:" as a protocol and expands "~", so compare where fsspec resolves both
             if self.confine_paths:
-                root = LocalFileSystem._strip_protocol(Path(location or ".").as_posix()).rstrip("/")
-                resolved = LocalFileSystem._strip_protocol(full)
-                if resolved != root and not resolved.startswith(root + "/"):
+                # Older fsspec versions can return relative paths from
+                # _strip_protocol(). Normalize both sides before comparing.
+                root = Path(os.path.abspath(location or "."))
+                resolved = Path(os.path.abspath(LocalFileSystem._strip_protocol(full)))
+                if not resolved.is_relative_to(root):
                     raise self._confinement_error(path)
             return full
         else:
