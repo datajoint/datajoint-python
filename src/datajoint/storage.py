@@ -505,11 +505,19 @@ class StorageBackend:
             # A location of "" or "." adds no prefix, and fsspec reads a leading "file:" or
             # "local:" as a protocol and expands "~", so compare where fsspec resolves both
             if self.confine_paths:
-                # Older fsspec versions can return relative paths from
-                # _strip_protocol(). Normalize both sides before comparing.
-                root = Path(os.path.abspath(location or "."))
-                resolved = Path(os.path.abspath(LocalFileSystem._strip_protocol(full)))
-                if not resolved.is_relative_to(root):
+                # Reject URI schemes and home shortcuts before normalizing.
+                # fsspec may interpret them differently from the local OS.
+                if path.lower().startswith(("file:", "local:")) or path.startswith("~"):
+                    raise self._confinement_error(path)
+                # Normalize older fsspec's relative paths, and compare with the
+                # OS-native path module (also when Path is mocked in tests).
+                root = os.path.normcase(os.path.abspath(location or "."))
+                resolved = os.path.normcase(os.path.abspath(LocalFileSystem._strip_protocol(full)))
+                try:
+                    confined = os.path.commonpath((root, resolved)) == root
+                except ValueError:
+                    confined = False  # Different Windows drives.
+                if not confined:
                     raise self._confinement_error(path)
             return full
         else:
