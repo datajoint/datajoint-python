@@ -52,3 +52,17 @@ def test_reject_insecure(db_creds_test, connection_test):
             use_tls=False,
             reset=True,
         ).query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
+
+
+def test_require_ssl_user_connects_with_tls(db_creds_test, connection_test):
+    """A user with REQUIRE SSL connects with use_tls=True, and the session is encrypted.
+
+    A dedicated connection is used so that the shared connection from dj.conn()
+    is not replaced by one for djssl, which has only the SELECT privilege.
+    """
+    conn = dj.Connection(db_creds_test["host"], "djssl", "djssl", use_tls=True)
+    try:
+        result = conn.query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
+    finally:
+        conn.close()
+    assert len(result) > 0, "SSL should be active for a REQUIRE SSL user with use_tls=True"
