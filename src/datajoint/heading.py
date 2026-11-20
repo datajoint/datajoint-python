@@ -58,8 +58,9 @@ class _MissingType(Codec, register=False):
 logger = logging.getLogger(__name__.split(".")[0])
 
 # A declared type is recorded at the start of a column comment as ``:type:comment``.
-# The type never spans lines, so the pattern stops at line breaks.
-_TYPE_IN_COMMENT = re.compile(r":(?P<type>[^:\n\r]+):(?P<comment>.*)")
+# The type never spans lines, so the pattern stops at line breaks. The comment
+# after it may span lines, so ``re.S`` lets it keep every line.
+_TYPE_IN_COMMENT = re.compile(r":(?P<type>[^:\n\r]+):(?P<comment>.*)", re.S)
 
 
 def split_type_comment(comment: str | None) -> tuple[str | None, str]:

@@ -26,6 +26,7 @@ from datajoint.jobs import Job
         (":int32:subject number", ("int32", "subject number")),
         (":uuid:", ("uuid", "")),
         (":float64:a: b: c", ("float64", "a: b: c")),
+        (":int32:a\nb", ("int32", "a\nb")),
         (":varchar(255):name", ("varchar(255)", "name")),
         (":decimal(8, 3):", ("decimal(8, 3)", "")),
         (":datetime(3):", ("datetime(3)", "")),
@@ -64,6 +65,8 @@ def test_legacy_external_type_is_passed_on():
 
 def _attribute(name, sql_type, comment):
     """Heading attribute for an inherited primary-key column, as Heading builds it."""
+    # Mirrors Heading's handling of the comment; the real Heading path is covered
+    # by tests/integration/test_type_comment.py.
     declared_type, comment = split_type_comment(comment)
     original_type = None
     if declared_type is not None and declared_type.startswith("<"):
