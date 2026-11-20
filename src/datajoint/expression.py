@@ -274,6 +274,12 @@ class QueryExpression:
             result._restriction = AndList(self.restriction)  # copy to preserve the original
         result.restriction.append(new_condition)
         result.restriction_attributes.update(attributes)
+        # attributes that the restriction requires to be non-null are no longer nullable
+        not_null = [
+            name for name in _not_null_attributes(restriction, result.heading) if result.heading.attributes[name].nullable
+        ]
+        if not_null:
+            result._heading = result.heading.set_nullable(not_null, False)
         return result
 
     def restrict_in_place(self, restriction):
@@ -437,10 +443,10 @@ class QueryExpression:
         # Store join info: (is_left, using_attrs) - using_attrs excludes hidden attributes
         using_attrs = [n for n in self.heading.names if n in other.heading.names]
         result._joins = self._joins + [(left, using_attrs)] + other._joins
-        result._heading = self.heading.join(other.heading, nullable_pk=nullable_pk)
+        result._heading = self.heading.join(other.heading, nullable_pk=nullable_pk, left=left)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
-        result._original_heading = self.original_heading.join(other.original_heading, nullable_pk=nullable_pk)
+        result._original_heading = self.original_heading.join(other.original_heading, nullable_pk=nullable_pk, left=left)
         assert len(result.support) == len(result._joins) + 1
         return result
 
@@ -1451,7 +1457,9 @@ class Union(QueryExpression):
             raise DataJointError("The operands of a union must not share any secondary attributes.")
         result = cls()
         result._connection = arg1.connection
-        result._heading = arg1.heading.join(arg2.heading)
+        heading = arg1.heading.join(arg2.heading)
+        # each secondary attribute is padded with NULLs in the rows of the other operand
+        result._heading = heading.set_nullable(heading.secondary_attributes)
         result._support = [arg1, arg2]
         return result
 
@@ -1537,6 +1545,7 @@ class U:
             other = other()  # instantiate if a class
         if not isinstance(other, QueryExpression):
             raise DataJointError("Set U can only be restricted with a QueryExpression.")
+        _check_universal_key(self.primary_key, other.heading)
         if other._top is not None:
             other = other.make_subquery()  # apply the limit before DISTINCT
         result = copy.copy(other)
@@ -1588,10 +1597,7 @@ class U:
         if not isinstance(group, QueryExpression):
             raise DataJointError("dj.U.aggr requires a QueryExpression as the group argument.")
 
-        # Verify U's primary key attributes exist in group
-        missing = [attr for attr in self.primary_key if attr not in group.heading.names]
-        if missing:
-            raise DataJointError(f"Attributes {missing} not found in the group expression.")
+        _check_universal_key(self.primary_key, group.heading)
 
         if group._top is not None:
             group = group.make_subquery()  # apply the limit before GROUP BY
@@ -1608,6 +1614,47 @@ class U:
         return result.proj(**named_attributes)
 
     aggregate = aggr  # alias for aggr
+
+
+_IS_NOT_NULL = re.compile(r"""^\s*[`"]?(\w+)[`"]?\s+IS\s+NOT\s+NULL\s*$""", re.IGNORECASE)
+
+
+def _not_null_attributes(restriction, heading):
+    """
+    Return the attributes of ``heading`` that ``restriction`` requires to be non-null.
+
+    A restriction by a query expression matches on the common attributes and NULL never
+    matches. A string restriction of the exact form ``attr IS NOT NULL`` (also inside an
+    AndList) excludes NULLs in ``attr``. Other restrictions are not analyzed.
+    """
+    if inspect.isclass(restriction) and issubclass(restriction, QueryExpression):
+        restriction = restriction()
+    if isinstance(restriction, QueryExpression):
+        return {name for name in restriction.heading.names if name in heading.names}
+    if isinstance(restriction, AndList):
+        return set().union(*(_not_null_attributes(item, heading) for item in restriction))
+    if isinstance(restriction, str):
+        match = _IS_NOT_NULL.match(restriction)
+        if match and match.group(1) in heading.names:
+            return {match.group(1)}
+    return set()
+
+
+def _check_universal_key(primary_key, heading):
+    """
+    Check that the attributes of ``dj.U(*primary_key)`` can form the primary key of a result
+    with ``heading``: each must be in the heading and must not be nullable.
+    """
+    missing = [attr for attr in primary_key if attr not in heading.names]
+    if missing:
+        raise DataJointError(f"Attributes {missing} not found in the query expression.")
+    nullable = [attr for attr in primary_key if heading.attributes[attr].nullable]
+    if nullable:
+        raise DataJointError(
+            f"Attributes {nullable} of dj.U can be NULL in the query expression and cannot form a primary key. "
+            f"Restrict them first, e.g. dj.U({nullable[0]!r}) & (expr & '{nullable[0]} IS NOT NULL'), "
+            f"or count the NULLs separately, e.g. dj.U().aggr(expr & '{nullable[0]} IS NULL', n='count(*)')."
+        )
 
 
 def _flatten_attribute_list(primary_key, attrs):

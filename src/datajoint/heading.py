@@ -689,7 +689,8 @@ class Heading:
                 )
             )
         compute_attrs = (
-            dict(default_attribute_properties, name=new_name, attribute_expression=expr)
+            # an SQL expression (e.g. an aggregate over an empty group) can yield NULL
+            dict(default_attribute_properties, name=new_name, attribute_expression=expr, nullable=True)
             for new_name, expr in compute_map.items()
         )
         # Inherit table_info so the new heading has access to the adapter
@@ -705,7 +706,7 @@ class Heading:
             + [dependent.attributes[name].todict() for name in dependent.names if name not in self.attributes]
         )
 
-    def join(self, other, nullable_pk=False):
+    def join(self, other, nullable_pk=False, left=False):
         """
         Join two headings into a new one.
 
@@ -726,6 +727,9 @@ class Heading:
             If True, skip PK optimization and use combined PK from both
             operands. Used for left joins that bypass the A -> B constraint, where the
             right operand's PK attributes could be NULL. Default False.
+        left : bool, optional
+            If True, this is a left join: attributes of ``other`` that are not in ``self``
+            are padded with NULLs and become nullable. Default False.
 
         Returns
         -------
@@ -753,7 +757,25 @@ class Heading:
                 + [other.attributes[name].todict() for name in other.secondary_attributes if name not in self_pk_set]
             )
 
-        return Heading(attrs, lineage_available=self._lineage_available and other._lineage_available)
+        result = Heading(attrs, lineage_available=self._lineage_available and other._lineage_available)
+        if left:
+            result = result.set_nullable([name for name in other.names if name not in self.names])
+        return result
+
+    def set_nullable(self, names, nullable=True):
+        """
+        Create a new heading with the ``nullable`` flag of the named attributes set.
+        This low-level method performs no error checking.
+        """
+        names = set(names)
+        return Heading(
+            (
+                dict(attr.todict(), nullable=nullable) if attr.name in names else attr.todict()
+                for attr in self.attributes.values()
+            ),
+            table_info=self.table_info,
+            lineage_available=self._lineage_available,
+        )
 
     def set_primary_key(self, primary_key):
         """
