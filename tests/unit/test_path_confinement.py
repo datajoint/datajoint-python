@@ -118,16 +118,26 @@ class TestStorePathConfinement:
     @posix_only
     @pytest.mark.parametrize("location", [".", ""])
     def test_file_store_in_working_directory_rejects_protocol_and_home_paths(self, layout, monkeypatch, location):
+        from fsspec.implementations.local import LocalFileSystem
+
         root, store, _ = layout
         monkeypatch.chdir(store)
         monkeypatch.setenv("HOME", str(root))
         backend = StorageBackend({"protocol": "file", "location": location})
         outside = str(root / "outside.txt")
+        cwd = os.path.realpath(os.getcwd())
         for path in ("file://" + outside, "file:" + outside, "local://" + outside, "local:" + outside, "~/outside.txt"):
-            with pytest.raises(DataJointError, match="outside the store location"):
-                backend._full_path(path)
-        with pytest.raises(DataJointError):
-            backend.get_buffer("file://" + outside)
+            try:
+                full = backend._full_path(path)
+            except DataJointError as error:
+                assert "outside the store location" in str(error)
+                continue
+            # fsspec before 2024 does not read some of these prefixes as a protocol. A path it
+            # accepts then names a file inside the working directory, and I/O stays there
+            assert os.path.realpath(LocalFileSystem._strip_protocol(full)).startswith(cwd + "/")
+            backend.put_buffer(b"written", path)
+            assert backend.get_buffer(path) == b"written"
+        assert (root / "outside.txt").read_text() == "outside"
         assert backend.get_buffer("data/inside.txt") == b"inside"
 
     def test_io_never_reaches_outside(self, layout):
@@ -300,8 +310,9 @@ class TestObjectConfinement:
             with pytest.raises(DataJointError, match="not a plain file name"):
                 ref.download(downloads, subpath=subpath)
         else:
-            # Missing source file: the error comes from the store, after the name was accepted
-            with pytest.raises(FileNotFoundError):
+            # Missing source file: the error comes from the store, after the name was accepted.
+            # Windows reports a source path containing ":" as invalid rather than missing
+            with pytest.raises(OSError):
                 ref.download(downloads, subpath=subpath)
         assert not any(downloads.iterdir())
 

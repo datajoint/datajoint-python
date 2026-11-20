@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import posixpath
 import re
 import secrets
 import urllib.parse
@@ -400,8 +401,7 @@ class StorageBackend:
             # with a clear message.
             if bool(self.spec.get("access_key")) != bool(self.spec.get("secret_key")):
                 raise errors.DataJointError(
-                    "Incomplete S3 credentials: set both access_key and secret_key, "
-                    "or neither to use ambient AWS credentials."
+                    "Incomplete S3 credentials: set both access_key and secret_key, or neither to use ambient AWS credentials."
                 )
 
     @property
@@ -503,10 +503,11 @@ class StorageBackend:
             location = self.spec.get("location", "")
             full = (Path(location) / path).as_posix() if location else path
             # A location of "" or "." adds no prefix, and fsspec reads a leading "file:" or
-            # "local:" as a protocol and expands "~", so compare where fsspec resolves both
+            # "local:" as a protocol and expands "~", so compare where fsspec resolves both.
+            # fsspec before 2024 leaves "." segments in place, so normalize both sides
             if self.confine_paths:
-                root = LocalFileSystem._strip_protocol(Path(location or ".").as_posix()).rstrip("/")
-                resolved = LocalFileSystem._strip_protocol(full)
+                root = posixpath.normpath(LocalFileSystem._strip_protocol(Path(location or ".").as_posix())).rstrip("/")
+                resolved = posixpath.normpath(LocalFileSystem._strip_protocol(full))
                 if resolved != root and not resolved.startswith(root + "/"):
                     raise self._confinement_error(path)
             return full
