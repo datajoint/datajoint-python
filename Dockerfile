@@ -16,9 +16,13 @@ COPY --chown=${HOST_UID:-1000}:mambauser ./src/datajoint /main/src/datajoint
 VOLUME /src
 WORKDIR /src
 USER root
+# pymysql[rsa] adds cryptography, which PyMySQL needs to log in without TLS to a
+# user with caching_sha2_password, the default authentication plugin of the
+# official MySQL images in docker-compose.yaml. The interactive app service needs
+# it; djtest also gets it from the test extra (testcontainers[mysql]).
 RUN \
     chown -R ${HOST_UID:-1000}:mambauser /main && \
     chown -R ${HOST_UID:-1000}:mambauser /src && \
-    ${CONDA_BIN} run -n base pip install -q --no-cache-dir /main && \
+    ${CONDA_BIN} run -n base pip install -q --no-cache-dir /main 'pymysql[rsa]' && \
     rm -r /main/*
 USER ${MAMBA_USER}
