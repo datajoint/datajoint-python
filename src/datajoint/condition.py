@@ -427,7 +427,7 @@ def make_condition(
 
     # restrict by string
     if isinstance(condition, str):
-        columns.update(extract_column_names(condition))
+        columns.update(extract_column_names(condition, adapter.backend))
         return combine_conditions(negate, conditions=[condition.strip().replace("%", "%%")])  # escape %, see issue #376
 
     # restrict by AndList
@@ -521,7 +521,61 @@ def make_condition(
         return f"{'NOT ' if negate else ''} ({' OR '.join(or_list)})" if or_list else negate
 
 
-def extract_column_names(sql_expression: str) -> set[str]:
+# Quoted text in an SQL expression, read with the rules of DataJoint's sessions.
+#
+# MySQL: DataJoint sets the session's sql_mode without NO_BACKSLASH_ESCAPES or ANSI_QUOTES,
+# so a backslash escapes the next character, a quote is also escaped by doubling it, and
+# double quotes delimit strings. A literal may carry a prefix (N'', X'', B'', _utf8mb4'').
+#
+# PostgreSQL: with standard_conforming_strings on (the default), a backslash is an ordinary
+# character except in an E'...' literal, a quote is escaped by doubling it, double quotes
+# delimit identifiers, and $$...$$ or $tag$...$tag$ delimit dollar-quoted strings.
+#
+# Each pattern is applied in one left-to-right pass, so a quote character inside an earlier
+# literal or identifier never starts a new one. A literal without its closing quote is left
+# unmatched, so the names that follow it are still read.
+_QUOTED_TEXT = {
+    "mysql": re.compile(
+        r"(?P<identifier>`(?:[^`]|``)*`)"
+        r"|(?:(?<![\w$])(?:[nNxXbB]|_[A-Za-z0-9]+))?'(?:[^'\\]|\\.|'')*'"
+        r'|"(?:[^"\\]|\\.|"")*"',
+        re.DOTALL,
+    ),
+    "postgresql": re.compile(
+        r"(?<![\w$])[eE]'(?:[^'\\]|\\.|'')*'"
+        r"|(?:(?<![\w$])(?:[bBxX]|[uU]&))?'(?:[^']|'')*'"
+        r'|"(?:[^"]|"")*"'
+        r"|(?<![\w$])\$(?P<tag>(?:[A-Za-z_][A-Za-z_0-9]*)?)\$.*?\$(?P=tag)\$",
+        re.DOTALL,
+    ),
+}
+
+
+def strip_literals(sql_expression: str, backend: str = "mysql") -> str:
+    """
+    Replace each string literal in an SQL expression with a space.
+
+    Parameters
+    ----------
+    sql_expression : str
+        SQL expression, such as a restriction condition.
+    backend : str, optional
+        ``"mysql"`` (default) or ``"postgresql"``: whose quoting rules to read the text with.
+
+    Returns
+    -------
+    str
+        The expression without its string literals. MySQL backtick identifiers are kept.
+        PostgreSQL double-quoted identifiers are removed with the literals.
+    """
+    try:
+        pattern = _QUOTED_TEXT[backend]
+    except KeyError:
+        raise DataJointError(f"Unknown database backend {backend!r}.") from None
+    return pattern.sub(lambda match: match[0] if match.groupdict().get("identifier") else " ", sql_expression)
+
+
+def extract_column_names(sql_expression: str, backend: str = "mysql") -> set[str]:
     r"""
     Extract column names from an SQL expression.
 
@@ -529,6 +583,8 @@ def extract_column_names(sql_expression: str) -> set[str]:
     ----------
     sql_expression : str
         SQL expression (e.g., WHERE clause) to parse.
+    backend : str, optional
+        ``"mysql"`` (default) or ``"postgresql"``: whose rules to read string literals with.
 
     Returns
     -------
@@ -537,7 +593,8 @@ def extract_column_names(sql_expression: str) -> set[str]:
 
     Notes
     -----
-    Parsing is MySQL-specific. Identifies columns by:
+    String literals are skipped first, with the backend's quoting rules (see
+    :func:`strip_literals`). Columns are then identified by:
 
     1. Names in backticks (``\`column\```)
     2. Bare identifiers not followed by ``(`` (excludes functions)
@@ -545,12 +602,7 @@ def extract_column_names(sql_expression: str) -> set[str]:
     """
     assert isinstance(sql_expression, str)
     result = set()
-    s = sql_expression  # for terseness
-    # remove escaped quotes
-    s = re.sub(r"(\\\")|(\\\')", "", s)
-    # remove quoted text
-    s = re.sub(r"'[^']*'", "", s)
-    s = re.sub(r'"[^"]*"', "", s)
+    s = strip_literals(sql_expression, backend)
     # find all tokens in back quotes and remove them
     result.update(re.findall(r"`([a-z][a-z_0-9]*)`", s))
     s = re.sub(r"`[a-z][a-z_0-9]*`", "", s)

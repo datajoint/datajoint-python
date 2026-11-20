@@ -433,3 +433,133 @@ def test_invalid_json_type_in_projection_and_index(backend, type_spec):
         translate_attribute(f"car.length:{type_spec}", adapter)
     with pytest.raises(DataJointError):
         compile_index(f"index(car.length:{type_spec})", [], adapter)
+
+
+# ---------------------------------------------------------------------------
+# Column names in string restrictions: string literals are skipped
+# ---------------------------------------------------------------------------
+
+from datajoint.condition import extract_column_names, strip_literals  # noqa: E402
+
+LITERAL_VALUES = [
+    "a\\'b",  # a backslash right before a quote
+    "x\\",  # ends in a backslash
+    "\\\\",
+    "\\",
+    "'",
+    "''",
+    "it's",
+    'say "hi"',
+    'a\\"b',
+    "and b or c",
+    "$$ d $$",
+    "%s",
+]
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("value", LITERAL_VALUES)
+def test_column_names_skip_quoted_values(backend, value):
+    """A literal made by the backend's quote_string never yields column names."""
+    literal = get_adapter(backend).quote_string(value)
+    name = _quoted(backend, "name") if backend == "mysql" else "name"
+    condition = f"{name} > {literal} AND age < 3 AND {literal} <> zip"
+    assert extract_column_names(condition, backend) == {"name", "age", "zip"}
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("value", LITERAL_VALUES)
+def test_column_names_skip_mapping_restriction_values(backend, value):
+    """Literals in compiled mapping restrictions never yield column names."""
+    for restriction in ({"name": value}, {"car.tags": [value, "c'd"]}, {"car.side": value}):
+        condition = _condition(backend, restriction)
+        assert extract_column_names(condition, backend) <= {"name", "car"}, condition
+
+
+@pytest.mark.parametrize(
+    "condition, expected",
+    [
+        # the value a\'b as written by MySQLAdapter.quote_string
+        ("`name` > 'a\\\\''b'", {"name"}),
+        ("`name` > 'x\\\\'", {"name"}),
+        ("`name` > 'x\\\\' AND `age` < 3", {"name", "age"}),
+        # a quote escaped by a backslash, and by doubling
+        ("name = 'o\\'brien' AND age > 1", {"name", "age"}),
+        ("name = 'o''brien' AND age > 1", {"name", "age"}),
+        ("name = '' AND age > 1", {"name", "age"}),
+        ("name = 'it''s' 'b' AND age > 1", {"name", "age"}),
+        # double-quoted strings
+        ('name = "say \\"hi\\" b" AND age > 1', {"name", "age"}),
+        ('name = "say ""hi"" b" AND age > 1', {"name", "age"}),
+        ('name = "it\'s" AND age > 1', {"name", "age"}),
+        ("name = 'say \"hi\" b' AND age > 1", {"name", "age"}),
+        # literal prefixes
+        ("name = _utf8mb4'b c' AND age > 1", {"name", "age"}),
+        ("uid = X'0a0b' AND age > 1", {"uid", "age"}),
+        ("uid = x'0a0b' AND flag = b'01' AND label = N'c d'", {"uid", "flag", "label"}),
+        # functions and reserved words
+        ("concat(name, 'a b') LIKE 'c%' AND age IS NOT NULL", {"name", "age"}),
+    ],
+)
+def test_column_names_mysql(condition, expected):
+    assert extract_column_names(condition, "mysql") == expected
+    assert extract_column_names(condition) == expected  # MySQL rules by default
+
+
+@pytest.mark.parametrize(
+    "condition, expected",
+    [
+        # with standard_conforming_strings on, a backslash is an ordinary character
+        ("name > 'a\\''b'", {"name"}),
+        ("name > 'x\\'", {"name"}),
+        ("name > 'x\\' AND age < 3", {"name", "age"}),
+        ("name > 'x\\\\' AND age < 3", {"name", "age"}),
+        ("name = 'o''brien' AND age > 1", {"name", "age"}),
+        # E'' literals read backslash escapes
+        ("name = E'o\\'brien b' AND age > 1", {"name", "age"}),
+        ("name = e'x\\\\' AND age > 1", {"name", "age"}),
+        ("name = E'a\\\\''b' AND age > 1", {"name", "age"}),
+        ("name = E'' AND age > 1", {"name", "age"}),
+        # a column ending in e directly before a literal is not an E prefix
+        ("name = 'e' AND age > 1", {"name", "age"}),
+        # other prefixes and dollar quoting
+        ("flag = B'01' AND label = U&'d\\0061' AND age > 1", {"flag", "label", "age"}),
+        ("name = $$it's b$$ AND age > 1", {"name", "age"}),
+        ("name = $q$a $$ b$q$ AND age > 1", {"name", "age"}),
+        # double quotes delimit identifiers, which are skipped as before
+        ("\"name\" = 'b' AND age > 1", {"age"}),
+        ('"na""me" = 1 AND age > 1', {"age"}),
+    ],
+)
+def test_column_names_postgresql(condition, expected):
+    assert extract_column_names(condition, "postgresql") == expected
+
+
+def test_column_names_unterminated_literal_keeps_names():
+    """Names after a quote that is never closed are still reported."""
+    assert extract_column_names("name = 'b AND age > 1", "mysql") == {"name", "b", "age"}
+    assert extract_column_names("name = 'x\\' AND age > 1", "mysql") == {"name", "x", "age"}
+
+
+def test_strip_literals_unknown_backend():
+    with pytest.raises(DataJointError, match="Unknown database backend"):
+        strip_literals("a = 'b'", "oracle")
+
+
+@pytest.mark.parametrize(
+    "backend, condition, expected",
+    [
+        ("mysql", "`name` > 'x\\\\' AND `id` IN (SELECT `id` FROM `t` WHERE `a` = 'q')", True),
+        ("mysql", "`name` = 'select b'", False),
+        ("mysql", '`name` = "select b"', False),
+        ("mysql", "`select` = 1", False),
+        ("postgresql", "name > 'x\\' AND id IN (SELECT id FROM t WHERE a = 'q')", True),
+        ("postgresql", "name = E'a\\' select b'", False),
+        ("postgresql", '"select" = 1', False),
+    ],
+)
+def test_diagram_subquery_detection(backend, condition, expected):
+    """A subquery after a literal that ends in a backslash is detected; text in literals is not a subquery."""
+    from datajoint.diagram import _has_subquery
+
+    assert _has_subquery(condition, backend) is expected

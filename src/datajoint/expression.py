@@ -614,7 +614,8 @@ class QueryExpression:
             pass  # all ok
 
         # need a subquery if the projection remaps any remapped attributes
-        used = set(q for v in compute_map.values() for q in extract_column_names(v))
+        backend = self.connection.adapter.backend
+        used = set(q for v in compute_map.values() for q in extract_column_names(v, backend))
         used.update(rename_map.values())
         used.update(replicate_map.values())
         used.intersection_update(self.heading.names)
@@ -635,7 +636,7 @@ class QueryExpression:
                     if name in projected.names
                     else self.heading[name].attribute_expression is not None
                 )
-                for name in extract_column_names(ordering)
+                for name in extract_column_names(ordering, backend)
                 if name in self.heading.names
             )
 
