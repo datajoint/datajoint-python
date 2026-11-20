@@ -35,10 +35,11 @@ def test_plain_column_index_is_unchanged(index_ddl):
     assert index_ddl[2] == 'CREATE INDEX "idx_indexed_item_id" ON "s"."indexed" ("item_id")'
 
 
-def test_expression_index_names_are_valid_and_distinct():
+@pytest.mark.parametrize("table", ["t", "_ephys_recording_probe_insertion"])
+def test_expression_index_names_are_valid_and_distinct(table):
     adapter = get_adapter("postgresql")
     names = [
-        adapter.create_index_ddl('"s"."t"', [expr]).split('"')[1]
+        adapter.create_index_ddl(f'"s"."{table}"', [expr]).split('"')[1]
         for expr in (
             "((jsonb_extract_path_text(\"data\", 'a'))::integer)",
             "((jsonb_extract_path_text(\"data\", 'b'))::integer)",

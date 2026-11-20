@@ -706,9 +706,12 @@ class DatabaseAdapter(ABC):
             if any(col.startswith("(") for col in columns):
                 # Expressions are not valid in an identifier: keep the word
                 # characters and add a hash so distinct expressions get distinct names.
+                # Cut before adding the hash, so it survives the 63-character limit.
                 digest = hashlib.md5("_".join(columns).encode()).hexdigest()[:8]
-                col_part = re.sub(r"\W+", "_", col_part).strip("_") + "_" + digest
-            index_name = f"idx_{table_part}_{col_part}"[:63]
+                col_part = re.sub(r"\W+", "_", col_part).strip("_")
+                index_name = f"idx_{table_part}_{col_part}"[:54] + "_" + digest
+            else:
+                index_name = f"idx_{table_part}_{col_part}"[:63]
         unique_clause = "UNIQUE " if unique else ""
         return f"CREATE {unique_clause}INDEX {self.quote_identifier(index_name)} ON {full_table_name} ({quoted_cols})"
 
