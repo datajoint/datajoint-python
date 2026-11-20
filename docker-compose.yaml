@@ -13,8 +13,8 @@
 #   docker compose --profile test up djtest --build
 services:
   db:
-    # Same image as the test fixture in tests/conftest.py (MYSQL_VER=8.4 for the 8.4 LTS)
-    image: mysql:${MYSQL_VER:-8.0}
+    # Same image as the test fixture in tests/conftest.py (MYSQL_VER=8.0 for MySQL 8.0)
+    image: mysql:${MYSQL_VER:-8.4}
     environment:
       - MYSQL_ROOT_PASSWORD=${DJ_PASS:-password}
     ports:
