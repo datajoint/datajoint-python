@@ -272,7 +272,15 @@ def item_with_tags(connection_by_backend, backend, prefix):
         """
 
     Item.insert(ROWS + [NON_ASCII_ROW])
-    Tag.insert([(1, "a"), (2, "o'brien"), (2, "50% off"), (3, "b"), (5, "Zoë")])
+    Tag.insert(
+        [
+            dict(item_id=1, tag="a"),
+            dict(item_id=2, tag="o'brien"),
+            dict(item_id=2, tag="50% off"),
+            dict(item_id=3, tag="b"),
+            dict(item_id=5, tag="Zoë"),
+        ]
+    )
     yield Item(), Tag()
     schema.drop(prompt=False)
 
