@@ -7,6 +7,7 @@ statements, handling type mapping, foreign key resolution, and index creation.
 
 from __future__ import annotations
 
+import ast
 import logging
 import re
 
@@ -172,6 +173,211 @@ def build_attribute_parser() -> pp.ParserElement:
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
 
+_REFERENCE_TOKEN = re.compile(
+    r"""\s*(?:
+        (?P<comment>\#.*)
+      | (?P<name>[^\W\d]\w*)
+      | (?P<string>"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')
+      | (?P<punct>[.(),=])
+    )""",
+    re.VERBOSE,
+)
+
+_REFERENCE_FORMS = (
+    "use a table name such as Parent, module.Parent or Master.Part, "
+    "optionally projected with Parent.proj(new_name='old_name')"
+)
+
+
+def _tokenize_reference(text: str) -> list[tuple[str, str]]:
+    """Split a foreign key reference into (kind, value) tokens, dropping a trailing comment."""
+    tokens = []
+    pos = 0
+    while pos < len(text):
+        match = _REFERENCE_TOKEN.match(text, pos)
+        if match is None:
+            if text[pos:].strip():
+                raise ValueError(f"unexpected text {text[pos:].strip()!r}")
+            break
+        pos = match.end()
+        kind = match.lastgroup
+        value = match.group(kind)
+        if kind == "comment":
+            break
+        if kind == "name" and not value.isidentifier():
+            raise ValueError(f"{value!r} is not a name")
+        if kind == "string":
+            value = ast.literal_eval(value)
+        tokens.append((kind, value))
+    return tokens
+
+
+def parse_foreign_key_reference(text: str) -> list[tuple]:
+    """
+    Parse the table reference of a foreign key line into lookup steps.
+
+    The supported forms are a dotted name (``Parent``, ``module.Parent``,
+    ``Master.Part``), optionally in parentheses, instantiated with ``()``, or
+    projected with ``.proj(...)`` whose arguments are string literals. The
+    text is only parsed; nothing in it is evaluated.
+
+    Parameters
+    ----------
+    text : str
+        The reference, e.g. ``"Parent.proj(new_id='parent_id')"``.
+
+    Returns
+    -------
+    list[tuple]
+        Steps ``("name", name)``, ``("attr", name)``, ``("instance",)`` and
+        ``("proj", args, kwargs)``, applied in order by
+        :func:`resolve_foreign_key_reference`.
+
+    Raises
+    ------
+    ValueError
+        If the text is not one of the supported forms.
+    """
+    tokens = _tokenize_reference(text)
+    pos = 0
+
+    def peek(value=None):
+        if pos >= len(tokens):
+            return False
+        return value is None or tokens[pos] == ("punct", value)
+
+    def expect(kind, value=None):
+        nonlocal pos
+        if pos >= len(tokens) or tokens[pos][0] != kind or (value is not None and tokens[pos][1] != value):
+            found = repr(tokens[pos][1]) if pos < len(tokens) else "end of line"
+            raise ValueError(f"expected {value or kind}, found {found}")
+        pos += 1
+        return tokens[pos - 1][1]
+
+    def arguments():
+        args, kwargs = [], {}
+        while not peek(")"):
+            if pos + 1 < len(tokens) and tokens[pos][0] == "name" and tokens[pos + 1] == ("punct", "="):
+                key = expect("name")
+                expect("punct", "=")
+                if key in kwargs:
+                    raise ValueError(f"repeated argument {key!r}")
+                kwargs[key] = expect("string")
+            elif kwargs:
+                raise ValueError("positional argument follows keyword argument")
+            else:
+                args.append(expect("string"))
+            if not peek(")"):
+                expect("punct", ",")
+        expect("punct", ")")
+        return args, kwargs
+
+    def reference():
+        nonlocal pos
+        if peek("("):
+            pos += 1
+            steps = reference()
+            expect("punct", ")")
+        else:
+            name = expect("name")
+            if name.startswith("__"):
+                raise ValueError(f"name {name!r} is not a table")
+            steps = [("name", name)]
+        while peek("(") or peek("."):
+            if peek("."):
+                pos += 1
+                attr = expect("name")
+                if attr.startswith("__"):
+                    raise ValueError(f"attribute {attr!r} is not a table")
+                if attr == "proj" and peek("("):
+                    pos += 1
+                    steps.append(("proj", *arguments()))
+                else:
+                    steps.append(("attr", attr))
+            else:
+                pos += 1
+                expect("punct", ")")
+                steps.append(("instance",))
+        return steps
+
+    steps = reference()
+    if pos < len(tokens):
+        raise ValueError(f"unexpected {tokens[pos][1]!r}")
+    return steps
+
+
+def resolve_foreign_key_reference(ref_table: str, context: dict):
+    """
+    Resolve the table reference of a foreign key line in a namespace.
+
+    The reference is parsed by :func:`parse_foreign_key_reference`, never
+    evaluated: names are looked up in ``context`` attribute by attribute, a
+    table class may be instantiated with ``()``, and ``.proj(...)`` is called
+    with the parsed string arguments.
+
+    Parameters
+    ----------
+    ref_table : str
+        The reference, e.g. ``"Parent"``, ``"Master.Part"`` or
+        ``"Parent.proj(new_id='parent_id')"``.
+    context : dict
+        Namespace containing referenced table objects.
+
+    Returns
+    -------
+    object
+        The referenced table class, table, or projection.
+
+    Raises
+    ------
+    DataJointError
+        If the reference is not of a supported form or cannot be resolved.
+    """
+    from .expression import QueryExpression
+    from .table import Table
+
+    text = ref_table.strip()
+
+    def unresolved(reason):
+        return DataJointError(f"Foreign key reference {text} could not be resolved: {reason}")
+
+    def is_table_class(obj):
+        return isinstance(obj, type) and issubclass(obj, Table)
+
+    try:
+        steps = parse_foreign_key_reference(text)
+    except ValueError as error:
+        raise unresolved(f"{error}; {_REFERENCE_FORMS}") from None
+    ref = None
+    for step in steps:
+        if step[0] == "name":
+            if step[1] not in context:
+                raise unresolved(f"{step[1]} is not defined in the declaration context")
+            ref = context[step[1]]
+        elif step[0] == "attr":
+            try:
+                ref = getattr(ref, step[1])
+            except Exception:
+                raise unresolved(f"no attribute {step[1]}") from None
+        elif step[0] == "instance":
+            if not is_table_class(ref):
+                raise unresolved(f"only a table class can be instantiated; {_REFERENCE_FORMS}")
+            ref = ref()
+        else:  # proj
+            if is_table_class(ref):
+                ref = ref()
+            if not isinstance(ref, QueryExpression):
+                raise unresolved("only a table can be projected")
+            try:
+                ref = ref.proj(*step[1], **step[2])
+            except DataJointError:
+                raise
+            except Exception as error:
+                raise unresolved(str(error)) from None
+    if not (isinstance(ref, QueryExpression) or is_table_class(ref)):
+        raise unresolved("it does not name a table")
+    return ref
+
 
 def is_foreign_key(line: str) -> bool:
     """
@@ -254,10 +460,7 @@ def compile_foreign_key(
     except pp.ParseException as err:
         raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
 
-    try:
-        ref = eval(result.ref_table, context)
-    except Exception:
-        raise DataJointError("Foreign key reference %s could not be resolved" % result.ref_table)
+    ref = resolve_foreign_key_reference(result.ref_table, context)
 
     options = [opt.upper() for opt in result.options]
     for opt in options:  # check for invalid options
