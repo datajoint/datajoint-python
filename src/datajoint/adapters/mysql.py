@@ -14,7 +14,7 @@ import pymysql as client
 from pymysql.constants import CLIENT, CR
 
 from .. import errors
-from .base import DatabaseAdapter
+from .base import DatabaseAdapter, check_tls_keys
 
 # Core type mapping: DataJoint core types → MySQL types
 CORE_TYPE_MAP = {
@@ -94,6 +94,72 @@ def _unverified_tls_context() -> ssl.SSLContext:
     return context
 
 
+_VERIFY_MODES = {
+    "none": ssl.CERT_NONE,
+    "0": ssl.CERT_NONE,
+    "false": ssl.CERT_NONE,
+    "no": ssl.CERT_NONE,
+    "optional": ssl.CERT_OPTIONAL,
+    "required": ssl.CERT_REQUIRED,
+    "1": ssl.CERT_REQUIRED,
+    "true": ssl.CERT_REQUIRED,
+    "yes": ssl.CERT_REQUIRED,
+}
+
+
+def _tls_context(use_tls: dict) -> ssl.SSLContext:
+    """
+    Build the TLS context for a ``use_tls`` dict.
+
+    The keys and their meaning are PyMySQL's ``ssl`` dict keys. Building the
+    context here, instead of passing the dict to PyMySQL, keeps the behavior
+    the same across PyMySQL versions and rejects keys and values that would
+    otherwise be ignored.
+
+    With ``ca`` or ``capath``, the server certificate is verified, and so is
+    the host name unless ``check_hostname`` is False. Without them, the
+    connection is encrypted but the server certificate is not verified.
+    ``verify_mode`` overrides whether the certificate is verified: True,
+    'required' and ``ssl.CERT_REQUIRED`` verify it (against the system's
+    trusted CAs when there is no ``ca`` or ``capath``); False, 'none' and
+    ``ssl.CERT_NONE`` do not. PyMySQL ignores an ``ssl.VerifyMode`` value;
+    here it has the meaning of its name.
+
+    Raises
+    ------
+    DataJointError
+        If ``use_tls`` has an unknown key or an unknown ``verify_mode``.
+    """
+    check_tls_keys(use_tls)
+    ca, capath = use_tls.get("ca"), use_tls.get("capath")
+    has_ca = ca is not None or capath is not None
+    context = ssl.create_default_context(cafile=ca, capath=capath)
+    # Python 3.13 sets VERIFY_X509_STRICT by default, which rejects the
+    # self-signed certificates that MySQL generates. PyMySQL clears it from
+    # 1.1.2 on (https://github.com/PyMySQL/PyMySQL/pull/1198), and so does
+    # DataJoint, whatever the PyMySQL version; PyMySQL 1.1.1 does not.
+    context.verify_flags &= ~ssl.VERIFY_X509_STRICT
+    context.check_hostname = has_ca and bool(use_tls.get("check_hostname", True))
+    verify_mode = use_tls.get("verify_mode")
+    if verify_mode is None:
+        context.verify_mode = ssl.CERT_REQUIRED if has_ca else ssl.CERT_NONE
+    elif isinstance(verify_mode, bool):
+        context.verify_mode = ssl.CERT_REQUIRED if verify_mode else ssl.CERT_NONE
+    elif isinstance(verify_mode, ssl.VerifyMode):
+        context.verify_mode = verify_mode
+    elif isinstance(verify_mode, str) and verify_mode.lower() in _VERIFY_MODES:
+        context.verify_mode = _VERIFY_MODES[verify_mode.lower()]
+    else:
+        raise errors.DataJointError(
+            f"Unknown use_tls verify_mode {verify_mode!r}. Use True, False, 'none', 'optional', or 'required'."
+        )
+    if use_tls.get("cert") is not None:
+        context.load_cert_chain(use_tls["cert"], keyfile=use_tls.get("key"), password=use_tls.get("password"))
+    if use_tls.get("cipher") is not None:
+        context.set_ciphers(use_tls["cipher"])
+    return context
+
+
 class MySQLAdapter(DatabaseAdapter):
     """MySQL database adapter implementation."""
 
@@ -130,8 +196,11 @@ class MySQLAdapter(DatabaseAdapter):
               certificate not verified.
               True: TLS required, server certificate not verified.
               dict: TLS required, configured with PyMySQL ``ssl`` keys
-              (``ca``, ``cert``, ``key``, ``check_hostname``, ...); with ``ca``,
-              the server certificate is verified. False: TLS disabled.
+              (``ca``, ``capath``, ``cert``, ``key``, ``password``, ``cipher``,
+              ``check_hostname``, ``verify_mode``); with ``ca`` or ``capath``,
+              the server certificate is verified unless ``verify_mode`` turns
+              verification off. Another key raises DataJointError.
+              False: TLS disabled.
             - charset: Character set (default from kwargs)
 
         Returns
@@ -142,10 +211,13 @@ class MySQLAdapter(DatabaseAdapter):
         # Handle both ssl (old) and use_tls (new) parameter names
         ssl_config = kwargs.get("use_tls", kwargs.get("ssl"))
         tls_required = ssl_config is not None
-        # PyMySQL treats an empty dict as "no TLS"; None, True, and {} use TLS
-        # without verifying the server certificate.
+        # None, True, and {} use TLS without verifying the server certificate.
+        # A dict is turned into a TLS context here rather than passed to PyMySQL,
+        # which ignores keys it does not know.
         if ssl_config is None or ssl_config is True or (isinstance(ssl_config, dict) and not ssl_config):
             ssl_config = _unverified_tls_context()
+        elif isinstance(ssl_config, dict):
+            ssl_config = _tls_context(ssl_config)
         charset = kwargs.get("charset", "")
 
         # Prepare connection parameters
@@ -173,7 +245,7 @@ class MySQLAdapter(DatabaseAdapter):
             # use_tls=None: one connection, with TLS if the server offers it
             return _TLSPreferredConnection(**conn_params)
 
-        # Require SSL, configured by the dict or SSLContext
+        # Require SSL, configured by the TLS context
         connection = _TLSRequiredConnection(**conn_params)
         # Checked again in case a PyMySQL version bypasses the hook above
         if not connection.server_capabilities & CLIENT.SSL:  # type: ignore[attr-defined]  # PyMySQL internal
