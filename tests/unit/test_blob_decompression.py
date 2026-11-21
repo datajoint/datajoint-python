@@ -71,3 +71,33 @@ def test_corrupt_stream_is_rejected():
     payload = pack(np.arange(1000), compress=False)
     with pytest.raises(DataJointError, match="Corrupt"):
         unpack(PREFIX + len_u64(payload) + b"not zlib data")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"", b"garbage\0data", b"no terminator here", b"mYm", b"dj0", b"\xff\xfe\0data"],
+)
+def test_unknown_blob_format_is_rejected(payload):
+    with pytest.raises(DataJointError, match="Unknown blob format"):
+        unpack(payload)
+
+
+def test_unknown_blob_format_in_compressed_payload_is_rejected():
+    with pytest.raises(DataJointError, match="Unknown blob format"):
+        unpack(compressed_blob(b"garbage\0data"))
+
+
+def test_unknown_blob_format_from_memoryview_is_rejected():
+    with pytest.raises(DataJointError, match="Unknown blob format"):
+        unpack(memoryview(b"garbage\0data"))
+
+
+def test_blob_codec_rejects_unknown_format():
+    from datajoint.builtin_codecs.blob import BlobCodec
+
+    with pytest.raises(DataJointError, match="Unknown blob format"):
+        BlobCodec().decode(b"garbage\0data")
+
+
+def test_serialized_none_is_still_valid():
+    assert unpack(pack(None, compress=False)) is None
