@@ -53,13 +53,45 @@ def test_interruption_while_deleting_rolls_back(prompt):
     conn.commit_transaction.assert_not_called()
 
 
-def test_failed_rollback_closes_connection_and_keeps_the_interruption():
-    """If the rollback fails, the connection is closed and Ctrl-C still reaches the caller."""
+@pytest.mark.parametrize("failure", [RuntimeError("connection out of sync"), KeyboardInterrupt])
+def test_failed_rollback_closes_connection_and_keeps_the_interruption(failure):
+    """
+    If the rollback fails or is itself interrupted, the connection is closed, it no
+    longer counts as being in a transaction, and Ctrl-C still reaches the caller.
+    """
     table, conn, cascade = _table(delete_side_effect=KeyboardInterrupt)
-    conn.cancel_transaction.side_effect = RuntimeError("connection out of sync")
+    conn._in_transaction = True
+    conn.cancel_transaction.side_effect = failure
     with pytest.raises(KeyboardInterrupt):
         _delete(table, cascade, prompt=False)
     conn.close.assert_called_once()
+    assert conn._in_transaction is False
+
+
+def test_failed_close_still_resets_the_transaction():
+    """If closing the connection also fails, the transaction flag is still reset."""
+    table, conn, cascade = _table()
+    conn._in_transaction = True
+    conn.cancel_transaction.side_effect = RuntimeError("connection out of sync")
+    conn.close.side_effect = RuntimeError("already closed")
+    with mock.patch("builtins.input", side_effect=KeyboardInterrupt):
+        with pytest.raises(KeyboardInterrupt):
+            _delete(table, cascade, prompt=True)
+    assert conn._in_transaction is False
+
+
+@pytest.mark.parametrize("failure", [KeyboardInterrupt, RuntimeError])
+def test_failed_commit_closes_connection_and_propagates(failure):
+    """Ctrl-C or an error during the commit closes the connection, resets the flag, and propagates."""
+    table, conn, cascade = _table()
+    conn._in_transaction = True
+    conn.commit_transaction.side_effect = failure
+    with mock.patch("builtins.input", return_value="yes"):
+        with pytest.raises(failure):
+            _delete(table, cascade, prompt=True)
+    conn.close.assert_called_once()
+    conn.cancel_transaction.assert_not_called()
+    assert conn._in_transaction is False
 
 
 def test_interruption_inside_enclosing_transaction_is_left_to_it():

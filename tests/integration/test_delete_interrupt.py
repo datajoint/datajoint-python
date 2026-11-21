@@ -41,8 +41,8 @@ def tables(schema_by_backend):
         session : int32
         """
 
-    Subject.insert([(1,), (2,), (3,)])
-    Session.insert([(s, n) for s in (1, 2, 3) for n in (1, 2)])
+    Subject.insert([{"subject_id": s} for s in (1, 2, 3)])
+    Session.insert([{"subject_id": s, "session": n} for s in (1, 2, 3) for n in (1, 2)])
     return Subject, Session
 
 
@@ -58,7 +58,7 @@ def _assert_rolled_back_and_usable(Subject, Session):
     assert sorted(Subject.to_arrays("subject_id")) == [1, 3]
     assert len(Session()) == 4
     with conn.transaction:
-        Subject.insert1((4,))
+        Subject.insert1({"subject_id": 4})
     assert sorted(Subject.to_arrays("subject_id")) == [1, 3, 4]
 
 
@@ -89,4 +89,54 @@ def test_interruption_while_deleting_rolls_back(tables, prompt):
         with pytest.raises(KeyboardInterrupt):
             (Subject & {"subject_id": 1}).delete(prompt=prompt)
     assert calls == [Session.full_table_name, Subject.full_table_name]  # Session's rows were deleted first
+    _assert_rolled_back_and_usable(Subject, Session)
+
+
+def _fail_once(method, error):
+    """Wrap a bound method so that its first call raises ``error`` and later calls run it."""
+    calls = []
+
+    def wrapper(*args, **kwargs):
+        calls.append(None)
+        if len(calls) == 1:
+            raise error
+        return method(*args, **kwargs)
+
+    return wrapper
+
+
+@pytest.mark.parametrize("failure", [dj.errors.LostConnectionError("rollback failed"), KeyboardInterrupt()])
+def test_failed_rollback_closes_connection_and_resets_transaction(tables, failure):
+    """
+    If the rollback fails or is itself interrupted, the connection is closed and no
+    longer counts as being in a transaction: the next query reconnects and runs.
+    """
+    Subject, Session = tables
+    conn = Subject.connection
+    with (
+        mock.patch.object(conn, "cancel_transaction", _fail_once(conn.cancel_transaction, failure)),
+        mock.patch("builtins.input", side_effect=KeyboardInterrupt),
+    ):
+        with pytest.raises(KeyboardInterrupt):
+            (Subject & {"subject_id": 1}).delete(prompt=True)
+    assert not conn._in_transaction
+    # Query before reading conn.in_transaction, which would reset a stale flag itself.
+    # The server discarded the transaction when the connection closed.
+    assert sorted(Subject.to_arrays("subject_id")) == [1, 2, 3]
+    _assert_rolled_back_and_usable(Subject, Session)
+
+
+def test_interrupted_commit_closes_connection_and_resets_transaction(tables):
+    """Ctrl-C during the commit closes the connection and leaves it outside any transaction."""
+    Subject, Session = tables
+    conn = Subject.connection
+    with (
+        mock.patch.object(conn, "commit_transaction", side_effect=KeyboardInterrupt),
+        mock.patch("builtins.input", return_value="yes"),
+    ):
+        with pytest.raises(KeyboardInterrupt):
+            (Subject & {"subject_id": 1}).delete(prompt=True)
+    assert not conn._in_transaction
+    # COMMIT was not sent, so the server discarded the deletes when the connection closed
+    assert sorted(Subject.to_arrays("subject_id")) == [1, 2, 3]
     _assert_rolled_back_and_usable(Subject, Session)

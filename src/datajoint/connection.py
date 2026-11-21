@@ -484,8 +484,12 @@ class Connection:
         if reconnect is None:
             reconnect = self._config["database.reconnect"]
         logger.debug("Executing SQL:" + query[:query_log_max_length])
-        cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
         try:
+            if self._is_closed:
+                # Closed by close(), or found dead by is_connected. The PostgreSQL
+                # client refuses even to open a cursor on a closed connection.
+                raise errors.LostConnectionError("The connection is closed.")
+            cursor = self.adapter.get_cursor(self._conn, as_dict=as_dict)
             self._execute_query(cursor, query, args, suppress_warnings)
         except errors.LostConnectionError:
             if not reconnect:

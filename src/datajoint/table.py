@@ -1243,7 +1243,17 @@ class Table(QueryExpression):
                 raise
             if confirmed:
                 if transaction:
-                    conn.commit_transaction()
+                    try:
+                        conn.commit_transaction()
+                    except BaseException as error:
+                        # Ctrl-C or an error during COMMIT: the server may or may not
+                        # have committed, and the connection may be out of step with it
+                        logger.warning(
+                            f"Committing the deletes failed or was interrupted ({error!r}); "
+                            "the server may or may not have committed them. Closing the connection."
+                        )
+                        _discard_transaction(conn)
+                        raise
                 if prompt:
                     logger.info("Delete committed.")
             else:
@@ -1687,15 +1697,33 @@ def _cancel_interrupted_transaction(conn):
     """
     Roll back the transaction that ``delete()`` opened, after an interruption.
 
-    If the rollback itself fails, as it can when Ctrl-C stopped a query
-    partway, the connection is closed instead: the server then discards the
+    If the rollback fails, as it can when Ctrl-C stopped a query partway, or is
+    itself interrupted, the connection is closed instead: the server then
+    discards the transaction. Either way the connection is left outside any
     transaction, and the original interruption is what the caller sees.
     """
     try:
         conn.cancel_transaction()
-    except Exception as error:
-        logger.warning(f"Could not roll back the delete transaction ({error}); closing the connection.")
+    except BaseException as error:
+        logger.warning(f"Could not roll back the delete transaction ({error!r}); closing the connection.")
+        _discard_transaction(conn)
+
+
+def _discard_transaction(conn):
+    """
+    Close ``conn`` so that the server ends its open transaction, and mark the
+    connection as outside any transaction.
+
+    Without the reset, the next query would reconnect and then fail with
+    "Connection was lost during a transaction".
+    """
+    try:
         conn.close()
+    except Exception as error:
+        # Already closed or broken: the server ends the transaction either way
+        logger.debug(f"Closing the connection failed ({error!r}).")
+    finally:
+        conn._in_transaction = False
 
 
 def _one_line(text):
