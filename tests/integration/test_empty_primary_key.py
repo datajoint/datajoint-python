@@ -145,6 +145,26 @@ def test_len_of_table_without_primary_key(keyless):
     assert len(keyless.proj(m="msg")) == 3
 
 
+def test_len_of_projection_without_attributes(keyless):
+    """A table without a primary key projected onto no attributes keeps one (empty) row per row."""
+    projected = keyless.proj()
+    assert projected.heading.names == []
+    assert len(projected) == 3
+    assert len((keyless & "msg = 'a'").proj()) == 2
+    assert len((keyless - {"msg": "a"}).proj()) == 1
+    if keyless.connection.adapter.backend == "postgresql":
+        assert len(projected.to_dicts()) == 3  # MySQL cannot select no columns
+
+
+def test_len_of_deduplicated_expression_with_attributes(File):
+    """``dj.U() & table`` with a computed attribute has a single row."""
+    File.insert(FILES)
+    one = (dj.U() & File).proj(one="1")
+    assert one.primary_key == []
+    assert len(one) == 1
+    assert len(one) == len(one.to_dicts())
+
+
 def test_len_of_universal_restriction_of_table_without_primary_key(keyless):
     """``dj.U(...) & table`` deduplicates the rows of a table without a primary key."""
     assert len(dj.U() & keyless) == 1

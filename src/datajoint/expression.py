@@ -1182,11 +1182,16 @@ class QueryExpression:
         result = self.make_subquery() if self._top else copy.copy(self)
         adapter = result.connection.adapter
         if not result.primary_key:
+            if not result._distinct:
+                # No primary key, e.g. a table created outside DataJoint: its rows need not
+                # be unique, so count every row rather than distinct keys. A projection onto
+                # no attributes (``table.proj()``) returns one empty row per row as well.
+                query = f"SELECT count(*) FROM {result.from_clause()}{result.where_clause()}"
+                return result.connection.query(query).fetchone()[0]
             if not result.heading.names:
-                # No attributes at all (e.g. ``dj.U() & table``): at most one row
+                # Deduplicated, with no attributes at all (``dj.U() & table``): at most one row
                 return int(bool(result))
-            # No primary key, e.g. a table created outside DataJoint: its rows need not
-            # be unique, so count every row the query returns rather than distinct keys
+            # Deduplicated, with attributes (``(dj.U() & table).proj(one="1")``): count its rows
             alias = adapter.quote_identifier(f"${next(self._subquery_alias_count):x}")
             return result.connection.query(f"SELECT count(*) FROM ({result.make_sql()}) {alias}").fetchone()[0]
         has_left_join = any(is_left for is_left, _ in result._joins)
