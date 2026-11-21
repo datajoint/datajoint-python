@@ -29,7 +29,7 @@ on:
       - ".github/scripts/minimum_requirements.py"
       - ".github/workflows/test.yaml"
 
-  # The release workflow runs this as its gate.
+  # The CD workflow (cd.yml) runs this as the gate of a release.
   workflow_call:
 
 jobs:

@@ -22,17 +22,13 @@ GitHub release mirrors them. There is no changelog file.
    gh pr list --state merged --base master --search "merged:>YYYY-MM-DD" --json number,title
    ```
 
-2. **Write the notes.** The first line is one sentence that says what the release is about.
-   Then, after a blank line, the changes grouped by area (queries, diagrams, jobs, storage, the
-   backends, packaging, ...), each naming its pull request. Put anything users must act on
-   first.
+2. **Write the notes in a file outside the clone**, such as `~/release-notes/vX.Y.Z.md`, so
+   no notes file is left in the working tree to be committed by accident. The first line is
+   one sentence that says what the release is about. Then, after a blank line, the changes
+   grouped by area (queries, diagrams, jobs, storage, the backends, packaging, ...), each
+   naming its pull request. Put anything users must act on first. For example:
 
-3. **Tag the release commit on `master` with the notes as its message, and push the tag.**
-   The notes go to `git tag` on standard input, so no notes file is left in the working tree
-   to be committed by accident:
-
-   ```bash
-   git tag -a vX.Y.Z --cleanup=verbatim -F - <<'EOF'
+   ```markdown
    Deletes remove only the rows they reach, and jobs record when they finished.
 
    ## Deletes
@@ -40,38 +36,46 @@ GitHub release mirrors them. There is no changelog file.
 
    ## Jobs
    - `completed_time` is recorded to the millisecond (#1235)
-   EOF
+   ```
+
+3. **Tag the release commit on `master` with the notes as its message, and push the tag:**
+
+   ```bash
+   git fetch origin
+   git tag -a vX.Y.Z <commit on origin/master> --cleanup=verbatim -F ~/release-notes/vX.Y.Z.md
    git tag -n99 vX.Y.Z  # check the message
    git push origin vX.Y.Z
    ```
 
    `--cleanup=verbatim` keeps lines that start with `#`, such as Markdown headings, which git
-   would otherwise drop as comments. The quoted `'EOF'` keeps the shell from expanding the
-   backticks and `$` in the notes. Do not use `-e` (the editor) with `--cleanup=verbatim`: the
-   editor's own `#` instructions would stay in the message.
+   would otherwise drop as comments. Do not use `-e` (the editor) with `--cleanup=verbatim`:
+   the editor's own `#` instructions would stay in the message.
 
    Create the tag with git, not from the Releases page on GitHub: "Create new tag on publish"
-   makes a lightweight tag, which the Release workflow refuses, so nothing is published.
+   makes a lightweight tag, which the CD workflow refuses, so nothing is published.
 
-4. **The [Release workflow](.github/workflows/release.yaml) does the rest:**
-   - checks that the tag is annotated and on `master`;
+4. **The [CD workflow](.github/workflows/cd.yml) runs on the tag:**
+   - checks that the tag is annotated, on `master`, and still on the commit the run builds;
    - runs the lint and test workflows;
-   - builds the package at the tag;
-   - publishes it to PyPI;
-   - creates the GitHub release, with the tag's message as its notes and the wheel and sdist
-     attached;
+   - builds the sdist and wheel at the tag and checks that their version is the tag's;
+   - waits for a maintainer to approve the `pypi` deployment.
+
+5. **Approve the `pypi` deployment** on the workflow run's page (Review deployments). The
+   workflow then:
+   - publishes the package to PyPI through trusted publishing (no API token is stored in the
+     repository);
+   - creates the GitHub release "DataJoint Library X.Y.Z", with the tag's message as its notes
+     and the wheel and sdist attached;
    - posts to Slack.
 
-If a step fails after the tag is pushed, fix the cause and run the workflow again from the tag:
-Actions -> Release -> Run workflow -> "Use workflow from" the tag, with **testpypi** unchecked.
-Re-runs are safe: the upload skips files already on PyPI, and an existing GitHub release is
-updated rather than created again. To publish a tag to TestPyPI only, run it the same way with
-**testpypi** checked.
+If a job fails after the tag is pushed, fix the cause and re-run the failed jobs from the
+workflow run's page. Re-running the release job is safe: an existing GitHub release is updated
+rather than created again.
 
-Never move or delete a tag the Release workflow has published: the version on PyPI and the
-GitHub release are tied to it. The one exception is a tag the workflow refused before
-publishing anything (a lightweight tag, for instance): replace it with an annotated tag on
-the same commit, as the workflow's error message shows, and push it again.
+Never move or delete a tag the CD workflow has published: the version on PyPI and the GitHub
+release are tied to it. The one exception is a tag the workflow refused before publishing
+anything (a lightweight tag, for instance): replace it with an annotated tag on the same
+commit, as the workflow's error message shows, and push it again.
 
 Pull request titles still state the user-visible change, since they are what the notes are
 written from. Labels are not used for release notes.
@@ -91,7 +95,7 @@ re-exports the build-generated `_version.py`.
 Every earlier release that has notes was re-tagged as an annotated tag on the same commit,
 with those notes as its message: from the former changelog for 0.3.2 through 0.14.3, and from
 the GitHub release for later versions. Such a message ends with a `Retroactive:` line, and the
-Release workflow never publishes a tag that has one. A few early versions had no notes
+CD workflow never publishes a tag that has one. A few early versions had no notes
 anywhere; their tags stay as they were.
 
 ---
