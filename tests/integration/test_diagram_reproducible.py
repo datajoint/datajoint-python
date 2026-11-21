@@ -152,19 +152,12 @@ def schema_name_by_backend(connection_by_backend, db_creds_by_backend):
     backend = db_creds_by_backend["backend"]
     test_id = str(int(time.time() * 1000))[-8:]
     schema_name = f"djtest_repro_{backend}_{test_id}"[:64]
-    quoted = connection_by_backend.adapter.quote_identifier(schema_name)
-    if connection_by_backend.is_connected:
-        try:
-            connection_by_backend.query(f"DROP DATABASE IF EXISTS {quoted}")
-        except Exception:
-            pass
+    # DROP DATABASE on MySQL, DROP SCHEMA ... CASCADE on PostgreSQL
+    drop_sql = connection_by_backend.adapter.drop_schema_sql(schema_name)
+    connection_by_backend.query(drop_sql)
     dj.Schema(schema_name, connection=connection_by_backend)
     yield schema_name
-    if connection_by_backend.is_connected:
-        try:
-            connection_by_backend.query(f"DROP DATABASE IF EXISTS {quoted}")
-        except Exception:
-            pass
+    connection_by_backend.query(drop_sql)
 
 
 def _render(seed, cfg, tmp_path):
