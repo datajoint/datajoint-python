@@ -174,7 +174,8 @@ class _Schema:
             self.connection = _get_singleton_connection()
         if self.connection._config.get("database.database_prefix"):
             warnings.warn(
-                "database_prefix is deprecated and will be removed in DataJoint 2.3. "
+                "database.database_prefix is deprecated and will be removed in a future release. "
+                "It is not applied to schema names. "
                 "Use database.name to select a PostgreSQL database instead.",
                 DeprecationWarning,
                 stacklevel=2,
