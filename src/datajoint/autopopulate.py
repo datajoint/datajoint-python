@@ -181,7 +181,8 @@ class AutoPopulate:
             DataJointError
                 If the job table exists with a primary key other than the one
                 this table's job table is declared with, as when it was left by
-                an earlier table of the same name.
+                an earlier table of the same name or is shared with a table whose
+                name differs only in its leading underscores.
             """
             if obj is None:
                 # Accessed on class - instantiate first
@@ -197,11 +198,23 @@ class AutoPopulate:
                     # so populate(reserve_jobs=True) would skip work without an error
                     expected = [name for name, _ in jobs._pk_attrs]
                     if set(jobs.primary_key) != set(expected):
+                        from .table import _jobs_table_namesake
+
+                        mismatch = (
+                            f"Jobs table {jobs.full_table_name} has primary key {jobs.primary_key}, "
+                            f"but the jobs table of {obj.full_table_name} needs {expected}"
+                        )
+                        namesake = _jobs_table_namesake(obj)
+                        if namesake is not None:
+                            # Dropping it would discard the other table's job records
+                            raise DataJointError(
+                                f"{mismatch}: {obj.full_table_name} and {namesake.full_table_name} "
+                                f"share this jobs table, and their primary keys differ. Rename one of "
+                                f"the two tables to give it a jobs table of its own."
+                            )
                         class_name = type(obj).__name__
                         raise DataJointError(
-                            f"Jobs table {jobs.full_table_name} has primary key {jobs.primary_key}, "
-                            f"but the jobs table of {obj.full_table_name} needs {expected}: "
-                            f"it was left by an earlier table of the same name. Remove it with "
+                            f"{mismatch}: it was left by an earlier table of the same name. Remove it with "
                             f"dj.FreeTable({class_name}.connection, {jobs.full_table_name!r}).drop_quick(); "
                             f"the next access to {class_name}.jobs declares a new one."
                         )

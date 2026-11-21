@@ -173,6 +173,18 @@ class Table(QueryExpression):
         # Call declaration hook for validation (subclasses like AutoPopulate can override)
         self._declare_check(primary_key, fk_attribute_map)
 
+        # A jobs table is declared only for an existing table, so one found under the
+        # name of a table not yet declared was left by an earlier table of that name
+        # (by a plain DROP TABLE, or by drop() in earlier releases). The new
+        # table would inherit its records and skip their keys in populate().
+        leftover_jobs = _own_jobs_table(self)
+        if leftover_jobs is not None and not self.is_declared:
+            logger.warning(
+                f"Dropping jobs table {leftover_jobs.full_table_name}, left by an earlier table "
+                f"{self.full_table_name}, before declaring the new one."
+            )
+            leftover_jobs.drop_quick()
+
         sql = _substitute_database(sql, self.database)
         try:
             # Execute pre-DDL statements (e.g., CREATE TYPE for PostgreSQL enums)
@@ -1246,7 +1258,9 @@ class Table(QueryExpression):
         """
         Drops the table without cascading to dependent tables and without user prompt.
 
-        An auto-populated table's jobs table (``~~table_name``) is dropped with it.
+        An auto-populated table's jobs table (``~~table_name``) is dropped with it,
+        unless another table in the schema shares that jobs table: an Imported
+        ``_name`` and a Computed ``__name`` both map to ``~~name``.
         """
         if self.is_declared:
             # Clean up lineage entries for this table
@@ -1286,16 +1300,10 @@ class Table(QueryExpression):
                         pass  # Ignore errors - enum cleanup is best-effort
 
             # Drop the jobs table of an auto-populated table, else a table later
-            # declared under the same name inherits it. drop() reaches each table
-            # as a FreeTable, so the tier is read from the name, as Schema.jobs does;
-            # a Manual `result` and a Computed `__result` map to the same `~~result`.
-            from .user_tables import Computed, Imported, _get_tier
-
-            if _get_tier(self.full_table_name) in (Computed, Imported):
-                jobs_table_name = "~~" + self.table_name.lstrip("_")
-                jobs = FreeTable(self.connection, self.adapter.make_full_table_name(self.database, jobs_table_name))
-                if jobs.is_declared:
-                    jobs.drop_quick()
+            # declared under the same name inherits it
+            jobs = _own_jobs_table(self)
+            if jobs is not None:
+                jobs.drop_quick()
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
@@ -1683,6 +1691,71 @@ class Table(QueryExpression):
             row_to_insert["placeholders"] = list(row_to_insert["placeholders"][i] for i in order)
             row_to_insert["values"] = list(row_to_insert["values"][i] for i in order)
         return row_to_insert
+
+
+def _own_jobs_table(table):
+    """
+    Return the jobs table of ``table`` as a FreeTable, if it exists and is not shared.
+
+    Only a Computed or Imported table has a jobs table: ``~~`` followed by its
+    table name without leading underscores. The tier is read from the table name,
+    as ``Schema.jobs`` does, because ``drop()`` reaches each table as a FreeTable.
+    A Manual ``result`` and a Computed ``__result`` map to the same ``~~result``,
+    which belongs to the Computed table.
+
+    An Imported ``_result`` and a Computed ``__result`` share ``~~result``, and its
+    rows do not record which table they belong to. While the other table is
+    declared, the jobs table is not this table's to drop: this returns None.
+
+    Parameters
+    ----------
+    table : Table
+        Any table, declared or not.
+
+    Returns
+    -------
+    FreeTable or None
+        The jobs table, or None if ``table`` is not auto-populated, the jobs table
+        is not declared, or another table shares it.
+    """
+    from .user_tables import Computed, Imported, _get_tier
+
+    if _get_tier(table.full_table_name) not in (Computed, Imported):
+        return None
+    base_name = table.table_name.lstrip("_")
+    jobs = FreeTable(table.connection, table.adapter.make_full_table_name(table.database, "~~" + base_name))
+    if not jobs.is_declared:
+        return None
+    namesake = _jobs_table_namesake(table)
+    if namesake is not None:
+        logger.warning(
+            f"Jobs table {jobs.full_table_name} is shared by {table.full_table_name} and "
+            f"{namesake.full_table_name}, so it is kept. Its rows do not record which table they belong to."
+        )
+        return None
+    return jobs
+
+
+def _jobs_table_namesake(table):
+    """
+    Return the declared table whose jobs table has the same name as that of ``table``.
+
+    An Imported ``_result`` and a Computed ``__result`` both map to ``~~result``.
+
+    Parameters
+    ----------
+    table : Table
+        A Computed or Imported table.
+
+    Returns
+    -------
+    FreeTable or None
+        ``__result`` for ``_result`` and ``_result`` for ``__result``, if declared.
+    """
+    base_name = table.table_name.lstrip("_")
+    namesake_name = ("_" if table.table_name.startswith("__") else "__") + base_name
+    namesake = FreeTable(table.connection, table.adapter.make_full_table_name(table.database, namesake_name))
+    return namesake if namesake.is_declared else None
 
 
 def _one_line(text):

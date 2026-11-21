@@ -63,3 +63,10 @@ def test_missing_jobs_table_is_skipped(adapter):
     """A Computed table whose jobs table was never declared drops only itself."""
     dropped = _dropped(adapter, "__result", declared={"__result"})
     assert dropped == [f"DROP TABLE {adapter.make_full_table_name('s', '__result')}"]
+
+
+@pytest.mark.parametrize("table_name, namesake", [("_result", "__result"), ("__result", "_result")])
+def test_shared_jobs_table_is_kept(adapter, table_name, namesake):
+    """An Imported `_result` and a Computed `__result` share `~~result`: dropping one keeps it."""
+    dropped = _dropped(adapter, table_name, declared={table_name, namesake, "~~result"})
+    assert dropped == [f"DROP TABLE {adapter.make_full_table_name('s', table_name)}"]

@@ -1,11 +1,13 @@
 """
-Tests that dropping an auto-populated table drops its jobs table, and that
-``jobs`` rejects a jobs table left by an earlier table of the same name (#1601).
+Tests that dropping an auto-populated table drops its jobs table, that declaring
+a table drops a jobs table left by an earlier table of the same name, and that
+``jobs`` rejects a leftover jobs table keyed differently (#1601).
 """
 
 import logging
 import re
 import time
+from unittest import mock
 
 import pytest
 
@@ -275,17 +277,20 @@ def test_jobs_rejects_stale_jobs_table(schema_by_backend):
     # Earlier releases dropped the table and left its jobs table; drop it the same way
     schema.connection.query(f"DROP TABLE {Result.full_table_name}")
 
-    @schema
-    class Result(dj.Computed):  # same name, primary key now includes Param
-        definition = """
-        -> Item
-        -> Param
-        ---
-        value : int32
-        """
+    # ...and declared the new table without removing the leftover jobs table
+    with mock.patch("datajoint.table._own_jobs_table", return_value=None):
 
-        def make(self, key):
-            self.insert1(dict(key, value=1))
+        @schema
+        class Result(dj.Computed):  # same name, primary key now includes Param
+            definition = """
+            -> Item
+            -> Param
+            ---
+            value : int32
+            """
+
+            def make(self, key):
+                self.insert1(dict(key, value=1))
 
     result = Result()
     with pytest.raises(DataJointError, match="left by an earlier table of the same name") as excinfo:
@@ -330,3 +335,155 @@ def test_jobs_accepts_table_with_native_key_attribute(schema_by_backend, caplog)
         assert Result.jobs.primary_key == ["item"]
     warnings = [r for r in caplog.records if "Ignoring non-FK primary key attribute 'index'" in r.getMessage()]
     assert len(warnings) == 1
+
+
+@pytest.mark.parametrize("wider_key", [False, True])
+def test_declare_drops_leftover_jobs_table(schema_by_backend, caplog, wider_key):
+    """
+    Declaring a table drops a jobs table left under its name by an earlier table,
+    whether or not the primary keys match, so populate computes every key.
+    """
+    schema = schema_by_backend
+
+    @schema
+    class Item(dj.Manual):
+        definition = """
+        item : int32
+        """
+
+    @schema
+    class Param(dj.Lookup):
+        definition = """
+        param : int32
+        """
+        contents = [{"param": 1}]
+
+    @schema
+    class Result(dj.Computed):
+        definition = """
+        -> Item
+        ---
+        value : int32
+        """
+
+        def make(self, key):
+            raise RuntimeError("not ready")
+
+    Item.insert({"item": i} for i in range(3))
+    Result.populate(reserve_jobs=True, suppress_errors=True)
+    assert len(Result.jobs.errors) == 3
+    # Earlier releases dropped the table and left its jobs table; drop it the same way
+    schema.connection.query(f"DROP TABLE {Result.full_table_name}")
+    assert "~~result" in _table_names(schema)
+
+    with caplog.at_level(logging.WARNING, logger="datajoint"):
+
+        @schema
+        class Result(dj.Computed):  # same name, same primary key or one that includes Param
+            definition = f"""
+            -> Item
+            {"-> Param" if wider_key else ""}
+            ---
+            value : int32
+            """
+
+            def make(self, key):
+                self.insert1(dict(key, value=1))
+
+    assert "~~result" not in _table_names(schema)
+    assert any("left by an earlier table" in r.getMessage() for r in caplog.records)
+    # The three error records would have kept every key from being computed
+    Result.populate(reserve_jobs=True)
+    assert len(Result()) == 3
+
+
+def _namesakes(schema, computed_wider_key=False):
+    """An Imported `_result` and a Computed `__result`, which map to the same jobs table `~~result`."""
+
+    @schema
+    class Item(dj.Manual):
+        definition = """
+        item : int32
+        """
+
+    @schema
+    class Param(dj.Lookup):
+        definition = """
+        param : int32
+        """
+        contents = [{"param": 1}]
+
+    @schema
+    class Result(dj.Computed):
+        definition = f"""
+        -> Item
+        {"-> Param" if computed_wider_key else ""}
+        ---
+        value : int32
+        """
+
+        def make(self, key):
+            raise RuntimeError("not ready")
+
+    computed = Result
+    Item.insert({"item": i} for i in range(3))
+    computed.populate(reserve_jobs=True, suppress_errors=True)
+    assert len(computed.jobs.errors) == 3
+
+    @schema
+    class Result(dj.Imported):
+        definition = """
+        -> Item
+        ---
+        value : int32
+        """
+
+        def make(self, key):
+            self.insert1(dict(key, value=1))
+
+    return Item, computed, Result
+
+
+@pytest.mark.parametrize("first", ["imported", "computed"])
+def test_drop_keeps_jobs_table_shared_with_namesake(schema_by_backend, caplog, first):
+    """
+    Dropping either of an Imported `_result` and a Computed `__result` keeps their
+    shared jobs table and its records; dropping the other then drops it.
+    """
+    schema = schema_by_backend
+    _, computed, imported = _namesakes(schema)
+    # Declaring the Imported table kept the jobs table of the Computed one
+    assert {"_result", "__result", "~~result"} <= _table_names(schema)
+    jobs = dj.FreeTable(schema.connection, computed.jobs.full_table_name)
+    assert sorted(jobs.to_arrays("status")) == ["error"] * 3
+
+    dropped_first, dropped_second = (imported, computed) if first == "imported" else (computed, imported)
+    with caplog.at_level(logging.WARNING, logger="datajoint"):
+        dropped_first.drop(prompt=False)
+    assert dropped_first.table_name not in _table_names(schema)
+    assert "~~result" in _table_names(schema)
+    assert sorted(jobs.to_arrays("status")) == ["error"] * 3
+    assert any("is shared by" in r.getMessage() for r in caplog.records)
+
+    dropped_second.drop(prompt=False)
+    assert not {"_result", "__result", "~~result"} & _table_names(schema)
+
+
+def test_cascading_drop_of_both_namesakes_drops_shared_jobs_table(schema_by_backend):
+    """A drop that removes both namesakes removes their shared jobs table."""
+    schema = schema_by_backend
+    item, _, _ = _namesakes(schema)
+    item.drop(prompt=False)
+    assert not {"_result", "__result", "~~result"} & _table_names(schema)
+
+
+def test_jobs_rejects_jobs_table_shared_with_namesake_of_other_key(schema_by_backend):
+    """jobs raises on a jobs table shared with a namesake keyed differently, and suggests no drop."""
+    schema = schema_by_backend
+    _, computed, imported = _namesakes(schema, computed_wider_key=True)
+    assert computed.jobs.primary_key == ["item", "param"]
+    with pytest.raises(DataJointError, match="share this jobs table") as excinfo:
+        imported().jobs
+    assert "drop_quick" not in str(excinfo.value)
+    jobs = dj.FreeTable(schema.connection, computed.jobs.full_table_name)
+    assert sorted(jobs.to_arrays("status")) == ["error"] * 3
