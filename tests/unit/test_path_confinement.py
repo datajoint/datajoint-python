@@ -429,7 +429,10 @@ class TestObjectConfinement:
         assert (dest / "obj" / "a.txt").read_bytes() == b"a"
         assert (dest / "obj" / "sub" / "b.txt").read_bytes() == b"b"
 
-    NAMES_WITH_GLOB_CHARACTERS = ["[ab].txt", "a.txt", "b.txt", "star*.txt", "what?.txt", "starX.txt"]
+    # Windows file names cannot contain '*' or '?'
+    NAMES_WITH_GLOB_CHARACTERS = ["[ab].txt", "a.txt", "b.txt"] + (
+        [] if sys.platform == "win32" else ["star*.txt", "what?.txt", "starX.txt"]
+    )
 
     def _glob_folder(self, memory_backend):
         memory_backend.fs.pipe({f"/dj-test-bucket/loc/obj/{n}": n.encode() for n in self.NAMES_WITH_GLOB_CHARACTERS})
