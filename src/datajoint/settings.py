@@ -956,11 +956,17 @@ class Config(BaseSettings):
         with open(filepath) as f:
             text = f.read()
 
-        self._load_text(text, filepath)
+        self._load_text(text, filepath, log_level=logging.INFO)
 
-    def _load_text(self, text: str, filepath: Path) -> None:
-        """Apply the JSON settings in ``text``, read from ``filepath``."""
-        logger.info(f"Loading configuration from {filepath.absolute()}")
+    def _load_text(self, text: str, filepath: Path, log_level: int = logging.DEBUG) -> None:
+        """
+        Apply the JSON settings in ``text``, read from ``filepath``.
+
+        The file's path is logged at ``log_level``: ``INFO`` for an explicit
+        ``load()``, ``DEBUG`` for the file found at import, so that
+        ``import datajoint`` prints nothing at the default level.
+        """
+        logger.log(log_level, f"Loading configuration from {filepath.absolute()}")
         self._update_from_flat_dict(json.loads(text))
         self._config_path = filepath
 

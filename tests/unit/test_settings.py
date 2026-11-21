@@ -1,12 +1,12 @@
 """Tests for DataJoint settings module."""
 
-import logging
 import os
 import signal
 import stat
 import subprocess
 import sys
 import warnings
+from logging import DEBUG, ERROR, WARNING
 from pathlib import Path
 
 import pytest
@@ -1220,7 +1220,7 @@ class TestLogLevel:
         monkeypatch.setenv("DJ_LOG_LEVEL", value)
         cfg = settings.Config()
         assert cfg.loglevel == "ERROR"
-        assert settings.logger.level == logging.ERROR
+        assert settings.logger.level == ERROR
 
     def test_assignment_in_any_case(self):
         cfg = settings.Config()
@@ -1235,19 +1235,20 @@ class TestLogLevel:
             cfg.loglevel = "verbose"
 
 
-def _import_datajoint(cwd, **env):
-    """Import datajoint in a new process run in ``cwd``; return its stdout and stderr."""
+def _import_datajoint(cwd, code="import datajoint", **env):
+    """Run ``code`` (by default, import datajoint) in a new process in ``cwd``; return the completed process."""
     src = Path(dj.__file__).resolve().parents[1]
     environ = {k: v for k, v in os.environ.items() if not k.startswith("DJ_")}
     environ.update(PYTHONPATH=str(src), DJ_LOG_STREAM="stdout", **env)
-    result = subprocess.run(
-        [sys.executable, "-c", "import datajoint"], cwd=cwd, env=environ, capture_output=True, text=True, timeout=120
-    )
+    result = subprocess.run([sys.executable, "-c", code], cwd=cwd, env=environ, capture_output=True, text=True, timeout=120)
     return result
 
 
+_PRINT_LEVEL = "import datajoint; print(datajoint.logger.getEffectiveLevel())"
+
+
 class TestImportTimeLogging:
-    """Records emitted while the settings load at import time reach the datajoint handler."""
+    """Settings loaded at import: their records reach the datajoint handler, and their log level applies."""
 
     @pytest.fixture
     def project(self, tmp_path):
@@ -1259,10 +1260,38 @@ class TestImportTimeLogging:
         result = _import_datajoint(project, DJ_LOG_LEVEL="error")
         assert result.returncode == 0, result.stderr
 
-    def test_config_file_loaded_at_import_is_logged(self, project):
-        result = _import_datajoint(project, DJ_LOG_LEVEL="info")
+    def test_import_is_quiet_at_default_level(self, project):
+        """Loading the config file found at import prints nothing at the default INFO level."""
+        result = _import_datajoint(project)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == ""
+
+    def test_config_file_loaded_at_import_is_logged_at_debug(self, project):
+        result = _import_datajoint(project, DJ_LOG_LEVEL="debug")
         assert result.returncode == 0, result.stderr
         assert f"Loading configuration from {project / CONFIG_FILENAME}" in result.stdout
+
+    @pytest.mark.parametrize("name, level", [("WARNING", WARNING), ("debug", DEBUG)])
+    def test_log_level_from_config_file_applies_at_import(self, project, name, level):
+        """A loglevel set in datajoint.json is the logger's level after import (it used to be reset to INFO)."""
+        (project / CONFIG_FILENAME).write_text(f'{{"loglevel": "{name}"}}')
+        result = _import_datajoint(project, code=_PRINT_LEVEL)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines()[-1] == str(level)
+
+    def test_env_var_log_level_beats_config_file_at_import(self, project):
+        (project / CONFIG_FILENAME).write_text('{"loglevel": "DEBUG"}')
+        result = _import_datajoint(project, code=_PRINT_LEVEL, DJ_LOG_LEVEL="error")
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines()[-1] == str(ERROR)
+
+    def test_explicit_load_is_logged_at_info(self, tmp_path, caplog):
+        path = tmp_path / CONFIG_FILENAME
+        path.write_text('{"safemode": true}')
+        cfg = settings.Config()
+        with caplog.at_level("INFO", logger="datajoint"):
+            cfg.load(path)
+        assert any(r.levelname == "INFO" and f"Loading configuration from {path}" in r.message for r in caplog.records)
 
 
 @pytest.mark.skipif(not hasattr(os, "getuid"), reason="requires POSIX file ownership")
