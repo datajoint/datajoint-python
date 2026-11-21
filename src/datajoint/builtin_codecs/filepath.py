@@ -125,9 +125,11 @@ class FilepathCodec(Codec):
 
         path = str(value)
 
-        # Get store spec to check prefix configuration
-        # Use filepath_default if no store specified (filepath is not part of OAS)
-        spec = config.get_store_spec(store_name, use_filepath_default=True)
+        # Resolve the store once: with no store named, <filepath@> uses
+        # stores.filepath_default (filepath is not part of OAS). The checks
+        # below and the recorded row must all use this store.
+        store_name = config.resolve_store_name(store_name, use_filepath_default=True)
+        spec = config.get_store_spec(store_name)
 
         # Reject paths outside the store before any prefix checks. An absolute
         # path inside a file store's location is recorded relative to it.
@@ -169,7 +171,7 @@ class FilepathCodec(Codec):
 
         # Verify file exists
         if not backend.exists(path):
-            raise FileNotFoundError(f"File not found in store '{store_name or 'default'}': {path}")
+            raise FileNotFoundError(f"File not found in store '{store_name}': {path}")
 
         # Detect whether the path is a directory or a file
         is_dir = backend.isdir(path)
@@ -184,7 +186,7 @@ class FilepathCodec(Codec):
 
         return {
             "path": path,
-            "store": config.resolve_store_name(store_name, use_filepath_default=True),
+            "store": store_name,
             "size": size,
             "is_dir": is_dir,
             "timestamp": datetime.now(timezone.utc).isoformat(),

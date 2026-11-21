@@ -10,14 +10,10 @@ import logging
 import sys
 
 
-def test_import_does_not_replace_excepthook():
+def test_import_does_not_replace_excepthook(fresh_datajoint_import):
     """Importing datajoint must leave sys.excepthook untouched (#1516)."""
     original = sys.excepthook
     try:
-        modules_to_remove = [key for key in sys.modules if key.startswith("datajoint")]
-        for mod in modules_to_remove:
-            del sys.modules[mod]
-
         import datajoint  # noqa: F401
 
         assert sys.excepthook is original, "importing datajoint replaced sys.excepthook"

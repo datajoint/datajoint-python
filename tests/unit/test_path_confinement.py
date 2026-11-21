@@ -255,6 +255,77 @@ class TestFilepathConfinement:
         with pytest.raises(DataJointError, match="outside the store location"):
             ref.download(root / "dl")
 
+    def test_encode_without_store_uses_filepath_default(self, cfg, layout, tmp_path):
+        """With no store named, every check runs against stores.filepath_default, the store the row records."""
+        _, store, _ = layout
+        raw = tmp_path / "raw"
+        (raw / "session").mkdir(parents=True)
+        (raw / "session" / "only-in-raw.txt").write_text("raw")
+        (store / "only-in-default.txt").write_text("default")
+        cfg.stores["raw"] = {"protocol": "file", "location": str(raw)}
+        cfg.stores["filepath_default"] = "raw"
+        codec = FilepathCodec()
+        for store_name in (None, ""):
+            meta = codec.encode("session/only-in-raw.txt", store_name=store_name, context={"config": cfg})
+            assert meta["store"] == "raw"
+            assert meta["path"] == "session/only-in-raw.txt"
+            assert codec.decode(meta, context={"config": cfg}).read() == b"raw"
+        with pytest.raises(FileNotFoundError, match="store 'raw'"):
+            codec.encode("only-in-default.txt", context={"config": cfg})
+
+    @posix_only
+    def test_encode_without_store_confines_to_filepath_default(self, cfg, layout, tmp_path):
+        """An absolute path is checked against, and recorded relative to, the filepath_default store."""
+        _, store, _ = layout
+        raw = tmp_path / "raw"
+        raw.mkdir()
+        (raw / "a.txt").write_text("a")
+        cfg.stores["raw"] = {"protocol": "file", "location": str(raw)}
+        cfg.stores["filepath_default"] = "raw"
+        meta = FilepathCodec().encode(str(raw / "a.txt"), context={"config": cfg})
+        assert (meta["store"], meta["path"]) == ("raw", "a.txt")
+        with pytest.raises(DataJointError, match="outside the store location"):
+            FilepathCodec().encode(str(store / "data" / "inside.txt"), context={"config": cfg})
+
+    @posix_only
+    def test_store_location_through_symbolic_link(self, layout, tmp_path):
+        """A location that is a symbolic link works; paths are compared as written, without resolving links."""
+        root, store, _ = layout
+        link = tmp_path / "store-link"
+        link.symlink_to(store, target_is_directory=True)
+        config = Config()
+        config.stores["linked"] = {"protocol": "file", "location": str(link)}
+        codec = FilepathCodec()
+        meta = codec.encode("data/inside.txt", store_name="linked", context={"config": config})
+        assert codec.decode(meta, context={"config": config}).read() == b"inside"
+        meta = codec.encode(str(link / "data" / "inside.txt"), store_name="linked", context={"config": config})
+        assert meta["path"] == "data/inside.txt"
+        # The same file named through the link's target is not under the location as written
+        with pytest.raises(DataJointError, match="outside the store location"):
+            codec.encode(str(store / "data" / "inside.txt"), store_name="linked", context={"config": config})
+        for path in _outside_paths(root, store):
+            with pytest.raises(DataJointError, match="outside the store location"):
+                codec.encode(path, store_name="linked", context={"config": config})
+
+    @posix_only
+    def test_relative_store_location_resolves_at_call_time(self, layout, monkeypatch):
+        """A relative location is resolved against the working directory when the path is checked."""
+        root, store, _ = layout
+        config = Config()
+        config.stores["rel"] = {"protocol": "file", "location": "store"}
+        codec = FilepathCodec()
+        monkeypatch.chdir(root)
+        meta = codec.encode(str(store / "data" / "inside.txt"), store_name="rel", context={"config": config})
+        assert meta["path"] == "data/inside.txt"
+        assert codec.decode(meta, context={"config": config}).read() == b"inside"
+        with pytest.raises(DataJointError, match="outside the store location"):
+            codec.encode(str(root / "outside.txt"), store_name="rel", context={"config": config})
+        # From another working directory the same absolute path is outside the location
+        (root / "elsewhere" / "store").mkdir(parents=True)
+        monkeypatch.chdir(root / "elsewhere")
+        with pytest.raises(DataJointError, match="outside the store location"):
+            codec.encode(str(store / "data" / "inside.txt"), store_name="rel", context={"config": config})
+
     def test_escape_hatch_allows_outside_references(self, cfg, layout):
         root, _, _ = layout
         cfg.allow_filepath_outside_store = True
@@ -358,6 +429,72 @@ class TestObjectConfinement:
         assert (dest / "obj" / "a.txt").read_bytes() == b"a"
         assert (dest / "obj" / "sub" / "b.txt").read_bytes() == b"b"
 
+    NAMES_WITH_GLOB_CHARACTERS = ["[ab].txt", "a.txt", "b.txt", "star*.txt", "what?.txt", "starX.txt"]
+
+    def _glob_folder(self, memory_backend):
+        memory_backend.fs.pipe({f"/dj-test-bucket/loc/obj/{n}": n.encode() for n in self.NAMES_WITH_GLOB_CHARACTERS})
+        return ObjectRef(path="obj", size=None, hash=None, ext=None, is_dir=True, timestamp=None, _backend=memory_backend)
+
+    def _check_glob_folder(self, dest):
+        assert sorted(p.name for p in (dest / "obj").iterdir()) == sorted(self.NAMES_WITH_GLOB_CHARACTERS)
+        for name in self.NAMES_WITH_GLOB_CHARACTERS:
+            assert (dest / "obj" / name).read_bytes() == name.encode()
+
+    def test_download_folder_keys_with_glob_characters(self, memory_backend, tmp_path):
+        """Keys containing '[', '*' or '?' each land under their own name."""
+        ref = self._glob_folder(memory_backend)
+        ref.download(tmp_path / "dest")
+        self._check_glob_folder(tmp_path / "dest")
+
+    @pytest.mark.parametrize("version", ["2023.1.0", "2023.6.0", "not-a-version"])
+    def test_download_folder_on_old_fsspec_fetches_files_one_by_one(self, memory_backend, tmp_path, monkeypatch, version):
+        """Before fsspec 2023.9, get(list, list) expands the sources as globs, so it is not used."""
+        import fsspec
+
+        monkeypatch.setattr(fsspec, "__version__", version)
+
+        def expanding_get(*args, **kwargs):
+            raise AssertionError("fs.get(list, list) expands sources on this fsspec version")
+
+        monkeypatch.setattr(memory_backend.fs, "get", expanding_get)
+        ref = self._glob_folder(memory_backend)
+        ref.download(tmp_path / "dest")
+        self._check_glob_folder(tmp_path / "dest")
+
+    def test_download_folder_directory_marker_key(self, memory_backend, tmp_path, monkeypatch):
+        """A key ending in '/' (an object store's directory marker) becomes a folder, not a file."""
+        memory_backend.fs.pipe({"/dj-test-bucket/loc/obj/sub/b.txt": b"b"})
+        find = memory_backend.fs.find
+
+        def find_with_marker(path, **kwargs):
+            entries = find(path, **kwargs)
+            entries["/dj-test-bucket/loc/obj/empty/"] = {"name": "/dj-test-bucket/loc/obj/empty/", "type": "file", "size": 0}
+            return entries
+
+        monkeypatch.setattr(memory_backend.fs, "find", find_with_marker)
+        ref = ObjectRef(path="obj", size=None, hash=None, ext=None, is_dir=True, timestamp=None, _backend=memory_backend)
+        dest = tmp_path / "dest"
+        ref.download(dest)
+        assert (dest / "obj" / "empty").is_dir()
+        assert (dest / "obj" / "sub" / "b.txt").read_bytes() == b"b"
+
+    def test_download_empty_folder_when_find_omits_it(self, memory_backend, tmp_path, monkeypatch):
+        """Before fsspec 2024.3.1, find(withdirs=True) does not list the folder itself."""
+        memory_backend.fs.mkdir("/dj-test-bucket/loc/empty")
+        monkeypatch.setattr(memory_backend.fs, "find", lambda path, **kwargs: {})
+        ref = ObjectRef(path="empty", size=None, hash=None, ext=None, is_dir=True, timestamp=None, _backend=memory_backend)
+        dest = tmp_path / "dest"
+        assert ref.download(dest) == dest
+        assert (dest / "empty").is_dir()
+        assert list((dest / "empty").iterdir()) == []
+
+    def test_download_missing_folder_raises(self, memory_backend, tmp_path):
+        memory_backend.fs.pipe({"/dj-test-bucket/loc/other.txt": b"x"})
+        ref = ObjectRef(path="missing", size=None, hash=None, ext=None, is_dir=True, timestamp=None, _backend=memory_backend)
+        with pytest.raises(FileNotFoundError):
+            ref.download(tmp_path / "dest")
+        assert not (tmp_path / "dest" / "missing").exists()
+
 
 # --------------------------------------------------------------------------- #
 # <attach>
@@ -430,3 +567,33 @@ class TestAttachConfinement:
         result = AttachCodec().decode(_attach_blob("new.txt", b"payload"), context={"config": cfg})
         assert result == str(downloads / "new_1.txt")
         assert not (root / "created-through-link.txt").exists()
+
+    @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs named pipes")
+    def test_reuse_check_does_not_block_on_pipe_swapped_in(self, layout, monkeypatch):
+        """A named pipe that replaces the file after the lstat check is opened without blocking, and not reused."""
+        import threading
+
+        attach = importlib.import_module("datajoint.builtin_codecs.attach")
+        _, _, downloads = layout
+        downloads.mkdir()
+        fifo = downloads / "notes.txt"
+        os.mkfifo(fifo)
+        contents = b"payload"
+        real_lstat = os.lstat
+        regular = os.stat_result((0o100644, 0, 0, 1, 0, 0, len(contents), 0, 0, 0))
+
+        def lstat(path, *args, **kwargs):
+            # The check sees the regular file that was there before the swap
+            return regular if os.fspath(path) == str(fifo) else real_lstat(path, *args, **kwargs)
+
+        monkeypatch.setattr(os, "lstat", lstat)
+        result = []
+        thread = threading.Thread(target=lambda: result.append(attach._has_contents(fifo, contents)), daemon=True)
+        thread.start()
+        thread.join(timeout=5)
+        if thread.is_alive():
+            # Release the blocked open so the test fails instead of hanging
+            os.close(os.open(fifo, os.O_WRONLY | os.O_NONBLOCK))
+            thread.join(timeout=5)
+            pytest.fail("_has_contents blocked opening a named pipe")
+        assert result == [False]
