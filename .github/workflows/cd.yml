@@ -49,7 +49,8 @@ jobs:
 
   check:
     name: Check the release tag
-    if: github.ref_type == 'tag'
+    # Only a pushed tag releases; a manual run on a tag ref builds without publishing.
+    if: github.ref_type == 'tag' && github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       publish: ${{ steps.check.outputs.publish }}
@@ -145,17 +146,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git for-each-ref "refs/tags/$TAG" --format='%(contents)' > "$RUNNER_TEMP/notes.md"
+          # The tag message is the notes; a signed tag's signature block is left out.
+          git for-each-ref "refs/tags/$TAG" --format='%(contents)' \
+            | sed '/^-----BEGIN PGP SIGNATURE-----$/,$d' > "$RUNNER_TEMP/notes.md"
           title="DataJoint Library ${TAG#v}"
+          # Mark the release Latest only if it is the highest version, so a later
+          # patch on an older line does not displace a newer release.
+          highest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
+          latest=false
+          [[ "$TAG" == "$highest" ]] && latest=true
           # Update a release that already exists (a re-run, or one created on
           # GitHub), so that re-running this job is safe.
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release edit "$TAG" --verify-tag --draft=false --title "$title" \
-              --notes-file "$RUNNER_TEMP/notes.md"
+              --latest="$latest" --notes-file "$RUNNER_TEMP/notes.md"
             gh release upload "$TAG" --clobber dist/*
           else
             gh release create "$TAG" --verify-tag --title "$title" \
-              --notes-file "$RUNNER_TEMP/notes.md" dist/*
+              --latest="$latest" --notes-file "$RUNNER_TEMP/notes.md" dist/*
           fi
 
   notify:

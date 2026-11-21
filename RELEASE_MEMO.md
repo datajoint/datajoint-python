@@ -4,7 +4,12 @@
 
 | Branch | Purpose | Version |
 |--------|---------|---------|
-| `master` | Main development | 2.3.x |
+| `master` | Releases are tagged here | 2.3.x |
+| `next` | 2.4 development; merged into `master` before 2.4.0 is tagged | 2.4.x |
+| `maint/2.3` | Frozen; carried 2.3.5 and 2.3.6 | — |
+
+Every release tag, security releases included, goes on a commit on `master`. The CD workflow
+refuses a tag on any other branch.
 
 ---
 
