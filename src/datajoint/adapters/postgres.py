@@ -707,11 +707,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
         if drop:
             drops = [f"DROP COLUMN {self.quote_identifier(name)}" for name in drop]
             statements.append(f"ALTER TABLE {full_table_name}\n\t" + ",\n\t".join(drops))
-        for change in changes:
-            source, name = change["renamed_from"], change["new"]["name"]
-            if source is not None and source != name:
-                source, name = self.quote_identifier(source), self.quote_identifier(name)
-                statements.append(f"ALTER TABLE {full_table_name} RENAME COLUMN {source} TO {name}")
+        renames = {
+            change["renamed_from"]: change["new"]["name"]
+            for change in changes
+            if change["renamed_from"] is not None and change["renamed_from"] != change["new"]["name"]
+        }
+        for source, name in self._order_renames(renames):
+            source, name = self.quote_identifier(source), self.quote_identifier(name)
+            statements.append(f"ALTER TABLE {full_table_name} RENAME COLUMN {source} TO {name}")
         clauses, comments = [], []
         for change in changes:
             new, old = change["new"], change["old"]
@@ -728,6 +731,42 @@ class PostgreSQLAdapter(DatabaseAdapter):
         if table_comment is not None:
             statements.append(self.table_comment_ddl(full_table_name, table_comment))
         return statements
+
+    @staticmethod
+    def _order_renames(renames: dict[str, str]) -> list[tuple[str, str]]:
+        """
+        Order renames so that each new name is free when its rename runs.
+
+        PostgreSQL renames one column per statement, while MySQL applies all of
+        an ALTER TABLE's renames at once. A rename whose new name another column
+        still holds waits until that column has moved. Names that trade places
+        form a cycle, which is broken by moving one column to a temporary name.
+        A temporary name starts with ``~``, which no attribute name can hold.
+
+        Parameters
+        ----------
+        renames : dict[str, str]
+            ``old name -> new name`` for each renamed attribute.
+
+        Returns
+        -------
+        list[tuple[str, str]]
+            ``(from, to)`` pairs to rename in order.
+        """
+        pending = dict(renames)
+        ordered: list[tuple[str, str]] = []
+        while pending:
+            ready = [source for source, name in pending.items() if name not in pending]
+            if not ready:
+                # Every remaining rename is part of a cycle: move one column aside.
+                source = next(iter(pending))
+                temporary = f"~rename{len(ordered)}"
+                ordered.append((source, temporary))
+                pending[temporary] = pending.pop(source)
+                continue
+            for source in ready:
+                ordered.append((source, pending.pop(source)))
+        return ordered
 
     def _alter_column_clauses(self, old: dict[str, Any], new: dict[str, Any]) -> list[str]:
         """

@@ -325,6 +325,37 @@ def test_rename_and_change(schema_by_backend):
 
 
 @pytest.mark.backend_agnostic
+def test_swap_and_chain_renames(schema_by_backend):
+    """Names that trade places, or move along a chain, in one alter()."""
+    Measurement = declare_measurement(
+        schema_by_backend,
+        """
+        measurement_id : int32
+        ---
+        first : float32   # first value
+        second : float32   # second value
+        a : int16   # moves to b
+        b : int16   # moves to c
+        """,
+    )
+    Measurement.insert1(dict(measurement_id=1, first=1.5, second=2.5, a=1, b=2))
+
+    alter_to(
+        schema_by_backend,
+        Measurement,
+        """
+        measurement_id : int32
+        ---
+        second : float32   # {first} first value
+        first : float32   # {second} second value
+        b : int16   # {a} moves to b
+        c : int16   # {b} moves to c
+        """,
+    )
+    assert Measurement.fetch1() == dict(measurement_id=1, second=1.5, first=2.5, b=1, c=2)
+
+
+@pytest.mark.backend_agnostic
 def test_change_to_enum(schema_by_backend):
     Measurement = declare_measurement(
         schema_by_backend,

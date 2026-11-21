@@ -328,6 +328,13 @@ class Table(QueryExpression):
             Defaults to the table's declaration context, so the table alters the
             same way wherever this is called from; a table without one uses the
             caller's namespace.
+
+        Raises
+        ------
+        DataJointError
+            If called inside a transaction. On PostgreSQL, alter() runs its
+            statements in a transaction of its own, so that a failure in any of
+            them leaves the table as it was.
         """
         if self.connection.in_transaction:
             raise DataJointError("Cannot update table declaration inside a transaction, e.g. from inside a populate/make call")
@@ -357,6 +364,10 @@ class Table(QueryExpression):
             sql = [_substitute_database(statement, self.database) for statement in sql]
             if not prompt or user_choice(";\n".join(sql) + "\n\nExecute?") == "yes":
                 try:
+                    # The pre-DDL runs before the transaction below: an error
+                    # inside it, such as a type that already exists, would abort
+                    # the transaction on PostgreSQL. A type created here for an
+                    # alter that then fails stays in the schema, unused.
                     for ddl in pre_ddl:
                         try:
                             self.connection.query(_substitute_database(ddl, self.database))

@@ -291,6 +291,49 @@ def test_postgres_type_change_resets_default(postgres):
     ]
 
 
+def test_postgres_swapped_names(postgres):
+    """PostgreSQL renames one column at a time, so names that trade places go through a temporary name."""
+    new = """
+    measurement_id : int32
+    ---
+    label : float32   # {value} the value
+    value : varchar(16)   # {label} a label
+    """
+    sql, _, _ = alter(new, BASE, {}, postgres, full_table_name=PG_TABLE)
+    assert sql == [
+        f'ALTER TABLE {PG_TABLE} RENAME COLUMN "value" TO "~rename0"',
+        f'ALTER TABLE {PG_TABLE} RENAME COLUMN "label" TO "value"',
+        f'ALTER TABLE {PG_TABLE} RENAME COLUMN "~rename0" TO "label"',
+        comment("label", ":float32:{value} the value"),
+        comment("value", ":varchar(16):{label} a label"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "renames, expected",
+    [
+        ({"a": "b"}, [("a", "b")]),
+        ({"a": "b", "b": "c"}, [("b", "c"), ("a", "b")]),
+        ({"a": "b", "b": "c", "c": "d"}, [("c", "d"), ("b", "c"), ("a", "b")]),
+        ({"a": "b", "b": "a"}, [("a", "~rename0"), ("b", "a"), ("~rename0", "b")]),
+        ({"a": "b", "b": "c", "c": "a"}, [("a", "~rename0"), ("c", "a"), ("b", "c"), ("~rename0", "b")]),
+        (
+            {"a": "b", "b": "a", "x": "y", "y": "x"},
+            [("a", "~rename0"), ("b", "a"), ("~rename0", "b"), ("x", "~rename3"), ("y", "x"), ("~rename3", "y")],
+        ),
+    ],
+)
+def test_postgres_rename_order(postgres, renames, expected):
+    """Each rename runs once its new name is free."""
+    ordered = postgres._order_renames(renames)
+    assert ordered == expected
+    columns = set(renames)
+    for source, name in ordered:
+        assert source in columns and name not in columns
+        columns = columns - {source} | {name}
+    assert columns == set(renames.values())
+
+
 def test_postgres_change_to_enum(postgres):
     old = """
     measurement_id : int32
