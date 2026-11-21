@@ -26,7 +26,7 @@ def test_char_matrix_uses_matlab_column_major_bytes():
     encoded = pack(matrix, compress=False)
     expected_data = matrix.view(np.uint8).astype(np.uint16).tobytes(order="F")
 
-    assert encoded.startswith(b"mYm\\0")
+    assert encoded.startswith(b"mYm\0")
     assert encoded.endswith(expected_data)
     np.testing.assert_array_equal(unpack(encoded), matrix.astype("U1"))
 
@@ -36,5 +36,5 @@ def test_compressed_char_matrix_round_trip():
     matrix = np.tile(small, (50, 30))
     encoded = pack(matrix)
 
-    assert encoded.startswith(b"ZL123\\0")
+    assert encoded.startswith(b"ZL123\0")
     np.testing.assert_array_equal(unpack(encoded), matrix.astype("U1"))
