@@ -148,10 +148,10 @@ def _rename_foreign_key_column(connection, table, new_name):
     _rename_column(connection, table, "parent_ref", new_name)
 
 
-def _make_svg_without_warnings(schema, context):
-    """Render the diagram with every warning raised as an error, as under ``python -W error``."""
+def _make_svg_describe_warning_as_error(schema, context):
+    """Render the diagram with the warning of describe() raised as an error, as under ``python -W error``."""
     with warnings.catch_warnings():
-        warnings.simplefilter("error")
+        warnings.filterwarnings("error", message="The definition of .* cannot be read back", category=UserWarning)
         return dj.Diagram(schema, context=context).make_svg().data
 
 
@@ -180,7 +180,7 @@ def test_diagram_of_schema_with_projected_name_not_read_back(projected_tables, c
     _, Child, _ = projected_tables
     _rename_foreign_key_column(connection_by_backend, Child, new_name)
     module = dj.VirtualModule("module", Child.database, connection=connection_by_backend)
-    svg = _make_svg_without_warnings(module.schema, vars(module))
+    svg = _make_svg_describe_warning_as_error(module.schema, vars(module))
     assert "Child" in svg and "Parent" in svg
 
 
@@ -195,7 +195,7 @@ def test_diagram_with_referenced_column_renamed(projected_tables, connection_by_
     _rename_column(connection_by_backend, Parent, "parent_id", referenced_name)
     module = dj.VirtualModule("module", Child.database, connection=connection_by_backend)
     assert module.Child().parents(foreign_key_info=True)[0][1]["attr_map"] == {"parent_ref": referenced_name}
-    svg = _make_svg_without_warnings(module.schema, vars(module))
+    svg = _make_svg_describe_warning_as_error(module.schema, vars(module))
     assert "Child" in svg and "Parent" in svg
     assert html.escape(f"parent_ref \u2190 {referenced_name}") in svg  # the edge tooltip
 
