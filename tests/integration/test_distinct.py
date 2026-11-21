@@ -6,9 +6,10 @@ A DataJoint query's primary key identifies its rows, so the SQL needs
 of that key: ``dj.U(...) & expr`` projecting onto attributes that do not
 include ``expr``'s primary key, and the union of two operands whose keys may
 overlap. A table without a primary key (created outside DataJoint) can hold
-repeated rows, so ``dj.U(...) & expr`` and the union deduplicate whenever the
-operand has no primary key. Everywhere else ``DISTINCT`` is redundant work for
-the database.
+repeated rows, and so can any query built from it, even one with a primary key
+such as ``Parent * keyless``. So ``dj.U(...) & expr`` and the union deduplicate
+whenever any table the operand is built from has no primary key. Everywhere
+else ``DISTINCT`` is redundant work for the database.
 
 Where ``DISTINCT`` is needed it must survive composition: an operand
 ``dj.U(...) & expr`` used in a join, ``extend``, ``aggr`` or ``dj.U(...).aggr``
@@ -334,3 +335,119 @@ def test_union_of_keyless_tables_deduplicates(schema_by_backend, keyless):
     rows = sorted((row["msg"], row["n"], row["tag"]) for row in union.to_dicts())
     assert rows == [("bye", 3, "t"), ("hello", 1, "t"), ("hello", 2, "t")]
     assert_rows(union, 3)
+
+
+# --- Queries built from a keyless table -----------------------------------------------------------
+# Heading.join treats an empty primary key as determined by any heading, so a query built from a
+# table without a primary key can have a primary key and still repeat rows. The expected rows are
+# those master returns: dj.U(...) & expr and the outer union deduplicate whenever any table the
+# operand is built from has no primary key.
+
+
+@pytest.fixture
+def log(schema_by_backend):
+    """A table with no primary key, created by plain SQL, that refers to parents: (1, 'start') repeats."""
+    return create_keyless_table(
+        schema_by_backend,
+        "log",
+        "parent_id int NOT NULL, event varchar(16) NOT NULL",
+        "(1, 'start'), (1, 'start'), (1, 'stop'), (2, 'start'), (9, 'start')",
+    )
+
+
+def fetch_sorted(query, *attributes):
+    """The rows of query as sorted tuples of the attributes; ``len()`` agrees with the row count."""
+    rows = sorted(tuple(row[a] for a in attributes) for row in query.to_dicts())
+    assert len(query) == len(rows)
+    return rows
+
+
+MESSAGES = [("bye", 3), ("hello", 1), ("hello", 1), ("hello", 2)]
+DISTINCT_MESSAGES = sorted(set(MESSAGES))
+PARENTS = [1, 2, 3, 4, 5]
+
+
+def test_universal_restriction_of_keyless_table_with_parent_key(log):
+    """Direct operand: U's attributes cover every attribute of the keyless table, yet rows repeat."""
+    parents = dj.U("parent_id") & log
+    assert has_distinct(parents.make_sql())
+    assert fetch_sorted(parents, "parent_id") == [(1,), (2,), (9,)]
+
+    events = dj.U("parent_id", "event") & log
+    assert has_distinct(events.make_sql())
+    assert fetch_sorted(events, "parent_id", "event") == [(1, "start"), (1, "stop"), (2, "start"), (9, "start")]
+
+
+def test_universal_restriction_of_join_with_keyless_table(tables, keyless, log):
+    """``Parent * keyless`` has Parent's primary key, but repeats Parent's rows: U deduplicates."""
+    Parent, Child, Note = tables
+    for joined in (Parent * keyless, keyless * Parent):
+        assert joined.primary_key == ["parent_id"]
+        assert len(fetch_sorted(joined, "parent_id", "msg", "n")) == 20
+
+        parents = dj.U("parent_id") & joined
+        assert has_distinct(parents.make_sql())
+        assert fetch_sorted(parents, "parent_id") == [(p,) for p in PARENTS]
+
+        rows = dj.U("parent_id", "msg", "n") & joined
+        assert has_distinct(rows.make_sql())
+        assert fetch_sorted(rows, "parent_id", "msg", "n") == [(p, *m) for p in PARENTS for m in DISTINCT_MESSAGES]
+
+    joined = Parent.join(log, semantic_check=False)
+    assert joined.primary_key == ["parent_id"]
+    assert fetch_sorted(joined, "parent_id", "event") == [(1, "start"), (1, "start"), (1, "stop"), (2, "start")]
+    assert fetch_sorted(dj.U("parent_id") & joined, "parent_id") == [(1,), (2,)]
+    events = dj.U("parent_id", "event") & joined
+    assert fetch_sorted(events, "parent_id", "event") == [(1, "start"), (1, "stop"), (2, "start")]
+
+
+def test_universal_restriction_of_extension_by_keyless_table(tables, keyless, log):
+    """``Parent.extend(keyless)`` keeps Parent's primary key and repeats its rows: U deduplicates."""
+    Parent, Child, Note = tables
+    extended = Parent.extend(keyless)
+    assert extended.primary_key == ["parent_id"]
+    assert len(fetch_sorted(extended, "parent_id", "msg", "n")) == 20
+    rows = dj.U("parent_id", "msg", "n") & extended
+    assert has_distinct(rows.make_sql())
+    assert fetch_sorted(rows, "parent_id", "msg", "n") == [(p, *m) for p in PARENTS for m in DISTINCT_MESSAGES]
+
+    extended = Parent.extend(log, semantic_check=False)
+    assert extended.primary_key == ["parent_id"]
+    assert len(fetch_sorted(extended, "parent_id")) == 7  # 3 + 1 events, and parents 3, 4, 5 without
+    assert fetch_sorted(dj.U("parent_id") & extended, "parent_id") == [(p,) for p in PARENTS]
+    events = dj.U("parent_id", "event") & extended  # event is NULL for parents 3, 4 and 5
+    rows = sorted((row["parent_id"], row["event"] or "") for row in events.to_dicts())
+    assert rows == [(1, "start"), (1, "stop"), (2, "start"), (3, ""), (4, ""), (5, "")]
+    assert len(events) == len(rows)
+
+
+def test_universal_restriction_with_keyless_table_in_subquery(tables, keyless):
+    """A keyless table inside a subquery of the operand still makes its rows repeat."""
+    Parent, Child, Note = tables
+    doubled = keyless.proj(..., k="n * 2") & "k > 1"  # restricted on a computed attribute: a subquery
+    rows = dj.U("parent_id", "msg", "n", "k") & (Parent * doubled)
+    assert has_distinct(rows.make_sql())
+    assert fetch_sorted(rows, "parent_id", "msg", "n", "k") == [
+        (p, msg, n, 2 * n) for p in PARENTS for msg, n in DISTINCT_MESSAGES
+    ]
+
+    first_three = keyless & dj.Top(3, order_by=["msg", "n"])  # ('bye', 3) and ('hello', 1) twice
+    joined = Parent * first_three
+    assert len(fetch_sorted(joined, "parent_id", "msg", "n")) == 15
+    rows = dj.U("parent_id", "msg", "n") & joined
+    assert has_distinct(rows.make_sql())
+    assert fetch_sorted(rows, "parent_id", "msg", "n") == [(p, *m) for p in PARENTS for m in [("bye", 3), ("hello", 1)]]
+
+
+def test_union_with_operand_built_from_keyless_table(tables, keyless):
+    """The outer union keeps UNION when an operand is built from a keyless table."""
+    Parent, Child, Note = tables
+    union = (Parent * keyless) + Note
+    assert union.primary_key == ["parent_id"]
+    assert "UNION ALL" not in union.make_sql()
+    rows = fetch_sorted(union, "parent_id", "msg", "n", "note")
+    notes = {2: "x", 3: "y"}
+    assert rows == [(p, *m, notes.get(p)) for p in PARENTS for m in DISTINCT_MESSAGES]
+
+    parents = dj.U("parent_id") & union
+    assert fetch_sorted(parents, "parent_id") == [(p,) for p in PARENTS]

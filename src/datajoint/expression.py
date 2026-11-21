@@ -60,6 +60,10 @@ class QueryExpression:
     # If the query will be using distinct
     _distinct = False
 
+    # Whether every table the query is built from has a primary key; see
+    # _built_from_keyed_tables. None: derived from the heading and the support.
+    _keyed = None
+
     @property
     def connection(self):
         """a dj.Connection object"""
@@ -99,6 +103,32 @@ class QueryExpression:
     @property
     def primary_key(self):
         return self.heading.primary_key
+
+    def _built_from_keyed_tables(self):
+        """
+        Whether every table this query is built from has a primary key.
+
+        A table created without a primary key (by plain SQL) can hold repeated rows,
+        and so can any query built from it, whatever that query's primary key:
+        ``Heading.join`` treats an empty primary key as determined by any heading,
+        so ``Parent * keyless`` has the primary key of ``Parent``.
+
+        Checks the tables in the FROM clause and, recursively, every subquery in it,
+        including the operands of a union. Joins, aggregations and ``dj.U(...) & expr``
+        record the answer in ``_keyed``: their primary key no longer shows it.
+
+        Returns
+        -------
+        bool
+            False if any table in the query's support, or in a subquery of it,
+            has no primary key.
+        """
+        if self._keyed is not None:
+            return self._keyed
+        # A base table, and its restrictions and projections, keep the table's primary key.
+        if not self.primary_key and any(isinstance(src, str) for src in self.support):
+            return False
+        return all(src._built_from_keyed_tables() for src in self.support if isinstance(src, QueryExpression))
 
     _subquery_alias_count = count()  # count for alias names used in the FROM clause
 
@@ -444,6 +474,8 @@ class QueryExpression:
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
         result._original_heading = self.original_heading.join(other.original_heading, nullable_pk=nullable_pk)
+        # The joined primary key does not show a table without one: record it.
+        result._keyed = self._built_from_keyed_tables() and other._built_from_keyed_tables()
         assert len(result.support) == len(result._joins) + 1
         return result
 
@@ -1378,6 +1410,7 @@ class Aggregation(QueryExpression):
         result._heading = join.heading.set_primary_key(groupby.primary_key)
         result._support = join.support
         result._joins = join._joins
+        result._keyed = join._built_from_keyed_tables()
         result._left_restrict = join.restriction  # WHERE clause applied before GROUP BY
         result._grouping_attributes = result.primary_key
 
@@ -1390,8 +1423,8 @@ class Aggregation(QueryExpression):
         adapter = self.connection.adapter
         fields = self.heading.as_sql(fields or self.heading.names, adapter=adapter)
         assert self._grouping_attributes or not self.restriction
-        # GROUP BY already returns one row per primary key; DISTINCT is needed only when
-        # dj.U & aggregation projects the result onto attributes that do not include it.
+        # GROUP BY already returns one row per primary key, also when the aggregation is built
+        # from a table without one. DISTINCT is needed only where dj.U & aggregation sets it.
         distinct = self._distinct
 
         # PostgreSQL doesn't allow column aliases in HAVING clause (SQL standard).
@@ -1479,8 +1512,9 @@ class Union(QueryExpression):
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
         sql2 = (arg2 - arg1).proj(..., **{k: "NULL" for k in arg1.heading.secondary_attributes}).make_sql(fields)
         # The branches are disjoint (arg2 - arg1 excludes arg1's keys): no deduplication needed.
-        # Without a primary key, an operand can hold repeated rows: UNION removes them.
-        union = "UNION ALL" if self.primary_key else "UNION"
+        # An operand built from a table without a primary key can repeat rows, whatever the
+        # union's primary key: UNION removes them.
+        union = "UNION ALL" if self._built_from_keyed_tables() else "UNION"
         if self._top is not None:
             alias_quoted = self.connection.adapter.quote_identifier(f"_u{next(self.__count)}")
             return f"SELECT * FROM (({sql1}) {union} ({sql2})) as {alias_quoted}{self.sorting_clauses()}"
@@ -1552,13 +1586,16 @@ class U:
             raise DataJointError("Set U can only be restricted with a QueryExpression.")
         if other._top is not None:
             other = other.make_subquery()  # apply the limit before DISTINCT
+        keyed = other._built_from_keyed_tables()
         result = copy.copy(other)
         result._heading = result.heading.set_primary_key(self.primary_key)
+        result._keyed = keyed  # the new primary key no longer shows whether other's tables have one
         result = result.proj()
-        # Rows repeat if other has no primary key (a table created without one can hold
-        # repeated rows) or if the new primary key leaves out part of other's primary key.
+        # Rows repeat if a table other is built from has no primary key (such a table can hold
+        # repeated rows, whatever other's primary key) or if the new primary key leaves out
+        # part of other's primary key.
         # Set after proj(), which may wrap other in a subquery: the DISTINCT belongs outside.
-        result._distinct = result._distinct or not other.primary_key or not set(other.primary_key) <= set(self.primary_key)
+        result._distinct = result._distinct or not keyed or not set(other.primary_key) <= set(self.primary_key)
         return result
 
     def __mul__(self, other):
@@ -1618,6 +1655,7 @@ class U:
         result._heading = group.heading.set_primary_key(list(self.primary_key))
         result._support = group.support
         result._joins = group._joins
+        result._keyed = group._built_from_keyed_tables()
         result._left_restrict = group.restriction
         result._grouping_attributes = list(self.primary_key)
 
