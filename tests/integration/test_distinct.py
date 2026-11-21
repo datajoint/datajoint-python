@@ -135,6 +135,12 @@ def test_universal_restriction_of_aggregation(tables):
     assert sorted(matched_counts.to_arrays("n")) == [1, 2, 3]
     assert len(matched_counts) == 3
 
+    # Restricted on the computed attribute: proj() puts the aggregation in a subquery,
+    # and the DISTINCT must apply outside it, to the projected counts.
+    positive_counts = dj.U("n") & (counts & "n > 0")
+    assert sorted(positive_counts.to_arrays("n")) == [1, 2, 3]
+    assert_rows(positive_counts, 3)
+
     keyed = dj.U("parent_id") & counts
     assert not has_distinct(keyed.make_sql())
     assert_rows(keyed, 5)
