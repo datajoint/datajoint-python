@@ -1593,8 +1593,12 @@ class U:
         if missing:
             raise DataJointError(f"Attributes {missing} not found in the group expression.")
 
-        if group._top is not None:
-            group = group.make_subquery()  # apply the limit before GROUP BY
+        # The aggregation below is built from the group's tables, joins and WHERE conditions.
+        # Those describe a table, a join, or a restriction of these completely. Any other group
+        # is a subquery, so that its own GROUP BY, HAVING, UNION, computed attributes, or
+        # ORDER BY/LIMIT (dj.Top) apply before this GROUP BY.
+        if isinstance(group, (Aggregation, Union)) or group.heading.new_attributes or group._top is not None:
+            group = group.make_subquery()
 
         # Create Aggregation directly without join - just group by U's primary key
         result = Aggregation()
