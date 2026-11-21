@@ -11,6 +11,7 @@ import logging
 import re
 import socket
 import struct
+from time import monotonic
 from typing import Any
 
 try:
@@ -45,25 +46,29 @@ def _tls_rejected(error: Exception) -> bool:
     return "pg_hba.conf" in message and ("SSL encryption" in message or "SSL on" in message)
 
 
+# Seconds; also the time budget of the SSLRequest check when connect_timeout is 0 (no limit)
+_DEFAULT_CONNECT_TIMEOUT = 10
+
 # SSLRequest message of the PostgreSQL protocol: length 8, request code 80877103
 _SSL_REQUEST = struct.pack("!ii", 8, 80877103)
 
 
-def _server_refuses_ssl(host: str, port: int | None, timeout: float | None) -> bool:
+def _server_refuses_ssl(host: str, port: int | None, timeout: float) -> bool:
     """
     Ask the server whether it supports SSL, as libpq does before it connects.
 
     Sends an SSLRequest and reads the one-byte answer: ``N`` means the server
     does not support SSL. Unlike the error message, the answer does not depend
     on the language of the client or the server. Nothing else is sent, so no
-    credentials leave the client. Any other answer, a failure to connect, or a
-    host that is not a single TCP host (a Unix socket directory or a list of
-    hosts) gives False.
+    credentials leave the client. Any other answer, a failure to connect within
+    ``timeout`` seconds, or a host that is not a single TCP host (a Unix socket
+    directory or a list of hosts) gives False. With no time left
+    (``timeout <= 0``), nothing is sent and the answer is False.
     """
-    if not host or host.startswith("/") or "," in host:
+    if not host or host.startswith("/") or "," in host or timeout <= 0:
         return False
     try:
-        with socket.create_connection((host, port or 5432), timeout=timeout or 10) as sock:
+        with socket.create_connection((host, port or 5432), timeout=timeout) as sock:
             sock.sendall(_SSL_REQUEST)
             return sock.recv(1) == b"N"
     except OSError:
@@ -174,13 +179,15 @@ class PostgreSQLAdapter(DatabaseAdapter):
               SSL or pg_hba.conf does not accept SSL connections from this client.
               Whether the server supports SSL is asked in the protocol, so it is
               recognized in any language; the pg_hba.conf refusal is recognized
-              from its English message only.
+              from its English message only. The question gets only what is left
+              of connect_timeout after the first attempt, and none when that
+              attempt timed out.
               dict: ``ca``, ``cert``, ``key``, ``password`` map to sslrootcert,
               sslcert, sslkey, sslpassword; sslmode is 'verify-full' with ``ca``
               ('verify-ca' if ``check_hostname`` is False), otherwise 'require'.
               Keys that apply to MySQL only are ignored with a warning; an
               unknown key raises DataJointError.
-            - connect_timeout: Connection timeout in seconds
+            - connect_timeout: Connection timeout in seconds (default 10)
 
         Returns
         -------
@@ -188,7 +195,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
             PostgreSQL connection object.
         """
         dbname = kwargs.get("dbname", "postgres")  # Default to postgres database
-        connect_timeout = kwargs.get("connect_timeout", 10)
+        connect_timeout = kwargs.get("connect_timeout", _DEFAULT_CONNECT_TIMEOUT)
 
         # Handle use_tls parameter (from DataJoint Connection)
         # Convert to PostgreSQL's sslmode
@@ -221,12 +228,19 @@ class PostgreSQLAdapter(DatabaseAdapter):
             connect_timeout=connect_timeout,
             **tls_params,
         )
+        started = monotonic()
         try:
             conn = client.connect(sslmode=sslmode, **params)
         except client.OperationalError as error:
             if "sslmode" in kwargs or use_tls is not None:
                 raise
-            if not (_tls_rejected(error) or _server_refuses_ssl(host, port, connect_timeout)):
+            # The SSLRequest check gets only what is left of connect_timeout, so
+            # it ends by connect_timeout after the first attempt started. A first
+            # attempt that used it all did not reach the server: the check is
+            # skipped, and a host that cannot be reached fails as fast as with
+            # an explicit use_tls.
+            remaining = float(connect_timeout or _DEFAULT_CONNECT_TIMEOUT) - (monotonic() - started)
+            if not (_tls_rejected(error) or _server_refuses_ssl(host, port, remaining)):
                 raise
             logger.debug("Connecting without SSL: %s", str(error).strip())
             conn = client.connect(sslmode="disable", **params)

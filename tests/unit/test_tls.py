@@ -12,6 +12,7 @@ import socket
 import ssl
 import struct
 import threading
+import time
 from pathlib import Path
 from unittest import mock
 
@@ -22,6 +23,7 @@ from pymysql.constants import CLIENT, CR
 
 from datajoint.adapters import MySQLAdapter, PostgreSQLAdapter
 from datajoint.adapters import mysql as mysql_adapter
+from datajoint.adapters import postgres as postgres_adapter
 from datajoint.errors import DataJointError
 
 CREDENTIALS = dict(host="localhost", port=3306, user="alice", password="secret")
@@ -255,14 +257,44 @@ class TestMySQLTLSParameters:
     )
     def test_tls_context_matches_pymysql(self, use_tls, verify_mode, check_hostname):
         """The context is the one PyMySQL builds from the same dict."""
-        where = certifi.where()
-        use_tls = {k: (where if v == "CA" else str(Path(where).parent) if v == "CAPATH" else v) for k, v in use_tls.items()}
+        use_tls = _with_ca_paths(use_tls)
         context = mysql_adapter._tls_context(use_tls)
         assert (context.verify_mode, context.check_hostname) == (verify_mode, check_hostname)
         assert not context.verify_flags & ssl.VERIFY_X509_STRICT
         if not isinstance(use_tls.get("verify_mode"), ssl.VerifyMode):  # PyMySQL ignores an SSL enum value
             expected = pymysql.connections.Connection._create_ssl_ctx(None, use_tls)
             assert (expected.verify_mode, expected.check_hostname) == (verify_mode, check_hostname)
+
+    @pytest.mark.parametrize(
+        "use_tls", [{}, {"ca": "CA"}, {"ca": "CA", "check_hostname": False}, {"capath": "CAPATH", "check_hostname": False}]
+    )
+    @pytest.mark.parametrize(
+        "verify_mode, name", [(ssl.CERT_NONE, "none"), (ssl.CERT_OPTIONAL, "optional"), (ssl.CERT_REQUIRED, "required")]
+    )
+    def test_verify_mode_enum_means_its_name(self, use_tls, verify_mode, name):
+        """
+        An ``ssl.VerifyMode`` is applied as PyMySQL applies the matching name.
+
+        PyMySQL ignored an enum value and used its default instead; DataJoint gives
+        it the meaning PyMySQL gives 'none', 'optional' and 'required'. ``ssl``
+        refuses CERT_NONE together with the host name check, for the name as for
+        the enum value.
+        """
+        use_tls = _with_ca_paths(use_tls)
+        try:
+            expected = pymysql.connections.Connection._create_ssl_ctx(None, {**use_tls, "verify_mode": name})
+        except ValueError:
+            with pytest.raises(ValueError, match="check_hostname"):
+                mysql_adapter._tls_context({**use_tls, "verify_mode": verify_mode})
+            return
+        context = mysql_adapter._tls_context({**use_tls, "verify_mode": verify_mode})
+        assert (context.verify_mode, context.check_hostname) == (expected.verify_mode, expected.check_hostname)
+
+
+def _with_ca_paths(use_tls):
+    """Replace the placeholders "CA" and "CAPATH" with a real CA file and folder."""
+    where = certifi.where()
+    return {k: (where if v == "CA" else str(Path(where).parent) if v == "CAPATH" else v) for k, v in use_tls.items()}
 
 
 class TestMySQLTLSHandshake:
@@ -590,6 +622,68 @@ class TestPostgreSQLDefaultFallback:
         with pytest.raises(psycopg2.OperationalError):
             PostgreSQLAdapter().connect(host="127.0.0.1", port=port, user="alice", password="secret", use_tls=None)
         assert connect.call_count == 1
+
+    @pytest.fixture
+    def clock(self, monkeypatch):
+        """The adapter's monotonic clock, advanced by hand."""
+        clock = mock.Mock(now=100.0)
+        clock.side_effect = lambda: clock.now
+        monkeypatch.setattr(postgres_adapter, "monotonic", clock)
+        return clock
+
+    def test_no_ssl_check_after_first_attempt_timed_out(self, connect, psycopg2, monkeypatch, clock):
+        """A first attempt that used all of connect_timeout did not reach the server: the time to fail is not doubled."""
+        create_connection = mock.Mock(side_effect=AssertionError("probed"))
+        monkeypatch.setattr(socket, "create_connection", create_connection)
+
+        def time_out(**kwargs):
+            clock.now += kwargs["connect_timeout"]
+            raise psycopg2.OperationalError("Zeitüberschreitung beim Verbindungsaufbau")  # "timeout expired"
+
+        connect.side_effect = time_out
+        with pytest.raises(psycopg2.OperationalError):
+            PostgreSQLAdapter().connect(**CREDENTIALS, use_tls=None, connect_timeout=5)
+        assert connect.call_count == 1
+        create_connection.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "connect_timeout, elapsed, budget",
+        [(10, 4, 6), (5, 0.5, 4.5), (0, 3, 7)],  # connect_timeout=0 (no limit): 10 seconds
+    )
+    def test_ssl_check_gets_what_is_left_of_connect_timeout(
+        self, connect, psycopg2, monkeypatch, clock, connect_timeout, elapsed, budget
+    ):
+        create_connection = mock.Mock(side_effect=socket.timeout("timed out"))
+        monkeypatch.setattr(socket, "create_connection", create_connection)
+
+        def refuse(**kwargs):
+            clock.now += elapsed
+            raise psycopg2.OperationalError(self.LOCALIZED_REFUSAL)
+
+        connect.side_effect = refuse
+        with pytest.raises(psycopg2.OperationalError):
+            PostgreSQLAdapter().connect(**CREDENTIALS, use_tls=None, connect_timeout=connect_timeout)
+        assert connect.call_count == 1
+        assert create_connection.call_args.kwargs["timeout"] == pytest.approx(budget)
+
+    def test_ssl_check_against_silent_server_ends_with_connect_timeout(self, connect, psycopg2, fake_server):
+        """A server that accepts the connection but never answers holds the check only until connect_timeout."""
+        server = fake_server(lambda sock, received: received.extend(sock.recv(8)))
+
+        def slow_refusal(**kwargs):
+            time.sleep(0.6)
+            raise psycopg2.OperationalError(self.LOCALIZED_REFUSAL)
+
+        connect.side_effect = slow_refusal
+        started = time.monotonic()
+        with pytest.raises(psycopg2.OperationalError):
+            PostgreSQLAdapter().connect(
+                host="127.0.0.1", port=server.port, user="alice", password="secret", use_tls=None, connect_timeout=1
+            )
+        assert time.monotonic() - started < 1.35  # 1 second, not 0.6 + 1
+        assert connect.call_count == 1
+        server.close()
+        assert [bytes(r) for r in server.received] == [struct.pack("!ii", 8, 80877103)]
 
     @pytest.mark.parametrize("use_tls", [True, {"ca": "/certs/ca.pem"}])
     def test_does_not_fall_back_when_tls_requested(self, connect, psycopg2, use_tls):

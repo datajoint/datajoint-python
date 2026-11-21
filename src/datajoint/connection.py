@@ -84,7 +84,8 @@ def conn(
         required, without verifying the server certificate. False: no TLS.
         A dict: TLS required, configured with the keys ``ca``, ``capath``,
         ``cert``, ``key``, ``password``, ``cipher``, ``check_hostname`` and
-        ``verify_mode``; with ``ca``, the server certificate is verified.
+        ``verify_mode``; with ``ca``, the server certificate is verified
+        (on MySQL, unless ``verify_mode`` turns verification off).
         Another key raises DataJointError. The existing connection is
         reconnected with these unless it already satisfies them.
 
@@ -177,7 +178,8 @@ class Connection:
         required, without verifying the server certificate. False: no TLS.
         A dict: TLS required, configured with the keys ``ca``, ``capath``,
         ``cert``, ``key``, ``password``, ``cipher``, ``check_hostname`` and
-        ``verify_mode``; with ``ca``, the server certificate is verified.
+        ``verify_mode``; with ``ca``, the server certificate is verified
+        (on MySQL, unless ``verify_mode`` turns verification off).
         Another key raises DataJointError.
 
     Attributes

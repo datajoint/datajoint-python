@@ -119,6 +119,11 @@ def _tls_context(use_tls: dict) -> ssl.SSLContext:
     With ``ca`` or ``capath``, the server certificate is verified, and so is
     the host name unless ``check_hostname`` is False. Without them, the
     connection is encrypted but the server certificate is not verified.
+    ``verify_mode`` overrides whether the certificate is verified: True,
+    'required' and ``ssl.CERT_REQUIRED`` verify it (against the system's
+    trusted CAs when there is no ``ca`` or ``capath``); False, 'none' and
+    ``ssl.CERT_NONE`` do not. PyMySQL ignores an ``ssl.VerifyMode`` value;
+    here it has the meaning of its name.
 
     Raises
     ------
@@ -191,8 +196,9 @@ class MySQLAdapter(DatabaseAdapter):
               dict: TLS required, configured with PyMySQL ``ssl`` keys
               (``ca``, ``capath``, ``cert``, ``key``, ``password``, ``cipher``,
               ``check_hostname``, ``verify_mode``); with ``ca`` or ``capath``,
-              the server certificate is verified. Another key raises
-              DataJointError. False: TLS disabled.
+              the server certificate is verified unless ``verify_mode`` turns
+              verification off. Another key raises DataJointError.
+              False: TLS disabled.
             - charset: Character set (default from kwargs)
 
         Returns
