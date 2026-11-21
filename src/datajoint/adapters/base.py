@@ -438,6 +438,46 @@ class DatabaseAdapter(ABC):
         ...
 
     @abstractmethod
+    def alter_table_ddl(
+        self,
+        full_table_name: str,
+        drop: list[str],
+        changes: list[dict[str, Any]],
+        table_comment: str | None = None,
+    ) -> list[str]:
+        """
+        Generate the statements that apply ``Table.alter()`` changes.
+
+        Parameters
+        ----------
+        full_table_name : str
+            Quoted name of the table.
+        drop : list[str]
+            Names of the attributes to drop.
+        changes : list[dict]
+            Attributes to add or change, in declaration order. Each has keys
+            ``new`` and ``old`` (the parts of the column after and before the
+            change, ``old`` None for an added column), ``renamed_from`` (the
+            name in a rename marker, or None) and ``after`` (the attribute to
+            place it after, or None). The parts are dicts with keys ``name``,
+            ``type``, ``nullable``, ``default`` (an SQL expression or None),
+            ``comment`` and ``sql`` (the compiled column declaration).
+        table_comment : str, optional
+            The new table comment, or None when it is unchanged.
+
+        Returns
+        -------
+        list[str]
+            Statements to run in order; empty when there is nothing to change.
+
+        Raises
+        ------
+        DataJointError
+            If the backend cannot convert an attribute to its new type.
+        """
+        ...
+
+    @abstractmethod
     def add_comment_sql(
         self,
         object_type: str,
@@ -651,6 +691,22 @@ class DatabaseAdapter(ABC):
             True for MySQL, False for PostgreSQL.
         """
         return True  # Default for MySQL, override in PostgreSQL
+
+    @property
+    def supports_transactional_ddl(self) -> bool:
+        """
+        Whether DDL statements can run inside a transaction and roll back.
+
+        MySQL commits implicitly before and after each DDL statement.
+        PostgreSQL runs DDL inside transactions, so a change made of several
+        statements can be applied completely or not at all.
+
+        Returns
+        -------
+        bool
+            False for MySQL, True for PostgreSQL.
+        """
+        return False  # Default for MySQL, override in PostgreSQL
 
     @property
     def auto_indexes_foreign_keys(self) -> bool:
