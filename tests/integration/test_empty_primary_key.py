@@ -1,9 +1,11 @@
 """
 Queries whose primary key is empty: ``dj.U() & table`` and ``dj.U().aggr(...)``.
 
-An expression with an empty primary key holds at most one row. ``len()`` must
-count that row (#1581), and a restriction on a ``dj.U()`` aggregation must
-filter it (#1580). Both run on MySQL and PostgreSQL.
+An expression with an empty primary key and no attributes holds at most one
+row. ``len()`` must count that row (#1581), and a restriction on a ``dj.U()``
+aggregation must filter it (#1580). A table created outside DataJoint without a
+primary key also has an empty primary key, but any number of rows, duplicates
+included: ``len()`` must count them all. All tests run on MySQL and PostgreSQL.
 """
 
 import time
@@ -53,10 +55,13 @@ def File(schema_by_backend):
     return File
 
 
+FILES = [dict(file_id=1, kind="data"), dict(file_id=2, kind="data"), dict(file_id=3, kind="meta")]
+
+
 def test_len_of_universal_restriction(File):
     """``dj.U() & table`` has one row when the table is non-empty, none otherwise."""
     assert len(dj.U() & File) == 0
-    File.insert([(1, "data"), (2, "data"), (3, "meta")])
+    File.insert(FILES)
     assert len(dj.U() & File) == 1
     assert len(dj.U() & (File & "kind = 'meta'")) == 1
     assert len(dj.U() & (File & "kind = 'none'")) == 0
@@ -64,7 +69,7 @@ def test_len_of_universal_restriction(File):
 
 def test_len_of_universal_aggregation_subquery(File):
     """``len()`` of a subquery over a ``dj.U()`` aggregation, restricted or not."""
-    File.insert([(1, "data"), (2, "data"), (3, "meta")])
+    File.insert(FILES)
     total = dj.U().aggr(File, n="count(*)").make_subquery()
     assert len(total) == 1
     assert len(total & "n = 3") == 1
@@ -73,7 +78,7 @@ def test_len_of_universal_aggregation_subquery(File):
 
 def test_restrict_universal_aggregation(File):
     """A restriction on the aggregated value of a ``dj.U()`` aggregation filters its row."""
-    File.insert([(1, "data"), (2, "data"), (3, "meta")])
+    File.insert(FILES)
     total = dj.U().aggr(File, n="count(*)")
 
     assert (total & "n = 3").to_dicts() == [{"n": 3}]
@@ -92,7 +97,7 @@ def test_restrict_universal_aggregation(File):
 
 def test_restrict_universal_aggregation_of_restricted_group(File):
     """Conditions on the group (WHERE) and on the aggregate (HAVING) combine."""
-    File.insert([(1, "data"), (2, "data"), (3, "meta")])
+    File.insert(FILES)
     data_count = dj.U().aggr(File & "kind = 'data'", n="count(*)")
     assert (data_count & "n = 2").to_dicts() == [{"n": 2}]
     assert (data_count & "n = 3").to_dicts() == []
@@ -101,7 +106,7 @@ def test_restrict_universal_aggregation_of_restricted_group(File):
 def test_restrict_by_restricted_universal_aggregation(File):
     """A restricted ``dj.U()`` aggregation shares no attributes with ``File``:
     it keeps every row when non-empty and none when empty."""
-    File.insert([(1, "data"), (2, "data"), (3, "meta")])
+    File.insert(FILES)
     total = dj.U().aggr(File, n="count(*)")
     assert len(File & (total & "n = 3")) == 3
     assert len(File & (total & "n = 4")) == 0
@@ -110,9 +115,38 @@ def test_restrict_by_restricted_universal_aggregation(File):
 
 def test_restrict_grouped_aggregation(File):
     """Restricting an aggregation with grouping attributes still filters by group."""
-    File.insert([(1, "data"), (2, "data"), (3, "meta")])
+    File.insert(FILES)
     per_kind = dj.U("kind").aggr(File, n="count(*)")
     assert (per_kind & "n > 1").to_dicts() == [{"kind": "data", "n": 2}]
     assert len(per_kind & "n > 1") == 1
     assert (per_kind & {"kind": "meta"}).to_dicts() == [{"kind": "meta", "n": 1}]
     assert (per_kind & False).to_dicts() == []
+
+
+@pytest.fixture
+def keyless(schema_by_backend):
+    """A table created by plain SQL, without a primary key, holding a duplicate row."""
+    connection = schema_by_backend.connection
+    name = f"{connection.adapter.quote_identifier(schema_by_backend.database)}.{connection.adapter.quote_identifier('log')}"
+    connection.query(f"CREATE TABLE {name} (msg varchar(16) NOT NULL)")
+    connection.query(f"INSERT INTO {name} (msg) VALUES ('a'), ('a'), ('b')")
+    return dj.FreeTable(connection, name)
+
+
+def test_len_of_table_without_primary_key(keyless):
+    """``len()`` counts every row of a table without a primary key, duplicates included."""
+    assert keyless.primary_key == []
+    assert len(keyless) == 3
+    assert len(keyless) == len(keyless.to_dicts())
+    assert len(keyless & "msg = 'a'") == 2
+    assert len(keyless & {"msg": "b"}) == 1
+    assert len(keyless - {"msg": "a"}) == 1
+    assert len(keyless & "msg = 'c'") == 0
+    assert len(keyless.proj(m="msg")) == 3
+
+
+def test_len_of_universal_restriction_of_table_without_primary_key(keyless):
+    """``dj.U(...) & table`` deduplicates the rows of a table without a primary key."""
+    assert len(dj.U() & keyless) == 1
+    assert len(dj.U() & (keyless & "msg = 'c'")) == 0
+    assert len(dj.U("msg") & keyless) == 2

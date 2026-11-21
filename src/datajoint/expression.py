@@ -1180,14 +1180,18 @@ class QueryExpression:
             Number of elements in the result set.
         """
         result = self.make_subquery() if self._top else copy.copy(self)
+        adapter = result.connection.adapter
         if not result.primary_key:
-            # An empty primary key (e.g. ``dj.U() & table``) admits at most one row:
-            # count it by checking whether it exists.
-            return int(bool(result))
+            if not result.heading.names:
+                # No attributes at all (e.g. ``dj.U() & table``): at most one row
+                return int(bool(result))
+            # No primary key, e.g. a table created outside DataJoint: its rows need not
+            # be unique, so count every row the query returns rather than distinct keys
+            alias = adapter.quote_identifier(f"${next(self._subquery_alias_count):x}")
+            return result.connection.query(f"SELECT count(*) FROM ({result.make_sql()}) {alias}").fetchone()[0]
         has_left_join = any(is_left for is_left, _ in result._joins)
 
         # Build COUNT query - PostgreSQL requires different syntax for multi-column DISTINCT
-        adapter = result.connection.adapter
         if has_left_join or len(result.primary_key) > 1:
             # Use subquery with DISTINCT for multi-column primary keys (backend-agnostic)
             fields = result.heading.as_sql(result.primary_key, include_aliases=False, adapter=adapter)
