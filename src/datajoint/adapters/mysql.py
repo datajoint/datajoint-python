@@ -135,7 +135,9 @@ def _tls_context(use_tls: dict) -> ssl.SSLContext:
     has_ca = ca is not None or capath is not None
     context = ssl.create_default_context(cafile=ca, capath=capath)
     # Python 3.13 sets VERIFY_X509_STRICT by default, which rejects the
-    # self-signed certificates that MySQL generates; PyMySQL clears it too.
+    # self-signed certificates that MySQL generates. PyMySQL clears it from
+    # 1.1.2 on (https://github.com/PyMySQL/PyMySQL/pull/1198), and so does
+    # DataJoint, whatever the PyMySQL version; PyMySQL 1.1.1 does not.
     context.verify_flags &= ~ssl.VERIFY_X509_STRICT
     context.check_hostname = has_ca and bool(use_tls.get("check_hostname", True))
     verify_mode = use_tls.get("verify_mode")
