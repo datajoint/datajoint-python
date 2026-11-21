@@ -504,6 +504,24 @@ class JobsSettings(BaseSettings):
     )
 
 
+class BlobSettings(BaseSettings):
+    """Limits applied when blobs are read."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="DJ_BLOB_",
+        case_sensitive=False,
+        extra="forbid",
+        validate_assignment=True,
+    )
+
+    max_decompressed_size: int | None = Field(
+        default=None,
+        ge=0,
+        description="Refuse a compressed blob whose recorded uncompressed size exceeds this many bytes, "
+        "before decompressing it. None (default): no limit. *New in 2.3.7.*",
+    )
+
+
 class ProvenanceSettings(BaseSettings):
     """Extrinsic provenance capture at pipeline entry points."""
 
@@ -586,6 +604,7 @@ class Config(BaseSettings):
     display: DisplaySettings = Field(default_factory=DisplaySettings)
     jobs: JobsSettings = Field(default_factory=JobsSettings)
     provenance: ProvenanceSettings = Field(default_factory=ProvenanceSettings)
+    blob: BlobSettings = Field(default_factory=BlobSettings)
 
     # Unified stores configuration (replaces external and object_storage)
     # ``validation_alias`` redirects pydantic-settings' env source away from the
