@@ -427,7 +427,7 @@ def make_condition(
 
     # restrict by string
     if isinstance(condition, str):
-        columns.update(extract_column_names(condition))
+        columns.update(extract_column_names(condition, adapter.backend))
         return combine_conditions(negate, conditions=[condition.strip().replace("%", "%%")])  # escape %, see issue #376
 
     # restrict by AndList
@@ -521,7 +521,101 @@ def make_condition(
         return f"{'NOT ' if negate else ''} ({' OR '.join(or_list)})" if or_list else negate
 
 
-def extract_column_names(sql_expression: str) -> set[str]:
+# Quoted text in an SQL expression, read with the rules of DataJoint's sessions.
+#
+# MySQL: DataJoint sets the session's sql_mode without NO_BACKSLASH_ESCAPES or ANSI_QUOTES,
+# so a backslash escapes the next character, a quote is also escaped by doubling it, and
+# double quotes delimit strings. A literal may carry a prefix (N'', X'', B'', _utf8mb4'').
+#
+# PostgreSQL: with standard_conforming_strings on (the default), a backslash is an ordinary
+# character except in an E'...' literal, a quote is escaped by doubling it, double quotes
+# delimit identifiers, and $$...$$ or $tag$...$tag$ delimit dollar-quoted strings.
+#
+# Each pattern is applied in one left-to-right pass, so a quote character inside an earlier
+# literal or identifier never starts a new one. A literal without its closing quote is left
+# unmatched, so the names that follow it are still read. Quoted identifiers (backticks on
+# MySQL, double quotes on PostgreSQL) match the "identifier" group.
+_QUOTED_TEXT = {
+    "mysql": re.compile(
+        r"(?P<identifier>`(?:[^`]|``)*`)"
+        r"|(?:(?<![\w$])(?:[nNxXbB]|_[A-Za-z0-9]+))?'(?:[^'\\]|\\.|'')*'"
+        r'|"(?:[^"\\]|\\.|"")*"',
+        re.DOTALL,
+    ),
+    "postgresql": re.compile(
+        r"(?<![\w$])[eE]'(?:[^'\\]|\\.|'')*'"
+        r"|(?:(?<![\w$])(?:[bBxX]|[uU]&))?'(?:[^']|'')*'"
+        r'|(?P<identifier>"(?:[^"]|"")*")'
+        r"|(?<![\w$])\$(?P<tag>(?:[A-Za-z_][A-Za-z_0-9]*)?)\$.*?\$(?P=tag)\$",
+        re.DOTALL,
+    ),
+}
+
+
+# Quoted identifiers, read after string literals are removed. A quote inside the name is doubled.
+_QUOTED_IDENTIFIER = {
+    "mysql": re.compile(r"`((?:[^`]|``)*)`"),
+    "postgresql": re.compile(r'"((?:[^"]|"")*)"'),
+}
+_IDENTIFIER_QUOTE = {"mysql": "`", "postgresql": '"'}
+
+
+def strip_literals(sql_expression: str, backend: str = "mysql") -> str:
+    """
+    Replace each string literal in an SQL expression with a space.
+
+    Parameters
+    ----------
+    sql_expression : str
+        SQL expression, such as a restriction condition.
+    backend : str, optional
+        ``"mysql"`` (default) or ``"postgresql"``: whose quoting rules to read the text with.
+
+    Returns
+    -------
+    str
+        The expression without its string literals. Quoted identifiers (MySQL backticks,
+        PostgreSQL double quotes) are kept.
+    """
+    try:
+        pattern = _QUOTED_TEXT[backend]
+    except KeyError:
+        raise DataJointError(f"Unknown database backend {backend!r}.") from None
+    return pattern.sub(lambda match: match[0] if match["identifier"] is not None else " ", sql_expression)
+
+
+def quoted_identifiers(sql_expression: str, backend: str = "mysql") -> tuple[str, list[str]]:
+    """
+    Read the quoted identifiers in an SQL expression whose string literals are removed.
+
+    Parameters
+    ----------
+    sql_expression : str
+        Output of :func:`strip_literals`.
+    backend : str, optional
+        ``"mysql"`` (default, backticks) or ``"postgresql"`` (double quotes).
+
+    Returns
+    -------
+    tuple[str, list[str]]
+        The expression with each quoted identifier replaced by a space, and the names in
+        them, in order, with doubled quotes undoubled. Escapes in a PostgreSQL Unicode
+        identifier (``U&"..."``) are not decoded; DataJoint never writes that form.
+    """
+    try:
+        quote = _IDENTIFIER_QUOTE[backend]
+    except KeyError:
+        raise DataJointError(f"Unknown database backend {backend!r}.") from None
+    names: list[str] = []
+
+    def replace(match):
+        names.append(match[1].replace(quote * 2, quote))
+        return " "
+
+    return _QUOTED_IDENTIFIER[backend].sub(replace, sql_expression), names
+
+
+def extract_column_names(sql_expression: str, backend: str = "mysql") -> set[str]:
     r"""
     Extract column names from an SQL expression.
 
@@ -529,6 +623,8 @@ def extract_column_names(sql_expression: str) -> set[str]:
     ----------
     sql_expression : str
         SQL expression (e.g., WHERE clause) to parse.
+    backend : str, optional
+        ``"mysql"`` (default) or ``"postgresql"``: whose rules to read string literals with.
 
     Returns
     -------
@@ -537,23 +633,22 @@ def extract_column_names(sql_expression: str) -> set[str]:
 
     Notes
     -----
-    Parsing is MySQL-specific. Identifies columns by:
+    String literals are skipped first, with the backend's quoting rules (see
+    :func:`strip_literals`). Columns are then identified by:
 
-    1. Names in backticks (``\`column\```)
+    1. Quoted identifiers: names in backticks (``\`column\```) on MySQL and in double
+       quotes (``"column"``) on PostgreSQL
     2. Bare identifiers not followed by ``(`` (excludes functions)
     3. Excludes SQL reserved words (IS, IN, AND, OR, etc.)
+
+    Conditions are read with DataJoint's default session settings (MySQL without
+    ``NO_BACKSLASH_ESCAPES``, PostgreSQL with ``standard_conforming_strings`` on); a session
+    that changes these may read a hand-written literal with a backslash differently.
     """
     assert isinstance(sql_expression, str)
     result = set()
-    s = sql_expression  # for terseness
-    # remove escaped quotes
-    s = re.sub(r"(\\\")|(\\\')", "", s)
-    # remove quoted text
-    s = re.sub(r"'[^']*'", "", s)
-    s = re.sub(r'"[^"]*"', "", s)
-    # find all tokens in back quotes and remove them
-    result.update(re.findall(r"`([a-z][a-z_0-9]*)`", s))
-    s = re.sub(r"`[a-z][a-z_0-9]*`", "", s)
+    s, names = quoted_identifiers(strip_literals(sql_expression, backend), backend)
+    result.update(names)
     # remove space before parentheses
     s = re.sub(r"\s*\(", "(", s)
     # remove tokens followed by ( since they must be functions
