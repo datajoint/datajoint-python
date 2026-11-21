@@ -57,6 +57,48 @@ class _MissingType(Codec, register=False):
 
 logger = logging.getLogger(__name__.split(".")[0])
 
+# A declared type is recorded at the start of a column comment as ``:type:comment``.
+# The type ends at the first colon outside a quoted string, so an enum value such
+# as ``'10:00'`` stays inside the type. The type never spans lines, so the pattern
+# stops at line breaks, inside quotes too. The comment after it may span lines, so
+# ``re.S`` lets it keep every line.
+_TYPE_IN_COMMENT = re.compile(
+    r""":(?P<type>(?:'[^'\n\r]*'|"[^"\n\r]*"|[^:'"\n\r])+):(?P<comment>.*)""",
+    re.S,
+)
+
+
+def split_type_comment(comment: str | None) -> tuple[str | None, str]:
+    """
+    Split a column comment into the declared type it records and the user comment.
+
+    ``declare`` writes a core type or a codec type at the start of the column
+    comment as ``:type:``. A type is read back only if it is one that ``declare``
+    writes there: a core type (``int32``, ``uuid``, ``varchar(255)``, ...) or a
+    codec type (``<blob>``, ``<blob@store>``, ...). Any other comment, including
+    one whose marker spans lines, is a plain comment and is returned whole.
+
+    Parameters
+    ----------
+    comment : str or None
+        The column comment as stored in the database.
+
+    Returns
+    -------
+    tuple[str or None, str]
+        ``(type, comment)``. ``type`` is None when the comment records no type.
+    """
+    comment = comment or ""  # PostgreSQL reports a missing comment as None
+    match = _TYPE_IN_COMMENT.match(comment)
+    if match is None:
+        return None, comment
+    declared = match["type"]
+    # Pre-2.0 `external` types are passed on so that reading the heading reports them.
+    if declared.startswith("external") or any(TYPE_PATTERN[c].fullmatch(declared) for c in SPECIAL_TYPES):
+        return declared, match["comment"]
+    return None, comment
+
+
 default_attribute_properties = dict(  # these default values are set in computed attributes
     name=None,
     type="expression",
@@ -521,11 +563,9 @@ class Heading:
             attr.pop("key")
 
             # process custom DataJoint types stored in comment
-            comment = attr["comment"] or ""  # Handle None for PostgreSQL
-            special = re.match(r":(?P<type>[^:]+):(?P<comment>.*)", comment)
+            declared_type, attr["comment"] = split_type_comment(attr["comment"])
+            special = None if declared_type is None else {"type": declared_type}
             if special:
-                special = special.groupdict()
-                attr["comment"] = special["comment"]  # Always update the comment
                 # Only update the type for adapted types (angle brackets)
                 # Core types (uuid, float32, etc.) keep the database type for SQL
                 if special["type"].startswith("<"):
