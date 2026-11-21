@@ -4,7 +4,6 @@ import csv
 import inspect
 import itertools
 import json
-import keyword
 import logging
 import re
 import uuid
@@ -17,7 +16,7 @@ import pandas
 
 from . import provenance
 from .condition import make_condition
-from .declare import alter, declare
+from .declare import alter, declare, parse_foreign_key_reference
 from .dependencies import extract_master
 from .errors import (
     AccessError,
@@ -1414,10 +1413,10 @@ class Table(QueryExpression):
                                 class_name=_one_line(lookup_class_name(parent_name, context) or parent_name),
                             )
                         else:
-                            # projected foreign key; the new names are written as is, so they
-                            # must be identifiers (the referenced names are quoted)
+                            # projected foreign key; the new names are written as is (the
+                            # referenced names are quoted), so each must be read back as itself
                             for new_name, ref in fk_props["attr_map"].items():
-                                if ref != new_name and not (new_name.isidentifier() and not keyword.iskeyword(new_name)):
+                                if ref != new_name and not _is_projection_name(new_name):
                                     raise DataJointError(
                                         f"Cannot describe {self.full_table_name}: the foreign key attribute "
                                         f"{new_name!r} read from the database is not a valid attribute name."
@@ -1687,6 +1686,22 @@ def _one_line(text):
 def _quoted(text):
     """Return ``text`` as a double-quoted string literal on one line."""
     return '"{}"'.format(_one_line(text).replace("\\", "\\\\").replace('"', '\\"'))
+
+
+def _is_projection_name(name):
+    """
+    Whether ``name``, written unquoted as a ``.proj()`` keyword argument, is parsed back as itself.
+
+    ``describe()`` writes a projected foreign key as ``Parent.proj(new="old")`` and
+    ``alter()`` reads it back with :func:`~datajoint.declare.parse_foreign_key_reference`.
+    Any name that parser reads back unchanged is accepted, Python keywords such as
+    ``class`` included.
+    """
+    try:
+        steps = parse_foreign_key_reference(f'Parent.proj({name}="")')
+    except (ValueError, SyntaxError):
+        return False
+    return steps == [("name", "Parent"), ("proj", [], {name: ""})]
 
 
 def lookup_class_name(name, context, depth=3):
