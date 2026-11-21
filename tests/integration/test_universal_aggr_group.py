@@ -1,10 +1,11 @@
 """
 dj.U(...).aggr aggregates over the rows the group returns (#1661).
 
-When the group is a union, an aggregation, or a projection with computed attributes,
-the group is a subquery, so its UNION, its own GROUP BY and HAVING, and its computed
-attributes apply before dj.U's GROUP BY. Tables, joins and their restrictions keep
-the plain SQL with no subquery. All tests run on MySQL and PostgreSQL.
+When the group is a union, an aggregation, or has computed or renamed attributes (a
+projection, or a join with such a projection), the group is a subquery, so its UNION,
+its own GROUP BY and HAVING, and its computed attributes apply before dj.U's GROUP BY.
+Tables, joins of tables, and their restrictions keep the plain SQL with no subquery.
+All tests run on MySQL and PostgreSQL.
 """
 
 import time
@@ -96,6 +97,8 @@ def test_group_is_union_with_secondary_attributes(tables):
     assert len(union) == 3
     assert dj.U().aggr(union, n="count(*)").fetch1("n") == 3
     assert as_dict(dj.U("label").aggr(union, n="count(*)"), "label", "n") == {"a": 1, "b": 1, None: 1}
+    # info comes only from the second operand
+    assert as_dict(dj.U("info").aggr(union, n="count(*)"), "info", "n") == {"y": 1, "z": 1, None: 1}
 
 
 def test_group_is_aggregation(tables):
@@ -120,8 +123,19 @@ def test_group_has_computed_attribute(tables):
     assert as_dict(dj.U("parent_id").aggr(scores, m="max(score)"), "parent_id", "m") == {1: 20, 2: 10}
     assert dj.U().aggr(scores, m="max(score)").fetch1("m") == 20
     assert as_dict(dj.U("score").aggr(scores, n="count(*)"), "score", "n") == {10: 2, 20: 1}
+    assert as_dict(dj.U("parent_id").aggr(scores, n="count(*)"), "parent_id", "n") == {1: 2, 2: 1}
     renamed = Child.proj(pid="parent_id")
     assert as_dict(dj.U("pid").aggr(renamed, n="count(*)"), "pid", "n") == {1: 2, 2: 1}
+    renamed = Child.proj("color", pid="parent_id")
+    assert as_dict(dj.U("color").aggr(renamed, m="max(pid)"), "color", "m") == {"blue": 2, "red": 1}
+    assert as_dict(dj.U("color").aggr(renamed, n="count(*)"), "color", "n") == {"blue": 2, "red": 1}
+
+
+def test_join_with_computed_operand(tables):
+    Parent, Child, ParentInfo = tables
+    joined = Parent * Child.proj(score="child_id * 10")
+    assert as_dict(dj.U("label").aggr(joined, m="max(score)"), "label", "m") == {"a": 20, "b": 10}
+    assert as_dict(dj.U("label").aggr(joined, n="count(*)"), "label", "n") == {"a": 2, "b": 1}
 
 
 def test_table_and_join_groups_need_no_subquery(tables):

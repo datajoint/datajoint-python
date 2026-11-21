@@ -1,8 +1,9 @@
 """
 SQL generated for dj.U(...).aggr, built without a database (#1661).
 
-A group that is a union, an aggregation, or a projection with computed attributes
-becomes a subquery. A table, a join, or a restriction of these does not. The
+A group that is a union, an aggregation, or has computed or renamed attributes (a
+projection, or a join with such a projection) becomes a subquery. A table, a join of tables, or
+a restriction of these does not. The
 integration tests in tests/integration/test_universal_aggr_group.py check the
 results on MySQL and PostgreSQL.
 """
@@ -75,6 +76,21 @@ def test_computed_group_is_subquery(tables):
     # The SELECT that computes score is the group's own, without dj.U's GROUP BY.
     computing_select = sql[sql.index("child_id * 10") :].split(")", 1)[0]
     assert "GROUP BY" not in computing_select, sql
+
+
+@pytest.mark.parametrize(
+    "make_query",
+    [
+        lambda p, c: U("label").aggr(p * c.proj(score="child_id * 10"), m="max(score)"),
+        lambda p, c: U("color").aggr(c.proj("color", pid="parent_id"), m="max(pid)"),
+    ],
+    ids=["join-with-computed-operand", "renamed"],
+)
+def test_group_by_is_outside_the_subquery(tables, make_query):
+    parent, child, _ = tables
+    sql = make_query(parent, child).make_sql()
+    # dj.U's GROUP BY is the only one, after the subquery that computes or renames.
+    assert sql.count("GROUP BY") == 1 and sql.rindex("GROUP BY") > sql.rindex(")"), sql
 
 
 @pytest.mark.parametrize("make_group", [lambda p, c: c, lambda p, c: c & "color = 'blue'", lambda p, c: p * c])
