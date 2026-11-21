@@ -21,6 +21,7 @@ import inspect
 import io
 import logging
 import re
+import warnings
 
 import networkx as nx
 
@@ -1659,7 +1660,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     if child != parent
                 )
                 if renames:
-                    edata["tooltip"] = renames
+                    # pydot quotes the value but leaves backslashes as they are: double
+                    # them, so a column name ending in one does not escape the closing quote
+                    edata["tooltip"] = renames.replace("\\", "\\\\")
 
         self._encapsulate_node_names(graph)
         self._encapsulate_edge_attributes(graph)
@@ -1738,7 +1741,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 cls = self._resolve_class(name)
                 if cls is not None:
                     try:
-                        description = cls().describe(context=self.context).split("\n")
+                        with warnings.catch_warnings():
+                            # describe() warns when alter() cannot read its text back;
+                            # that does not concern the tooltip
+                            warnings.simplefilter("ignore")
+                            description = cls().describe(context=self.context).split("\n")
                     except DataJointError as error:
                         # one table that cannot be described must not stop the whole diagram:
                         # its tooltip shows only its name
@@ -1749,7 +1756,8 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                         for q in description
                         if not q.startswith("#")
                     )
-                    node.set_tooltip("&#13;".join(description))
+                    # backslashes doubled, as in the edge tooltip
+                    node.set_tooltip("&#13;".join(description).replace("\\", "\\\\"))
                 # Strip module prefix from label if it matches the cluster label
                 display_name = name
                 if name in part_names:

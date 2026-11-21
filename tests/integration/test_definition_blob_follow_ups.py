@@ -8,15 +8,19 @@ Definition and blob follow-ups (#1717), on both backends.
   declared, written by ``describe()`` and read back by ``alter()``.
 - A projected foreign-key attribute named in the database with a name no definition
   can hold (``x=1``, ``a-b``) is written as is by ``describe()``, with a warning;
-  ``alter()`` refuses the table, and ``dj.Diagram`` still renders the schema.
+  ``alter()`` refuses the table, and ``dj.Diagram`` still renders the schema, without
+  the warning.
 - ``dj.Diagram`` renders a table whose ``describe()`` raises, without its definition
-  in the tooltip.
+  in the tooltip, and a referenced column whose name has a double quote or ends in a
+  backslash.
 - A column comment and a referenced column name go through ``describe()`` and
   ``alter()``. (Double quotes in comments on PostgreSQL are left to
   https://github.com/datajoint/datajoint-python/issues/1729.)
 """
 
+import html
 import time
+import warnings
 
 import numpy as np
 import pytest
@@ -128,16 +132,27 @@ def test_projected_name_that_is_a_python_identifier(schema_fu, new_name):
 # Column names that SQL accepts and that no definition can hold: the new name of a
 # projected foreign key is written unquoted, as a keyword argument name, and the
 # parser reads only a Python identifier there.
-NAMES_NOT_READ_BACK = ["x=1", 'a"b', "a'b", "a\\b", "a-b", "a b", "1st_ref", "a$b"]
+NAMES_NOT_READ_BACK = ["x=1", 'a"b', "a'b", "a\\b", 'a\\"b', "a-b", "a b", "1st_ref", "a$b"]
 
 
-def _rename_foreign_key_column(connection, table, new_name):
+def _rename_column(connection, table, old_name, new_name):
     quote = connection.adapter.quote_identifier
     q = quote("")[0]  # the backend's identifier quote, doubled inside a quoted name
     connection.query(
-        f"ALTER TABLE {table.full_table_name} RENAME COLUMN {quote('parent_ref')} TO {quote(new_name.replace(q, q + q))}"
+        f"ALTER TABLE {table.full_table_name} RENAME COLUMN {quote(old_name)} TO {quote(new_name.replace(q, q + q))}"
     )
     connection.dependencies.load()
+
+
+def _rename_foreign_key_column(connection, table, new_name):
+    _rename_column(connection, table, "parent_ref", new_name)
+
+
+def _make_svg_without_warnings(schema, context):
+    """Render the diagram with every warning raised as an error, as under ``python -W error``."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        return dj.Diagram(schema, context=context).make_svg().data
 
 
 @pytest.mark.parametrize("new_name", NAMES_NOT_READ_BACK)
@@ -158,13 +173,31 @@ def test_describe_writes_projected_name_not_read_back(projected_tables, connecti
 
 @pytest.mark.parametrize("new_name", NAMES_NOT_READ_BACK)
 def test_diagram_of_schema_with_projected_name_not_read_back(projected_tables, connection_by_backend, new_name):
-    """One table whose definition cannot be read back does not stop the diagram of its schema."""
+    """
+    One table whose definition cannot be read back does not stop the diagram of its
+    schema, and the warning of describe() is not emitted for the tooltip.
+    """
     _, Child, _ = projected_tables
     _rename_foreign_key_column(connection_by_backend, Child, new_name)
     module = dj.VirtualModule("module", Child.database, connection=connection_by_backend)
-    with pytest.warns(UserWarning, match="cannot be read back"):
-        svg = dj.Diagram(module.schema, context=vars(module)).make_svg().data
+    svg = _make_svg_without_warnings(module.schema, vars(module))
     assert "Child" in svg and "Parent" in svg
+
+
+@pytest.mark.parametrize("referenced_name", ['p"id', "p\\"], ids=["double quote", "trailing backslash"])
+def test_diagram_with_referenced_column_renamed(projected_tables, connection_by_backend, referenced_name):
+    """
+    A referenced column named by SQL with a double quote, or with a backslash at the
+    end, goes into the parent's tooltip and the renamed foreign key's edge tooltip.
+    Each is quoted in the DOT source, and the diagram renders.
+    """
+    Parent, Child, _ = projected_tables
+    _rename_column(connection_by_backend, Parent, "parent_id", referenced_name)
+    module = dj.VirtualModule("module", Child.database, connection=connection_by_backend)
+    assert module.Child().parents(foreign_key_info=True)[0][1]["attr_map"] == {"parent_ref": referenced_name}
+    svg = _make_svg_without_warnings(module.schema, vars(module))
+    assert "Child" in svg and "Parent" in svg
+    assert html.escape(f"parent_ref \u2190 {referenced_name}") in svg  # the edge tooltip
 
 
 def test_diagram_tooltip_without_definition(schema_fu, projected_tables, monkeypatch):
