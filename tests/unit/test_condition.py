@@ -462,18 +462,26 @@ LITERAL_VALUES = [
 def test_column_names_skip_quoted_values(backend, value):
     """A literal made by the backend's quote_string never yields column names."""
     literal = get_adapter(backend).quote_string(value)
-    name = _quoted(backend, "name") if backend == "mysql" else "name"
+    name = _quoted(backend, "name")
     condition = f"{name} > {literal} AND age < 3 AND {literal} <> zip"
     assert extract_column_names(condition, backend) == {"name", "age", "zip"}
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("value", LITERAL_VALUES)
-def test_column_names_skip_mapping_restriction_values(backend, value):
-    """Literals in compiled mapping restrictions never yield column names."""
-    for restriction in ({"name": value}, {"car.tags": [value, "c'd"]}, {"car.side": value}):
-        condition = _condition(backend, restriction)
-        assert extract_column_names(condition, backend) <= {"name", "car"}, condition
+@pytest.mark.parametrize(
+    "restriction, expected",
+    [
+        (lambda v: {"name": v}, {"name"}),
+        (lambda v: {"car.tags": [v, "c'd"]}, {"car"}),
+        (lambda v: {"car.side": v}, {"car"}),
+    ],
+    ids=["name", "car.tags", "car.side"],
+)
+def test_column_names_skip_mapping_restriction_values(backend, value, restriction, expected):
+    """Compiled mapping restrictions yield exactly their columns, never text from their literals."""
+    condition = _condition(backend, restriction(value))
+    assert extract_column_names(condition, backend) == expected, condition
 
 
 @pytest.mark.parametrize(
@@ -499,6 +507,9 @@ def test_column_names_skip_mapping_restriction_values(backend, value):
         ("uid = x'0a0b' AND flag = b'01' AND label = N'c d'", {"uid", "flag", "label"}),
         # functions and reserved words
         ("concat(name, 'a b') LIKE 'c%' AND age IS NOT NULL", {"name", "age"}),
+        # quoted identifiers are reported as written, with doubled backticks undoubled
+        ("`na``me` = 1 AND `age` > 1", {"na`me", "age"}),
+        ("`name` = '`x`' AND `age` > 1", {"name", "age"}),
     ],
 )
 def test_column_names_mysql(condition, expected):
@@ -526,9 +537,11 @@ def test_column_names_mysql(condition, expected):
         ("flag = B'01' AND label = U&'d\\0061' AND age > 1", {"flag", "label", "age"}),
         ("name = $$it's b$$ AND age > 1", {"name", "age"}),
         ("name = $q$a $$ b$q$ AND age > 1", {"name", "age"}),
-        # double quotes delimit identifiers, which are skipped as before
-        ("\"name\" = 'b' AND age > 1", {"age"}),
-        ('"na""me" = 1 AND age > 1', {"age"}),
+        # double quotes delimit identifiers, which are reported, with doubled quotes undoubled
+        ("\"name\" = 'x' AND age = 1", {"name", "age"}),
+        (" (\"name\"='x''y')", {"name"}),
+        ('"na""me" = 1 AND age > 1', {'na"me', "age"}),
+        ('"name" = \'"x"\' AND "age" > 1', {"name", "age"}),
     ],
 )
 def test_column_names_postgresql(condition, expected):

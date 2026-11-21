@@ -24,7 +24,7 @@ import re
 
 import networkx as nx
 
-from .condition import AndList, strip_literals
+from .condition import AndList, quoted_identifiers, strip_literals
 from .dependencies import extract_master, topo_sort
 from .errors import DataJointError
 from .table import Table, lookup_class_name
@@ -160,7 +160,7 @@ def _has_subquery(condition, backend="mysql"):
     if not isinstance(condition, str):
         return False
     text = strip_literals(condition, backend)  # string literals, read with the backend's rules
-    text = re.sub(r"`[^`]*`", "", text)  # identifiers
+    text, _ = quoted_identifiers(text, backend)
     return re.search(r"\bselect\b", text, re.IGNORECASE) is not None
 
 
