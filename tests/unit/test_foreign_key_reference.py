@@ -173,7 +173,9 @@ def test_describe_text_stays_on_one_line():
 
 
 class _Lookups:
-    """An object whose attributes run code when read: a property and a custom __getattr__."""
+    """An object whose attributes run code when read: a property, and a custom __getattr__ for other names."""
+
+    Static = Parent
 
     def __init__(self, calls):
         self._calls = calls
@@ -185,18 +187,54 @@ class _Lookups:
 
     def __getattr__(self, name):
         self._calls.append(f"__getattr__ {name}")
+        if name == "Missing":
+            raise AttributeError(name)
         return Parent
 
 
-@pytest.mark.parametrize("reference", ["lookups.Computed", "lookups.Anything", "lazy_module.Parent"])
-def test_attribute_lookup_runs_no_code(reference, context, calls):
-    """Each ``.name`` step only looks the name up; properties and __getattr__ are not run."""
+def _lazy_module(calls, **attributes):
+    """A module that supplies the names it does not hold through a module-level __getattr__ (PEP 562)."""
     lazy_module = types.ModuleType("lazy_module")
-    lazy_module.__getattr__ = lambda name: calls.append(f"module __getattr__ {name}") or Parent
-    context.update(lookups=_Lookups(calls), lazy_module=lazy_module)
-    with pytest.raises(DataJointError, match="could not be resolved"):
-        resolve_foreign_key_reference(reference, context)
+    vars(lazy_module).update(attributes)
+
+    def __getattr__(name):
+        calls.append(f"module __getattr__ {name}")
+        if name == "Missing":
+            raise AttributeError(name)
+        return Parent
+
+    lazy_module.__getattr__ = __getattr__
+    return lazy_module
+
+
+def test_static_lookup_runs_no_code(context, calls):
+    """A name the static lookup finds is resolved without running __getattr__, even when the object has one."""
+    context.update(lookups=_Lookups(calls), lazy_module=_lazy_module(calls, Parent=Parent))
+    assert resolve_foreign_key_reference("lookups.Static", context) is Parent
+    assert resolve_foreign_key_reference("lazy_module.Parent.Part", context) is Parent.Part
     assert calls == []
+
+
+@pytest.mark.parametrize(
+    "reference, call",
+    [
+        ("lazy_module.Parent", "module __getattr__ Parent"),
+        ("lookups.Anything", "__getattr__ Anything"),
+        ("lookups.Computed", "property"),
+    ],
+)
+def test_dynamic_lookup_when_static_lookup_finds_no_value(reference, call, context, calls):
+    """A module or class __getattr__ and a property still resolve: getattr runs only for them."""
+    context.update(lookups=_Lookups(calls), lazy_module=_lazy_module(calls))
+    assert resolve_foreign_key_reference(reference, context) is Parent
+    assert calls == [call]
+
+
+@pytest.mark.parametrize("reference", ["lazy_module.Missing", "lookups.Missing", "module.Missing"])
+def test_attribute_found_by_neither_lookup(reference, context, calls):
+    context.update(lookups=_Lookups(calls), lazy_module=_lazy_module(calls))
+    with pytest.raises(DataJointError, match="could not be resolved: no attribute Missing"):
+        resolve_foreign_key_reference(reference, context)
 
 
 def test_attribute_lookup_finds_class_and_module_attributes(context):

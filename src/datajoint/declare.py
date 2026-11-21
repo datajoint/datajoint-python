@@ -307,14 +307,45 @@ def parse_foreign_key_reference(text: str) -> list[tuple]:
     return steps
 
 
+def _lookup_attribute(obj, name: str):
+    """
+    Look up ``name`` on ``obj`` for a ``.name`` step of a foreign-key reference.
+
+    The name is looked up statically first, with ``inspect.getattr_static``,
+    which runs no code of ``obj``. Module attributes, table classes and their
+    part tables are found this way.
+
+    The dynamic ``getattr`` is the fallback. It runs only when the static
+    lookup finds no value: when ``obj`` has no such attribute (a module-level
+    or class ``__getattr__`` may supply it, as in a module that loads its
+    tables lazily), or when the attribute is a descriptor such as a property,
+    whose value only running it gives. References through these resolve as
+    they did with ``getattr`` alone.
+
+    Raises
+    ------
+    AttributeError
+        If neither lookup finds the attribute.
+    """
+    try:
+        value = inspect.getattr_static(obj, name)
+    except AttributeError:
+        pass
+    else:
+        if not hasattr(type(value), "__get__"):
+            return value
+    return getattr(obj, name)
+
+
 def resolve_foreign_key_reference(ref_table: str, context: dict):
     """
     Resolve the table reference of a foreign key line in a namespace.
 
     The reference is parsed by :func:`parse_foreign_key_reference`, never
-    evaluated: names are looked up in ``context`` attribute by attribute, a
-    table class may be instantiated with ``()``, and ``.proj(...)`` is called
-    with the parsed string arguments.
+    evaluated: names are looked up in ``context`` attribute by attribute
+    (statically first; see :func:`_lookup_attribute`), a table class may be
+    instantiated with ``()``, and ``.proj(...)`` is called with the parsed
+    string arguments.
 
     Parameters
     ----------
@@ -356,10 +387,9 @@ def resolve_foreign_key_reference(ref_table: str, context: dict):
                 raise unresolved(f"{step[1]} is not defined in the declaration context")
             ref = context[step[1]]
         elif step[0] == "attr":
-            # Look the name up without running a property or a custom __getattr__
             try:
-                ref = inspect.getattr_static(ref, step[1])
-            except AttributeError:
+                ref = _lookup_attribute(ref, step[1])
+            except Exception:
                 raise unresolved(f"no attribute {step[1]}") from None
         elif step[0] == "instance":
             if not is_table_class(ref):
