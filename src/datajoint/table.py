@@ -724,7 +724,7 @@ class Table(QueryExpression):
                 if attr.uuid and not isinstance(value, uuid.UUID):
                     try:
                         uuid.UUID(value)
-                    except (AttributeError, ValueError):
+                    except (AttributeError, TypeError, ValueError):
                         errors.append((row_idx, name, f"Invalid UUID format: {value}"))
                         continue
 
@@ -1542,7 +1542,7 @@ class Table(QueryExpression):
                 if not isinstance(value, uuid.UUID):
                     try:
                         value = uuid.UUID(value)
-                    except (AttributeError, ValueError):
+                    except (AttributeError, TypeError, ValueError):
                         raise DataJointError(f"badly formed UUID value {value} for attribute `{name}`")
                 value = value.bytes
             # JSON - serialize to string
