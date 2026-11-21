@@ -59,6 +59,14 @@ class FilepathCodec(Codec):
         Paths cannot start with the store's reserved ``hash_prefix`` or
         ``schema_prefix`` sections (defaults ``_hash/`` and ``_schema/``).
 
+    Store Boundary:
+        Paths must stay inside the store location: paths with ``..``
+        components and, for ``file`` stores, absolute paths outside the
+        location are rejected on insert and on access. An absolute path
+        inside a ``file`` store's location is recorded relative to it. Set
+        ``dj.config.allow_filepath_outside_store`` to accept references that
+        point outside the store.
+
     Warning:
         The file must exist in the store at the specified path.
         DataJoint does not manage the lifecycle of referenced files.
@@ -99,12 +107,16 @@ class FilepathCodec(Codec):
         ------
         ValueError
             If path uses the store's reserved hash/schema sections.
+        DataJointError
+            If path leads outside the store location (see
+            ``allow_filepath_outside_store``).
         FileNotFoundError
             If file does not exist in the store.
         """
+        import posixpath
         from datetime import datetime, timezone
 
-        from ..hash_registry import get_store_backend
+        from ..storage import path_in_location
 
         config = self._codec_config(key, context)
         if config is None:
@@ -117,8 +129,16 @@ class FilepathCodec(Codec):
         # Use filepath_default if no store specified (filepath is not part of OAS)
         spec = config.get_store_spec(store_name, use_filepath_default=True)
 
-        # Validate path doesn't use reserved sections (hash and schema)
-        path_normalized = path.lstrip("/")
+        # Reject paths outside the store before any prefix checks. An absolute
+        # path inside a file store's location is recorded relative to it.
+        backend = self._get_backend(store_name, config)
+        backend._full_path(path)
+        if spec.get("protocol") == "file":
+            path = path_in_location(spec["location"], path) or path
+
+        # Validate path doesn't use reserved sections (hash and schema).
+        # Normalize first so that "./_hash/x" or "//_hash/x" are caught too.
+        path_normalized = posixpath.normpath(path.replace("\\", "/")).lstrip("/")
         reserved_prefixes = []
 
         hash_prefix = spec.get("hash_prefix")
@@ -129,10 +149,11 @@ class FilepathCodec(Codec):
         if schema_prefix:
             reserved_prefixes.append(("schema_prefix", schema_prefix))
 
-        # Check if path starts with any reserved prefix
+        # Check if path starts with any reserved prefix. Compare without case:
+        # on case-insensitive file systems "_HASH/x" is the same as "_hash/x".
         for prefix_name, prefix_value in reserved_prefixes:
             prefix_normalized = prefix_value.strip("/") + "/"
-            if path_normalized.startswith(prefix_normalized):
+            if (path_normalized + "/").casefold().startswith(prefix_normalized.casefold()):
                 raise ValueError(
                     f"<filepath@> cannot use reserved section '{prefix_value}' ({prefix_name}). "
                     f"This section is managed by DataJoint. "
@@ -147,7 +168,6 @@ class FilepathCodec(Codec):
                 raise ValueError(f"<filepath@> must use prefix '{filepath_prefix}' (filepath_prefix). Got path: {path}")
 
         # Verify file exists
-        backend = get_store_backend(store_name, config=config)
         if not backend.exists(path):
             raise FileNotFoundError(f"File not found in store '{store_name or 'default'}': {path}")
 
@@ -187,12 +207,24 @@ class FilepathCodec(Codec):
             Handle for accessing the file.
         """
         from ..objectref import ObjectRef
-        from ..hash_registry import get_store_backend
 
         config = self._codec_config(key, context)
-        store_name = stored.get("store")
-        backend = get_store_backend(store_name, config=config)
+        backend = self._get_backend(stored.get("store"), config)
         return ObjectRef.from_json(stored, backend=backend)
+
+    @staticmethod
+    def _get_backend(store_name: str | None, config):
+        """
+        Get the store backend, confined to the store location unless
+        ``allow_filepath_outside_store`` is set.
+        """
+        from ..hash_registry import get_store_backend
+
+        if config is None:
+            from ..settings import config  # type: ignore[assignment]
+        backend = get_store_backend(store_name, config=config)
+        backend.confine_paths = not config.get("allow_filepath_outside_store", False)
+        return backend
 
     def validate(self, value: Any) -> None:
         """Validate that value is a path string or Path object."""
