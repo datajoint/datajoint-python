@@ -138,6 +138,14 @@ def test_join_with_computed_operand(tables):
     assert as_dict(dj.U("label").aggr(joined, n="count(*)"), "label", "n") == {"a": 2, "b": 1}
 
 
+def test_aggregate_sees_only_the_group_attributes(tables):
+    Parent, Child, ParentInfo = tables
+    # The group is a subquery, so its renamed attribute is pid; parent_id is not in it
+    renamed = Child.proj("color", pid="parent_id")
+    with pytest.raises(dj.errors.UnknownAttributeError):
+        dj.U("color").aggr(renamed, m="max(parent_id)").to_dicts()
+
+
 def test_table_and_join_groups_need_no_subquery(tables):
     Parent, Child, ParentInfo = tables
     for group in (Child(), Child & "color = 'blue'", Parent * Child, (Parent * Child) & "label = 'a'"):
