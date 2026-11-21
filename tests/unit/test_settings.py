@@ -3,7 +3,10 @@
 import os
 import signal
 import stat
+import subprocess
+import sys
 import warnings
+from logging import DEBUG, ERROR, WARNING
 from pathlib import Path
 
 import pytest
@@ -1203,6 +1206,94 @@ class TestBackendConfiguration:
         assert ENV_VAR_MAPPING["database.backend"] == "DJ_BACKEND"
 
 
+class TestLogLevel:
+    """The log level setting accepts any case (DJ_LOG_LEVEL=error)."""
+
+    @pytest.fixture(autouse=True)
+    def _restore_log_level(self):
+        level = settings.logger.level
+        yield
+        settings.logger.setLevel(level)
+
+    @pytest.mark.parametrize("value", ["error", "Error", "ERROR"])
+    def test_env_var_in_any_case(self, monkeypatch, value):
+        monkeypatch.setenv("DJ_LOG_LEVEL", value)
+        cfg = settings.Config()
+        assert cfg.loglevel == "ERROR"
+        assert settings.logger.level == ERROR
+
+    def test_assignment_in_any_case(self):
+        cfg = settings.Config()
+        cfg.loglevel = "debug"
+        assert cfg.loglevel == "DEBUG"
+        cfg["loglevel"] = "warning"
+        assert cfg.loglevel == "WARNING"
+
+    def test_unknown_level_still_rejected(self):
+        cfg = settings.Config()
+        with pytest.raises(ValidationError):
+            cfg.loglevel = "verbose"
+
+
+def _import_datajoint(cwd, code="import datajoint", **env):
+    """Run ``code`` (by default, import datajoint) in a new process in ``cwd``; return the completed process."""
+    src = Path(dj.__file__).resolve().parents[1]
+    environ = {k: v for k, v in os.environ.items() if not k.startswith("DJ_")}
+    environ.update(PYTHONPATH=str(src), DJ_LOG_STREAM="stdout", **env)
+    result = subprocess.run([sys.executable, "-c", code], cwd=cwd, env=environ, capture_output=True, text=True, timeout=120)
+    return result
+
+
+_PRINT_LEVEL = "import datajoint; print(datajoint.logger.getEffectiveLevel())"
+
+
+class TestImportTimeLogging:
+    """Settings loaded at import: their records reach the datajoint handler, and their log level applies."""
+
+    @pytest.fixture
+    def project(self, tmp_path):
+        (tmp_path / ".git").mkdir()
+        (tmp_path / CONFIG_FILENAME).write_text('{"safemode": true}')
+        return tmp_path
+
+    def test_lowercase_log_level_does_not_break_import(self, project):
+        result = _import_datajoint(project, DJ_LOG_LEVEL="error")
+        assert result.returncode == 0, result.stderr
+
+    def test_import_is_quiet_at_default_level(self, project):
+        """Loading the config file found at import prints nothing at the default INFO level."""
+        result = _import_datajoint(project)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == ""
+
+    def test_config_file_loaded_at_import_is_logged_at_debug(self, project):
+        result = _import_datajoint(project, DJ_LOG_LEVEL="debug")
+        assert result.returncode == 0, result.stderr
+        assert f"Loading configuration from {project / CONFIG_FILENAME}" in result.stdout
+
+    @pytest.mark.parametrize("name, level", [("WARNING", WARNING), ("debug", DEBUG)])
+    def test_log_level_from_config_file_applies_at_import(self, project, name, level):
+        """A loglevel set in datajoint.json is the logger's level after import (it used to be reset to INFO)."""
+        (project / CONFIG_FILENAME).write_text(f'{{"loglevel": "{name}"}}')
+        result = _import_datajoint(project, code=_PRINT_LEVEL)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines()[-1] == str(level)
+
+    def test_env_var_log_level_beats_config_file_at_import(self, project):
+        (project / CONFIG_FILENAME).write_text('{"loglevel": "DEBUG"}')
+        result = _import_datajoint(project, code=_PRINT_LEVEL, DJ_LOG_LEVEL="error")
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines()[-1] == str(ERROR)
+
+    def test_explicit_load_is_logged_at_info(self, tmp_path, caplog):
+        path = tmp_path / CONFIG_FILENAME
+        path.write_text('{"safemode": true}')
+        cfg = settings.Config()
+        with caplog.at_level("INFO", logger="datajoint"):
+            cfg.load(path)
+        assert any(r.levelname == "INFO" and f"Loading configuration from {path}" in r.message for r in caplog.records)
+
+
 @pytest.mark.skipif(not hasattr(os, "getuid"), reason="requires POSIX file ownership")
 class TestDiscoveredFileOwnership:
     """The config search skips files another user could have placed where they are found."""
@@ -1314,14 +1405,14 @@ class TestDiscoveredFileOwnership:
 
     def test_foreign_config_in_world_writable_dir_skipped_as_root(self, mark, shared, monkeypatch):
         """Running as root does not make another user's file in a world-writable directory trusted."""
-        monkeypatch.setattr(os, "getuid", lambda: 0)
+        monkeypatch.setattr(os, "geteuid", lambda: 0)
         mark(shared, world_writable=True, sticky=True)
         mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
 
         assert find_config_file(shared / "project") is None
 
     def test_foreign_config_in_protected_dir_used_as_root(self, mark, shared, monkeypatch):
-        monkeypatch.setattr(os, "getuid", lambda: 0)
+        monkeypatch.setattr(os, "geteuid", lambda: 0)
         mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
 
         assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
@@ -1334,6 +1425,90 @@ class TestDiscoveredFileOwnership:
 
         assert found == shared / CONFIG_FILENAME
         assert not caplog.records
+
+    def test_ownership_compared_with_effective_user(self, mark, shared, monkeypatch):
+        """A file owned by the effective user is the user's own, even when the real user ID differs (setuid)."""
+        mark(shared, world_writable=True, sticky=True)
+        monkeypatch.setattr(os, "getuid", lambda: self.FOREIGN_UID + 1)
+
+        assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+    def test_foreign_file_owned_by_real_user_is_foreign(self, mark, shared, monkeypatch):
+        """After a process changes its effective user, a file owned by its real user is another user's file."""
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+        monkeypatch.setattr(os, "getuid", lambda: self.FOREIGN_UID)
+
+        with pytest.warns(UserWarning, match="Ignoring"):
+            assert find_config_file(shared / "project") is None
+
+    def test_skipped_file_also_issues_warning(self, mark, shared, caplog):
+        """A skipped file is reported through warnings too, so a logging setup that hides warnings does not hide it."""
+        mark(shared, world_writable=True, sticky=True)
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+        settings.logger.disabled = True
+        try:
+            with pytest.warns(UserWarning) as record:
+                assert find_config_file(shared / "project") is None
+        finally:
+            settings.logger.disabled = False
+        messages = [str(w.message) for w in record]
+        assert any(str(shared / CONFIG_FILENAME) in m and "DJ_CONFIG_FILE" in m for m in messages)
+
+    def test_skipped_secrets_dir_also_issues_warning(self, mark, tmp_path):
+        project = tmp_path / "project"
+        secrets = project / SECRETS_DIRNAME
+        secrets.mkdir(parents=True)
+        mark(project, world_writable=True, sticky=True)
+        mark(secrets, uid=self.FOREIGN_UID)
+
+        with pytest.warns(UserWarning, match=f"Ignoring {secrets}"):
+            assert find_secrets_dir(project / CONFIG_FILENAME) is None
+
+    def test_foreign_file_used_is_logged(self, mark, shared, caplog):
+        """Reading another user's file from a protected directory is logged at info level, with path and owner."""
+        mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
+
+        with caplog.at_level("INFO", logger="datajoint"):
+            assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+
+        used = [r for r in caplog.records if r.levelname == "INFO" and "owned by another user" in r.message]
+        assert len(used) == 1
+        assert str(shared / CONFIG_FILENAME) in used[0].message and f"uid {self.FOREIGN_UID}" in used[0].message
+
+    def test_foreign_secrets_dir_used_is_logged(self, mark, tmp_path, caplog):
+        project = tmp_path / "project"
+        secrets = project / SECRETS_DIRNAME
+        secrets.mkdir(parents=True)
+        mark(secrets, uid=self.FOREIGN_UID)
+
+        with caplog.at_level("INFO", logger="datajoint"):
+            assert find_secrets_dir(project / CONFIG_FILENAME) == secrets
+
+        assert any(str(secrets) in r.message and "owned by another user" in r.message for r in caplog.records)
+
+    def test_own_file_used_is_not_logged(self, mark, shared, caplog):
+        with caplog.at_level("INFO", logger="datajoint"):
+            assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
+        assert not [r for r in caplog.records if "owned by another user" in r.message]
+
+    @pytest.mark.parametrize("loop", ["self", "pair"])
+    def test_symlink_loop_at_secret_name_skipped(self, mark, tmp_path, caplog, loop):
+        """A symbolic-link loop (ELOOP) at a secret file name is skipped with a warning; it does not raise."""
+        secrets_dir = tmp_path / SECRETS_DIRNAME
+        secrets_dir.mkdir()
+        secret = secrets_dir / "database.password"
+        if loop == "self":
+            secret.symlink_to(secret)
+        else:
+            other = secrets_dir / "other"
+            secret.symlink_to(other)
+            other.symlink_to(secret)
+
+        with caplog.at_level("WARNING", logger="datajoint"):
+            assert read_secret_file(secrets_dir, "database.password") is None
+
+        assert any(str(secret) in r.message and "Could not read" in r.message for r in caplog.records)
 
     def test_world_writable_own_config_warns(self, mark, shared, caplog):
         mark(shared / CONFIG_FILENAME, world_writable=True)
@@ -1461,10 +1636,10 @@ class TestDiscoveredFileOwnership:
         assert value is None
 
     def test_no_posix_ownership_keeps_search(self, mark, shared, monkeypatch):
-        """Without os.getuid (Windows) the search behaves as before."""
+        """Without os.geteuid (Windows) the search behaves as before."""
         mark(shared, world_writable=True, sticky=True)
         mark(shared / CONFIG_FILENAME, uid=self.FOREIGN_UID)
-        monkeypatch.delattr(os, "getuid", raising=False)
+        monkeypatch.delattr(os, "geteuid", raising=False)
 
         assert find_config_file(shared / "project") == shared / CONFIG_FILENAME
 
