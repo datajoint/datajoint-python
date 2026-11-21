@@ -7,6 +7,7 @@ access and direct fsspec-based file operations.
 """
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,7 @@ import fsspec
 from .errors import DataJointError
 from .hash_registry import compute_hash
 from .storage import StorageBackend
+from .utils import is_plain_file_name
 
 
 class IntegrityError(DataJointError):
@@ -169,20 +171,20 @@ class ObjectRef:
         Return full URI (e.g., 's3://bucket/path').
 
         This is the complete path including protocol and bucket/location.
+
+        Raises
+        ------
+        DataJointError
+            If the stored path leads outside the store location.
         """
         self._ensure_backend()
+        if getattr(self._backend, "confine_paths", False):
+            self._backend._check_confined(self.path)
         protocol = self._backend.protocol
         if protocol == "file":
             return str(Path(self._backend.spec.get("location", "")) / self.path)
-        elif protocol == "s3":
-            bucket = self._backend.spec["bucket"]
-            return f"s3://{bucket}/{self.path}"
-        elif protocol == "gcs":
-            bucket = self._backend.spec["bucket"]
-            return f"gs://{bucket}/{self.path}"
-        elif protocol == "azure":
-            container = self._backend.spec["container"]
-            return f"az://{container}/{self.path}"
+        elif protocol in ("s3", "gcs", "azure"):
+            return self._backend.get_url(self.path)
         else:
             return self.path
 
@@ -285,6 +287,13 @@ class ObjectRef:
         -------
         Path
             Path to downloaded file/directory.
+
+        Raises
+        ------
+        DataJointError
+            If ``destination`` is a directory and the last component of the
+            stored path is not a plain file name, or if a key inside a folder
+            object is not made of plain file names.
         """
         self._ensure_backend()
         destination = Path(destination)
@@ -299,12 +308,44 @@ class ObjectRef:
         if self.is_dir and not subpath:
             # Download entire directory
             destination.mkdir(parents=True, exist_ok=True)
+            fs = self._backend.fs
             full_path = self._backend._full_path(remote_path)
-            self._backend.fs.get(full_path, str(destination), recursive=True)
+            root = fs._strip_protocol(full_path).rstrip("/")
+            # Same layout as fsspec's recursive get: destination/<object name>/...
+            name = root.rsplit("/", 1)[-1]
+            target = destination / name
+            # Check every key before writing anything: each must be made of plain
+            # names below the object, so that no file lands outside target
+            entries = fs.find(full_path, withdirs=True, detail=True)
+            if not entries:
+                raise FileNotFoundError(full_path)
+            rpaths, lpaths, ldirs = [], [], []
+            for rpath, info in entries.items():
+                key = rpath.rstrip("/")
+                if key == root:
+                    continue  # the object itself
+                rel = key[len(root) + 1 :] if key.startswith(root + "/") else ""
+                parts = rel.split("/")
+                if not all(is_plain_file_name(p) for p in [name, *parts]):
+                    raise DataJointError(f"Cannot download {remote_path!r}: entry {rpath!r} leads outside the destination.")
+                if info["type"] == "directory":
+                    ldirs.append(target.joinpath(*parts))
+                else:
+                    rpaths.append(rpath)
+                    lpaths.append(str(target.joinpath(*parts)))
+            target.mkdir(exist_ok=True)
+            for ldir in ldirs:
+                ldir.mkdir(parents=True, exist_ok=True)
+            for lpath in lpaths:
+                Path(lpath).parent.mkdir(parents=True, exist_ok=True)
+            if rpaths:
+                fs.get(rpaths, lpaths)
         else:
             # Download single file
             if destination.is_dir():
-                filename = remote_path.split("/")[-1]
+                filename = re.split(r"[\\/]", remote_path)[-1]
+                if not is_plain_file_name(filename):
+                    raise DataJointError(f"Cannot download {remote_path!r}: {filename!r} is not a plain file name.")
                 destination = destination / filename
             destination.parent.mkdir(parents=True, exist_ok=True)
             self._backend.get_file(remote_path, destination)

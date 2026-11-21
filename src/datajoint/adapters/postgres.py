@@ -7,6 +7,7 @@ type mapping, error translation, and connection management.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
@@ -19,6 +20,53 @@ except ImportError:
 
 from .. import errors
 from .base import DatabaseAdapter
+
+logger = logging.getLogger(__name__.split(".")[0])
+
+# use_tls dict keys (PyMySQL ssl names, as for MySQL) → libpq connection parameters
+_LIBPQ_TLS_KEYS = {"ca": "sslrootcert", "cert": "sslcert", "key": "sslkey", "password": "sslpassword"}
+
+
+def _tls_rejected(error: Exception) -> bool:
+    """
+    Whether a connection attempt with sslmode=require was refused before authentication
+    because of SSL: the server does not support SSL, or pg_hba.conf has no entry
+    for SSL connections from this client.
+
+    psycopg2 does not report a SQLSTATE for connection failures, so the libpq and
+    server messages are matched. Authentication failures do not match.
+    """
+    message = str(error)
+    if "server does not support SSL" in message:
+        return True
+    # SQLSTATE 28000 from pg_hba.conf; "SSL encryption" (PostgreSQL 14+) or "SSL on" (earlier)
+    return "pg_hba.conf" in message and ("SSL encryption" in message or "SSL on" in message)
+
+
+def _libpq_tls_params(use_tls: dict) -> dict[str, Any]:
+    """
+    Map a ``use_tls`` dict to libpq SSL connection parameters.
+
+    With ``ca``, the server certificate is verified against it: sslmode
+    ``verify-full`` (certificate and host name), or ``verify-ca`` when
+    ``check_hostname`` is False. Without ``ca``, sslmode is ``require``.
+    """
+    params = {_LIBPQ_TLS_KEYS[k]: v for k, v in use_tls.items() if k in _LIBPQ_TLS_KEYS and v is not None}
+    supported = set(_LIBPQ_TLS_KEYS)
+    if "sslrootcert" in params:
+        params["sslmode"] = "verify-full" if use_tls.get("check_hostname", True) else "verify-ca"
+        supported.add("check_hostname")
+    else:
+        params["sslmode"] = "require"
+    # Keys set to None or False request nothing; other unused keys are reported
+    ignored = sorted(k for k in set(use_tls) - supported if use_tls[k] not in (None, False))
+    if ignored:
+        logger.warning(
+            "use_tls keys ignored for PostgreSQL: %s. Supported: ca, cert, key, password, and check_hostname with ca.",
+            ", ".join(ignored),
+        )
+    return params
+
 
 # Core type mapping: DataJoint core types → PostgreSQL types
 CORE_TYPE_MAP = {
@@ -90,8 +138,15 @@ class PostgreSQLAdapter(DatabaseAdapter):
         **kwargs : Any
             Additional PostgreSQL-specific parameters:
             - dbname: Database name
-            - sslmode: SSL mode ('disable', 'allow', 'prefer', 'require')
-            - use_tls: bool or dict - DataJoint's SSL parameter (converted to sslmode)
+            - sslmode: SSL mode ('disable', 'allow', 'prefer', 'require',
+              'verify-ca', 'verify-full')
+            - use_tls: bool or dict - DataJoint's SSL parameter (converted to sslmode).
+              True: 'require'. False: 'disable'.
+              None: 'require', then 'disable' only if the server does not support
+              SSL or pg_hba.conf does not accept SSL connections from this client.
+              dict: ``ca``, ``cert``, ``key``, ``password`` map to sslrootcert,
+              sslcert, sslkey, sslpassword; sslmode is 'verify-full' with ``ca``
+              ('verify-ca' if ``check_hostname`` is False), otherwise 'require'.
             - connect_timeout: Connection timeout in seconds
 
         Returns
@@ -105,28 +160,41 @@ class PostgreSQLAdapter(DatabaseAdapter):
         # Handle use_tls parameter (from DataJoint Connection)
         # Convert to PostgreSQL's sslmode
         use_tls = kwargs.get("use_tls")
+        tls_params = {}
         if "sslmode" in kwargs:
             # Explicit sslmode takes precedence
             sslmode = kwargs["sslmode"]
         elif use_tls is False:
             # use_tls=False → disable SSL
             sslmode = "disable"
-        elif use_tls is True or isinstance(use_tls, dict):
-            # use_tls=True or dict → require SSL
+        elif isinstance(use_tls, dict):
+            # use_tls=dict → require SSL, verified when a CA is given
+            tls_params = _libpq_tls_params(use_tls)
+            sslmode = tls_params.pop("sslmode")
+        elif use_tls is True:
+            # use_tls=True → require SSL
             sslmode = "require"
         else:
-            # use_tls=None (default) → prefer SSL but allow fallback
-            sslmode = "prefer"
+            # use_tls=None (default) → require SSL, then fall back below. libpq's
+            # sslmode=prefer also retries without SSL after an authentication failure.
+            sslmode = "require"
 
-        conn = client.connect(
+        params = dict(
             host=host,
             port=port,
             user=user,
             password=password,
             dbname=dbname,
-            sslmode=sslmode,
             connect_timeout=connect_timeout,
+            **tls_params,
         )
+        try:
+            conn = client.connect(sslmode=sslmode, **params)
+        except client.OperationalError as error:
+            if "sslmode" in kwargs or use_tls is not None or not _tls_rejected(error):
+                raise
+            logger.debug("Connecting without SSL: %s", str(error).strip())
+            conn = client.connect(sslmode="disable", **params)
         # DataJoint manages transactions explicitly via start_transaction()
         # Set autocommit=True to avoid implicit transactions
         conn.autocommit = True
@@ -1058,6 +1126,27 @@ class PostgreSQLAdapter(DatabaseAdapter):
             return f"CURRENT_TIMESTAMP({precision})"
         return "CURRENT_TIMESTAMP"
 
+    def statement_timestamp_expr(self, precision: int | None = None) -> str:
+        """
+        Statement start time for PostgreSQL.
+
+        PostgreSQL's ``CURRENT_TIMESTAMP`` is the start of the transaction;
+        ``statement_timestamp()`` is the start of the current statement.
+
+        Parameters
+        ----------
+        precision : int, optional
+            Fractional seconds precision (0-6).
+
+        Returns
+        -------
+        str
+            statement_timestamp(), cast to timestamptz(n) when a precision is given.
+        """
+        if precision is not None:
+            return f"CAST(statement_timestamp() AS timestamptz({precision}))"
+        return "statement_timestamp()"
+
     def interval_expr(self, value: int, unit: str) -> str:
         """
         INTERVAL expression for PostgreSQL.
@@ -1122,7 +1211,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
                 path_parts.extend(indices)
             else:
                 path_parts.append(part)
-        path_args = ", ".join(f"'{part}'" for part in path_parts)
+        path_args = ", ".join(self.quote_string(part) for part in path_parts)
         expr = f"jsonb_extract_path_text({quoted_col}, {path_args})"
         # Add cast if return type specified
         if return_type:
@@ -1598,9 +1687,20 @@ class PostgreSQLAdapter(DatabaseAdapter):
         # to get actual enum types, then call this with results
         return []  # Placeholder - actual implementation requires query execution
 
+    def _quote_enum_type_name(self, enum_type_name: str) -> str:
+        """Quote a ``schema.typename`` enum type name, each part separately."""
+        parts = enum_type_name.split(".")
+        if len(parts) == 2:
+            return f"{self.quote_identifier(parts[0])}.{self.quote_identifier(parts[1])}"
+        return self.quote_identifier(enum_type_name)
+
     def drop_enum_type_ddl(self, enum_type_name: str) -> str:
         """
         Generate DROP TYPE IF EXISTS statement for a PostgreSQL enum.
+
+        The statement has no CASCADE: enum types are named by their values and
+        shared by every column in the schema with the same values, and CASCADE
+        would drop those columns too. A type still in use is not dropped.
 
         Parameters
         ----------
@@ -1610,12 +1710,26 @@ class PostgreSQLAdapter(DatabaseAdapter):
         Returns
         -------
         str
-            DROP TYPE IF EXISTS statement with CASCADE.
+            DROP TYPE IF EXISTS statement.
         """
-        # Split schema.typename and quote each part
-        parts = enum_type_name.split(".")
-        if len(parts) == 2:
-            qualified_name = f"{self.quote_identifier(parts[0])}.{self.quote_identifier(parts[1])}"
-        else:
-            qualified_name = self.quote_identifier(enum_type_name)
-        return f"DROP TYPE IF EXISTS {qualified_name} CASCADE"
+        return f"DROP TYPE IF EXISTS {self._quote_enum_type_name(enum_type_name)}"
+
+    def enum_type_in_use_sql(self, enum_type_name: str) -> str:
+        """
+        Query that returns a row if any table column uses a PostgreSQL enum type.
+
+        Parameters
+        ----------
+        enum_type_name : str
+            Fully qualified enum type name (schema.typename).
+
+        Returns
+        -------
+        str
+            SQL query returning at most one row.
+        """
+        return (
+            "SELECT 1 FROM pg_catalog.pg_attribute "
+            f"WHERE atttypid = {self.quote_string(self._quote_enum_type_name(enum_type_name))}::regtype "
+            "AND attnum > 0 AND NOT attisdropped LIMIT 1"
+        )

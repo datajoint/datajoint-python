@@ -329,7 +329,8 @@ class Job(Table):
         Parameters
         ----------
         *restrictions : any
-            Conditions to filter key_source (for adding new jobs).
+            Conditions to filter key_source (for adding new jobs). Cleanup
+            always checks the unrestricted key_source.
         delay : float, optional
             Seconds from now until new jobs become available for processing.
             Default 0 (immediately available). Uses database server time.
@@ -337,9 +338,10 @@ class Job(Table):
             Priority for new jobs (lower = more urgent).
             Default from ``config.jobs.default_priority``.
         stale_timeout : float, optional
-            Seconds after which jobs are checked for staleness.
-            Jobs older than this are removed if key not in key_source.
-            Default from ``config.jobs.stale_timeout``. Set to 0 to skip.
+            Grace period in seconds for jobs whose keys are no longer in
+            key_source: such jobs are removed once older than this. 0 means no
+            grace period, and removes them on this refresh. Default None uses
+            ``config.jobs.stale_timeout``.
         orphan_timeout : float, optional
             Seconds after which reserved jobs are considered orphaned.
             Reserved jobs older than this are deleted and re-added as pending.
@@ -357,7 +359,12 @@ class Job(Table):
 
         1. Add new jobs: ``(key_source & restrictions) - target - jobs`` → insert as pending
         2. Re-pend success jobs: if ``keep_completed=True`` and key in key_source but not in target
-        3. Remove stale jobs: jobs older than stale_timeout whose keys not in key_source
+        3. Remove vanished jobs, judged against the unrestricted key_source:
+
+           a. success and error records whose keys are in neither key_source nor target, at any age
+           b. stale jobs (except ``ignore``): keys not in key_source, older than stale_timeout
+              (at any age when stale_timeout is 0)
+
         4. Remove orphaned jobs: reserved jobs older than orphan_timeout (if specified)
         """
         # Ensure jobs table exists
@@ -413,16 +420,27 @@ class Job(Table):
                 self.insert1({**key, "status": "pending", "priority": priority})
                 result["re_pended"] += 1
 
-        # 3. Remove stale jobs (not ignore status) - use server CURRENT_TIMESTAMP for consistent timing
+        # 3. Remove jobs whose keys have vanished. Judge against the unrestricted key_source:
+        # jobs outside the restrictions (e.g. reserved by other workers) are not stale.
+        # Disable semantic_check for Job table operations (job table PK has different lineage than target)
+        vanished = self.restrict(Not(self._target.key_source.proj()), semantic_check=False)
+
+        # 3a. Success and error records describe rows that no longer exist once their key
+        # has left both key_source and the target, regardless of age.
+        result["removed"] += (
+            (vanished & "status in ('success', 'error')")
+            .restrict(Not(self._target.proj()), semantic_check=False)
+            .delete_quick(get_count=True)
+        )
+
+        # 3b. Remove stale jobs (not ignore status) once older than stale_timeout, a grace period
+        # for a key_source that is still being filled. stale_timeout=0 means no grace period.
+        # Age is judged on the server's CURRENT_TIMESTAMP for consistent timing.
+        stale_jobs = vanished & "status != 'ignore'"
         if stale_timeout > 0:
             stale_interval = self.adapter.interval_expr(stale_timeout, "second")
-            old_jobs = self & f"created_time < CURRENT_TIMESTAMP - {stale_interval}" & "status != 'ignore'"
-
-            for key in old_jobs.keys():
-                # Check if key still in key_source
-                if not (key_source & key):
-                    (self & key).delete_quick()
-                    result["removed"] += 1
+            stale_jobs = stale_jobs & f"created_time < CURRENT_TIMESTAMP - {stale_interval}"
+        result["removed"] += stale_jobs.delete_quick(get_count=True)
 
         # 4. Handle orphaned reserved jobs - use server CURRENT_TIMESTAMP for consistent timing
         if orphan_timeout is not None and orphan_timeout > 0:
@@ -495,8 +513,8 @@ class Job(Table):
         - If False: deletes the job entry
         """
         if self.connection._config.jobs.keep_completed:
-            # Use server time for completed_time
-            server_now = self.connection.query("SELECT CURRENT_TIMESTAMP").fetchone()[0]
+            # Server time at the column's datetime(3) precision, as reserve() writes reserved_time
+            server_now = self.connection.query("SELECT CURRENT_TIMESTAMP(3)").fetchone()[0]
             pk = self._get_pk(key)
             update_row = {
                 **pk,
@@ -525,8 +543,8 @@ class Job(Table):
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
 
-        # Use server time for completed_time
-        server_now = self.connection.query("SELECT CURRENT_TIMESTAMP").fetchone()[0]
+        # Server time at the column's datetime(3) precision, as reserve() writes reserved_time
+        server_now = self.connection.query("SELECT CURRENT_TIMESTAMP(3)").fetchone()[0]
 
         pk = self._get_pk(key)
         update_row = {
