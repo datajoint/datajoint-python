@@ -765,6 +765,7 @@ class Heading:
                 (dict(self.attributes[name].todict(), in_key=True) for name in primary_key),
                 (dict(self.attributes[name].todict(), in_key=False) for name in self.names if name not in primary_key),
             ),
+            table_info=self.table_info,
             lineage_available=self._lineage_available,
         )
 
@@ -775,5 +776,6 @@ class Heading:
         """
         return Heading(
             (dict(v.todict(), attribute_expression=None) for v in self.attributes.values()),
+            table_info=self.table_info,  # keep the adapter, so a later rename quotes for the backend
             lineage_available=self._lineage_available,
         )
