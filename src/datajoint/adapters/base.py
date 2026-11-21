@@ -10,6 +10,29 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
+from ..errors import DataJointError
+
+# Keys accepted in a ``use_tls`` dict, for every backend (PyMySQL ``ssl`` names)
+TLS_KEYS = ("ca", "capath", "cert", "key", "password", "cipher", "check_hostname", "verify_mode")
+
+
+def check_tls_keys(use_tls: dict) -> None:
+    """
+    Raise if a ``use_tls`` dict has a key that DataJoint does not know.
+
+    A misspelled key (for example ``ssl_ca`` for ``ca``) would otherwise be
+    ignored, and the connection would run without the intended certificate
+    check.
+
+    Raises
+    ------
+    DataJointError
+        If ``use_tls`` has a key not in :data:`TLS_KEYS`.
+    """
+    unknown = sorted(repr(k) for k in use_tls if k not in TLS_KEYS)
+    if unknown:
+        raise DataJointError(f"Unknown use_tls key(s): {', '.join(unknown)}. Accepted keys: {', '.join(TLS_KEYS)}.")
+
 
 class DatabaseAdapter(ABC):
     """

@@ -78,11 +78,15 @@ def conn(
     reset : bool, optional
         If True, reset existing connection. Default False.
     use_tls : bool or dict, optional
-        TLS encryption option: True (required), False (no TLS),
-        None (preferred, default), or dict for manual configuration
-        (TLS required; ``ca``, ``cert``, ``key``; with ``ca``, the server
-        certificate is verified). The existing connection is reconnected with
-        these unless it already satisfies them.
+        TLS encryption option. None (default): ``database.use_tls`` from
+        config; when that is unset too, TLS when the server offers it, without
+        verifying the server certificate, and no TLS otherwise. True: TLS
+        required, without verifying the server certificate. False: no TLS.
+        A dict: TLS required, configured with the keys ``ca``, ``capath``,
+        ``cert``, ``key``, ``password``, ``cipher``, ``check_hostname`` and
+        ``verify_mode``; with ``ca``, the server certificate is verified.
+        Another key raises DataJointError. The existing connection is
+        reconnected with these unless it already satisfies them.
 
     Returns
     -------
@@ -167,11 +171,14 @@ class Connection:
     port : int, optional
         Port number. Overridden if specified in host.
     use_tls : bool or dict, optional
-        TLS encryption option: True (required), False (no TLS),
-        None (default; ``database.use_tls`` from config, and TLS if the
-        server supports it when that is unset), or dict for manual
-        configuration (TLS required; ``ca``, ``cert``, ``key``; with ``ca``,
-        the server certificate is verified).
+        TLS encryption option. None (default): ``database.use_tls`` from
+        config; when that is unset too, TLS when the server offers it, without
+        verifying the server certificate, and no TLS otherwise. True: TLS
+        required, without verifying the server certificate. False: no TLS.
+        A dict: TLS required, configured with the keys ``ca``, ``capath``,
+        ``cert``, ``key``, ``password``, ``cipher``, ``check_hostname`` and
+        ``verify_mode``; with ``ca``, the server certificate is verified.
+        Another key raises DataJointError.
 
     Attributes
     ----------

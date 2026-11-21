@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import logging
 import re
+import socket
+import struct
 from typing import Any
 
 try:
@@ -19,7 +21,7 @@ except ImportError:
     sql = None  # type: ignore
 
 from .. import errors
-from .base import DatabaseAdapter
+from .base import DatabaseAdapter, check_tls_keys
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -43,6 +45,31 @@ def _tls_rejected(error: Exception) -> bool:
     return "pg_hba.conf" in message and ("SSL encryption" in message or "SSL on" in message)
 
 
+# SSLRequest message of the PostgreSQL protocol: length 8, request code 80877103
+_SSL_REQUEST = struct.pack("!ii", 8, 80877103)
+
+
+def _server_refuses_ssl(host: str, port: int | None, timeout: float | None) -> bool:
+    """
+    Ask the server whether it supports SSL, as libpq does before it connects.
+
+    Sends an SSLRequest and reads the one-byte answer: ``N`` means the server
+    does not support SSL. Unlike the error message, the answer does not depend
+    on the language of the client or the server. Nothing else is sent, so no
+    credentials leave the client. Any other answer, a failure to connect, or a
+    host that is not a single TCP host (a Unix socket directory or a list of
+    hosts) gives False.
+    """
+    if not host or host.startswith("/") or "," in host:
+        return False
+    try:
+        with socket.create_connection((host, port or 5432), timeout=timeout or 10) as sock:
+            sock.sendall(_SSL_REQUEST)
+            return sock.recv(1) == b"N"
+    except OSError:
+        return False
+
+
 def _libpq_tls_params(use_tls: dict) -> dict[str, Any]:
     """
     Map a ``use_tls`` dict to libpq SSL connection parameters.
@@ -51,6 +78,7 @@ def _libpq_tls_params(use_tls: dict) -> dict[str, Any]:
     ``verify-full`` (certificate and host name), or ``verify-ca`` when
     ``check_hostname`` is False. Without ``ca``, sslmode is ``require``.
     """
+    check_tls_keys(use_tls)
     params = {_LIBPQ_TLS_KEYS[k]: v for k, v in use_tls.items() if k in _LIBPQ_TLS_KEYS and v is not None}
     supported = set(_LIBPQ_TLS_KEYS)
     if "sslrootcert" in params:
@@ -144,9 +172,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
               True: 'require'. False: 'disable'.
               None: 'require', then 'disable' only if the server does not support
               SSL or pg_hba.conf does not accept SSL connections from this client.
+              Whether the server supports SSL is asked in the protocol, so it is
+              recognized in any language; the pg_hba.conf refusal is recognized
+              from its English message only.
               dict: ``ca``, ``cert``, ``key``, ``password`` map to sslrootcert,
               sslcert, sslkey, sslpassword; sslmode is 'verify-full' with ``ca``
               ('verify-ca' if ``check_hostname`` is False), otherwise 'require'.
+              Keys that apply to MySQL only are ignored with a warning; an
+              unknown key raises DataJointError.
             - connect_timeout: Connection timeout in seconds
 
         Returns
@@ -191,7 +224,9 @@ class PostgreSQLAdapter(DatabaseAdapter):
         try:
             conn = client.connect(sslmode=sslmode, **params)
         except client.OperationalError as error:
-            if "sslmode" in kwargs or use_tls is not None or not _tls_rejected(error):
+            if "sslmode" in kwargs or use_tls is not None:
+                raise
+            if not (_tls_rejected(error) or _server_refuses_ssl(host, port, connect_timeout)):
                 raise
             logger.debug("Connecting without SSL: %s", str(error).strip())
             conn = client.connect(sslmode="disable", **params)
