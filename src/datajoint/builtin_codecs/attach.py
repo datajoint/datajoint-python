@@ -30,8 +30,10 @@ def _has_contents(path: Path, contents: bytes) -> bool:
     """
     Check whether ``path`` is a regular file holding exactly ``contents``.
 
-    Symbolic links, devices, and pipes are never opened, and a file is read only
-    when its size matches.
+    Symbolic links, devices, and pipes are never read, and a file is read only
+    when its size matches. The open does not block and does not follow a link,
+    in case another file replaces the checked one before it is opened; any
+    such file counts as different.
     """
     try:
         st = os.lstat(path)
@@ -39,7 +41,11 @@ def _has_contents(path: Path, contents: bytes) -> bool:
         return False
     if not stat.S_ISREG(st.st_mode) or st.st_size != len(contents):
         return False
-    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        return False
     with os.fdopen(fd, "rb") as f:
         if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
             return False

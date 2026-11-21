@@ -8,12 +8,8 @@ are not loaded until their associated features are accessed.
 import sys
 
 
-def test_lazy_diagram_import():
+def test_lazy_diagram_import(fresh_datajoint_import):
     """Diagram module should not be loaded until dj.Diagram is accessed."""
-    # Remove datajoint from sys.modules to get fresh import
-    modules_to_remove = [key for key in sys.modules if key.startswith("datajoint")]
-    for mod in modules_to_remove:
-        del sys.modules[mod]
 
     # Import datajoint
     import datajoint as dj
@@ -27,12 +23,8 @@ def test_lazy_diagram_import():
     assert Diagram.__name__ == "Diagram"
 
 
-def test_lazy_cli_import():
+def test_lazy_cli_import(fresh_datajoint_import):
     """CLI module should not be loaded until dj.cli is accessed."""
-    # Remove datajoint from sys.modules to get fresh import
-    modules_to_remove = [key for key in sys.modules if key.startswith("datajoint")]
-    for mod in modules_to_remove:
-        del sys.modules[mod]
 
     # Import datajoint
     import datajoint as dj
@@ -46,12 +38,8 @@ def test_lazy_cli_import():
     assert callable(cli_func), "dj.cli should be callable (the cli function)"
 
 
-def test_diagram_module_access():
+def test_diagram_module_access(fresh_datajoint_import):
     """dj.diagram should return the diagram module for accessing module-level attrs."""
-    # Remove datajoint from sys.modules to get fresh import
-    modules_to_remove = [key for key in sys.modules if key.startswith("datajoint")]
-    for mod in modules_to_remove:
-        del sys.modules[mod]
 
     import datajoint as dj
 
@@ -61,12 +49,8 @@ def test_diagram_module_access():
     assert hasattr(diagram_module, "Diagram"), "diagram module should have Diagram class"
 
 
-def test_core_imports_available():
+def test_core_imports_available(fresh_datajoint_import):
     """Core functionality should be available immediately after import."""
-    # Remove datajoint from sys.modules to get fresh import
-    modules_to_remove = [key for key in sys.modules if key.startswith("datajoint")]
-    for mod in modules_to_remove:
-        del sys.modules[mod]
 
     import datajoint as dj
 

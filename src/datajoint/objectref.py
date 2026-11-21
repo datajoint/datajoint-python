@@ -14,11 +14,27 @@ from pathlib import Path
 from typing import IO, Iterator
 
 import fsspec
+from packaging.version import InvalidVersion, Version
 
 from .errors import DataJointError
 from .hash_registry import compute_hash
 from .storage import StorageBackend
 from .utils import is_plain_file_name
+
+
+def _fsspec_get_takes_lists_literally() -> bool:
+    """
+    Return True if ``fs.get(list, list)`` copies each source path as given.
+
+    Before fsspec 2023.9.0, ``get`` expanded a list of sources (glob and sort)
+    even when the destinations were given as a list too, so a key containing
+    ``[``, ``*`` or ``?`` could be paired with another key's local name. An
+    unrecognized version counts as an old one.
+    """
+    try:
+        return Version(fsspec.__version__) >= Version("2023.9.0")
+    except (InvalidVersion, TypeError):
+        return False
 
 
 class IntegrityError(DataJointError):
@@ -317,7 +333,9 @@ class ObjectRef:
             # Check every key before writing anything: each must be made of plain
             # names below the object, so that no file lands outside target
             entries = fs.find(full_path, withdirs=True, detail=True)
-            if not entries:
+            # fsspec before 2024.3.1 does not list the folder itself, so an
+            # empty folder object gives no entries at all
+            if not entries and not fs.isdir(full_path):
                 raise FileNotFoundError(full_path)
             rpaths, lpaths, ldirs = [], [], []
             for rpath, info in entries.items():
@@ -328,7 +346,8 @@ class ObjectRef:
                 parts = rel.split("/")
                 if not all(is_plain_file_name(p) for p in [name, *parts]):
                     raise DataJointError(f"Cannot download {remote_path!r}: entry {rpath!r} leads outside the destination.")
-                if info["type"] == "directory":
+                if info["type"] == "directory" or rpath.endswith("/"):
+                    # A key ending in "/" is a directory marker, not a file
                     ldirs.append(target.joinpath(*parts))
                 else:
                     rpaths.append(rpath)
@@ -338,8 +357,11 @@ class ObjectRef:
                 ldir.mkdir(parents=True, exist_ok=True)
             for lpath in lpaths:
                 Path(lpath).parent.mkdir(parents=True, exist_ok=True)
-            if rpaths:
+            if rpaths and _fsspec_get_takes_lists_literally():
                 fs.get(rpaths, lpaths)
+            else:
+                for rpath, lpath in zip(rpaths, lpaths):
+                    fs.get_file(rpath, lpath)
         else:
             # Download single file
             if destination.is_dir():
