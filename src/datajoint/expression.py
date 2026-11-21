@@ -1185,7 +1185,7 @@ class QueryExpression:
         result = self.make_subquery() if self._top else copy.copy(self)
         if not result._distinct:
             # Without DISTINCT, the query returns one row per row of its FROM/WHERE: count them.
-            # The primary key already identifies the rows, so counting distinct keys is redundant.
+            # Counting distinct primary keys would be redundant, and fails without a primary key.
             query = f"SELECT count(*) FROM {result.from_clause()}{result.where_clause()}"
             return result.connection.query(query).fetchone()[0]
         has_left_join = any(is_left for is_left, _ in result._joins)
@@ -1478,11 +1478,13 @@ class Union(QueryExpression):
         fields = self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
         sql2 = (arg2 - arg1).proj(..., **{k: "NULL" for k in arg1.heading.secondary_attributes}).make_sql(fields)
-        # The branches are disjoint (arg2 - arg1 excludes arg1's keys): no deduplication needed
+        # The branches are disjoint (arg2 - arg1 excludes arg1's keys): no deduplication needed.
+        # Without a primary key, an operand can hold repeated rows: UNION removes them.
+        union = "UNION ALL" if self.primary_key else "UNION"
         if self._top is not None:
             alias_quoted = self.connection.adapter.quote_identifier(f"_u{next(self.__count)}")
-            return f"SELECT * FROM (({sql1}) UNION ALL ({sql2})) as {alias_quoted}{self.sorting_clauses()}"
-        return "({sql1}) UNION ALL ({sql2})".format(sql1=sql1, sql2=sql2)
+            return f"SELECT * FROM (({sql1}) {union} ({sql2})) as {alias_quoted}{self.sorting_clauses()}"
+        return f"({sql1}) {union} ({sql2})"
 
     def from_clause(self):
         """The union does not use a FROM clause."""
@@ -1553,9 +1555,10 @@ class U:
         result = copy.copy(other)
         result._heading = result.heading.set_primary_key(self.primary_key)
         result = result.proj()
-        # Rows repeat only if the new primary key leaves out part of other's primary key.
+        # Rows repeat if other has no primary key (a table created without one can hold
+        # repeated rows) or if the new primary key leaves out part of other's primary key.
         # Set after proj(), which may wrap other in a subquery: the DISTINCT belongs outside.
-        result._distinct = result._distinct or not set(other.primary_key) <= set(self.primary_key)
+        result._distinct = result._distinct or not other.primary_key or not set(other.primary_key) <= set(self.primary_key)
         return result
 
     def __mul__(self, other):

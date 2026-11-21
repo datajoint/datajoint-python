@@ -58,6 +58,14 @@ def test_universal_restriction_distinct_only_without_the_key(tables):
     assert "DISTINCT" not in (U("parent_id", "child_id") & child).make_sql()
 
 
+def test_universal_restriction_of_keyless_table_is_distinct(tables):
+    """A table without a primary key can hold repeated rows, whatever U's attributes."""
+    parent, _, _ = tables
+    message = make_table(parent.connection, "message", [], ["msg", "n"], {})
+    assert (U("msg") & message).make_sql().startswith("SELECT DISTINCT ")
+    assert (U("msg", "n") & message).make_sql().startswith("SELECT DISTINCT ")
+
+
 @pytest.mark.parametrize("operand", ["right", "left"])
 def test_join_wraps_distinct_operand(tables, operand):
     parent, child, _ = tables

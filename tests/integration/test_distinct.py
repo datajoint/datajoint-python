@@ -1,11 +1,14 @@
 """
 DISTINCT only where a query can return duplicate rows.
 
-Every DataJoint query has a primary key that identifies its rows, so the SQL
-needs ``DISTINCT`` (or ``UNION`` deduplication) only where an operator removes
-part of that key: ``dj.U(...) & expr`` projecting onto attributes that do not
+A DataJoint query's primary key identifies its rows, so the SQL needs
+``DISTINCT`` (or ``UNION`` deduplication) only where an operator removes part
+of that key: ``dj.U(...) & expr`` projecting onto attributes that do not
 include ``expr``'s primary key, and the union of two operands whose keys may
-overlap. Everywhere else ``DISTINCT`` is redundant work for the database.
+overlap. A table without a primary key (created outside DataJoint) can hold
+repeated rows, so ``dj.U(...) & expr`` and the union deduplicate whenever the
+operand has no primary key. Everywhere else ``DISTINCT`` is redundant work for
+the database.
 
 Where ``DISTINCT`` is needed it must survive composition: an operand
 ``dj.U(...) & expr`` used in a join, ``extend``, ``aggr`` or ``dj.U(...).aggr``
@@ -78,6 +81,27 @@ def tables(schema_by_backend):
     Child.insert(dict(parent_id=p, child_id=c, kind=k) for p, c, k in children)
     Note.insert([dict(parent_id=2, note="x"), dict(parent_id=3, note="y")])
     return Parent, Child, Note
+
+
+def create_keyless_table(schema, name, columns, values):
+    """Create a table with no primary key by plain SQL and return it as a FreeTable."""
+    conn = schema.connection
+    quote = conn.adapter.quote_identifier
+    full_table_name = f"{quote(schema.database)}.{quote(name)}"
+    conn.query(f"CREATE TABLE {full_table_name} ({columns})")
+    conn.query(f"INSERT INTO {full_table_name} VALUES {values}")
+    return dj.FreeTable(conn, full_table_name)
+
+
+@pytest.fixture
+def keyless(schema_by_backend):
+    """A table with no primary key, created by plain SQL, with a repeated row."""
+    return create_keyless_table(
+        schema_by_backend,
+        "message",
+        "msg varchar(16) NOT NULL, n int NOT NULL",
+        "('hello', 1), ('hello', 1), ('hello', 2), ('bye', 3)",
+    )
 
 
 def has_distinct(sql):
@@ -273,3 +297,40 @@ def test_join_with_union_on_the_right_without_common_attributes(tables):
     kinds = dj.U("kind") & Child
     two_kinds = (kinds & "kind = 'a'") + (kinds & "kind = 'b'")
     assert_rows(Parent * two_kinds, 10)
+
+
+def test_len_of_keyless_table(keyless):
+    """``len()`` counts the rows of a table without a primary key, repeated rows included."""
+    assert not keyless.primary_key
+    assert_rows(keyless, 4)
+
+
+def test_universal_restriction_of_keyless_table(tables, keyless):
+    """A table without a primary key can repeat rows: ``dj.U(...) & keyless`` deduplicates."""
+    Parent, Child, Note = tables
+    assert not keyless.primary_key
+
+    messages = dj.U("msg") & keyless
+    assert has_distinct(messages.make_sql())
+    assert sorted(messages.to_arrays("msg")) == ["bye", "hello"]
+    assert_rows(messages, 2)
+
+    # U's attributes include every attribute, yet ('hello', 1) appears twice in the table
+    pairs = dj.U("msg", "n") & keyless
+    assert has_distinct(pairs.make_sql())
+    assert sorted(zip(*pairs.to_arrays("msg", "n"))) == [("bye", 3), ("hello", 1), ("hello", 2)]
+    assert_rows(pairs, 3)
+
+    assert_rows(Parent * messages, 10)
+    per_message = dj.U("msg").aggr(pairs, k="count(*)")
+    assert dict(zip(*per_message.to_arrays("msg", "k"))) == {"bye": 1, "hello": 2}
+
+
+def test_union_of_keyless_tables_deduplicates(schema_by_backend, keyless):
+    """Rows of a keyless operand can repeat, so its outer union keeps UNION deduplication."""
+    tags = create_keyless_table(schema_by_backend, "tag", "tag varchar(16) NOT NULL", "('t')")
+    union = keyless + tags
+    assert "UNION ALL" not in union.make_sql()
+    rows = sorted((row["msg"], row["n"], row["tag"]) for row in union.to_dicts())
+    assert rows == [("bye", 3, "t"), ("hello", 1, "t"), ("hello", 2, "t")]
+    assert_rows(union, 3)
