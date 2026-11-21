@@ -19,7 +19,17 @@ except ImportError:
     sql = None  # type: ignore
 
 from .. import errors
-from .base import DatabaseAdapter
+from .base import (
+    JSON_BINARY_TYPES,
+    JSON_DECIMAL_TYPES,
+    JSON_FLOAT_TYPES,
+    JSON_INTEGER_TYPES,
+    JSON_JSON_TYPES,
+    JSON_STRING_TYPES,
+    DatabaseAdapter,
+    JsonType,
+    parse_json_type,
+)
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -1175,7 +1185,9 @@ class PostgreSQLAdapter(DatabaseAdapter):
         path : str
             JSON path (e.g., 'field' or 'nested.field').
         return_type : str, optional
-            Return type specification for casting (e.g., 'float', 'decimal(10,2)').
+            Type annotation to cast to (e.g., 'float', 'decimal(10,2)'). MySQL
+            RETURNING spellings such as 'signed', 'double' or 'datetime' are
+            mapped onto PostgreSQL types.
 
         Returns
         -------
@@ -1189,9 +1201,52 @@ class PostgreSQLAdapter(DatabaseAdapter):
         >>> adapter.json_path_expr('data', 'nested.field')
         'jsonb_extract_path_text("data", \\'nested\\', \\'field\\')'
         >>> adapter.json_path_expr('data', 'value', 'float')
-        'jsonb_extract_path_text("data", \\'value\\')::float'
+        '(jsonb_extract_path_text("data", \\'value\\'))::double precision'
         """
         quoted_col = self.quote_identifier(column)
+        path_args = self._json_path_args(path)
+        if not return_type:
+            return f"jsonb_extract_path_text({quoted_col}, {path_args})"
+        json_type = parse_json_type(return_type)
+        if json_type.name in JSON_JSON_TYPES:
+            # Cast the JSON value itself: the text of a JSON string is not valid JSON
+            return f"(jsonb_extract_path({quoted_col}, {path_args}))::{json_type.name}"
+        expr = f"(jsonb_extract_path_text({quoted_col}, {path_args}))::{self._json_cast_type(json_type)}"
+        return expr + (f" collate {json_type.collate}" if json_type.collate else "")
+
+    @staticmethod
+    def _json_cast_type(json_type: JsonType) -> str:
+        """Map a parsed JSON path type annotation onto a PostgreSQL type to cast to."""
+        name, args = json_type.name, json_type.args
+        if name in JSON_INTEGER_TYPES:
+            # 64-bit, like MySQL's RETURNING SIGNED, which takes no size: a narrower type
+            # would fail the whole query on a value out of its range. Display widths
+            # such as int(11) are dropped.
+            return "bigint"
+        if name in JSON_FLOAT_TYPES:
+            return "real" if json_type.single_precision else "double precision"
+        if name in JSON_DECIMAL_TYPES:
+            return name + args
+        if name in JSON_STRING_TYPES:
+            # char(n) would pad with blanks and char alone means char(1), which
+            # truncates; varchar(n) and text return the string as MySQL does.
+            # A MySQL character set has no PostgreSQL equivalent and is dropped.
+            if args:
+                return "varchar" + args
+            return name if "varying" in name or name == "varchar" else "text"
+        if name in JSON_BINARY_TYPES:
+            return "bytea"
+        if name in ("bool", "boolean", "date", "uuid"):
+            return name
+        if name == "bit":
+            # bit alone means bit(1), which keeps only the first bit of the string
+            return "bit" + args if args else "bit varying"
+        # time, timetz, datetime, timestamp, timestamptz, interval
+        zone = f" {json_type.zone} time zone" if json_type.zone else ""
+        return {"datetime": "timestamp"}.get(name, name) + args + zone
+
+    def _json_path_args(self, path: str) -> str:
+        """Split a JSON path into quoted jsonb_extract_path() arguments."""
         # Split path by '.' for nested access, handling array notation
         path_parts = []
         for part in path.split("."):
@@ -1204,18 +1259,33 @@ class PostgreSQLAdapter(DatabaseAdapter):
                 path_parts.extend(indices)
             else:
                 path_parts.append(part)
-        path_args = ", ".join(self.quote_string(part) for part in path_parts)
-        expr = f"jsonb_extract_path_text({quoted_col}, {path_args})"
-        # Add cast if return type specified
-        if return_type:
-            # Map DataJoint types to PostgreSQL types
-            pg_type = return_type.lower()
-            if pg_type in ("unsigned", "signed"):
-                pg_type = "integer"
-            elif pg_type == "double":
-                pg_type = "double precision"
-            expr = f"({expr})::{pg_type}"
-        return expr
+        return ", ".join(self.quote_string(part) for part in path_parts)
+
+    def json_path_equals(self, column: str, path: str, value: str) -> str:
+        """
+        Generate a condition comparing the JSON value at a path with a JSON literal.
+
+        Parameters
+        ----------
+        column : str
+            Column name containing JSON data.
+        path : str
+            JSON path (e.g., 'field' or 'nested.field').
+        value : str
+            JSON literal (e.g., '64', '2.5', 'true').
+
+        Returns
+        -------
+        str
+            PostgreSQL condition comparing two jsonb values.
+
+        Examples
+        --------
+        >>> adapter.json_path_equals('data', 'n', '64')
+        'jsonb_extract_path("data", \\'n\\') = \\'64\\'::jsonb'
+        """
+        quoted_col = self.quote_identifier(column)
+        return f"jsonb_extract_path({quoted_col}, {self._json_path_args(path)}) = {self.quote_string(value)}::jsonb"
 
     def translate_expression(self, expr: str) -> str:
         """

@@ -188,6 +188,102 @@ class TestMySQLAdapter:
         result = adapter.json_path_expr("data", "value", "decimal(10,2)")
         assert result == "json_value(`data`, _utf8mb4'$.value' returning decimal(10,2))"
 
+    @pytest.mark.parametrize(
+        "annotation, returning",
+        [
+            # integer spellings, display widths dropped
+            ("int", "signed"),
+            ("INTEGER", "signed"),
+            ("int2", "signed"),
+            ("int4", "signed"),
+            ("int8", "signed"),
+            ("tinyint", "signed"),
+            ("smallint", "signed"),
+            ("mediumint", "signed"),
+            ("bigint", "signed"),
+            ("int(11)", "signed"),
+            ("signed integer", "signed"),
+            ("unsigned int", "unsigned"),
+            ("year", "signed"),
+            ("bool", "signed"),
+            ("boolean", "signed"),
+            # a decimal without precision keeps the value instead of rounding it
+            ("numeric", "decimal(65,30)"),
+            ("decimal", "decimal(65,30)"),
+            ("dec", "decimal(65,30)"),
+            ("numeric(5,1)", "decimal(5,1)"),
+            ("decimal(4, 1)", "decimal(4, 1)"),
+            ("dec(7)", "decimal(7)"),
+            # floats: precision as on PostgreSQL, where float is double precision and
+            # real is single; RETURNING FLOAT is single precision for every float(p)
+            ("double precision", "double"),
+            ("double", "double"),
+            ("float", "double"),
+            ("float8", "double"),
+            ("float(25)", "double"),
+            ("float(53)", "double"),
+            ("real", "float"),
+            ("float4", "float"),
+            ("float(1)", "float"),
+            ("float(24)", "float"),
+            # strings: CHAR without a length is unlimited in RETURNING
+            ("char", "char"),
+            ("character", "char"),
+            ("nchar", "char"),
+            ("text", "char"),
+            ("varchar", "char"),
+            ("character varying", "char"),
+            ("char(20)", "char(20)"),
+            ("varchar(16)", "char(16)"),
+            ("char varying(16)", "char(16)"),
+            ("char(20) character set utf8mb4", "char(20) character set utf8mb4"),
+            ("char(20) charset utf8mb4", "char(20) character set utf8mb4"),
+            # binary and JSON
+            ("binary(4)", "binary(4)"),
+            ("varbinary(4)", "binary"),
+            ("bytea", "binary"),
+            ("json", "json"),
+            ("jsonb", "json"),
+            # dates and times
+            ("date", "date"),
+            ("time", "time"),
+            ("time(3)", "time(3)"),
+            ("datetime", "datetime"),
+            ("datetime(6)", "datetime(6)"),
+            ("timestamp", "datetime"),
+            ("timestamp(3) without time zone", "datetime(3)"),
+        ],
+    )
+    def test_json_path_expr_maps_return_type(self, adapter, annotation, returning):
+        """PostgreSQL type spellings in a JSON path annotation are valid on MySQL (#1563)."""
+        result = adapter.json_path_expr("data", "n", annotation)
+        assert result == f"json_value(`data`, _utf8mb4'$.n' returning {returning})"
+
+    def test_json_path_expr_collation(self, adapter):
+        """RETURNING takes no COLLATE clause, so the returned string is collated."""
+        assert adapter.json_path_expr("data", "s", "char(20) character set utf8mb4 collate utf8mb4_bin") == (
+            "json_value(`data`, _utf8mb4'$.s' returning char(20) character set utf8mb4) collate utf8mb4_bin"
+        )
+
+    @pytest.mark.parametrize(
+        "annotation",
+        ["uuid", "interval", "bit", "bit(3)", "timetz", "timestamptz", "time with time zone", "timestamp with time zone"],
+    )
+    def test_json_path_expr_rejects_type_without_equivalent(self, adapter, annotation):
+        """A type MySQL cannot return raises a DataJointError instead of a SQL syntax error."""
+        from datajoint.errors import DataJointError
+
+        with pytest.raises(DataJointError, match="has no MySQL equivalent"):
+            adapter.json_path_expr("data", "n", annotation)
+
+    def test_json_path_equals(self, adapter):
+        """Test JSON path comparison with a JSON literal."""
+        assert adapter.json_path_equals("data", "n", "64") == "json_extract(`data`, _utf8mb4'$.n') = cast('64' as json)"
+        assert (
+            adapter.json_path_equals("data", "a[0].b", "true")
+            == "json_extract(`data`, _utf8mb4'$.a[0].b') = cast('true' as json)"
+        )
+
     def test_transaction_sql(self, adapter):
         """Test transaction statements."""
         assert "START TRANSACTION" in adapter.start_transaction_sql()
@@ -338,6 +434,93 @@ class TestPostgreSQLAdapter:
         result = adapter.json_path_expr("data", "nested.field")
         assert result == "jsonb_extract_path_text(\"data\", 'nested', 'field')"
 
+    @pytest.mark.parametrize(
+        "annotation, cast",
+        [
+            # every integer is 64-bit, like MySQL's SIGNED and UNSIGNED
+            ("signed", "bigint"),
+            ("unsigned", "bigint"),
+            ("signed integer", "bigint"),
+            ("UNSIGNED INT", "bigint"),
+            ("tinyint", "bigint"),
+            ("smallint", "bigint"),
+            ("int2", "bigint"),
+            ("mediumint", "bigint"),
+            ("year", "bigint"),
+            ("int(11)", "bigint"),
+            ("int", "bigint"),
+            ("integer", "bigint"),
+            ("int4", "bigint"),
+            ("int8", "bigint"),
+            ("bigint", "bigint"),
+            # floats and decimals
+            ("double", "double precision"),
+            ("double precision", "double precision"),
+            ("float", "double precision"),
+            ("float8", "double precision"),
+            ("float(53)", "double precision"),
+            ("float(10)", "real"),
+            ("float(24)", "real"),
+            ("float4", "real"),
+            ("real", "real"),
+            ("decimal(5,1)", "decimal(5,1)"),
+            ("numeric", "numeric"),
+            ("dec", "dec"),
+            ("bool", "bool"),
+            # strings: char alone is char(1) and char(n) pads, so both become varchar or text
+            ("char", "text"),
+            ("character", "text"),
+            ("nchar", "text"),
+            ("text", "text"),
+            ("char(20)", "varchar(20)"),
+            ("nchar(20)", "varchar(20)"),
+            ("varchar", "varchar"),
+            ("varchar(16)", "varchar(16)"),
+            ("character varying", "character varying"),
+            ("char(20) character set utf8mb4", "varchar(20)"),
+            # binary and other types
+            ("binary", "bytea"),
+            ("varbinary(4)", "bytea"),
+            ("bytea", "bytea"),
+            ("uuid", "uuid"),
+            # bit alone means bit(1), which keeps only the first bit
+            ("bit", "bit varying"),
+            ("bit(3)", "bit(3)"),
+            ("interval", "interval"),
+            # dates and times
+            ("date", "date"),
+            ("datetime", "timestamp"),
+            ("datetime(3)", "timestamp(3)"),
+            ("timestamp", "timestamp"),
+            ("timestamptz", "timestamptz"),
+            ("timestamp(3) with time zone", "timestamp(3) with time zone"),
+            ("time", "time"),
+            ("timetz", "timetz"),
+        ],
+    )
+    def test_json_path_expr_maps_return_type(self, adapter, annotation, cast):
+        """MySQL RETURNING spellings in a JSON path annotation are valid on PostgreSQL."""
+        result = adapter.json_path_expr("data", "n", annotation)
+        assert result == f"(jsonb_extract_path_text(\"data\", 'n'))::{cast}"
+
+    @pytest.mark.parametrize("annotation", ["json", "jsonb"])
+    def test_json_path_expr_json_type(self, adapter, annotation):
+        """A JSON annotation casts the JSON value, since the text of a JSON string is not JSON."""
+        result = adapter.json_path_expr("data", "n", annotation)
+        assert result == f"(jsonb_extract_path(\"data\", 'n'))::{annotation}"
+
+    def test_json_path_expr_collation(self, adapter):
+        assert adapter.json_path_expr("data", "s", "text collate ucs_basic") == (
+            "(jsonb_extract_path_text(\"data\", 's'))::text collate ucs_basic"
+        )
+
+    def test_json_path_equals(self, adapter):
+        """Test JSON path comparison with a JSON literal."""
+        assert adapter.json_path_equals("data", "n", "64") == "jsonb_extract_path(\"data\", 'n') = '64'::jsonb"
+        assert (
+            adapter.json_path_equals("data", "a[0].b", "true") == "jsonb_extract_path(\"data\", 'a', '0', 'b') = 'true'::jsonb"
+        )
+
     def test_transaction_sql(self, adapter):
         """Test transaction statements."""
         assert adapter.start_transaction_sql() == "BEGIN"
@@ -430,6 +613,7 @@ class TestAdapterInterface:
             "statement_timestamp_expr",
             "interval_expr",
             "json_path_expr",
+            "json_path_equals",
             "format_column_definition",
             "table_options_clause",
             "table_comment_ddl",

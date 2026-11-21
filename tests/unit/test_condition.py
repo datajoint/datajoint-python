@@ -1,7 +1,8 @@
-"""Unit tests for condition.py - Top class and merge logic."""
+"""Unit tests for condition.py - Top class and merge logic, JSON path literals."""
 
 import pytest
-from datajoint.condition import Top
+
+from datajoint.condition import Top, _json_literal
 
 
 class TestTopMerge:
@@ -185,11 +186,20 @@ VALID_JSON_TYPES = [
     "bool",
     "jsonb",
     "timestamp",
-    "timestamptz",
-    "timestamp with time zone",
     "timestamp(3) without time zone",
-    "uuid",
 ]
+
+# PostgreSQL types with no MySQL equivalent: a DataJointError on MySQL
+POSTGRESQL_ONLY_JSON_TYPES = ["timestamptz", "timestamp with time zone", "uuid", "interval", "bit", "timetz"]
+
+# Every type name that _JSON_TYPE_PATTERN accepts
+ACCEPTED_JSON_TYPE_NAMES = (
+    "signed, unsigned, signed int, signed integer, unsigned int, unsigned integer, int, int2, int4, int8, "
+    "integer, tinyint, smallint, mediumint, bigint, real, float, float4, float8, double, double precision, "
+    "decimal, numeric, dec, bool, boolean, bit, char, character, char varying, character varying, varchar, "
+    "nchar, text, binary, varbinary, bytea, json, jsonb, uuid, date, datetime, year, time, timetz, timestamp, "
+    "timestamptz, interval"
+).split(", ")
 
 
 def _fake_expression(backend, names=("name", "car", "uid")):
@@ -322,6 +332,14 @@ class TestRestrictionLiterals:
         cond = _condition(backend, {f"car.length:{type_spec}": 1})
         assert cond.endswith("=1)")
 
+    @pytest.mark.parametrize("type_spec", POSTGRESQL_ONLY_JSON_TYPES)
+    def test_postgresql_only_json_type(self, backend, type_spec):
+        if backend == "mysql":
+            with pytest.raises(DataJointError, match="has no MySQL equivalent"):
+                _condition(backend, {f"car.length:{type_spec}": 1})
+        else:
+            assert _condition(backend, {f"car.length:{type_spec}": 1}).endswith("=1)")
+
     @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), np.float64("nan"), np.float32("inf")])
     def test_non_finite_number_rejected(self, backend, value):
         with pytest.raises(DataJointError, match="non-finite"):
@@ -417,10 +435,38 @@ def test_json_type_in_projection_and_index(backend, type_spec):
 
     adapter = get_adapter(backend)
     expr = translate_attribute(f"car.length:{type_spec}", adapter)[1]
-    assert expr.startswith("json_value(" if backend == "mysql" else "(jsonb_extract_path_text(")
+    assert expr.startswith("json_value(" if backend == "mysql" else "(jsonb_extract_path")
     index_sql = []
     compile_index(f"index(car.length:{type_spec})", index_sql, adapter)
     assert index_sql == [f"index (({expr}))"]
+
+
+# Types that MySQL's JSON_VALUE ... RETURNING accepts, and types that PostgreSQL lacks
+MYSQL_RETURNING_TYPES = {"signed", "unsigned", "float", "double", "decimal(65,30)", "char", "binary", "json"}
+MYSQL_RETURNING_TYPES |= {"date", "time", "datetime"}
+NOT_POSTGRESQL_TYPES = {"signed", "unsigned", "tinyint", "mediumint", "double", "datetime", "year", "binary", "varbinary"}
+
+
+@pytest.mark.parametrize("name", ACCEPTED_JSON_TYPE_NAMES)
+def test_every_accepted_json_type_name_is_mapped(name):
+    """
+    Each type name that a JSON path annotation accepts is mapped onto a type of each
+    backend, or rejected with a DataJointError; it never reaches the server as is (#1563).
+    """
+    from datajoint.condition import _JSON_TYPE_PATTERN
+
+    assert _JSON_TYPE_PATTERN.fullmatch(name)
+    if name in POSTGRESQL_ONLY_JSON_TYPES:
+        with pytest.raises(DataJointError, match="has no MySQL equivalent"):
+            translate_attribute(f"car.length:{name}", get_adapter("mysql"))
+    else:
+        mysql_expr = translate_attribute(f"car.length:{name}", get_adapter("mysql"))[1]
+        assert mysql_expr.split(" returning ")[1].removesuffix(")") in MYSQL_RETURNING_TYPES
+    postgres_expr = translate_attribute(f"car.length:{name}", get_adapter("postgresql"))[1]
+    cast = postgres_expr.split(")::")[1]
+    # char, character and nchar alone mean char(1), which truncates the string,
+    # and bit alone means bit(1), which keeps only the first bit
+    assert cast not in NOT_POSTGRESQL_TYPES | {"char", "character", "nchar", "bit"}
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
@@ -433,3 +479,79 @@ def test_invalid_json_type_in_projection_and_index(backend, type_spec):
         translate_attribute(f"car.length:{type_spec}", adapter)
     with pytest.raises(DataJointError):
         compile_index(f"index(car.length:{type_spec})", [], adapter)
+
+
+# Accepted by _JSON_TYPE_PATTERN, but with more arguments than the type takes: only a
+# decimal takes two (precision and scale), and a float, date, bool or JSON type takes none
+WRONG_ARGUMENTS_JSON_TYPES = [
+    "float(10,2)",
+    "double(10,2)",
+    "double precision(10)",
+    "real(5)",
+    "float8(5)",
+    "int(10,2)",
+    "signed(10,2)",
+    "char(10,2)",
+    "varchar(16,2)",
+    "text(10,2)",
+    "binary(4,2)",
+    "bytea(4)",
+    "time(3,2)",
+    "timestamp(3,2) without time zone",
+    "bit(3,2)",
+    "date(3)",
+    "bool(1)",
+    "json(3)",
+    "uuid(3)",
+]
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("type_spec", WRONG_ARGUMENTS_JSON_TYPES)
+def test_json_type_with_wrong_arguments(backend, type_spec):
+    """Too many type arguments raise a DataJointError on both backends, not a server syntax error."""
+    from datajoint.condition import _JSON_TYPE_PATTERN
+    from datajoint.declare import compile_index
+
+    assert _JSON_TYPE_PATTERN.fullmatch(type_spec)
+    adapter = get_adapter(backend)
+    with pytest.raises(DataJointError, match="takes (no arguments|one argument)"):
+        translate_attribute(f"car.length:{type_spec}", adapter)
+    with pytest.raises(DataJointError, match="takes (no arguments|one argument)"):
+        compile_index(f"index(car.length:{type_spec})", [], adapter)
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("type_spec", ["float(0)", "float(54)", "float( 99 )"])
+def test_json_float_precision_out_of_range(backend, type_spec):
+    """float(p) takes 1 to 53 on both backends; MySQL would otherwise take float(0)."""
+    with pytest.raises(DataJointError, match="float takes a precision from 1 to 53"):
+        translate_attribute(f"car.length:{type_spec}", get_adapter(backend))
+
+
+class TestJsonLiteral:
+    """Tests for rendering restriction values as JSON literals (#1564)."""
+
+    @pytest.mark.parametrize(
+        "value, literal",
+        [
+            (True, "true"),
+            (False, "false"),
+            (np.bool_(True), "true"),
+            (64, "64"),
+            (np.int64(-3), "-3"),
+            (2**70, str(2**70)),
+            (64.0, "64.0"),
+            (0.1, "0.1"),
+            (np.float32(2.5), "2.5"),
+            (1e-7, "1e-07"),
+            (decimal.Decimal("20.50"), "20.50"),
+        ],
+    )
+    def test_literal(self, value, literal):
+        assert _json_literal(value) == literal
+
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), np.float64("-inf"), decimal.Decimal("NaN")])
+    def test_non_finite_raises(self, value):
+        with pytest.raises(DataJointError):
+            _json_literal(value)
