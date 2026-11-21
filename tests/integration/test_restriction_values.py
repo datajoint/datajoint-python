@@ -5,7 +5,10 @@ Values in dict restrictions are compared as literals: quote characters, backslas
 ``%``, and SQL keywords inside a value are part of the value.
 """
 
+import uuid
+
 import numpy as np
+import pandas as pd
 import pytest
 
 import datajoint as dj
@@ -49,6 +52,11 @@ def item(connection_by_backend, backend, prefix):
 
 def ids(query):
     return sorted(query.to_arrays("item_id").tolist())
+
+
+def row_ids(query):
+    """item_id of each row, fetched with all attributes (a restricted aggregation needs them)."""
+    return sorted(row["item_id"] for row in query.to_dicts())
 
 
 @pytest.mark.parametrize("value", SPECIAL_CHARACTER_VALUES)
@@ -203,3 +211,135 @@ def test_non_finite_numbers_rejected(item):
     for value in (float("nan"), float("inf"), np.float64("-inf")):
         with pytest.raises(dj.DataJointError):
             item & {"item_id": value}
+
+
+NON_ASCII_ROW = dict(item_id=5, name="Zoë", data={"label": "Zoë", "sub": {"k": "Zoë 名前"}, "size": 7})
+
+
+def test_json_object_value_with_non_ascii_text(item):
+    """A dict value for a JSON path matches stored JSON that holds non-ASCII text."""
+    item.insert1(NON_ASCII_ROW)
+    assert ids(item & {"data.sub": {"k": "Zoë 名前"}}) == [5]
+    assert ids(item & {"data.sub": {"k": "Zoe 名前"}}) == []
+    assert ids(item & {"data.label": "Zoë"}) == [5]
+    assert ids(item & {"name": "Zoë"}) == [5]
+
+
+def test_uuid_restricted_by_non_uuid_value(connection_by_backend, backend, prefix):
+    """A uuid attribute restricted or inserted with bytes raises DataJointError, not TypeError."""
+    schema = dj.Schema(f"{prefix}_restriction_values_uuid_{backend}", connection=connection_by_backend)
+    try:
+
+        @schema
+        class Tagged(dj.Manual):
+            definition = """
+            tagged_id : int32
+            ---
+            token = null : uuid
+            """
+
+        for value in (uuid.UUID(int=1).bytes, b"' OR 1=1 --", 1):
+            with pytest.raises(dj.DataJointError, match="Badly formed UUID"):
+                Tagged & {"token": value}
+        with pytest.raises(dj.DataJointError):
+            Tagged.insert1(dict(tagged_id=1, token=uuid.UUID(int=1).bytes))
+        if backend == "mysql":
+            Tagged.insert1(dict(tagged_id=1, token=uuid.UUID(int=1)))
+            assert len(Tagged & {"token": str(uuid.UUID(int=1))}) == 1
+            assert len(Tagged & {"token": uuid.UUID(int=2)}) == 0
+    finally:
+        schema.drop(prompt=False)
+
+
+@pytest.fixture
+def item_with_tags(connection_by_backend, backend, prefix):
+    schema = dj.Schema(f"{prefix}_restriction_values_tags_{backend}", connection=connection_by_backend)
+
+    @schema
+    class Item(dj.Manual):
+        definition = """
+        item_id : int32
+        ---
+        name : varchar(64)
+        data = null : json
+        """
+
+    @schema
+    class Tag(dj.Manual):
+        definition = """
+        -> Item
+        tag : varchar(32)
+        """
+
+    Item.insert(ROWS + [NON_ASCII_ROW])
+    Tag.insert([(1, "a"), (2, "o'brien"), (2, "50% off"), (3, "b"), (5, "Zoë")])
+    yield Item(), Tag()
+    schema.drop(prompt=False)
+
+
+@pytest.mark.parametrize("value", SPECIAL_CHARACTER_VALUES)
+def test_quoted_values_in_derived_expressions(item_with_tags, value):
+    """Restrictions on joins, renamed projections, aggregations, and dj.Top match only literally."""
+    item, tag = item_with_tags
+    assert ids(item * tag & {"name": value}) == []
+    assert ids(item * tag & {"tag": value}) == []
+    assert ids(item.proj(label="name") & {"label": value}) == []
+    assert row_ids(item.aggr(tag, "name", n="count(*)") & {"name": value}) == []
+    assert ids(item & dj.Top(10, order_by="item_id") & {"name": value}) == []
+    assert ids(item * tag - {"tag": value}) == [1, 2, 2, 3, 5]
+
+
+def test_ordinary_values_in_derived_expressions(item_with_tags):
+    item, tag = item_with_tags
+    assert ids(item * tag & {"name": "o'brien"}) == [2, 2]
+    assert ids(item * tag & {"tag": "50% off"}) == [2]
+    assert ids(item * tag & {"tag": "Zoë"}) == [5]
+    assert ids(item.proj(label="name") & {"label": "o'brien"}) == [2]
+    assert ids(item.proj(label="name") & {"label": "Zoë"}) == [5]
+    assert row_ids(item.aggr(tag, "name", n="count(*)") & {"name": "o'brien"}) == [2]
+    assert row_ids(item.aggr(tag, "name", n="count(*)") & {"n": 2}) == [2]
+    assert ids(item & dj.Top(3, order_by="item_id") & {"name": "50% off"}) == [3]
+    assert ids(item & dj.Top(2, order_by="item_id") & {"name": "50% off"}) == []
+    assert ids(item & {"data.sub": {"k": "Zoë 名前"}}) == [5]
+
+
+@pytest.mark.parametrize("value", ["o'brien", "Zoë"])
+def test_values_from_records_and_dataframes(item_with_tags, value):
+    """Restrictions by record arrays, numpy.void rows, and DataFrame rows quote their values."""
+    item, _ = item_with_tags
+    expected = ids(item & {"name": value})
+    assert len(expected) == 1
+    records = np.array([(value,), ("' OR 1=1 --",)], dtype=[("name", object)])
+    assert ids(item & records) == expected
+    assert ids(item & records[0]) == expected
+    assert ids(item & records[1]) == []
+    frame = pd.DataFrame({"name": [value, "' OR 1=1 --"]})
+    assert ids(item & frame) == expected
+    assert ids(item & frame.iloc[[1]]) == []
+    fetched = item.proj("name").to_arrays()
+    assert ids(item & fetched) == [1, 2, 3, 4, 5]
+    assert ids(item & fetched[fetched["name"] == value][0]) == expected
+
+
+@pytest.mark.parametrize("value", SPECIAL_CHARACTER_VALUES[:3])
+def test_cascading_delete_with_quoted_values(item_with_tags, value):
+    item, tag = item_with_tags
+    (item & {"name": value}).delete(prompt=False)
+    assert len(item) == len(ROWS) + 1
+    assert len(tag) == 5
+    (item & {"name": "o'brien"}).delete(prompt=False)
+    assert ids(item) == [1, 3, 4, 5]
+    assert ids(tag) == [1, 3, 5]
+
+
+def test_update1_with_quoted_values(item_with_tags, backend):
+    item, _ = item_with_tags
+    for value in SPECIAL_CHARACTER_VALUES + ["Zoë Ünal"]:
+        item.update1(dict(item_id=2, name=value, data={"label": value, "sub": {"k": value}}))
+        assert (item & {"item_id": 2}).fetch1("name") == value
+        assert ids(item & {"data.sub": {"k": value}}) == [2]
+        if backend == "mysql" or "\\" not in value:
+            # PostgreSQL doubles backslashes in string values (see test_string_with_backslash)
+            assert ids(item & {"name": value}) == [2]
+            assert ids(item & {"data.label": value}) == [2]
+    assert ids(item & {"name": "o'brien"}) == []

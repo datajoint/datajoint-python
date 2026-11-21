@@ -433,3 +433,26 @@ def test_invalid_json_type_in_projection_and_index(backend, type_spec):
         translate_attribute(f"car.length:{type_spec}", adapter)
     with pytest.raises(DataJointError):
         compile_index(f"index(car.length:{type_spec})", [], adapter)
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("value", [uuid.UUID(int=255).bytes, b"abc", bytearray(16), 255, 2.5, ["x"]])
+def test_badly_formed_uuid_raises_datajoint_error(backend, value):
+    """A uuid attribute restricted by a value that is not a UUID raises DataJointError, not TypeError."""
+    with pytest.raises(DataJointError, match="Badly formed UUID .* in restriction by `uid`"):
+        _condition(backend, {"uid": value})
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_uuid_from_string(backend):
+    adapter = get_adapter(backend)
+    expected = f" ({adapter.quote_identifier('uid')}=X'000000000000000000000000000000ff')"
+    assert _condition(backend, {"uid": str(uuid.UUID(int=255))}) == expected
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_json_object_value_keeps_non_ascii_text(backend):
+    """A dict value for a JSON path is rendered with its characters, as the server renders stored JSON."""
+    lhs = _json_lhs(backend, "sub")
+    cond = _condition(backend, {"car.sub": {"name": "Zoë 名前"}})
+    assert _literal_value(backend, cond, lhs) == '{"name": "Zoë 名前"}'
