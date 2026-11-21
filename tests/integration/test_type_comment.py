@@ -167,3 +167,36 @@ def test_declared_types_round_trip(schema_by_backend):
     assert heading["sample_id"].original_type == "uuid"
     assert heading["data"].codec.name == "blob"
     assert heading["ratio"].comment == "ratio 1:2"
+
+
+def test_enum_with_colon_in_values(schema_by_backend):
+    """An enum whose values contain a colon is read back whole and round-trips through describe() (#1724)."""
+    schema = schema_by_backend
+
+    @schema
+    class Slot(dj.Manual):
+        definition = """
+        slot_id : int32
+        ---
+        start_time : enum('10:00','11:00')  # start of slot
+        label = null : enum('a:b', 'c')    # label: optional
+        """
+
+    attr = Slot.heading["start_time"]
+    assert attr.original_type == "enum('10:00','11:00')"
+    assert attr.comment == "start of slot"
+    attr = Slot.heading["label"]
+    assert attr.original_type == "enum('a:b', 'c')"
+    assert attr.comment == "label: optional"
+
+    described = Slot.describe()
+    assert "enum('10:00','11:00')" in described
+    assert "# start of slot" in described
+    assert ":enum(" not in described
+
+    adapter = schema.connection.adapter
+    expected = declare(Slot.full_table_name, Slot.definition, {}, adapter)[0]
+    assert declare(Slot.full_table_name, described, {}, adapter)[0] == expected
+
+    Slot.insert1(dict(slot_id=1, start_time="10:00", label="a:b"))
+    assert Slot.to_dicts() == [dict(slot_id=1, start_time="10:00", label="a:b")]

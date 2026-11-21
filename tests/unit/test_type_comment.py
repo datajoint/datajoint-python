@@ -31,6 +31,10 @@ from datajoint.jobs import Job
         (":decimal(8, 3):", ("decimal(8, 3)", "")),
         (":datetime(3):", ("datetime(3)", "")),
         (":enum('a', 'b'):", ("enum('a', 'b')", "")),
+        (":enum('10:00','11:00'):start of slot", ("enum('10:00','11:00')", "start of slot")),
+        (":enum('a:b', 'c'):x: y", ("enum('a:b', 'c')", "x: y")),
+        (":enum('it''s:', 'b'):", ("enum('it''s:', 'b')", "")),
+        (":int32:it's 1:2", ("int32", "it's 1:2")),
         (":json:", ("json", "")),
         (":<blob>:", ("<blob>", "")),
         (":<blob@store>:data", ("<blob@store>", "data")),
@@ -51,6 +55,10 @@ def test_split_type_comment(comment, expected):
         ":uuid\n:",
         ":notatype:comment",
         ":int32 , other : int32:",
+        ":enum('a\n-> x:', 'b'):",
+        ":enum('a\r\n-> x:', 'b'):",
+        ":enum('10:00:",
+        ":'int32':",
     ],
 )
 def test_comment_without_known_type_is_plain(comment):
