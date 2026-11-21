@@ -3,9 +3,14 @@ Definition and blob follow-ups (#1717), on both backends.
 
 - ``blob.max_decompressed_size`` refuses a compressed blob on fetch whose recorded
   uncompressed size exceeds it. Unset, blobs are fetched as before.
-- ``describe()`` refuses to write a projected foreign-key attribute name read from
-  the database that ``alter()`` would not read back as itself. Names it reads back,
-  Python keywords such as ``class`` included, are written as before.
+- A projected foreign-key attribute named with any Python identifier, a keyword
+  such as ``class`` or a name with characters that ``\\w`` does not match, is
+  declared, written by ``describe()`` and read back by ``alter()``.
+- A projected foreign-key attribute named in the database with a name no definition
+  can hold (``x=1``, ``a-b``) is written as is by ``describe()``, with a warning;
+  ``alter()`` refuses the table, and ``dj.Diagram`` still renders the schema.
+- ``dj.Diagram`` renders a table whose ``describe()`` raises, without its definition
+  in the tooltip.
 - A column comment and a referenced column name go through ``describe()`` and
   ``alter()``. (Double quotes in comments on PostgreSQL are left to
   https://github.com/datajoint/datajoint-python/issues/1729.)
@@ -89,9 +94,13 @@ def test_comment_and_referenced_name_through_describe_and_alter(projected_tables
     Child().alter(prompt=False, context=context)  # nothing left to alter
 
 
-@pytest.mark.parametrize("new_name", ["class", "from"])
-def test_projected_name_that_is_a_python_keyword(schema_fu, new_name):
-    """A Python keyword is a valid attribute name, and alter() reads it back from describe()."""
+@pytest.mark.parametrize("new_name", ["class", "from", "किताब_id", "x\u00b7y"])
+def test_projected_name_that_is_a_python_identifier(schema_fu, new_name):
+    """
+    Every Python identifier is a valid projected name: a keyword, or a name with a
+    character that \\w does not match (a combining vowel sign, U+00B7). alter() reads
+    it back from describe(), and the diagram shows the table.
+    """
 
     class Parent(dj.Manual):
         definition = """
@@ -113,18 +122,61 @@ def test_projected_name_that_is_a_python_keyword(schema_fu, new_name):
     assert f'-> Parent.proj({new_name}="parent_id")' in Child().describe(context=context)
     Child().alter(prompt=False, context=context)  # describe() is parsed back; nothing to alter
     assert Child.fetch1(new_name) == 1
+    assert "Child" in dj.Diagram(schema_fu, context=context).make_svg().data
 
 
-@pytest.mark.parametrize("new_name", ["x=1", 'a"b', "a'b", "a\\b"])
-def test_describe_refuses_projected_name_not_read_back(projected_tables, connection_by_backend, new_name):
-    _, Child, _ = projected_tables
-    quote = connection_by_backend.adapter.quote_identifier
+# Column names that SQL accepts and that no definition can hold: the new name of a
+# projected foreign key is written unquoted, as a keyword argument name, and the
+# parser reads only a Python identifier there.
+NAMES_NOT_READ_BACK = ["x=1", 'a"b', "a'b", "a\\b", "a-b", "a b", "1st_ref", "a$b"]
+
+
+def _rename_foreign_key_column(connection, table, new_name):
+    quote = connection.adapter.quote_identifier
     q = quote("")[0]  # the backend's identifier quote, doubled inside a quoted name
-    connection_by_backend.query(
-        f"ALTER TABLE {Child.full_table_name} RENAME COLUMN {quote('parent_ref')} TO {quote(new_name.replace(q, q + q))}"
+    connection.query(
+        f"ALTER TABLE {table.full_table_name} RENAME COLUMN {quote('parent_ref')} TO {quote(new_name.replace(q, q + q))}"
     )
-    connection_by_backend.dependencies.load()
+    connection.dependencies.load()
+
+
+@pytest.mark.parametrize("new_name", NAMES_NOT_READ_BACK)
+def test_describe_writes_projected_name_not_read_back(projected_tables, connection_by_backend, new_name):
+    """describe() writes such a name as is and warns; alter() refuses the table instead of parsing that text."""
+    _, Child, context = projected_tables
+    _rename_foreign_key_column(connection_by_backend, Child, new_name)
     table = dj.FreeTable(connection_by_backend, Child.full_table_name)
-    with pytest.raises(DataJointError, match="not a valid attribute name") as error:
-        table.describe()
+    with pytest.warns(UserWarning, match="cannot be read back") as record:
+        described = table.describe(context=context)
+    assert repr(new_name) in str(record[0].message)
+    assert f'.proj({new_name}="parent_id")' in described
+    assert "note" in described  # the rest of the definition is written
+    with pytest.raises(DataJointError, match="Cannot alter") as error:
+        table.alter(prompt=False, context=context)
     assert repr(new_name) in str(error.value)
+
+
+@pytest.mark.parametrize("new_name", NAMES_NOT_READ_BACK)
+def test_diagram_of_schema_with_projected_name_not_read_back(projected_tables, connection_by_backend, new_name):
+    """One table whose definition cannot be read back does not stop the diagram of its schema."""
+    _, Child, _ = projected_tables
+    _rename_foreign_key_column(connection_by_backend, Child, new_name)
+    module = dj.VirtualModule("module", Child.database, connection=connection_by_backend)
+    with pytest.warns(UserWarning, match="cannot be read back"):
+        svg = dj.Diagram(module.schema, context=vars(module)).make_svg().data
+    assert "Child" in svg and "Parent" in svg
+
+
+def test_diagram_tooltip_without_definition(schema_fu, projected_tables, monkeypatch):
+    """A table whose describe() raises gets a tooltip without its definition; the other tables keep theirs."""
+    _, Child, context = projected_tables
+
+    def describe(self, context=None, printout=False):
+        raise DataJointError("cannot describe")
+
+    monkeypatch.setattr(Child, "describe", describe)
+    diagram = dj.Diagram(schema_fu, context=context)
+    tooltips = {node.get_name().strip('"'): node.get("tooltip") for node in diagram.make_dot().get_nodes()}
+    assert tooltips["Child"].strip('"') == "Child"
+    assert "parent_id" in tooltips["Parent"]
+    assert "Child" in diagram.make_svg().data

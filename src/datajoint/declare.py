@@ -174,10 +174,14 @@ def build_attribute_parser() -> pp.ParserElement:
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
 
+# A name token is a Python identifier, as checked with str.isidentifier() below.
+# Python identifiers may contain non-ASCII characters that \w does not match, such
+# as combining marks (the vowel sign in Hindi "कि") and U+00B7 MIDDLE DOT, so a name
+# token also takes in every non-ASCII character other than white space.
 _REFERENCE_TOKEN = re.compile(
     r"""\s*(?:
         (?P<comment>\#.*)
-      | (?P<name>[^\W\d]\w*)
+      | (?P<name>(?:[^\W\d]|[^\x00-\x7f\s])(?:\w|[^\x00-\x7f\s])*)
       | (?P<string>"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')
       | (?P<punct>[.(),=])
     )""",

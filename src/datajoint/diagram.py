@@ -1524,6 +1524,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         """
         Encapsulate edge attr_map in double quotes for pydot compatibility.
 
+        A double quote inside, from a column name such as ``a"b`` or ``a'b`` (whose
+        repr is double-quoted), is escaped, so the DOT source stays valid.
+
         Modifies graph in place.
 
         See Also
@@ -1532,7 +1535,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         """
         for u, v, k, edgedata in graph.edges(keys=True, data=True):
             if "attr_map" in edgedata:
-                graph.edges[u, v, k]["attr_map"] = '"{0}"'.format(edgedata["attr_map"])
+                graph.edges[u, v, k]["attr_map"] = '"{0}"'.format(str(edgedata["attr_map"]).replace('"', '\\"'))
 
     @staticmethod
     def _encapsulate_node_names(graph: nx.MultiDiGraph) -> None:
@@ -1734,7 +1737,13 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             else:
                 cls = self._resolve_class(name)
                 if cls is not None:
-                    description = cls().describe(context=self.context).split("\n")
+                    try:
+                        description = cls().describe(context=self.context).split("\n")
+                    except DataJointError as error:
+                        # one table that cannot be described must not stop the whole diagram:
+                        # its tooltip shows only its name
+                        logger.debug("No definition in the tooltip of %s: %s", name, error)
+                        description = [name]
                     description = (
                         ("-" * 30 if q.startswith("---") else (q.replace("->", "&#8594;") if "->" in q else q.split(":")[0]))
                         for q in description

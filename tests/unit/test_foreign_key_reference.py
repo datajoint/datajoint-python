@@ -173,17 +173,49 @@ def test_describe_text_stays_on_one_line():
     assert steps == [("name", "Parent"), ("proj", [], {"new": _one_line(text)})]
 
 
-@pytest.mark.parametrize("name", ["parent_ref", "class", "from", "lambda", "_private", "Größe"])
+@pytest.mark.parametrize(
+    "name",
+    ["parent_ref", "class", "from", "lambda", "_private", "Größe", "किताब_id", "x\u00b7y", "\u2118x", "x\u203fy", "__x"],
+)
 def test_projection_names_written_by_describe_are_read_back(name):
-    """describe() writes Parent.proj(new="old") with the new name unquoted; Python keywords are read back too."""
+    """
+    describe() writes Parent.proj(new="old") with the new name unquoted. Every Python
+    identifier is read back: keywords, and names with characters that \\w does not
+    match (a combining vowel sign in किताब, U+00B7, U+2118, U+203F).
+    """
     assert _is_projection_name(name)
     steps = parse_foreign_key_reference("Parent.proj({}={})".format(name, _quoted('old "quoted" \\ name')))
     assert steps == [("name", "Parent"), ("proj", [], {name: 'old "quoted" \\ name'})]
 
 
+@pytest.mark.parametrize("name", ["किताब", "x\u00b7y"])
+def test_identifiers_beyond_word_characters_resolve(name, context):
+    context[name] = Parent
+    assert resolve_foreign_key_reference(f"{name}.Part", context) is Parent.Part
+
+
 @pytest.mark.parametrize(
     "name",
-    ["x=1", 'a"b', "a'b", "a\\b", 'a\\"b', "a b", "1a", "a#b", "a)", 'a="x",b', "a.b", "a\nb", ""],
+    [
+        "x=1",
+        'a"b',
+        "a'b",
+        "a\\b",
+        'a\\"b',
+        "a b",
+        "1a",
+        "a#b",
+        "a)",
+        'a="x",b',
+        "a.b",
+        "a\nb",
+        "",
+        "a-b",
+        "a$b",
+        "a b",
+        "a\uff1db",
+        "\u0663a",
+    ],
 )
 def test_projection_names_not_read_back_are_refused(name):
     assert not _is_projection_name(name)
