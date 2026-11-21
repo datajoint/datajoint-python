@@ -15,7 +15,19 @@ import pymysql as client
 from pymysql.constants import CLIENT, CR
 
 from .. import errors
-from .base import DatabaseAdapter
+from .base import (
+    JSON_BINARY_TYPES,
+    JSON_BOOLEAN_TYPES,
+    JSON_DECIMAL_TYPES,
+    JSON_FLOAT_TYPES,
+    JSON_INTEGER_TYPES,
+    JSON_JSON_TYPES,
+    JSON_PORTABLE_TYPES,
+    JSON_STRING_TYPES,
+    DatabaseAdapter,
+    JsonType,
+    parse_json_type,
+)
 
 # Core type mapping: DataJoint core types → MySQL types
 CORE_TYPE_MAP = {
@@ -46,25 +58,6 @@ SQL_TO_CORE_MAP = {
     "json": "json",
     "date": "date",
 }
-
-# JSON path type annotations (``attr.path:type``) that PostgreSQL accepts but
-# MySQL's ``JSON_VALUE ... RETURNING`` does not, mapped onto the RETURNING
-# vocabulary so the same annotation works on both backends. Annotations not
-# listed here are passed through unchanged.
-JSON_RETURN_TYPE_MAP = {
-    "int": "signed",
-    "integer": "signed",
-    "smallint": "signed",
-    "bigint": "signed",
-    "bool": "signed",
-    "boolean": "signed",
-    "numeric": "decimal",
-    "double precision": "double",
-    "varchar": "char",
-    "text": "char",
-    "timestamp": "datetime",
-}
-_JSON_RETURN_TYPE_PATTERN = re.compile(r"\s*(?P<name>[a-z]+(?:\s+[a-z]+)?)\s*(?P<args>\(.*\))?\s*")
 
 
 class _TLSUnavailableError(client.err.OperationalError):
@@ -311,7 +304,6 @@ class MySQLAdapter(DatabaseAdapter):
 
     def get_master_table_name(self, part_table: str) -> str | None:
         """Extract master table name from part table (MySQL backtick format)."""
-        import re
 
         # MySQL format: `schema`.`master__part`
         match = re.match(r"(?P<master>`\w+`.`#?\w+)__\w+`", part_table)
@@ -805,7 +797,6 @@ class MySQLAdapter(DatabaseAdapter):
 
     def parse_foreign_key_error(self, error_message: str) -> dict[str, str | list[str] | None] | None:
         """Parse MySQL foreign key violation error message."""
-        import re
 
         # MySQL FK error pattern with backticks
         pattern = re.compile(
@@ -962,14 +953,18 @@ class MySQLAdapter(DatabaseAdapter):
         path : str
             JSON path (e.g., 'field' or 'nested.field').
         return_type : str, optional
-            Return type specification (e.g., 'decimal(10,2)'). PostgreSQL
-            spellings such as 'int' or 'numeric(10,2)' are mapped onto the
-            RETURNING vocabulary (see ``JSON_RETURN_TYPE_MAP``).
+            Type annotation (e.g., 'decimal(10,2)'). PostgreSQL spellings such as
+            'int', 'numeric(10,2)' or 'text' are mapped onto the RETURNING types.
 
         Returns
         -------
         str
             MySQL json_value() expression.
+
+        Raises
+        ------
+        DataJointError
+            If the annotation names a type that MySQL cannot return (e.g. 'uuid').
 
         Examples
         --------
@@ -981,22 +976,45 @@ class MySQLAdapter(DatabaseAdapter):
         "json_value(`data`, _utf8mb4'$.n' returning signed)"
         """
         quoted_col = self.quote_identifier(column)
-        return_clause = f" returning {self._json_return_type(return_type)}" if return_type else ""
-        return f"json_value({quoted_col}, _utf8mb4{self.quote_string('$.' + path)}{return_clause})"
+        expr = f"json_value({quoted_col}, _utf8mb4{self.quote_string('$.' + path)}"
+        if not return_type:
+            return expr + ")"
+        json_type = parse_json_type(return_type)
+        expr += f" returning {self._json_returning_type(json_type, return_type)})"
+        # RETURNING takes no COLLATE clause; collate the returned string instead
+        return expr + (f" collate {json_type.collate}" if json_type.collate else "")
 
     @staticmethod
-    def _json_return_type(return_type: str) -> str:
-        """Map a JSON path type annotation onto MySQL's RETURNING vocabulary."""
-        match = _JSON_RETURN_TYPE_PATTERN.fullmatch(return_type.lower())
-        if match is None:
-            return return_type
-        name = " ".join(match["name"].split())
-        if name not in JSON_RETURN_TYPE_MAP:
-            return return_type
-        mysql_type = JSON_RETURN_TYPE_MAP[name]
-        # Integer display widths (e.g. int(11)) have no RETURNING equivalent; other
-        # arguments (precision, scale, length) carry over.
-        return mysql_type if mysql_type == "signed" else mysql_type + (match["args"] or "")
+    def _json_returning_type(json_type: JsonType, annotation: str) -> str:
+        """Map a parsed JSON path type annotation onto a ``JSON_VALUE ... RETURNING`` type."""
+        name, args = json_type.name, json_type.args
+        if name in JSON_INTEGER_TYPES:
+            # Integer display widths such as int(11) have no RETURNING equivalent
+            return "unsigned" if name.startswith("unsigned") else "signed"
+        if name in JSON_BOOLEAN_TYPES:
+            return "signed"
+        if name in JSON_FLOAT_TYPES:
+            # RETURNING takes every float spelling; only float(p) takes an argument
+            return name + (args if name == "float" else "")
+        if name in JSON_DECIMAL_TYPES:
+            # A bare DECIMAL is DECIMAL(10,0) on MySQL and would round the value.
+            # DECIMAL(65,30) is the widest MySQL decimal, closest to PostgreSQL's
+            # unconstrained numeric: exact, and returned as a Python Decimal.
+            return "decimal" + (args or "(65,30)")
+        if name in JSON_STRING_TYPES:
+            # CHAR without a length is unlimited in RETURNING, like PostgreSQL text
+            charset = f" character set {json_type.charset}" if json_type.charset else ""
+            return "char" + args + charset
+        if name in JSON_BINARY_TYPES:
+            return "binary" + (args if name == "binary" else "")
+        if name in JSON_JSON_TYPES:
+            return "json"
+        if name in ("date", "time", "datetime", "timestamp") and json_type.zone != "with":
+            return {"timestamp": "datetime"}.get(name, name) + (args if name != "date" else "")
+        raise errors.DataJointError(
+            f"JSON path type `{annotation}` has no MySQL equivalent. Types that work on both "
+            f"MySQL and PostgreSQL: {JSON_PORTABLE_TYPES}."
+        )
 
     def json_path_equals(self, column: str, path: str, value: str) -> str:
         """
@@ -1043,7 +1061,6 @@ class MySQLAdapter(DatabaseAdapter):
         str
             Translated expression for MySQL.
         """
-        import re
 
         # STRING_AGG(col, 'sep') → GROUP_CONCAT(col SEPARATOR 'sep')
         def replace_string_agg(match):

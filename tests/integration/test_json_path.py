@@ -6,7 +6,7 @@ PostgreSQL.
   values, so ``True`` and ``64`` work on both backends and ``64`` matches a
   stored ``64.0`` (#1564).
 - A ``attr.path:type`` annotation accepts the same type spellings on both
-  backends (#1563).
+  backends, or raises a DataJointError for a type one backend lacks (#1563).
 """
 
 import datetime
@@ -34,7 +34,22 @@ def Device(connection_by_backend, backend, prefix):
         [
             dict(
                 name="a",
-                s=dict(vendor="Acme", ch=64, gain=2.5, cal=True, n=7, made="2024-01-02 03:04:05", pos=[1, 2]),
+                s=dict(
+                    vendor="Acme",
+                    ch=64,
+                    gain=2.5,
+                    cal=True,
+                    n=7,
+                    made="2024-01-02 03:04:05",
+                    pos=[1, 2],
+                    price=1234567890123.25,
+                    day="2024-01-02",
+                    at="03:04:05",
+                    year=2024,
+                    id="6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+                    span="1 day",
+                    flag="1",
+                ),
             ),
             dict(
                 name="b",
@@ -95,6 +110,9 @@ def test_anti_restrict(Device):
     assert names(Device - {"s.ch": 64}) == ["b", "c"]
     # Row c has no s.cal, so it matches neither the restriction nor its complement
     assert names(Device - {"s.cal": True}) == ["b"]
+    # A JSON null is a value unequal to 64, unlike a missing key
+    Device.insert1(dict(name="d", s=dict(ch=None)))
+    assert names(Device - {"s.ch": 64}) == ["b", "c", "d"]
 
 
 @pytest.mark.parametrize(
@@ -130,10 +148,18 @@ def test_project_integer_annotation(Device, annotation, expected):
     assert all(isinstance(row["n"], (int, np.integer)) for row in rows)
 
 
-@pytest.mark.parametrize("annotation", ["decimal(4,1)", "numeric(4,1)"])
+@pytest.mark.parametrize("annotation", ["decimal(4,1)", "numeric(4,1)", "numeric", "decimal", "dec"])
 def test_project_decimal_annotation(Device, annotation):
     rows = Device.proj(g=f"s.gain:{annotation}").to_dicts(order_by="name")
     assert [row["g"] for row in rows[:2]] == [decimal.Decimal("2.5"), decimal.Decimal("0.1")]
+
+
+@pytest.mark.parametrize("annotation", ["numeric", "decimal", "dec"])
+def test_decimal_without_precision_keeps_value(Device, annotation):
+    """A bare decimal annotation neither rounds (MySQL DECIMAL is DECIMAL(10,0)) nor overflows."""
+    price = (Device & {"name": "a"}).proj(p=f"s.price:{annotation}").fetch1("p")
+    assert price == decimal.Decimal("1234567890123.25")
+    assert names(Device & {f"s.gain:{annotation}": decimal.Decimal("0.1")}) == ["b"]
 
 
 @pytest.mark.parametrize("annotation", ["double", "double precision"])
@@ -142,9 +168,35 @@ def test_project_double_annotation(Device, annotation):
     assert [row["g"] for row in rows] == [2.5, 0.1]
 
 
-@pytest.mark.parametrize("annotation", ["varchar(16)", "text"])
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        "varchar(16)",
+        "text",
+        # char alone is char(1) on PostgreSQL and char(16) pads with blanks
+        "char",
+        "character",
+        "nchar",
+        "char(16)",
+        "nchar(16)",
+        "varchar",
+        "character varying",
+        "char(16) character set utf8mb4",
+    ],
+)
 def test_project_string_annotation(Device, annotation):
     rows = Device.proj(v=f"s.vendor:{annotation}").to_dicts(order_by="name")
+    assert [row["v"] for row in rows] == ["Acme", "Other", "64"]
+
+
+def test_restrict_by_string_annotation(Device):
+    assert names(Device & {"s.vendor:char": "Acme"}) == ["a"]
+    assert names(Device & {"s.vendor:char(16)": "Acme"}) == ["a"]
+
+
+def test_string_annotation_collation(Device, backend):
+    collation = "utf8mb4_0900_ai_ci" if backend == "mysql" else "ucs_basic"
+    rows = Device.proj(v=f"s.vendor:char(16) collate {collation}").to_dicts(order_by="name")
     assert [row["v"] for row in rows] == ["Acme", "Other", "64"]
 
 
@@ -159,3 +211,47 @@ def test_project_boolean_annotation(Device, annotation):
 def test_project_datetime_annotation(Device, annotation):
     rows = (Device & "name in ('a', 'b')").proj(m=f"s.made:{annotation}").to_dicts(order_by="name")
     assert [row["m"] for row in rows] == [datetime.datetime(2024, 1, 2, 3, 4, 5), datetime.datetime(2025, 6, 7, 8, 9, 10)]
+
+
+# Every type name a JSON path annotation accepts, the JSON field of row "a" it reads,
+# and the value it gives on both backends (None: any value)
+ANNOTATIONS = {
+    **dict.fromkeys(
+        "signed, unsigned, signed int, signed integer, unsigned int, unsigned integer, int, int2, int4, "
+        "int8, integer, tinyint, smallint, mediumint, bigint".split(", "),
+        ("n", 7),
+    ),
+    "year": ("year", 2024),
+    **dict.fromkeys("real, float, float4, float8, double, double precision".split(", "), ("gain", 2.5)),
+    **dict.fromkeys(("decimal", "numeric", "dec"), ("gain", decimal.Decimal("2.5"))),
+    **dict.fromkeys(("bool", "boolean"), ("cal", True)),
+    **dict.fromkeys("char, character, char varying, character varying, varchar, nchar, text".split(", "), ("vendor", "Acme")),
+    **dict.fromkeys(("binary", "varbinary", "bytea"), ("vendor", None)),
+    **dict.fromkeys(("json", "jsonb"), ("n", None)),
+    "date": ("day", datetime.date(2024, 1, 2)),
+    "datetime": ("made", datetime.datetime(2024, 1, 2, 3, 4, 5)),
+    "timestamp": ("made", datetime.datetime(2024, 1, 2, 3, 4, 5)),
+    "time": ("at", None),
+    # PostgreSQL types with no MySQL equivalent
+    "timetz": ("at", None),
+    "timestamptz": ("made", None),
+    "uuid": ("id", None),
+    "interval": ("span", None),
+    "bit": ("flag", None),
+}
+POSTGRESQL_ONLY = {"timetz", "timestamptz", "uuid", "interval", "bit"}
+
+
+@pytest.mark.parametrize("annotation", ANNOTATIONS)
+def test_every_annotation(Device, backend, annotation):
+    """Each accepted annotation works on both backends, or raises a DataJointError (#1563)."""
+    field, expected = ANNOTATIONS[annotation]
+    row = Device & {"name": "a"}
+    if backend == "mysql" and annotation in POSTGRESQL_ONLY:
+        with pytest.raises(dj.DataJointError, match="has no MySQL equivalent"):
+            row.proj(v=f"s.{field}:{annotation}")
+        return
+    value = row.proj(v=f"s.{field}:{annotation}").fetch1("v")
+    assert value is not None
+    if expected is not None:
+        assert value == expected

@@ -19,7 +19,22 @@ except ImportError:
     sql = None  # type: ignore
 
 from .. import errors
-from .base import DatabaseAdapter
+from .base import (
+    JSON_BINARY_TYPES,
+    JSON_DECIMAL_TYPES,
+    JSON_FLOAT_TYPES,
+    JSON_INTEGER_TYPES,
+    JSON_JSON_TYPES,
+    JSON_STRING_TYPES,
+    DatabaseAdapter,
+    JsonType,
+    parse_json_type,
+)
+
+# Integer type names PostgreSQL knows, and casts for the MySQL-only ones. MySQL's
+# SIGNED and UNSIGNED are 64-bit, so they and their variants cast to bigint.
+_PG_INTEGER_TYPES = frozenset(("int", "int2", "int4", "int8", "integer", "smallint", "bigint"))
+_PG_INTEGER_CASTS = {"tinyint": "smallint", "mediumint": "integer", "year": "integer"}
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -1175,7 +1190,9 @@ class PostgreSQLAdapter(DatabaseAdapter):
         path : str
             JSON path (e.g., 'field' or 'nested.field').
         return_type : str, optional
-            Return type specification for casting (e.g., 'float', 'decimal(10,2)').
+            Type annotation to cast to (e.g., 'float', 'decimal(10,2)'). MySQL
+            RETURNING spellings such as 'signed', 'double' or 'datetime' are
+            mapped onto PostgreSQL types.
 
         Returns
         -------
@@ -1189,22 +1206,44 @@ class PostgreSQLAdapter(DatabaseAdapter):
         >>> adapter.json_path_expr('data', 'nested.field')
         'jsonb_extract_path_text("data", \\'nested\\', \\'field\\')'
         >>> adapter.json_path_expr('data', 'value', 'float')
-        'jsonb_extract_path_text("data", \\'value\\')::float'
+        '(jsonb_extract_path_text("data", \\'value\\'))::float'
         """
         quoted_col = self.quote_identifier(column)
-        expr = f"jsonb_extract_path_text({quoted_col}, {self._json_path_args(path)})"
-        # Add cast if return type specified
-        if return_type:
-            # Map DataJoint types to PostgreSQL types
-            pg_type = return_type.lower()
-            if pg_type in ("unsigned", "signed"):
-                pg_type = "integer"
-            elif pg_type == "double":
-                pg_type = "double precision"
-            elif pg_type.startswith("datetime"):
-                pg_type = "timestamp" + pg_type[len("datetime") :]
-            expr = f"({expr})::{pg_type}"
-        return expr
+        path_args = self._json_path_args(path)
+        if not return_type:
+            return f"jsonb_extract_path_text({quoted_col}, {path_args})"
+        json_type = parse_json_type(return_type)
+        if json_type.name in JSON_JSON_TYPES:
+            # Cast the JSON value itself: the text of a JSON string is not valid JSON
+            return f"(jsonb_extract_path({quoted_col}, {path_args}))::{json_type.name}"
+        expr = f"(jsonb_extract_path_text({quoted_col}, {path_args}))::{self._json_cast_type(json_type)}"
+        return expr + (f" collate {json_type.collate}" if json_type.collate else "")
+
+    @staticmethod
+    def _json_cast_type(json_type: JsonType) -> str:
+        """Map a parsed JSON path type annotation onto a PostgreSQL type to cast to."""
+        name, args = json_type.name, json_type.args
+        if name in JSON_INTEGER_TYPES:
+            # Display widths such as int(11) have no PostgreSQL equivalent
+            return name if name in _PG_INTEGER_TYPES else _PG_INTEGER_CASTS.get(name, "bigint")
+        if name in JSON_FLOAT_TYPES:
+            return "double precision" if name.startswith("double") else name + (args if name == "float" else "")
+        if name in JSON_DECIMAL_TYPES:
+            return name + args
+        if name in JSON_STRING_TYPES:
+            # char(n) would pad with blanks and char alone means char(1), which
+            # truncates; varchar(n) and text return the string as MySQL does.
+            # A MySQL character set has no PostgreSQL equivalent and is dropped.
+            if args:
+                return "varchar" + args
+            return name if "varying" in name or name == "varchar" else "text"
+        if name in JSON_BINARY_TYPES:
+            return "bytea"
+        if name in ("bool", "boolean", "date", "uuid"):
+            return name
+        # time, timetz, datetime, timestamp, timestamptz, interval, bit
+        zone = f" {json_type.zone} time zone" if json_type.zone else ""
+        return {"datetime": "timestamp"}.get(name, name) + args + zone
 
     def _json_path_args(self, path: str) -> str:
         """Split a JSON path into quoted jsonb_extract_path() arguments."""
