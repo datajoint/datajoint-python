@@ -50,6 +50,19 @@ _JSON_TYPE_NAMES = (
     | JSON_OTHER_TYPES
 )
 
+# How many arguments a type takes: precision and scale for a decimal; a length, a float
+# precision, or fractional seconds; or an integer display width, which is dropped.
+# Every other type takes none.
+_JSON_TYPE_MAX_ARGS = {
+    **dict.fromkeys(JSON_DECIMAL_TYPES, 2),
+    **dict.fromkeys(
+        JSON_INTEGER_TYPES
+        | JSON_STRING_TYPES
+        | {"float", "binary", "varbinary", "bit", "time", "timetz", "datetime", "timestamp", "timestamptz", "interval"},
+        1,
+    ),
+}
+
 # Annotations that work on every backend, for error messages
 JSON_PORTABLE_TYPES = (
     "signed, unsigned, int, integer, smallint, bigint, decimal(p,s), numeric(p,s), float, double, "
@@ -84,13 +97,20 @@ def parse_json_type(annotation: str) -> JsonType:
     Raises
     ------
     DataJointError
-        If the annotation is not a known type name, or combines a qualifier with a
-        type that does not take it (e.g. ``int with time zone``).
+        If the annotation is not a known type name, gives a type more arguments than
+        it takes (e.g. ``float(10,2)``), or combines a qualifier with a type that does
+        not take it (e.g. ``int with time zone``).
     """
     match = _JSON_TYPE_PARTS.fullmatch(annotation)
     name = " ".join(match["name"].lower().split()) if match else None
     if match is None or name not in _JSON_TYPE_NAMES:
         raise DataJointError(f"Unsupported JSON path type `{annotation}`. Portable types: {JSON_PORTABLE_TYPES}.")
+    max_args = _JSON_TYPE_MAX_ARGS.get(name, 0)
+    if match["args"] and match["args"].count(",") + 1 > max_args:
+        raise DataJointError(
+            f"JSON path type `{annotation}`: {name} takes "
+            + ("no arguments." if max_args == 0 else "one argument. Only decimal and numeric take precision and scale.")
+        )
     if match["zone"] and name not in ("time", "datetime", "timestamp"):
         raise DataJointError(f"JSON path type `{annotation}`: only time and timestamp types take a time zone qualifier.")
     if (match["charset"] or match["collate"]) and name not in JSON_STRING_TYPES:

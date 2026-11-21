@@ -48,7 +48,7 @@ def Device(connection_by_backend, backend, prefix):
                     year=2024,
                     id="6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                     span="1 day",
-                    flag="1",
+                    bits="101",
                 ),
             ),
             dict(
@@ -200,6 +200,13 @@ def test_string_annotation_collation(Device, backend):
     assert [row["v"] for row in rows] == ["Acme", "Other", "64"]
 
 
+@pytest.mark.parametrize("annotation", ["float(10,2)", "char(16,2)", "datetime(3,2)", "date(3)", "json(3)"])
+def test_annotation_with_wrong_arguments(Device, annotation):
+    """Only a decimal takes two arguments; a server syntax error becomes a DataJointError."""
+    with pytest.raises(dj.DataJointError, match="takes (no arguments|one argument)"):
+        Device.proj(v=f"s.gain:{annotation}")
+
+
 @pytest.mark.parametrize("annotation", ["bool", "boolean"])
 def test_project_boolean_annotation(Device, annotation):
     rows = (Device & "name in ('a', 'b')").proj(c=f"s.cal:{annotation}").to_dicts(order_by="name")
@@ -237,7 +244,8 @@ ANNOTATIONS = {
     "timestamptz": ("made", None),
     "uuid": ("id", None),
     "interval": ("span", None),
-    "bit": ("flag", None),
+    # bit alone would be bit(1) on PostgreSQL and keep only the first bit
+    "bit": ("bits", "101"),
 }
 POSTGRESQL_ONLY = {"timetz", "timestamptz", "uuid", "interval", "bit"}
 

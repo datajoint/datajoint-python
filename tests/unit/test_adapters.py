@@ -471,6 +471,8 @@ class TestPostgreSQLAdapter:
             ("varbinary(4)", "bytea"),
             ("bytea", "bytea"),
             ("uuid", "uuid"),
+            # bit alone means bit(1), which keeps only the first bit
+            ("bit", "bit varying"),
             ("bit(3)", "bit(3)"),
             ("interval", "interval"),
             # dates and times

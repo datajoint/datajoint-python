@@ -464,8 +464,9 @@ def test_every_accepted_json_type_name_is_mapped(name):
         assert mysql_expr.split(" returning ")[1].removesuffix(")") in MYSQL_RETURNING_TYPES
     postgres_expr = translate_attribute(f"car.length:{name}", get_adapter("postgresql"))[1]
     cast = postgres_expr.split(")::")[1]
-    # char, character and nchar alone mean char(1), which truncates the string
-    assert cast not in NOT_POSTGRESQL_TYPES | {"char", "character", "nchar"}
+    # char, character and nchar alone mean char(1), which truncates the string,
+    # and bit alone means bit(1), which keeps only the first bit
+    assert cast not in NOT_POSTGRESQL_TYPES | {"char", "character", "nchar", "bit"}
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
@@ -477,6 +478,46 @@ def test_invalid_json_type_in_projection_and_index(backend, type_spec):
     with pytest.raises(DataJointError):
         translate_attribute(f"car.length:{type_spec}", adapter)
     with pytest.raises(DataJointError):
+        compile_index(f"index(car.length:{type_spec})", [], adapter)
+
+
+# Accepted by _JSON_TYPE_PATTERN, but with more arguments than the type takes: only a
+# decimal takes two (precision and scale), and a float, date, bool or JSON type takes none
+WRONG_ARGUMENTS_JSON_TYPES = [
+    "float(10,2)",
+    "double(10,2)",
+    "double precision(10)",
+    "real(5)",
+    "float8(5)",
+    "int(10,2)",
+    "signed(10,2)",
+    "char(10,2)",
+    "varchar(16,2)",
+    "text(10,2)",
+    "binary(4,2)",
+    "bytea(4)",
+    "time(3,2)",
+    "timestamp(3,2) without time zone",
+    "bit(3,2)",
+    "date(3)",
+    "bool(1)",
+    "json(3)",
+    "uuid(3)",
+]
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("type_spec", WRONG_ARGUMENTS_JSON_TYPES)
+def test_json_type_with_wrong_arguments(backend, type_spec):
+    """Too many type arguments raise a DataJointError on both backends, not a server syntax error."""
+    from datajoint.condition import _JSON_TYPE_PATTERN
+    from datajoint.declare import compile_index
+
+    assert _JSON_TYPE_PATTERN.fullmatch(type_spec)
+    adapter = get_adapter(backend)
+    with pytest.raises(DataJointError, match="takes (no arguments|one argument)"):
+        translate_attribute(f"car.length:{type_spec}", adapter)
+    with pytest.raises(DataJointError, match="takes (no arguments|one argument)"):
         compile_index(f"index(car.length:{type_spec})", [], adapter)
 
 

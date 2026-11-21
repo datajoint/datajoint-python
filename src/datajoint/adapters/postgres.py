@@ -1241,7 +1241,10 @@ class PostgreSQLAdapter(DatabaseAdapter):
             return "bytea"
         if name in ("bool", "boolean", "date", "uuid"):
             return name
-        # time, timetz, datetime, timestamp, timestamptz, interval, bit
+        if name == "bit":
+            # bit alone means bit(1), which keeps only the first bit of the string
+            return "bit" + args if args else "bit varying"
+        # time, timetz, datetime, timestamp, timestamptz, interval
         zone = f" {json_type.zone} time zone" if json_type.zone else ""
         return {"datetime": "timestamp"}.get(name, name) + args + zone
 
