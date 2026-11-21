@@ -291,11 +291,9 @@ class MySQLAdapter(DatabaseAdapter):
 
     def get_master_table_name(self, part_table: str) -> str | None:
         """Extract master table name from part table (MySQL backtick format)."""
-        import re
+        from ..dependencies import extract_master
 
-        # MySQL format: `schema`.`master__part`
-        match = re.match(r"(?P<master>`\w+`.`#?\w+)__\w+`", part_table)
-        return match["master"] + "`" if match else None
+        return extract_master(part_table)
 
     @property
     def parameter_placeholder(self) -> str:
