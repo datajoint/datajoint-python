@@ -241,3 +241,29 @@ def test_universal_restriction_of_union(tables):
     parities = dj.U("parity") & union
     assert sorted(parities.to_arrays("parity")) == [0, 1]
     assert len(parities) == 2
+
+
+def test_distinct_operand_cases_from_issue(tables):
+    """Each query of the reproduction in #1660, on this fixture's data."""
+    Parent, Child, Note = tables
+    has_children = dj.U("parent_id") & Child  # parents 1, 2, 3, 4
+
+    assert_rows((has_children & "parent_id < 3") * Parent, 2)
+    assert_rows(has_children.extend(Parent), 4)
+    assert_rows(Parent * (dj.U("parent_id", "kind") & Child), 6)
+    assert_rows(Parent & has_children, 4)
+    assert_rows(Parent - has_children, 1)
+
+    per_parent = Parent.aggr(has_children, n="count(*)", exclude_nonmatching=True)
+    assert dict(zip(*per_parent.to_arrays("parent_id", "n"))) == {1: 1, 2: 1, 3: 1, 4: 1}
+    labels = has_children.aggr(Parent, n="count(label)")
+    assert dict(zip(*labels.to_arrays("parent_id", "n"))) == {1: 1, 2: 1, 3: 1, 4: 1}
+    assert dj.U().aggr(dj.U("kind") & Child, n="count(*)").fetch1("n") == 3
+
+
+def test_join_with_union_on_the_right_without_common_attributes(tables):
+    """A union on the right of a join with no common attributes is a subquery."""
+    Parent, Child, Note = tables
+    kinds = dj.U("kind") & Child
+    two_kinds = (kinds & "kind = 'a'") + (kinds & "kind = 'b'")
+    assert_rows(Parent * two_kinds, 10)

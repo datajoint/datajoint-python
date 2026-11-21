@@ -415,7 +415,7 @@ class QueryExpression:
             need_subquery2
             or isinstance(other, Aggregation)
             or any(n in other.heading.new_attributes for n in join_attributes)
-            or isinstance(self, Union)
+            or isinstance(other, Union)
             or other._distinct
             or other._top is not None
         )
