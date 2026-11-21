@@ -1,6 +1,8 @@
 """
 Unit tests for ``dependencies.extract_master``: a part table's master is found
-whatever characters the schema name holds, on both identifier-quoting styles.
+in schemas whose names hold non-word characters, such as hyphens, on both
+identifier-quoting styles. Schema names that contain a dot are not supported,
+because full table names are split into schema and table at the dot.
 """
 
 import pytest
@@ -9,7 +11,7 @@ from datajoint.adapters.mysql import MySQLAdapter
 from datajoint.adapters.postgres import PostgreSQLAdapter
 from datajoint.dependencies import extract_master
 
-SCHEMA_NAMES = ["lab", "parts-check", "lab.v2", "lab-2.v3", "lab$x", "lab check"]
+SCHEMA_NAMES = ["lab", "parts-check", "lab-2-v3", "lab$x", "lab check"]
 
 
 @pytest.mark.parametrize("q", ["`", '"'])

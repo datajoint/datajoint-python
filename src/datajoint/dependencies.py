@@ -18,8 +18,9 @@ from .errors import DataJointError
 
 # A part table's full name: `schema`.`master__part` (MySQL) or "schema"."master__part"
 # (PostgreSQL). The schema name may hold any character except the quote that encloses it,
-# such as a hyphen or a dot. Table names are generated from class names and hold only word
-# characters, with an optional tier prefix (#, _, __).
+# such as a hyphen. (Schema names with a dot are not supported: full table names are split
+# into schema and table at the dot.) Table names are generated from class names and hold
+# only word characters, with an optional tier prefix (#, _, __).
 _PART_TABLE = re.compile(r'(?P<master>(?P<q>[`"])(?:(?!(?P=q)).)+(?P=q)\.(?P=q)#?\w+)__\w+(?P=q)')
 
 

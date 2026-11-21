@@ -24,16 +24,26 @@ from datajoint.errors import DataJointError
 def parts_schema(connection_by_backend, db_creds_by_backend, request):
     backend = db_creds_by_backend["backend"]
     schema_name = request.param.format(backend=backend, tid=str(int(time.time() * 1000))[-8:])
-    quoted = connection_by_backend.adapter.quote_identifier(schema_name)
-    connection_by_backend.query(f"DROP DATABASE IF EXISTS {quoted}")
+    # DROP DATABASE on MySQL, DROP SCHEMA ... CASCADE on PostgreSQL
+    drop_sql = connection_by_backend.adapter.drop_schema_sql(schema_name)
+    connection_by_backend.query(drop_sql)
     schema = dj.Schema(schema_name, connection=connection_by_backend)
+
+    @schema
+    class Monitor(dj.Lookup):
+        definition = """
+        monitor_id : int32
+        """
+        contents = [{"monitor_id": 1}]
 
     @schema
     class Stimulus(dj.Lookup):
         definition = """
         stim_id : int32
+        ---
+        -> Monitor
         """
-        contents = [(1,), (2,)]
+        contents = [{"stim_id": 1, "monitor_id": 1}, {"stim_id": 2, "monitor_id": 1}]
 
     @schema
     class Session(dj.Manual):
@@ -49,10 +59,15 @@ def parts_schema(connection_by_backend, db_creds_by_backend, request):
             -> Stimulus
             """
 
-    Session.insert([(1,), (2,)])
-    Session.Trial.insert([(1, 1, 1), (2, 1, 2)])
+    Session.insert([{"session_id": 1}, {"session_id": 2}])
+    Session.Trial.insert(
+        [
+            {"session_id": 1, "trial_id": 1, "stim_id": 1},
+            {"session_id": 2, "trial_id": 1, "stim_id": 2},
+        ]
+    )
     yield schema, Stimulus, Session
-    connection_by_backend.query(f"DROP DATABASE IF EXISTS {quoted}")
+    connection_by_backend.query(drop_sql)
 
 
 def test_master_is_found(parts_schema):
@@ -62,6 +77,12 @@ def test_master_is_found(parts_schema):
 
 
 def test_topo_sort_keeps_part_with_master(parts_schema):
+    """The part's other parent comes before the master, and the part right after it.
+
+    Stimulus depends on Monitor, so plain topological order places Stimulus after
+    Session and between Session and Session.Trial. Only a recognized part moves
+    its parents ahead of its master and itself up to the master.
+    """
     _, Stimulus, Session = parts_schema
     deps = Session.connection.dependencies
     deps.load()
