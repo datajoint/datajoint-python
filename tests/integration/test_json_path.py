@@ -49,6 +49,14 @@ def Device(connection_by_backend, backend, prefix):
                     id="6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                     span="1 day",
                     bits="101",
+                    # more digits than single precision holds
+                    x=1234567.89,
+                    # beyond 32 bits, the 64-bit limits, and beyond 64 bits
+                    big=2**40,
+                    neg=-5,
+                    i64=-(2**63),
+                    u64=2**64 - 1,
+                    huge=2**70,
                 ),
             ),
             dict(
@@ -105,6 +113,19 @@ def test_restrict_by_value(Device, restriction, expected):
     assert names(Device & restriction) == expected
 
 
+def test_restrict_by_large_integer(Device, backend):
+    """Integers from -2**63 to 2**64 - 1 compare exactly on both backends."""
+    assert names(Device & {"s.u64": 2**64 - 1}) == ["a"]
+    assert names(Device & {"s.u64": 2**64 - 2}) == []
+    assert names(Device & {"s.i64": -(2**63)}) == ["a"]
+    assert names(Device & {"s.i64": -(2**63) + 1}) == []
+    assert names(Device & {"s.huge": 2**70}) == ["a"]
+    # MySQL holds a JSON integer beyond that range, and a number with a fraction, as a
+    # 64-bit float and compares the rounded values; PostgreSQL compares exact values
+    assert names(Device & {"s.huge": 2**70 + 1}) == (["a"] if backend == "mysql" else [])
+    assert names(Device & {"s.gain": decimal.Decimal("0.10000000000000000001")}) == (["b"] if backend == "mysql" else [])
+
+
 def test_anti_restrict(Device):
     # Row c holds a string at s.ch, which is unequal to 64 rather than an error
     assert names(Device - {"s.ch": 64}) == ["b", "c"]
@@ -146,6 +167,62 @@ def test_project_integer_annotation(Device, annotation, expected):
     rows = (Device & "name in ('a', 'b')").proj(n=f"s.n:{annotation}").to_dicts(order_by="name")
     assert [row["n"] for row in rows] == expected
     assert all(isinstance(row["n"], (int, np.integer)) for row in rows)
+
+
+# Integer annotations other than unsigned: 64-bit signed on both backends
+SIGNED_ANNOTATIONS = ["int", "integer", "int2", "int4", "int8", "tinyint", "smallint", "mediumint", "bigint"]
+SIGNED_ANNOTATIONS += ["signed", "signed int", "year"]
+
+
+@pytest.mark.parametrize("annotation", SIGNED_ANNOTATIONS)
+def test_integer_annotation_is_64_bit(Device, annotation):
+    """No integer annotation checks a narrower range, so a value beyond 32 bits works on both backends."""
+    row = Device & {"name": "a"}
+    assert row.proj(v=f"s.big:{annotation}").fetch1("v") == 2**40
+    assert row.proj(v=f"s.neg:{annotation}").fetch1("v") == -5
+    assert row.proj(v=f"s.i64:{annotation}").fetch1("v") == -(2**63)
+    assert names(Device & {f"s.big:{annotation}": 2**40}) == ["a"]
+
+
+@pytest.mark.parametrize("annotation", ["unsigned", "unsigned int", "unsigned integer"])
+def test_unsigned_annotation(Device, backend, annotation):
+    """unsigned is MySQL's 64-bit UNSIGNED and PostgreSQL's bigint: they differ outside 0 to 2**63 - 1."""
+    row = Device & {"name": "a"}
+    assert row.proj(v=f"s.big:{annotation}").fetch1("v") == 2**40
+    if backend == "mysql":
+        assert row.proj(v=f"s.neg:{annotation}").fetch1("v") is None
+        assert row.proj(v=f"s.u64:{annotation}").fetch1("v") == 2**64 - 1
+    else:
+        import psycopg2.errors
+
+        assert row.proj(v=f"s.neg:{annotation}").fetch1("v") == -5
+        with pytest.raises(psycopg2.errors.NumericValueOutOfRange):
+            row.proj(v=f"s.u64:{annotation}").fetch1("v")
+
+
+# Floating-point annotations by precision, the same on both backends
+DOUBLE_PRECISION = ["float", "float(25)", "float(53)", "float8", "double", "double precision"]
+SINGLE_PRECISION = ["real", "float4", "float(1)", "float(24)"]
+
+
+@pytest.mark.parametrize("annotation", DOUBLE_PRECISION)
+def test_double_precision_annotation(Device, annotation):
+    """float, float8 and float(p) from p = 25 are double precision on both backends."""
+    assert (Device & {"name": "a"}).proj(v=f"s.x:{annotation}").fetch1("v") == 1234567.89
+    assert names(Device & {f"s.x:{annotation}": 1234567.89}) == ["a"]
+    assert names(Device & {f"s.gain:{annotation}": 0.1}) == ["b"]
+
+
+@pytest.mark.parametrize("annotation", SINGLE_PRECISION)
+def test_single_precision_annotation(Device, annotation):
+    """real, float4 and float(p) up to p = 24 are single precision on both backends."""
+    value = (Device & {"name": "a"}).proj(v=f"s.x:{annotation}").fetch1("v")
+    # MySQL returns 6 significant digits (1234570.0), PostgreSQL the shortest
+    # decimal that reads back as the same single-precision value (1234567.9)
+    assert value != 1234567.89
+    assert value == pytest.approx(1234567.89, rel=1e-5)
+    # A value that single precision holds exactly matches on both
+    assert names(Device & {f"s.gain:{annotation}": 2.5}) == ["a"]
 
 
 @pytest.mark.parametrize("annotation", ["decimal(4,1)", "numeric(4,1)", "numeric", "decimal", "dec"])

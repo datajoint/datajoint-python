@@ -31,11 +31,6 @@ from .base import (
     parse_json_type,
 )
 
-# Integer type names PostgreSQL knows, and casts for the MySQL-only ones. MySQL's
-# SIGNED and UNSIGNED are 64-bit, so they and their variants cast to bigint.
-_PG_INTEGER_TYPES = frozenset(("int", "int2", "int4", "int8", "integer", "smallint", "bigint"))
-_PG_INTEGER_CASTS = {"tinyint": "smallint", "mediumint": "integer", "year": "integer"}
-
 logger = logging.getLogger(__name__.split(".")[0])
 
 # use_tls dict keys (PyMySQL ssl names, as for MySQL) → libpq connection parameters
@@ -1206,7 +1201,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         >>> adapter.json_path_expr('data', 'nested.field')
         'jsonb_extract_path_text("data", \\'nested\\', \\'field\\')'
         >>> adapter.json_path_expr('data', 'value', 'float')
-        '(jsonb_extract_path_text("data", \\'value\\'))::float'
+        '(jsonb_extract_path_text("data", \\'value\\'))::double precision'
         """
         quoted_col = self.quote_identifier(column)
         path_args = self._json_path_args(path)
@@ -1224,10 +1219,12 @@ class PostgreSQLAdapter(DatabaseAdapter):
         """Map a parsed JSON path type annotation onto a PostgreSQL type to cast to."""
         name, args = json_type.name, json_type.args
         if name in JSON_INTEGER_TYPES:
-            # Display widths such as int(11) have no PostgreSQL equivalent
-            return name if name in _PG_INTEGER_TYPES else _PG_INTEGER_CASTS.get(name, "bigint")
+            # 64-bit, like MySQL's RETURNING SIGNED, which takes no size: a narrower type
+            # would fail the whole query on a value out of its range. Display widths
+            # such as int(11) are dropped.
+            return "bigint"
         if name in JSON_FLOAT_TYPES:
-            return "double precision" if name.startswith("double") else name + (args if name == "float" else "")
+            return "real" if json_type.single_precision else "double precision"
         if name in JSON_DECIMAL_TYPES:
             return name + args
         if name in JSON_STRING_TYPES:

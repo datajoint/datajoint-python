@@ -994,8 +994,9 @@ class MySQLAdapter(DatabaseAdapter):
         if name in JSON_BOOLEAN_TYPES:
             return "signed"
         if name in JSON_FLOAT_TYPES:
-            # RETURNING takes every float spelling; only float(p) takes an argument
-            return name + (args if name == "float" else "")
+            # Precision as on PostgreSQL. MySQL's REAL is DOUBLE, and RETURNING FLOAT
+            # is single precision with or without a precision, so neither is passed on.
+            return "float" if json_type.single_precision else "double"
         if name in JSON_DECIMAL_TYPES:
             # A bare DECIMAL is DECIMAL(10,0) on MySQL and would round the value.
             # DECIMAL(65,30) is the widest MySQL decimal, closest to PostgreSQL's

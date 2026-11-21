@@ -65,8 +65,8 @@ _JSON_TYPE_MAX_ARGS = {
 
 # Annotations that work on every backend, for error messages
 JSON_PORTABLE_TYPES = (
-    "signed, unsigned, int, integer, smallint, bigint, decimal(p,s), numeric(p,s), float, double, "
-    "bool, boolean, char(n), varchar(n), text, date, time, datetime, timestamp, json"
+    "signed, unsigned, int, integer, smallint, bigint, decimal(p,s), numeric(p,s), real, float, float(p), "
+    "double, bool, boolean, char(n), varchar(n), text, date, time, datetime, timestamp, json"
 )
 
 
@@ -78,6 +78,17 @@ class JsonType(NamedTuple):
     zone: str | None  # 'with' or 'without' (time zone), or None
     charset: str | None
     collate: str | None
+
+    @property
+    def single_precision(self) -> bool:
+        """
+        Whether a floating-point type is single precision.
+
+        As in PostgreSQL, ``real``, ``float4`` and ``float(p)`` with ``p`` up to 24 are
+        single precision; ``float``, ``float8``, ``double``, ``double precision`` and
+        ``float(p)`` with ``p`` from 25 to 53 are double precision.
+        """
+        return self.name in ("real", "float4") or (self.name == "float" and bool(self.args) and int(self.args[1:-1]) <= 24)
 
 
 def parse_json_type(annotation: str) -> JsonType:
@@ -98,8 +109,9 @@ def parse_json_type(annotation: str) -> JsonType:
     ------
     DataJointError
         If the annotation is not a known type name, gives a type more arguments than
-        it takes (e.g. ``float(10,2)``), or combines a qualifier with a type that does
-        not take it (e.g. ``int with time zone``).
+        it takes (e.g. ``float(10,2)``), gives ``float`` a precision outside 1 to 53,
+        or combines a qualifier with a type that does not take it (e.g. ``int with
+        time zone``).
     """
     match = _JSON_TYPE_PARTS.fullmatch(annotation)
     name = " ".join(match["name"].lower().split()) if match else None
@@ -111,6 +123,9 @@ def parse_json_type(annotation: str) -> JsonType:
             f"JSON path type `{annotation}`: {name} takes "
             + ("no arguments." if max_args == 0 else "one argument. Only decimal and numeric take precision and scale.")
         )
+    if name == "float" and match["args"] and not 1 <= int(match["args"]) <= 53:
+        # MySQL would take float(0) and PostgreSQL would not; neither takes more than 53
+        raise DataJointError(f"JSON path type `{annotation}`: float takes a precision from 1 to 53.")
     if match["zone"] and name not in ("time", "datetime", "timestamp"):
         raise DataJointError(f"JSON path type `{annotation}`: only time and timestamp types take a time zone qualifier.")
     if (match["charset"] or match["collate"]) and name not in JSON_STRING_TYPES:
@@ -1300,6 +1315,9 @@ class DatabaseAdapter(ABC):
         The comparison is between JSON values, not text: numbers compare
         numerically (``64`` equals ``64.0``), booleans match only JSON booleans,
         and a value of another JSON type (e.g. a string) is simply unequal.
+        PostgreSQL compares numbers exactly. MySQL holds a JSON integer outside
+        the range -2**63 to 2**64 - 1, and any number with a fraction or an
+        exponent, as a 64-bit float, and compares the rounded values.
 
         Parameters
         ----------

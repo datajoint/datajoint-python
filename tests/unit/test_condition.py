@@ -442,8 +442,8 @@ def test_json_type_in_projection_and_index(backend, type_spec):
 
 
 # Types that MySQL's JSON_VALUE ... RETURNING accepts, and types that PostgreSQL lacks
-MYSQL_RETURNING_TYPES = {"signed", "unsigned", "float", "float4", "float8", "real", "double", "double precision"}
-MYSQL_RETURNING_TYPES |= {"decimal(65,30)", "char", "binary", "json", "date", "time", "datetime"}
+MYSQL_RETURNING_TYPES = {"signed", "unsigned", "float", "double", "decimal(65,30)", "char", "binary", "json"}
+MYSQL_RETURNING_TYPES |= {"date", "time", "datetime"}
 NOT_POSTGRESQL_TYPES = {"signed", "unsigned", "tinyint", "mediumint", "double", "datetime", "year", "binary", "varbinary"}
 
 
@@ -519,6 +519,14 @@ def test_json_type_with_wrong_arguments(backend, type_spec):
         translate_attribute(f"car.length:{type_spec}", adapter)
     with pytest.raises(DataJointError, match="takes (no arguments|one argument)"):
         compile_index(f"index(car.length:{type_spec})", [], adapter)
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("type_spec", ["float(0)", "float(54)", "float( 99 )"])
+def test_json_float_precision_out_of_range(backend, type_spec):
+    """float(p) takes 1 to 53 on both backends; MySQL would otherwise take float(0)."""
+    with pytest.raises(DataJointError, match="float takes a precision from 1 to 53"):
+        translate_attribute(f"car.length:{type_spec}", get_adapter(backend))
 
 
 class TestJsonLiteral:
