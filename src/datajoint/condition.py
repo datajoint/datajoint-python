@@ -13,6 +13,7 @@ import decimal
 import inspect
 import json
 import logging
+import numbers
 import re
 import uuid
 from dataclasses import dataclass
@@ -29,6 +30,23 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__.split(".")[0])
 
 JSON_PATTERN = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$")
+
+# Return types accepted after ``:`` in a JSON attribute key, e.g. ``"attr.path:decimal(10,2)"``:
+# type names understood by MySQL (``JSON_VALUE ... RETURNING``) or PostgreSQL (``::`` cast),
+# with an optional length/precision, time zone qualifier, character set, and collation.
+_JSON_TYPE_PATTERN = re.compile(
+    r"\s*(?:(?:un)?signed(?:\s+int(?:eger)?)?|int[248]?|integer|tinyint|smallint|mediumint|bigint"
+    r"|real|float[48]?|double(?:\s+precision)?|decimal|numeric|dec|bool(?:ean)?|bit"
+    r"|char(?:acter)?(?:\s+varying)?|varchar|nchar|text|binary|varbinary|bytea|jsonb?|uuid"
+    r"|date|datetime|year|time(?:tz)?|timestamp(?:tz)?|interval)"
+    r"(?:\s*\(\s*\d+\s*(?:,\s*\d+\s*)?\))?"
+    r"(?:\s+with(?:out)?\s+time\s+zone)?"
+    r"(?:\s+(?:character\s+set|charset)\s+\w+)?(?:\s+collate\s+\w+)?\s*",
+    re.IGNORECASE,
+)
+
+# Text of a finite numeric value that may appear unquoted in a condition
+_NUMERIC_LITERAL_PATTERN = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|true|false", re.IGNORECASE)
 
 
 def translate_attribute(key: str, adapter=None) -> tuple[dict | None, str]:
@@ -56,6 +74,8 @@ def translate_attribute(key: str, adapter=None) -> tuple[dict | None, str]:
     if match["path"] is None:
         return match, match["attr"]
     else:
+        if match["type"] is not None and not _JSON_TYPE_PATTERN.fullmatch(match["type"]):
+            raise DataJointError(f"Unsupported return type `{match['type']}` in JSON attribute `{key}`.")
         # Use adapter's json_path_expr if available, otherwise fall back to MySQL syntax
         if adapter is not None:
             return match, adapter.json_path_expr(match["attr"], match["path"], match["type"])
@@ -167,15 +187,13 @@ class Top:
         Top
             New Top with merged limit/offset and preserved ordering.
         """
-        # Compute effective limit (minimum of defined limits)
-        if self.limit is None and other.limit is None:
-            new_limit = None
-        elif self.limit is None:
+        # other skips other.offset rows of self's window and takes up to other.limit of the
+        # rest, so the merged window never extends past self's limit
+        if self.limit is None:
             new_limit = other.limit
-        elif other.limit is None:
-            new_limit = self.limit
         else:
-            new_limit = min(self.limit, other.limit)
+            remaining = max(self.limit - other.offset, 0)
+            new_limit = remaining if other.limit is None else min(remaining, other.limit)
 
         return Top(
             limit=new_limit,
@@ -218,7 +236,9 @@ def assert_join_compatibility(
         Second expression.
     semantic_check : bool, optional
         If True (default), use semantic matching and error on non-homologous
-        namesakes (same name, different lineage). If False, use natural join.
+        namesakes: the same name with different lineages, or with no lineage on
+        either side because no foreign key brings the attribute in. If False,
+        use natural join.
 
     Raises
     ------
@@ -261,32 +281,32 @@ def assert_join_compatibility(
             )
             return
 
-        # Error on non-homologous namesakes
+        # Error on non-homologous namesakes. Lineage comes from foreign keys: an
+        # attribute that no foreign key brings in (a native secondary attribute,
+        # one computed in a projection, or a key that dj.U promotes) has none, and
+        # two such namesakes are unrelated, whether or not they are in a key.
         namesakes = set(expr1.heading.names) & set(expr2.heading.names)
-        for name in namesakes:
+        for name in sorted(namesakes):
             lineage1 = expr1.heading[name].lineage
             lineage2 = expr2.heading[name].lineage
-            # Semantic match requires both lineages to be non-None and equal
-            if lineage1 is None or lineage2 is None or lineage1 != lineage2:
-                if lineage1 is None or lineage2 is None:
-                    # Missing lineage usually means stale ~lineage rows that survived
-                    # an upgrade or a partial declare. Decoration in 2.3+ refreshes
-                    # lineage automatically, so this typically indicates a schema
-                    # that has not been re-decorated since the upgrade.
-                    raise DataJointError(
-                        f"Cannot join on attribute `{name}`: lineage missing on "
-                        f"one side ({lineage1} vs {lineage2}). This usually "
-                        f"indicates a stale `~lineage` entry from an older "
-                        f"DataJoint version or an incomplete declare. Run "
-                        f"`schema.rebuild_lineage()` to recompute lineage from "
-                        f"current FK definitions. If the lineages are genuinely "
-                        f"different, use `.proj()` to rename one of the attributes."
-                    )
+            if lineage1 is not None and lineage1 == lineage2:
+                continue
+            if lineage1 is None and lineage2 is None:
                 raise DataJointError(
-                    f"Cannot join on attribute `{name}`: "
-                    f"different lineages ({lineage1} vs {lineage2}). "
-                    f"Use .proj() to rename one of the attributes."
+                    f"Cannot join on attribute `{name}`: neither side inherits it through a foreign key, "
+                    f"so the two are unrelated. Use .proj() to rename or exclude it on one side."
                 )
+            if lineage1 is None or lineage2 is None:
+                raise DataJointError(
+                    f"Cannot join on attribute `{name}`: one side traces it to {lineage1 or lineage2}, "
+                    f"but the other does not inherit it through a foreign key, so the two are unrelated. "
+                    f"Use .proj() to rename or exclude it on one side."
+                )
+            raise DataJointError(
+                f"Cannot join on attribute `{name}`: "
+                f"different lineages ({lineage1} vs {lineage2}). "
+                f"Use .proj() to rename one of the attributes."
+            )
 
 
 def make_condition(
@@ -333,18 +353,25 @@ def make_condition(
     # Get adapter for backend-agnostic SQL generation
     adapter = query_expression.connection.adapter
 
+    def literal(text):
+        """quoted string literal; % is doubled for the driver's parameter substitution"""
+        return adapter.quote_string(text).replace("%", "%%")
+
     def prep_value(k, v):
         """prepare SQL condition"""
+        key = k
         key_match, k = translate_attribute(k, adapter)
-        is_json_path = key_match is not None and key_match.get("path") is not None
+        if key_match is None:
+            raise DataJointError(f"Invalid JSON path `{key}` in restriction.")
+        is_json_path = key_match.get("path") is not None
 
         if not is_json_path:
             k = adapter.quote_identifier(k)
         if is_json_path and isinstance(v, dict):
-            return f"{k}='{json.dumps(v)}'"
+            return f"{k}={literal(json.dumps(v))}"
         if v is None:
             return f"{k} IS NULL"
-        if key_match is not None and query_expression.heading[key_match["attr"]].uuid:
+        if query_expression.heading[key_match["attr"]].uuid:
             if not isinstance(v, uuid.UUID):
                 try:
                     v = uuid.UUID(v)
@@ -361,13 +388,25 @@ def make_condition(
                 list,
             ),
         ):
-            # Use single quotes for string literals (works for both MySQL and PostgreSQL)
-            return f"{k}='{v}'"
+            text = str(v)
+            if isinstance(v, list) and adapter.backend == "postgresql" and "\\" in text:
+                # An E'' literal reads backslashes the same way whether or not
+                # standard_conforming_strings is on.
+                escaped = text.replace("\\", "\\\\").replace("'", "''").replace("%", "%%")
+                return f"{k}=E'{escaped}'"
+            return f"{k}={literal(text)}"
         if isinstance(v, str):
-            # Escape single quotes by doubling them, and escape % for driver
-            v = v.replace("'", "''").replace("%", "%%").replace("\\", "\\\\")
-            return f"{k}='{v}'"
-        return f"{k}={v}"
+            if adapter.backend == "postgresql":
+                # Backslashes are doubled as in previous releases so that string
+                # restrictions keep matching the same rows.
+                v = v.replace("\\", "\\\\")
+            return f"{k}={literal(v)}"
+        if isinstance(v, (numbers.Number, numpy.number, numpy.bool_)):
+            text = f"{v}"
+            if _NUMERIC_LITERAL_PATTERN.fullmatch(text):
+                return f"{k}={text}"
+            raise DataJointError(f"Cannot restrict by `{key}` with the non-finite or non-real value {text}.")
+        raise DataJointError(f"Unsupported value of type {type(v).__name__} in restriction by `{key}`.")
 
     def combine_conditions(negate, conditions):
         return f"{'NOT ' if negate else ''} ({')AND('.join(conditions)})"
@@ -376,6 +415,15 @@ def make_condition(
     while isinstance(condition, Not):
         negate = not negate
         condition = condition.restriction
+
+    # restrict() applies dj.Top itself; here it was negated or nested in a list or AndList
+    if isinstance(condition, Top):
+        raise DataJointError(
+            "dj.Top must be applied on its own, as `expression & dj.Top(...)`. It cannot be negated "
+            "(with - or dj.Not) or combined with other restrictions in a list, an AndList, or the "
+            "restrictions passed to populate() or progress(). For the rows after the first n, "
+            "use dj.Top(None, order_by=..., offset=n)."
+        )
 
     # restrict by string
     if isinstance(condition, str):
@@ -440,7 +488,9 @@ def make_condition(
         # Match on all non-hidden namesakes (hidden attributes excluded)
         common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
         columns.update(common_attributes)
-        if isinstance(condition, Aggregation):
+        # A dj.Top limit stays inside a subquery: it applies to the expression's rows before
+        # they are projected to the common attributes, and MySQL rejects LIMIT inside IN (...).
+        if isinstance(condition, Aggregation) or condition._top is not None:
             condition = condition.make_subquery()
         return (
             # without common attributes, any non-empty set matches everything
