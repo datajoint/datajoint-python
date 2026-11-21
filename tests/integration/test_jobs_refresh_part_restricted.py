@@ -6,8 +6,8 @@ carry parts. Checking a job against it with ``NOT IN (key_source)`` lets MySQL
 materialize the subquery as a join of both part tables, whose size is the product
 of their rows: with tens of thousands of parts per master, every ``refresh()``
 took minutes, and a loop that refreshes before every ``populate()`` paid that on
-every pass. The cleanup checks the jobs against ``key_source`` without nesting it
-in ``NOT IN``.
+every pass. The cleanup now negates ``key_source`` only as a ``SELECT DISTINCT``
+derived table, which MySQL computes once with the plan ``key_source`` gets on its own.
 """
 
 import time
@@ -263,8 +263,8 @@ def _negated_subqueries(sql):
     return found
 
 
-def test_refresh_never_negates_key_source(one_master, monkeypatch):
-    """No refresh statement nests the part-restricted key_source inside NOT IN."""
+def test_refresh_negates_key_source_only_as_a_derived_table(one_master, monkeypatch):
+    """Every NOT IN that mentions the part tables reaches them through a SELECT DISTINCT derived table."""
     Master, Summary = one_master
     parts = [Master.PartA.table_name.lower(), Master.PartB.table_name.lower()]
     with dj.config.override(jobs={"keep_completed": True}):
@@ -282,14 +282,17 @@ def test_refresh_never_negates_key_source(one_master, monkeypatch):
         monkeypatch.undo()
 
     assert removed == 3
-    offending = [sql for sql in queries if any(p in sub for sub in _negated_subqueries(sql) for p in parts)]
-    assert not offending, offending
+    negated = [sub for sql in queries for sub in _negated_subqueries(sql) if any(p in sub for p in parts)]
+    assert negated, "refresh() no longer checks jobs against key_source"
+    for sub in negated:
+        derived = sub.find("from (select distinct ")
+        assert derived >= 0, sub
+        assert all(sub.find(p) > derived for p in parts if p in sub), sub
 
 
-def test_refresh_pages_through_candidates(one_master, monkeypatch):
-    """With more candidates than one page, every vanished job is found and the rest kept."""
+def test_refresh_removes_only_vanished_jobs(one_master):
+    """Vanished success and pending jobs, first, last and in between, are removed; the rest kept."""
     Master, Summary = one_master
-    monkeypatch.setattr(dj.jobs, "VANISHED_DELETE_BATCH", 2)
     with dj.config.override(jobs={"keep_completed": True}):
         for m in range(4):
             _add_master(Master, m)
@@ -298,7 +301,6 @@ def test_refresh_pages_through_candidates(one_master, monkeypatch):
             _add_master(Master, m)
         Summary.jobs.refresh()
         assert len(Summary.jobs) == 9
-        # vanish keys on page boundaries and inside pages
         for m in (0, 1, 4, 6, 8):
             (Master.PartB & {"master_id": m}).delete_quick()
 
@@ -307,14 +309,8 @@ def test_refresh_pages_through_candidates(one_master, monkeypatch):
         assert _master_statuses(Summary.jobs) == {2: "success", 3: "success", 5: "pending", 7: "pending"}
 
 
-def test_refresh_moves_past_keys_that_do_not_match_themselves(schema_by_backend, monkeypatch):
-    """A page whose keys cannot be matched by value does not stop the cleanup.
-
-    A float32 key such as 0.1 is stored inexactly, so restricting by its fetched
-    value finds no row. A page of such keys is neither found present nor deleted;
-    the cleanup must still move on to the next page instead of reading the same
-    page again.
-    """
+def test_refresh_removes_vanished_inexact_keys(schema_by_backend):
+    """Jobs are compared with key_source by column, so inexact float32 keys are removed too."""
 
     @schema_by_backend
     class Source(dj.Manual):
@@ -335,22 +331,9 @@ def test_refresh_moves_past_keys_that_do_not_match_themselves(schema_by_backend,
     Target.jobs.refresh()
     assert len(Target.jobs) == 6
 
-    monkeypatch.setattr(dj.jobs, "VANISHED_DELETE_BATCH", 3)
-    calls = 0
-    keys = dj.expression.QueryExpression.keys
-
-    def counted_keys(self, *args, **kwargs):
-        nonlocal calls
-        calls += 1
-        assert calls < 50, "refresh() keeps reading the same page"
-        return keys(self, *args, **kwargs)
-
-    monkeypatch.setattr(dj.expression.QueryExpression, "keys", counted_keys)
-    (Source & {"x": 2.0}).delete_quick()
+    # 0.1 is stored inexactly, so it cannot be restricted by its value
+    (Source & "x < 0.15 OR x > 1.5").delete_quick()
 
     result = Target.jobs.refresh(stale_timeout=0)
-
-    # The first page (0.1, 0.2, 0.3) cannot be matched and is skipped; on the
-    # second page, 2.0 has vanished and is removed.
-    assert result["removed"] == 1
-    assert len(Target.jobs) == 5
+    assert result["removed"] == 2
+    assert sorted(round(x, 3) for x in Target.jobs.to_arrays("x")) == [0.2, 0.3, 0.5, 1.0]
