@@ -131,6 +131,18 @@ def test_group_has_computed_attribute(tables):
     assert as_dict(dj.U("color").aggr(renamed, n="count(*)"), "color", "n") == {"blue": 2, "red": 1}
 
 
+def test_group_by_attribute_renamed_to_another_column_name(tables):
+    Parent, Child, ParentInfo = tables
+    # The group's parent_id is the renamed label, not the original parent_id column
+    swapped = Parent.proj(parent_id="label", pid="parent_id")
+    query = dj.U("parent_id").aggr(swapped, n="count(*)")
+    assert len(query) == 2
+    assert as_dict(query, "parent_id", "n") == {"a": 2, "b": 1}
+    # The group's color is the renamed child_id; the projection drops the color column
+    dropped = Child.proj(color="child_id")
+    assert as_dict(dj.U("color").aggr(dropped, n="count(*)"), "color", "n") == {1: 2, 2: 1}
+
+
 def test_join_with_computed_operand(tables):
     Parent, Child, ParentInfo = tables
     joined = Parent * Child.proj(score="child_id * 10")

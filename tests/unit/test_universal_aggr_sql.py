@@ -93,6 +93,13 @@ def test_group_by_is_outside_the_subquery(tables, make_query):
     assert sql.count("GROUP BY") == 1 and sql.rindex("GROUP BY") > sql.rindex(")"), sql
 
 
+def test_renamed_group_attribute_with_another_column_name_is_subquery(tables):
+    parent, _, _ = tables
+    # The group's parent_id is the renamed label. dj.U must group by it, not by the parent_id column.
+    sql = U("parent_id").aggr(parent.proj(parent_id="label", pid="parent_id"), n="count(*)").make_sql()
+    assert subquery_count(sql) == 1, sql
+
+
 @pytest.mark.parametrize("make_group", [lambda p, c: c, lambda p, c: c & "color = 'blue'", lambda p, c: p * c])
 def test_table_and_join_groups_have_no_subquery(tables, make_group):
     parent, child, _ = tables
