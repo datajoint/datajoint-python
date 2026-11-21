@@ -1123,21 +1123,45 @@ class Table(QueryExpression):
         restrictions to all descendants, then deletes in reverse topological
         order (leaves first).
 
-        With ``safemode=True`` (the default), delete previews all affected
-        tables and row counts, executes within a transaction, and asks for
-        confirmation before committing. Declining rolls back all changes —
-        effectively a built-in dry run.
+        With ``prompt=True`` (the default while ``safemode=True``), delete logs
+        all affected tables and row counts, runs the deletes inside a
+        transaction, and then, if any rows matched, asks for confirmation
+        before committing: ``yes`` commits; ``no`` or Enter (the default) rolls
+        back; any other answer repeats the question. The transaction stays open
+        while the prompt waits, so other users' writes and schema changes on
+        the affected tables may wait until it is answered, and reads can queue
+        behind a waiting schema change. This mode is meant for interactive
+        development and prototyping, where holding the transaction open is not
+        critical.
 
-        To preview cascade impact without executing, use ``Diagram``::
+        In production, or on a database shared with other users, preview the
+        delete first, then delete without the prompt. The deletes then run in
+        a short transaction that commits as soon as they finish::
 
-            dj.Diagram.cascade(MyTable & restriction).counts()
+            restricted = MyTable & restriction
+            cascade = dj.Diagram.cascade(restricted)
+            cascade.counts()  # rows per affected table
+            restricted.delete(prompt=False)
+
+        The preview covers the same tables and restrictions as delete, as long
+        as both get the same ``part_integrity``, and reading it opens no
+        transaction. The ``part_integrity="enforce"`` check itself runs only in
+        delete. To see the rows themselves, iterate over the cascade: each
+        item is a table restricted to the rows that would be deleted, so
+        ``len()``, ``keys()`` and ``head()`` work on it. The preview holds no
+        locks, so rows can change before the delete runs.
 
         Args:
             transaction: If `True`, use of the entire delete becomes an atomic transaction.
                 This is the default and recommended behavior. Set to `False` if this delete is
-                nested within another transaction.
-            prompt: If `True`, show what will be deleted and ask for confirmation.
-                If `False`, delete without confirmation. Default is `dj.config['safemode']`.
+                nested within another transaction. With `transaction=False`, no confirmation
+                is asked, even when `prompt=True`, and delete does not roll back its own
+                deletes: an enclosing transaction, if any, decides whether they are committed.
+            prompt: If `True`, show what will be deleted and ask for confirmation before
+                committing, with the delete transaction held open until the answer; meant for
+                interactive use. If `False`, delete without confirmation and commit as soon as
+                the deletes finish (inside an open transaction, the delete joins it instead);
+                use this in production, after a preview. Default is `dj.config['safemode']`.
             part_integrity: Policy for master-part integrity. One of:
                 - ``"enforce"`` (default): Error if parts would be deleted without masters.
                 - ``"ignore"``: Allow deleting parts without masters (breaks integrity).
@@ -1147,7 +1171,8 @@ class Table(QueryExpression):
             Number of deleted rows (excluding those from dependent tables).
 
         Raises:
-            DataJointError: When deleting within an existing transaction.
+            DataJointError: When `prompt=True`, `transaction=True` and a transaction is already
+                open. With `prompt=False`, the delete joins the open transaction instead.
             DataJointError: Deleting a part table before its master (when part_integrity="enforce").
             ValueError: Invalid part_integrity value.
         """
