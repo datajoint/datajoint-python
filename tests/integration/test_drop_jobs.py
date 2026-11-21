@@ -140,6 +140,68 @@ def test_drop_quick_removes_jobs_table(schema_by_backend):
         assert not enum_types & _existing_enum_types(schema)
 
 
+def test_cascading_drop_removes_only_dropped_tables_jobs(schema_by_backend):
+    """A cascading drop through a virtual module removes the jobs table of each dropped table, and no other."""
+    schema = schema_by_backend
+
+    @schema
+    class Item(dj.Manual):
+        definition = """
+        item : int32
+        """
+
+    @schema
+    class Stage1(dj.Computed):
+        definition = """
+        -> Item
+        ---
+        value : int32
+        """
+
+        def make(self, key):
+            self.insert1(dict(key, value=key["item"]))
+
+    @schema
+    class Stage2(dj.Computed):
+        definition = """
+        -> Stage1
+        ---
+        value : int32
+        """
+
+        def make(self, key):
+            raise RuntimeError("not ready")
+
+    @schema
+    class Other(dj.Computed):
+        definition = """
+        -> Item
+        ---
+        value : int32
+        """
+
+        def make(self, key):
+            raise RuntimeError("not ready")
+
+    Item.insert({"item": i} for i in range(3))
+    for table in (Stage1, Stage2, Other):
+        table.populate(reserve_jobs=True, suppress_errors=True)
+    assert len(Stage2.jobs.errors) == len(Other.jobs.errors) == 3
+    assert {"~~stage1", "~~stage2", "~~other"} <= _table_names(schema)
+
+    # A virtual module's classes have never accessed .jobs
+    module = dj.VirtualModule("module", schema.database, connection=schema.connection)
+    module.Stage1.drop(prompt=False)
+
+    tables = _table_names(schema)
+    assert not {"__stage1", "__stage2", "~~stage1", "~~stage2"} & tables
+    assert {"__other", "~~other"} <= tables
+    # The remaining jobs table keeps its records and, on PostgreSQL, its status column
+    other_jobs = dj.FreeTable(schema.connection, Other.jobs.full_table_name)
+    assert "status" in other_jobs.heading.names
+    assert sorted(other_jobs.to_arrays("status")) == ["error"] * 3
+
+
 def test_drop_manual_table_keeps_jobs_table(schema_by_backend):
     """Dropping a Manual table leaves the jobs table its name maps to, which belongs to a Computed table."""
     schema = schema_by_backend
