@@ -1205,6 +1205,11 @@ class Table(QueryExpression):
             if transaction:
                 conn.cancel_transaction()
             raise
+        except BaseException:
+            # KeyboardInterrupt (Ctrl-C) or SystemExit while deleting
+            if transaction:
+                _cancel_interrupted_transaction(conn)
+            raise
 
         # Post-check part_integrity="enforce": roll back if a part table
         # had rows deleted without its master also having rows deleted.
@@ -1229,7 +1234,14 @@ class Table(QueryExpression):
         elif not transaction:
             logger.info("Delete completed")
         else:
-            if not prompt or user_choice("Commit deletes?", default="no") == "yes":
+            try:
+                confirmed = not prompt or user_choice("Commit deletes?", default="no") == "yes"
+            except BaseException:
+                # Ctrl-C (KeyboardInterrupt) or end of input (EOFError) at the prompt:
+                # roll back, so the connection is not left inside the transaction
+                _cancel_interrupted_transaction(conn)
+                raise
+            if confirmed:
                 if transaction:
                     conn.commit_transaction()
                 if prompt:
@@ -1669,6 +1681,21 @@ class Table(QueryExpression):
             row_to_insert["placeholders"] = list(row_to_insert["placeholders"][i] for i in order)
             row_to_insert["values"] = list(row_to_insert["values"][i] for i in order)
         return row_to_insert
+
+
+def _cancel_interrupted_transaction(conn):
+    """
+    Roll back the transaction that ``delete()`` opened, after an interruption.
+
+    If the rollback itself fails, as it can when Ctrl-C stopped a query
+    partway, the connection is closed instead: the server then discards the
+    transaction, and the original interruption is what the caller sees.
+    """
+    try:
+        conn.cancel_transaction()
+    except Exception as error:
+        logger.warning(f"Could not roll back the delete transaction ({error}); closing the connection.")
+        conn.close()
 
 
 def _one_line(text):
