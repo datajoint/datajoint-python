@@ -54,8 +54,17 @@ class BlobCodec(Codec):
 
         return blob.pack(value, compress=True)
 
-    def decode(self, stored: bytes, *, key: dict | None = None) -> Any:
-        """Deserialize blob bytes back to a Python object."""
+    def decode(self, stored: bytes, *, key: dict | None = None, context: dict | None = None) -> Any:
+        """
+        Deserialize blob bytes back to a Python object.
+
+        A compressed blob whose recorded uncompressed size exceeds
+        ``blob.max_decompressed_size`` is refused before it is decompressed.
+        """
         from .. import blob
 
-        return blob.unpack(stored, squeeze=False)
+        config = self._codec_config(key, context)
+        if config is None:
+            from ..settings import config  # type: ignore[assignment]
+        assert config is not None
+        return blob.unpack(stored, squeeze=False, max_decompressed_size=config["blob.max_decompressed_size"])

@@ -8,6 +8,7 @@ statements, handling type mapping, foreign key resolution, and index creation.
 from __future__ import annotations
 
 import ast
+import inspect
 import logging
 import re
 
@@ -355,9 +356,10 @@ def resolve_foreign_key_reference(ref_table: str, context: dict):
                 raise unresolved(f"{step[1]} is not defined in the declaration context")
             ref = context[step[1]]
         elif step[0] == "attr":
+            # Look the name up without running a property or a custom __getattr__
             try:
-                ref = getattr(ref, step[1])
-            except Exception:
+                ref = inspect.getattr_static(ref, step[1])
+            except AttributeError:
                 raise unresolved(f"no attribute {step[1]}") from None
         elif step[0] == "instance":
             if not is_table_class(ref):

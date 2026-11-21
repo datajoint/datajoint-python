@@ -4,6 +4,7 @@ import csv
 import inspect
 import itertools
 import json
+import keyword
 import logging
 import re
 import uuid
@@ -1413,7 +1414,14 @@ class Table(QueryExpression):
                                 class_name=_one_line(lookup_class_name(parent_name, context) or parent_name),
                             )
                         else:
-                            # projected foreign key
+                            # projected foreign key; the new names are written as is, so they
+                            # must be identifiers (the referenced names are quoted)
+                            for new_name, ref in fk_props["attr_map"].items():
+                                if ref != new_name and not (new_name.isidentifier() and not keyword.iskeyword(new_name)):
+                                    raise DataJointError(
+                                        f"Cannot describe {self.full_table_name}: the foreign key attribute "
+                                        f"{new_name!r} read from the database is not a valid attribute name."
+                                    )
                             definition += "->{options} {class_name}.proj({proj_list})\n".format(
                                 options=options_str,
                                 class_name=_one_line(lookup_class_name(parent_name, context) or parent_name),

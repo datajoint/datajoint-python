@@ -170,3 +170,38 @@ def test_describe_text_stays_on_one_line():
     text = 'a "quoted" \\ value\nwith a line break'
     steps = parse_foreign_key_reference("Parent.proj(new={})".format(_quoted(text)))
     assert steps == [("name", "Parent"), ("proj", [], {"new": _one_line(text)})]
+
+
+class _Lookups:
+    """An object whose attributes run code when read: a property and a custom __getattr__."""
+
+    def __init__(self, calls):
+        self._calls = calls
+
+    @property
+    def Computed(self):
+        self._calls.append("property")
+        return Parent
+
+    def __getattr__(self, name):
+        self._calls.append(f"__getattr__ {name}")
+        return Parent
+
+
+@pytest.mark.parametrize("reference", ["lookups.Computed", "lookups.Anything", "lazy_module.Parent"])
+def test_attribute_lookup_runs_no_code(reference, context, calls):
+    """Each ``.name`` step only looks the name up; properties and __getattr__ are not run."""
+    lazy_module = types.ModuleType("lazy_module")
+    lazy_module.__getattr__ = lambda name: calls.append(f"module __getattr__ {name}") or Parent
+    context.update(lookups=_Lookups(calls), lazy_module=lazy_module)
+    with pytest.raises(DataJointError, match="could not be resolved"):
+        resolve_foreign_key_reference(reference, context)
+    assert calls == []
+
+
+def test_attribute_lookup_finds_class_and_module_attributes(context):
+    real_module = types.ModuleType("real_module")
+    real_module.Parent = Parent
+    context["real_module"] = real_module
+    assert resolve_foreign_key_reference("real_module.Parent", context) is Parent
+    assert resolve_foreign_key_reference("real_module.Parent.Part", context) is Parent.Part
