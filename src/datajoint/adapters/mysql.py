@@ -88,14 +88,16 @@ class _TLSRequiredConnection(client.connections.Connection):
 
     tls_required = True
 
+    # server_capabilities and _request_authentication are PyMySQL internals
+    # that types-PyMySQL does not declare.
     def _request_authentication(self):
-        if not self.server_capabilities & CLIENT.SSL:
+        if not self.server_capabilities & CLIENT.SSL:  # type: ignore[attr-defined]
             if self.tls_required:
                 raise _TLSUnavailableError()
             # Continue without TLS: do not announce TLS in the handshake response
             self.ssl = False
             self.client_flag &= ~CLIENT.SSL
-        super()._request_authentication()
+        super()._request_authentication()  # type: ignore[misc]
 
 
 class _TLSPreferredConnection(_TLSRequiredConnection):
@@ -194,7 +196,7 @@ class MySQLAdapter(DatabaseAdapter):
         # Require SSL, configured by the dict or SSLContext
         connection = _TLSRequiredConnection(**conn_params)
         # Checked again in case a PyMySQL version bypasses the hook above
-        if not connection.server_capabilities & CLIENT.SSL:
+        if not connection.server_capabilities & CLIENT.SSL:  # type: ignore[attr-defined]  # PyMySQL internal
             connection.close()
             raise _TLSUnavailableError()
         return connection

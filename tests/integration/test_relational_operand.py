@@ -180,6 +180,12 @@ def test_project(schema_simp_pop):
     assert len((D() & cond).proj()) == len((D() & cond)), "projection failed: altered its arguments cardinality"
 
 
+@pytest.mark.parametrize("value", ["nonexistent", "(nonexistent)"])
+def test_project_missing_source_attribute(schema_simp_pop, value):
+    with pytest.raises(DataJointError, match="Attribute `nonexistent` not found"):
+        A().proj(c=value)
+
+
 def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop, prefix):
     schema = prefix + "_test1"
     connection_test.query(f"CREATE TABLE {schema}.test_table (oldID int PRIMARY KEY)").fetchall()
