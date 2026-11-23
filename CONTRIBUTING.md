@@ -36,7 +36,7 @@ pytest tests/
 
 ## Running Tests
 
-Tests use [testcontainers](https://testcontainers.com/) to automatically manage MySQL, PostgreSQL, and MinIO containers. No manual `docker-compose up` required.
+Tests use [testcontainers](https://testcontainers.com/) to automatically manage MySQL, PostgreSQL, and S3 ([SeaweedFS](https://github.com/seaweedfs/seaweedfs)) containers. No manual `docker-compose up` required.
 
 Integration tests are **backend-parameterized** — tests using the `backend` fixture run automatically against both MySQL and PostgreSQL.
 
@@ -67,13 +67,13 @@ Tests automatically spin up both MySQL and PostgreSQL containers via testcontain
 ### External Containers (for debugging)
 
 ```bash
-# MySQL + MinIO
-docker compose up -d db minio
+# MySQL + S3
+docker compose up -d db s3
 DJ_USE_EXTERNAL_CONTAINERS=1 pixi run -e test test
 docker compose down
 
-# MySQL + PostgreSQL + MinIO
-docker compose up -d db postgres minio
+# MySQL + PostgreSQL + S3
+docker compose up -d db postgres s3
 DJ_USE_EXTERNAL_CONTAINERS=1 pixi run -e test test
 docker compose down
 ```
@@ -133,7 +133,7 @@ For `DJ_USE_EXTERNAL_CONTAINERS=1`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `S3_ENDPOINT` | `localhost:9000` | MinIO endpoint |
+| `S3_ENDPOINT` | `localhost:8333` | S3 endpoint |
 
 ---
 

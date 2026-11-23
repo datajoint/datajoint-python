@@ -180,6 +180,12 @@ def test_project(schema_simp_pop):
     assert len((D() & cond).proj()) == len((D() & cond)), "projection failed: altered its arguments cardinality"
 
 
+@pytest.mark.parametrize("value", ["nonexistent", "(nonexistent)"])
+def test_project_missing_source_attribute(schema_simp_pop, value):
+    with pytest.raises(DataJointError, match="Attribute `nonexistent` not found"):
+        A().proj(c=value)
+
+
 def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop, prefix):
     schema = prefix + "_test1"
     connection_test.query(f"CREATE TABLE {schema}.test_table (oldID int PRIMARY KEY)").fetchall()
@@ -608,12 +614,14 @@ class TestDjTop:
             L() & dj.Top(order_by=1)
         with pytest.raises(TypeError) as err5:
             L() & dj.Top(offset="1")
-        assert "datajoint.errors.DataJointError: Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)" == str(
-            err1.exconly()
+        nested_top = (
+            "datajoint.errors.DataJointError: dj.Top must be applied on its own, as `expression & dj.Top(...)`. "
+            "It cannot be negated (with - or dj.Not) or combined with other restrictions in a list, an AndList, "
+            "or the restrictions passed to populate() or progress(). For the rows after the first n, "
+            "use dj.Top(None, order_by=..., offset=n)."
         )
-        assert "datajoint.errors.DataJointError: Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)" == str(
-            err2.exconly()
-        )
+        assert nested_top == str(err1.exconly())
+        assert nested_top == str(err2.exconly())
         assert "TypeError: Top limit must be an integer" == str(err3.exconly())
         assert "TypeError: Top order_by attributes must all be strings" == str(err4.exconly())
         assert "TypeError: The offset argument must be an integer" == str(err5.exconly())
