@@ -12,6 +12,7 @@ import pytest
 
 from datajoint.adapters import get_adapter
 from datajoint.declare import compile_attribute
+from datajoint.heading import Attribute, default_attribute_properties
 
 COMMENTS = [
     'say "hi"',
@@ -152,3 +153,23 @@ def test_compile_attribute_keeps_the_declared_comment(backend):
         assert stored == f":varchar(16):{comment}"
         if backend == "mysql":
             assert read_mysql(sql, "`note` varchar(16) NOT NULL COMMENT ") == stored
+
+
+def make_attribute(comment):
+    properties = dict(default_attribute_properties, name="note", type="varchar(16)", original_type="varchar(16)")
+    return Attribute(**dict(properties, comment=comment))
+
+
+@pytest.mark.parametrize("comment", COMMENTS)
+def test_attribute_sql_quotes_the_comment(comment):
+    """Attribute.sql writes the comment through the MySQL adapter's quoting."""
+    sql = make_attribute(comment).sql
+    prefix = "`note` varchar(16) NOT NULL COMMENT "
+    assert read_mysql(sql, prefix) == f":varchar(16):{comment}"
+    text = read_mysql(sql, prefix, backslash_escapes=False)
+    if "\\" not in comment:
+        assert text == f":varchar(16):{comment}"
+
+
+def test_attribute_sql_without_quotes_is_unchanged():
+    assert make_attribute("plain").sql == '`note` varchar(16) NOT NULL COMMENT ":varchar(16):plain"'
