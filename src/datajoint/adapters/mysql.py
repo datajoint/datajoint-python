@@ -294,9 +294,11 @@ class MySQLAdapter(DatabaseAdapter):
         Quote a table or column comment as a double-quoted MySQL string literal.
 
         Comments are written in double quotes, as DataJoint has always written
-        them. The comment is escaped like ``quote_string``: a double quote is
-        doubled rather than escaped with a backslash, so the literal stays closed
-        even under NO_BACKSLASH_ESCAPES.
+        them. Only two characters are escaped: a backslash is doubled, and a
+        double quote is doubled (``""``) rather than escaped with a backslash, so
+        the literal stays closed even under NO_BACKSLASH_ESCAPES. Single quotes,
+        which the ``:type:`` marker of an enum attribute contains, are left as
+        they are.
 
         Parameters
         ----------
@@ -313,7 +315,7 @@ class MySQLAdapter(DatabaseAdapter):
         >>> adapter.quote_comment('a "b" c')
         '"a ""b"" c"'
         """
-        escaped = client.converters.escape_string(comment).replace('\\"', '""')
+        escaped = comment.replace("\\", "\\\\").replace('"', '""')
         return f'"{escaped}"'
 
     def get_master_table_name(self, part_table: str) -> str | None:

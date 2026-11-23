@@ -95,7 +95,9 @@ def test_mysql_column_comment(mysql, comment):
     sql = mysql.format_column_definition("note", "varchar(16)", comment=comment)
     prefix = "`note` varchar(16) NOT NULL COMMENT "
     assert read_mysql(sql, prefix) == comment
-    read_mysql(sql, prefix, backslash_escapes=False)
+    text = read_mysql(sql, prefix, backslash_escapes=False)
+    if "\\" not in comment:
+        assert text == comment
 
 
 @pytest.mark.parametrize("comment", COMMENTS)
@@ -103,13 +105,17 @@ def test_mysql_table_comment(mysql, comment):
     sql = mysql.table_options_clause(comment)
     prefix = "ENGINE=InnoDB, COMMENT "
     assert read_mysql(sql, prefix) == comment
-    read_mysql(sql, prefix, backslash_escapes=False)
+    text = read_mysql(sql, prefix, backslash_escapes=False)
+    if "\\" not in comment:
+        assert text == comment
 
 
-def test_mysql_comment_without_backslash_reads_the_same_under_no_backslash_escapes(mysql):
-    sql = mysql.format_column_definition("note", "varchar(16)", comment='a "b" c')
-    assert sql == '`note` varchar(16) NOT NULL COMMENT "a ""b"" c"'
-    assert read_mysql(sql, "`note` varchar(16) NOT NULL COMMENT ", backslash_escapes=False) == 'a "b" c'
+def test_mysql_comment_sql(mysql):
+    """Only backslashes and double quotes are escaped; other comments are written as before."""
+    assert mysql.quote_comment('a "b" c') == '"a ""b"" c"'
+    assert mysql.quote_comment("a\\b") == '"a\\\\b"'
+    sql = mysql.format_column_definition("status", "enum('active', 'retired')", comment=":enum('active', 'retired'):status")
+    assert sql == "`status` enum('active', 'retired') NOT NULL COMMENT \":enum('active', 'retired'):status\""
 
 
 @pytest.mark.parametrize("standard_conforming_strings", [True, False], ids=["standard", "backslash_escapes"])

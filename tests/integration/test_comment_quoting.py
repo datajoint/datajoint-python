@@ -143,7 +143,11 @@ def test_mysql_comments_without_backslash_escapes(schema, backend):
     finally:
         connection.query("SET SESSION sql_mode = %s", (sql_mode,))
     assert Item.heading.names == list(COMMENTS)
-    assert stored_comments(Item)["double_quotes"] == COMMENTS["double_quotes"]
+    # Without backslash escapes a backslash is stored doubled; every other character as declared
+    stored = stored_comments(Item)
+    assert {name: stored[name] for name, comment in COMMENTS.items() if "\\" not in comment} == {
+        name: comment for name, comment in COMMENTS.items() if "\\" not in comment
+    }
 
 
 def test_postgresql_comments_without_standard_conforming_strings(schema, backend):
