@@ -639,13 +639,16 @@ class Heading:
                 unique=(non_unique == 0 or not non_unique),
                 nullable=nullable,
             )
+        # An expression in an index has no column name. An index with any
+        # expression is left out: listing only its plain columns would describe
+        # a different index (for a unique index, a stricter constraint).
         self.indexes = {
-            tuple(item[k]["column"] for k in sorted(item.keys()) if item[k]["column"] is not None): dict(
+            tuple(item[k]["column"] for k in sorted(item.keys())): dict(
                 unique=item[1]["unique"],
                 nullable=any(v["nullable"] for v in item.values()),
             )
             for item in keys.values()
-            if any(item[k]["column"] is not None for k in item.keys())
+            if all(item[k]["column"] is not None for k in item.keys())
         }
 
     def select(self, select_list, rename_map=None, compute_map=None):

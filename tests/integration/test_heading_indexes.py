@@ -150,16 +150,54 @@ def test_alter_unchanged_definition(schema_indexes, monkeypatch):
 
 
 def test_expression_index_is_skipped(schema_indexes):
-    """An index on an expression does not break loading the heading.
+    """An index with an expression is left out of the heading.
 
-    Neither backend names a column for an expression, so the heading skips the
-    expression, and an index made only of expressions does not appear.
+    Neither backend names a column for an expression. Listing only the plain
+    columns of such an index would describe a different index, so the heading
+    leaves out any index that contains an expression, on both backends.
     """
     child = Child()
     connection = child.connection
     connection.query(f"CREATE INDEX child_expr ON {child.full_table_name} ((lower(b)))")
     connection.query(f"CREATE INDEX child_expr_first ON {child.full_table_name} ((c + 1), a)")
+    # A unique index that mixes a column and an expression. Its name sorts after
+    # the plain index on (a) on both backends, so it used to replace that index
+    # in the heading as a unique index on (a) alone.
+    connection.query(f"CREATE UNIQUE INDEX zz_mixed_unique ON {child.full_table_name} (a, (lower(b)))")
     indexes = _indexes(dj.FreeTable(connection, child.full_table_name))
-    assert all(None not in columns for columns in indexes)
-    assert ("b",) not in indexes
-    assert {k: v for k, v in indexes.items() if k in EXPECTED_INDEXES} == EXPECTED_INDEXES
+    assert indexes == EXPECTED_INDEXES
+    lines = [" ".join(line.split()) for line in child.describe(context=_context()).splitlines()]
+    assert lines == EXPECTED_DESCRIBE
+
+
+class Ordered(dj.Manual):
+    # Declared index order differs from index-name order, and the order of
+    # index names differs between backends.
+    definition = """
+    ordered_id : int32
+    ---
+    a : int32
+    a_b : int32
+    c : int32
+    index(a, c)
+    index(a_b)
+    """
+
+
+def test_alter_ignores_index_order(schema_indexes, monkeypatch):
+    """alter() with an unchanged definition does not depend on index order."""
+    schema_indexes(Ordered)
+    connection = Ordered.connection
+    described = [line for line in Ordered().describe().splitlines() if "INDEX" in line]
+    assert sorted(" ".join(line.split()) for line in described) == ["INDEX (a, c)", "INDEX (a_b)"]
+    statements = []
+    query = connection.query
+
+    def recording_query(sql, *args, **kwargs):
+        statements.append(sql)
+        return query(sql, *args, **kwargs)
+
+    monkeypatch.setattr(connection, "query", recording_query)
+    Ordered.alter(prompt=False)
+    monkeypatch.undo()
+    assert not [s for s in statements if s.lstrip().upper().startswith(("ALTER", "COMMENT", "CREATE", "DROP"))]
