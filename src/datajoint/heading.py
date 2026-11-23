@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .codecs import lookup_codec
+from .codecs import lookup_codec, resolve_dtype
 from .codecs import Codec
 from .declare import (
     CORE_TYPE_NAMES,
@@ -50,6 +50,13 @@ class _MissingType(Codec, register=False):
         )
 
     def decode(self, stored, *, key=None, context=None):
+        raise DataJointError(
+            f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
+        )
+
+    def referenced_paths(self, stored):
+        # The codec's metadata format is unknown, so reading no paths would be a
+        # guess. Raising lets garbage collection see the failed scan.
         raise DataJointError(
             f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
         )
@@ -178,40 +185,68 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         assert self.attribute_expression.startswith(("`", '"'))
         return self.attribute_expression.strip('`"')
 
+    def _codec_chain(self) -> list[Codec] | None:
+        """
+        The attribute's codec chain, outermost first, or None if it cannot be resolved.
+
+        The chain is resolved as insert and fetch resolve it: the attribute's
+        codec, then each codec its ``get_dtype`` leads to, with the store
+        setting passed down. ``<blob@>`` resolves to ``[BlobCodec, HashCodec]``
+        and inline ``<blob>`` to ``[BlobCodec]``.
+
+        None means a codec in the chain is not installed or rejects the
+        attribute's store setting, so where the values are stored is unknown.
+        """
+        try:
+            inner_dtype = self.codec.get_dtype(self.store is not None)
+            _, inner_chain, _ = resolve_dtype(inner_dtype, seen={self.codec.name}, store_name=self.store)
+        except DataJointError:
+            return None
+        return [self.codec, *inner_chain]
+
     @property
     def is_hash_object(self) -> bool:
         """
         True if the value is stored in external hash-addressed storage.
 
-        Covers ``<hash@>`` (external-only) and ``<blob@>``/``<attach@>`` *with*
-        a store. Inline ``<blob>``/``<attach>`` (no store) return False — their
-        bytes live in the column, so there is nothing in object storage to
-        collect. The ``store is not None`` test mirrors the framework's own
-        ``is_store`` determination (see ``declare``/``Heading`` compilation).
+        Decided by the codec chain, not the codec name: True when a
+        ``HashCodec`` appears anywhere in it. That covers ``<hash@>``,
+        ``<blob@>`` and ``<attach@>``, and any custom codec whose ``get_dtype``
+        leads to one of them. Inline ``<blob>``/``<attach>`` (no store) resolve
+        to ``bytes`` and return False: their bytes live in the column, so there
+        is nothing in object storage to collect.
+
+        A chain that cannot be resolved also returns True. Where its values are
+        stored is unknown, so garbage collection must scan the column rather
+        than count its objects as orphans.
         """
         if not self.codec:
             return False
-        name = getattr(self.codec, "name", "")
-        if name == "hash":
-            return True  # <hash> is external-only (get_dtype raises without @)
-        # <blob>/<attach> are dual-mode: external only when a store is set.
-        return name in ("blob", "attach") and self.store is not None
+        from .builtin_codecs.hash import HashCodec  # local import avoids import cycle
+
+        chain = self._codec_chain()
+        return chain is None or any(isinstance(codec, HashCodec) for codec in chain)
 
     @property
     def is_schema_object(self) -> bool:
         """
         True if the value is stored in schema-addressed storage.
 
-        Covers ``<object@>``, ``<npy@>``, and any custom ``SchemaCodec``
-        subclass — recognized by codec *type*, not name, so third-party codecs
-        are included (see #1469). Schema-addressed storage is external-only, so
-        no store guard is needed.
+        Decided by codec *type*, not name (see #1469): True when a
+        ``SchemaCodec`` appears anywhere in the codec chain. That covers
+        ``<object@>``, ``<npy@>``, custom ``SchemaCodec`` subclasses, and any
+        custom codec whose ``get_dtype`` leads to one of them.
+        Schema-addressed storage is external-only, so no store guard is needed.
+
+        As in :attr:`is_hash_object`, a chain that cannot be resolved returns
+        True.
         """
         if not self.codec:
             return False
         from .builtin_codecs.schema import SchemaCodec  # local import avoids import cycle
 
-        return isinstance(self.codec, SchemaCodec)
+        chain = self._codec_chain()
+        return chain is None or any(isinstance(codec, SchemaCodec) for codec in chain)
 
 
 class Heading:
@@ -325,13 +360,15 @@ class Heading:
     @property
     def hash_objects(self) -> list[str]:
         """Names of attributes stored in external hash-addressed storage (``<hash@>``,
-        external ``<blob@>``/``<attach@>``). See :attr:`Attribute.is_hash_object`."""
+        external ``<blob@>``/``<attach@>``, and custom codecs that store through
+        them). See :attr:`Attribute.is_hash_object`."""
         return [k for k, v in self.attributes.items() if v.is_hash_object]
 
     @property
     def schema_objects(self) -> list[str]:
         """Names of attributes stored in schema-addressed storage (``<object@>``,
-        ``<npy@>``, custom ``SchemaCodec``). See :attr:`Attribute.is_schema_object`."""
+        ``<npy@>``, custom ``SchemaCodec``, and custom codecs that store through
+        them). See :attr:`Attribute.is_schema_object`."""
         return [k for k, v in self.attributes.items() if v.is_schema_object]
 
     @property
