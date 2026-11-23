@@ -56,7 +56,8 @@ class Instance:
     port : int, optional
         Database port. Defaults to 3306 for MySQL, 5432 for PostgreSQL.
     use_tls : bool or dict, optional
-        TLS configuration.
+        TLS configuration. Default from ``database.use_tls`` in this
+        instance's config.
     backend : str, optional
         Database backend: ``"mysql"`` or ``"postgresql"``. Default from config.
     **kwargs : Any
