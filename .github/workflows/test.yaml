@@ -1,5 +1,8 @@
 name: Test
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
@@ -11,6 +14,7 @@ on:
       - "tests/**"
       - "pyproject.toml"
       - "pixi.lock"
+      - ".github/scripts/minimum_requirements.py"
       - ".github/workflows/test.yaml"
   pull_request:
     branches:
@@ -22,6 +26,7 @@ on:
       - "tests/**"
       - "pyproject.toml"
       - "pixi.lock"
+      - ".github/scripts/minimum_requirements.py"
       - ".github/workflows/test.yaml"
 
 jobs:
@@ -40,10 +45,12 @@ jobs:
         mysql-image: ["datajoint/mysql:8.0", "mysql:8.4"]
     name: test (${{ matrix.environment }}, mysql=${{ matrix.mysql-image }})
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.9.3
+        uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
         with:
           cache: true
           locked: false
@@ -60,10 +67,12 @@ jobs:
     runs-on: ubuntu-latest
     name: test (test-py314, mysql=datajoint/mysql:8.0, prune_subqueries=False)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.9.3
+        uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
         with:
           cache: true
           locked: false
@@ -79,10 +88,12 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.9.3
+        uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
         with:
           cache: true
           locked: false
@@ -105,12 +116,13 @@ jobs:
         python-version: ["3.10", "3.14", "3.15"]
     name: unit-tests-windows (py${{ matrix.python-version }})
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # hatch-vcs derives the version from git history/tags
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -125,3 +137,39 @@ jobs:
 
       - name: Run unit tests
         run: pytest tests/unit -v
+
+  # Minimum versions: run the full suite on the oldest supported Python with
+  # every runtime dependency ([project].dependencies; extras are not pinned) at
+  # the minimum pyproject.toml declares, so those minimums stay true.
+  # minimum_requirements.py also fails the job when a runtime dependency
+  # declares no minimum. Uses pip, not pixi, because pixi resolves the newest
+  # versions from the lock file.
+  test-min-versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    name: test (minimum dependency versions, py3.10)
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # hatch-vcs derives the version from git history/tags
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.10"
+
+      - name: Install graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      - name: Pin runtime dependencies at their minimums
+        run: |
+          python -m pip install tomli==2.5.0 packaging==26.3
+          python .github/scripts/minimum_requirements.py --python 3.10 > "$RUNNER_TEMP/minimum.txt"
+          cat "$RUNNER_TEMP/minimum.txt"
+
+      - name: Install package with test extras
+        run: python -m pip install -e ".[test]" -c "$RUNNER_TEMP/minimum.txt"
+
+      - name: Run tests
+        run: python -m pytest tests/
