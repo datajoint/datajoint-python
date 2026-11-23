@@ -207,6 +207,25 @@ class DatabaseAdapter(ABC):
         """
         ...
 
+    def quote_comment(self, comment: str) -> str:
+        """
+        Quote a table or column comment as a string literal for this backend.
+
+        The comment is stored exactly as given: quotes and backslashes in it are
+        part of the comment and cannot end the literal.
+
+        Parameters
+        ----------
+        comment : str
+            Comment text as declared, including any ``:type:`` marker.
+
+        Returns
+        -------
+        str
+            Quoted string literal.
+        """
+        return self.quote_string(comment)
+
     @abstractmethod
     def get_master_table_name(self, part_table: str) -> str | None:
         """
@@ -1229,7 +1248,7 @@ class DatabaseAdapter(ABC):
         default : str | None, optional
             Default value expression (e.g., 'NULL', '"value"', 'CURRENT_TIMESTAMP').
         comment : str | None, optional
-            Column comment.
+            Column comment as declared; quoted with ``quote_comment``.
 
         Returns
         -------
@@ -1251,7 +1270,7 @@ class DatabaseAdapter(ABC):
         Parameters
         ----------
         comment : str | None, optional
-            Table-level comment.
+            Table-level comment as declared; quoted with ``quote_comment``.
 
         Returns
         -------
@@ -1275,7 +1294,7 @@ class DatabaseAdapter(ABC):
         full_table_name : str
             Fully qualified table name (quoted).
         comment : str
-            Table comment.
+            Table comment as declared; quoted with ``quote_comment``.
 
         Returns
         -------
@@ -1301,7 +1320,7 @@ class DatabaseAdapter(ABC):
         column_name : str
             Column name (unquoted).
         comment : str
-            Column comment.
+            Column comment as declared; quoted with ``quote_comment``.
 
         Returns
         -------

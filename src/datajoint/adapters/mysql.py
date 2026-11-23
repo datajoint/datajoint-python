@@ -289,6 +289,33 @@ class MySQLAdapter(DatabaseAdapter):
         escaped = client.converters.escape_string(value).replace("\\'", "''")
         return f"'{escaped}'"
 
+    def quote_comment(self, comment: str) -> str:
+        """
+        Quote a table or column comment as a double-quoted MySQL string literal.
+
+        Comments are written in double quotes, as DataJoint has always written
+        them. The comment is escaped like ``quote_string``: a double quote is
+        doubled rather than escaped with a backslash, so the literal stays closed
+        even under NO_BACKSLASH_ESCAPES.
+
+        Parameters
+        ----------
+        comment : str
+            Comment text as declared.
+
+        Returns
+        -------
+        str
+            Quoted and escaped string literal.
+
+        Examples
+        --------
+        >>> adapter.quote_comment('a "b" c')
+        '"a ""b"" c"'
+        """
+        escaped = client.converters.escape_string(comment).replace('\\"', '""')
+        return f'"{escaped}"'
+
     def get_master_table_name(self, part_table: str) -> str | None:
         """Extract master table name from part table (MySQL backtick format)."""
         import re
@@ -1030,7 +1057,7 @@ class MySQLAdapter(DatabaseAdapter):
         elif not nullable:
             parts.append("NOT NULL")
         if comment:
-            parts.append(f'COMMENT "{comment}"')
+            parts.append(f"COMMENT {self.quote_comment(comment)}")
         return " ".join(parts)
 
     def table_options_clause(self, comment: str | None = None) -> str:
@@ -1046,7 +1073,7 @@ class MySQLAdapter(DatabaseAdapter):
         """
         clause = "ENGINE=InnoDB"
         if comment:
-            clause += f', COMMENT "{comment}"'
+            clause += f", COMMENT {self.quote_comment(comment)}"
         return clause
 
     def table_comment_ddl(self, full_table_name: str, comment: str) -> str | None:
