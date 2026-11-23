@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .codecs import lookup_codec, resolve_dtype
+from .codecs import lookup_codec, parse_type_spec, resolve_dtype
 from .codecs import Codec
 from .declare import (
     CORE_TYPE_NAMES,
@@ -39,27 +39,25 @@ class _MissingType(Codec, register=False):
     def name(self) -> str:
         return self._codec_name
 
+    def _not_registered(self) -> str:
+        # The spec may carry angle brackets and a store ("<name@store>"); the
+        # message names the codec alone.
+        codec_name = parse_type_spec(self._codec_name)[0]
+        return f"Codec <{codec_name}> is not registered. Define a Codec subclass with name='{codec_name}'."
+
     def get_dtype(self, is_store: bool) -> str:
-        raise DataJointError(
-            f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
-        )
+        raise DataJointError(self._not_registered())
 
     def encode(self, value, *, key=None, context=None, store_name=None):
-        raise DataJointError(
-            f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
-        )
+        raise DataJointError(self._not_registered())
 
     def decode(self, stored, *, key=None, context=None):
-        raise DataJointError(
-            f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
-        )
+        raise DataJointError(self._not_registered())
 
     def referenced_paths(self, stored):
         # The codec's metadata format is unknown, so reading no paths would be a
         # guess. Raising lets garbage collection see the failed scan.
-        raise DataJointError(
-            f"Codec <{self._codec_name}> is not registered. Define a Codec subclass with name='{self._codec_name}'."
-        )
+        raise DataJointError(self._not_registered())
 
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -194,13 +192,16 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         setting passed down. ``<blob@>`` resolves to ``[BlobCodec, HashCodec]``
         and inline ``<blob>`` to ``[BlobCodec]``.
 
-        None means a codec in the chain is not installed or rejects the
-        attribute's store setting, so where the values are stored is unknown.
+        None means a codec in the chain is not installed, rejects the
+        attribute's store setting, or fails in ``get_dtype`` (for example a
+        plugin written for an older ``get_dtype`` signature), so where the values
+        are stored is unknown. Any exception counts: classification must not
+        fail, or the collector would skip the table's other columns too.
         """
         try:
             inner_dtype = self.codec.get_dtype(self.store is not None)
             _, inner_chain, _ = resolve_dtype(inner_dtype, seen={self.codec.name}, store_name=self.store)
-        except DataJointError:
+        except Exception:
             return None
         return [self.codec, *inner_chain]
 

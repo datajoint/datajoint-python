@@ -80,6 +80,36 @@ class GcUnitMissingInner(dj.Codec):
         return stored
 
 
+class GcUnitOldSignature(dj.Codec):
+    """A plugin codec written for an older ``get_dtype`` signature: calling it raises TypeError."""
+
+    name = "gc_unit_old_signature"
+
+    def get_dtype(self):  # type: ignore[override]
+        return "<hash>"
+
+    def encode(self, value, *, key=None, context=None, store_name=None):
+        return value
+
+    def decode(self, stored, *, key=None, context=None):
+        return stored
+
+
+class GcUnitOldSignatureInner(dj.Codec):
+    """Stores through a codec whose ``get_dtype`` raises something other than DataJointError."""
+
+    name = "gc_unit_old_signature_inner"
+
+    def get_dtype(self, is_store):
+        return "<gc_unit_old_signature>"
+
+    def encode(self, value, *, key=None, context=None, store_name=None):
+        return value
+
+    def decode(self, stored, *, key=None, context=None):
+        return stored
+
+
 def _attr(name="a", **overrides):
     return Attribute(**{**default_attribute_properties, "name": name, **overrides})
 
@@ -120,6 +150,7 @@ class TestClassificationByCodecChain:
         [
             pytest.param(_MissingType("<gc_unit_not_installed@>"), id="codec-not-installed"),
             pytest.param(get_codec("gc_unit_missing_inner"), id="inner-codec-not-installed"),
+            pytest.param(get_codec("gc_unit_old_signature_inner"), id="inner-codec-raises-type-error"),
         ],
     )
     def test_unresolvable_chain_counts_as_both(self, codec):
@@ -132,6 +163,16 @@ class TestClassificationByCodecChain:
         """A codec that is not installed raises instead of reporting no references."""
         with pytest.raises(DataJointError, match="is not registered"):
             _MissingType("<gc_unit_not_installed@>").referenced_paths('{"path": "_hash/s/x"}')
+
+    @pytest.mark.parametrize("method", ["get_dtype", "encode", "decode", "referenced_paths"])
+    def test_missing_codec_message_names_the_codec(self, method):
+        """The message names the codec alone, without the spec's angle brackets or store."""
+        args = {"get_dtype": (True,), "encode": (b"",), "decode": (b"",), "referenced_paths": ("{}",)}[method]
+        with pytest.raises(DataJointError) as excinfo:
+            getattr(_MissingType("<gc_unit_not_installed@cold>"), method)(*args)
+        assert str(excinfo.value) == (
+            "Codec <gc_unit_not_installed> is not registered. Define a Codec subclass with name='gc_unit_not_installed'."
+        )
 
 
 def _metadata(path):
@@ -217,3 +258,21 @@ class TestReferenceScanByCodecChain:
 
         assert references == NOTE_PATHS
         assert any("note.missing" in r.getMessage() and "is not registered" in r.getMessage() for r in caplog.records)
+
+    def test_codec_error_in_chain_does_not_skip_the_table(self, caplog):
+        """A codec whose ``get_dtype`` raises a non-DataJoint error makes its chain
+        unresolvable. Its column is still scanned, and so are the table's other columns."""
+        heading = _note_heading(
+            odd={
+                "type": "<gc_unit_old_signature_inner@>",
+                "codec": get_codec("gc_unit_old_signature_inner"),
+                "store": "",
+            }
+        )
+        odd_path = "_hash/s/eeeeeeeeeeeeeeeeeeeeeeeeee"
+        row = {**NOTE_ROW, "odd": _metadata(odd_path)}
+        with caplog.at_level(logging.WARNING, logger="datajoint"):
+            references = _collector(heading, row).hash_references()
+
+        assert references == NOTE_PATHS | {odd_path}
+        assert not any("Error accessing table" in r.getMessage() for r in caplog.records)
