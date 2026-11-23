@@ -19,9 +19,12 @@ or "in-store storage" (specific to the @ modifier).
 
 from __future__ import annotations
 
+import base64
+import json
 import logging
 import re
 import warnings
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from packaging.version import Version
@@ -871,13 +874,14 @@ def _find_filepath_columns(schema: Schema) -> list[dict]:
     tables = connection.query(tables_query, args=(schema.database,)).fetchall()
 
     for (table_name,) in tables:
-        # Find VARCHAR columns with :filepath: in comment
+        # Find BINARY(16) columns with :filepath@store: in comment (0.x filepath format)
         columns_query = """
             SELECT COLUMN_NAME, COLUMN_TYPE, COLUMN_COMMENT
             FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA = %s
             AND TABLE_NAME = %s
-            AND DATA_TYPE = 'varchar'
+            AND DATA_TYPE = 'binary'
+            AND CHARACTER_MAXIMUM_LENGTH = 16
             AND COLUMN_COMMENT LIKE '%%:filepath%%'
         """
         columns = connection.query(columns_query, args=(schema.database, table_name)).fetchall()
@@ -900,6 +904,239 @@ def _find_filepath_columns(schema: Schema) -> list[dict]:
     return results
 
 
+# In 0.14, each in-store column held a 16-byte MD5 digest in a BINARY(16) column,
+# and the store's `~external_<store>` table tracked one row per digest:
+#
+# - a blob: the digest of its serialized bytes, stored at
+#   `{database}/{subfolders}/{hex digest}`;
+# - an attachment: the digest of its name, a NUL byte, and its contents, stored
+#   (contents only) at `{database}/{subfolders}/{hex digest}.{attachment_name}`;
+# - a filepath: the digest of its relative path, stored at `filepath`;
+# - a blob migrated from 0.11: stored at `filepath`, with the digest of its
+#   serialized bytes in `contents_hash`.
+#
+# Subfolders come from the store's `subfolding` setting, (2, 2) unless set.
+LEGACY_SUBFOLDING = (2, 2)
+
+
+def _legacy_subfolding(store_name: str, config=None) -> tuple[int, ...]:
+    """
+    Return the subfolding 0.14 used for a store.
+
+    This is the store's own ``subfolding`` setting, or 0.14's default of (2, 2)
+    when it has none. The raw setting is read because 2.x defaults to no
+    subfolding. ``config`` defaults to the global settings.
+    """
+    if config is None:
+        from .settings import config
+
+    spec = config.stores.get(store_name)
+    if isinstance(spec, Mapping) and "subfolding" in spec:
+        return tuple(spec["subfolding"] or ())
+    return LEGACY_SUBFOLDING
+
+
+def _legacy_hash(digest: bytes) -> str:
+    """
+    Return the 2.x hash for a 0.14 content digest.
+
+    Both versions take the MD5 digest of the same bytes. 2.x writes it in base32,
+    as `hash_registry.compute_hash` does, so reads check migrated values as they
+    check any other.
+    """
+    return base64.b32encode(digest).decode("ascii").rstrip("=").lower()
+
+
+def _legacy_path(
+    database: str,
+    digest: bytes,
+    subfolding: tuple[int, ...],
+    attachment_name: str | None = None,
+) -> str:
+    """Return the store-relative path of a 0.14 blob or, given its name, attachment."""
+    from .hash_registry import _subfold
+
+    hex_digest = digest.hex()
+    name = hex_digest if attachment_name is None else f"{hex_digest}.{attachment_name}"
+    return "/".join((database, *_subfold(hex_digest, subfolding), name))
+
+
+def _plan_legacy_references(
+    connection,
+    database: str,
+    table_name: str,
+    column_name: str,
+    kind: str,
+    store_name: str,
+    dest_store: str | None = None,
+) -> tuple[dict[bytes, dict], list[str]]:
+    """
+    Build the 2.x metadata for each 0.14 reference in one column.
+
+    Parameters
+    ----------
+    connection : Connection
+        Database connection.
+    database, table_name, column_name : str
+        The column holding 0.14 BINARY(16) references.
+    kind : str
+        ``"blob"``, ``"attach"``, or ``"filepath"``.
+    store_name : str
+        The 0.14 store; its references are tracked in ``~external_<store_name>``.
+    dest_store : str, optional
+        The 2.x store the metadata names. Defaults to ``store_name``. Files are
+        looked up through this store, so it must point at the 0.14 location.
+
+    Returns
+    -------
+    tuple[dict[bytes, dict], list[str]]
+        The metadata for each referenced digest, and a description of each
+        reference that cannot be converted: one with no tracking row, or whose
+        file is not in the store.
+    """
+    from .hash_registry import get_store_backend
+
+    dest_store = dest_store or store_name
+    config = getattr(connection, "_config", None)  # the config reads resolve stores with
+    backend = get_store_backend(dest_store, config=config)
+    subfolding = _legacy_subfolding(dest_store, config)
+
+    rows = connection.query(
+        f"""
+        SELECT DISTINCT t.`{column_name}`, e.hash, e.size, e.attachment_name,
+               e.filepath, e.contents_hash, e.timestamp
+        FROM `{database}`.`{table_name}` t
+        LEFT JOIN `{database}`.`~external_{store_name}` e ON e.hash = t.`{column_name}`
+        WHERE t.`{column_name}` IS NOT NULL
+        """
+    ).fetchall()
+
+    metadata: dict[bytes, dict] = {}
+    problems: list[str] = []
+    for reference, tracked, size, attachment_name, filepath, contents_hash, timestamp in rows:
+        reference = bytes(reference)
+        label = f"{reference.hex()} in {database}.{table_name}.{column_name}"
+        if tracked is None:
+            problems.append(f"{label}: no row in ~external_{store_name}")
+            continue
+
+        if kind == "filepath":
+            path, digest = filepath, None
+        elif kind == "attach":
+            path = None if attachment_name is None else _legacy_path(database, reference, subfolding, attachment_name)
+            digest = reference
+        elif filepath:  # a blob migrated from 0.11
+            path, digest = filepath, contents_hash
+        else:
+            path, digest = _legacy_path(database, reference, subfolding), reference
+        if path is None or (kind != "filepath" and digest is None):
+            problems.append(f"{label}: the tracking row in ~external_{store_name} is incomplete")
+            continue
+
+        try:
+            found = backend.exists(path)
+        except DataJointError as error:
+            problems.append(f"{label}: {error}")
+            continue
+        if not found:
+            problems.append(f"{label}: no file at {path} in store '{dest_store}'")
+            continue
+
+        if kind == "filepath":
+            metadata[reference] = {
+                "path": path,
+                "store": dest_store,
+                "size": size,
+                "is_dir": False,
+                "timestamp": timestamp.isoformat() if timestamp else None,
+            }
+        else:
+            metadata[reference] = {
+                "hash": _legacy_hash(bytes(digest)),
+                "path": path,
+                "schema": database,
+                "store": dest_store,
+                "size": size,
+            }
+            if kind == "attach":
+                metadata[reference]["attachment_name"] = attachment_name
+    return metadata, problems
+
+
+def _refuse_problems(where: str, problems: list[str]) -> None:
+    """Raise if any reference cannot be converted. Called before anything is changed."""
+    if problems:
+        listed = "\n  ".join(problems[:10])
+        more = f"\n  ... and {len(problems) - 10} more" if len(problems) > 10 else ""
+        raise DataJointError(
+            f"Cannot migrate {where}: {len(problems)} reference(s) cannot be converted. "
+            f"Nothing was changed.\n  {listed}{more}"
+        )
+
+
+def _plan_columns(connection, database: str, columns: list[dict], dry_run: bool, kind: str | None = None) -> dict:
+    """
+    Plan the conversion of each column not yet migrated, keyed by (table, column).
+
+    Every reference in every column is looked up before anything is changed, so
+    that one missing file stops the migration with the schema unchanged. A dry
+    run reports the problems instead of raising.
+    """
+    plans = {}
+    for col in columns:
+        table_name, column_name = col["table_name"], col["column_name"]
+        exists = connection.query(
+            """
+            SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s
+            """,
+            args=(database, table_name, f"{column_name}_v2"),
+        ).fetchone()[0]
+        if not exists:
+            plans[table_name, column_name] = _plan_legacy_references(
+                connection, database, table_name, column_name, kind or col["external_type"], col["store_name"]
+            )
+    if not dry_run:
+        _refuse_problems(database, [problem for _, problems in plans.values() for problem in problems])
+    return plans
+
+
+def _add_converted_column(
+    connection,
+    database: str,
+    table_name: str,
+    column_name: str,
+    new_column: str,
+    comment: str,
+    metadata: dict[bytes, dict],
+) -> int:
+    """
+    Add ``new_column`` as JSON and fill it with the metadata for each reference.
+
+    If any reference is left unconverted, or any step fails, the new column is
+    dropped again so that a later run starts over. Returns the number of rows
+    converted.
+    """
+    table = f"`{database}`.`{table_name}`"
+    connection.query(f"ALTER TABLE {table} ADD COLUMN `{new_column}` JSON COMMENT '{comment}'")
+    try:
+        with connection.transaction:
+            for reference, value in metadata.items():
+                connection.query(
+                    f"UPDATE {table} SET `{new_column}` = %s WHERE `{column_name}` = %s",
+                    args=(json.dumps(value), reference),
+                )
+        unconverted = connection.query(
+            f"SELECT COUNT(*) FROM {table} WHERE `{column_name}` IS NOT NULL AND `{new_column}` IS NULL"
+        ).fetchone()[0]
+        if unconverted:
+            raise DataJointError(f"{unconverted} row(s) of {database}.{table_name}.{column_name} were not converted")
+    except Exception:
+        connection.query(f"ALTER TABLE {table} DROP COLUMN `{new_column}`")
+        raise
+    return connection.query(f"SELECT COUNT(*) FROM {table} WHERE `{new_column}` IS NOT NULL").fetchone()[0]
+
+
 def migrate_external(
     schema: Schema,
     dry_run: bool = True,
@@ -916,8 +1153,8 @@ def migrate_external(
 
     2. **Verification**: You verify all data is accessible via DataJoint 2.0.
 
-    3. **Finalize** (finalize=True): Renames columns (old → `_v1`, new → original
-       name) and optionally drops the old columns.
+    3. **Finalize** (dry_run=False, finalize=True): Renames columns (old → `_v1`,
+       new → original name).
 
     This allows 0.x and 2.0 to coexist during migration and provides a rollback
     path if issues are discovered.
@@ -957,14 +1194,18 @@ def migrate_external(
     >>> # Step 3: Verify data is accessible via DataJoint 2.0
     >>> # ... manual verification ...
     >>>
-    >>> # Step 4: Finalize (rename columns, drop old)
-    >>> result = migrate_external(schema, finalize=True)
+    >>> # Step 4: Finalize (rename columns)
+    >>> result = migrate_external(schema, dry_run=False, finalize=True)
 
     Notes
     -----
-    The migration reads from the hidden `~external_<store>` tables to build
-    JSON metadata. Ensure store configuration in datajoint.json matches the
-    paths stored in these tables.
+    The migration reads the hidden `~external_<store>` tables and finds each
+    file where 0.14 stored it. Configure each store under its 0.14 name, with
+    its 0.14 location and, if 0.14 set one, its `subfolding`.
+
+    Every referenced file is looked up before anything is changed. If a
+    reference has no tracking row or its file is missing, the migration raises
+    and changes nothing; a dry run lists these references under `problems`.
     """
     columns = _find_external_columns(schema)
     connection = schema.connection
@@ -980,6 +1221,8 @@ def migrate_external(
     if not columns:
         logger.info(f"No external columns found in {database}")
         return result
+
+    plans = {} if finalize else _plan_columns(connection, database, columns, dry_run)
 
     for col in columns:
         table_name = col["table_name"]
@@ -997,11 +1240,10 @@ def migrate_external(
             "rows": 0,
         }
 
-        # Build new comment
+        # Build new comment: the 2.x codec marker, then the rest of the comment
         codec = "blob" if external_type == "blob" else "attach"
-        # Remove old :external...: pattern from comment
         new_comment = EXTERNAL_PATTERNS[external_type].sub("", old_comment).strip()
-        new_comment = f":{codec}@{store_name}: {new_comment}".strip()
+        new_comment = f":<{codec}@{store_name}>:{new_comment}"
 
         new_column = f"{column_name}_v2"
 
@@ -1046,20 +1288,13 @@ def migrate_external(
             # Initial migration: add new column and copy data
             detail["action"] = "migrate"
 
-            # Check if _v2 column already exists
-            existing = connection.query(
-                """
-                SELECT COLUMN_NAME FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s
-                """,
-                args=(database, table_name, new_column),
-            ).fetchone()
-
-            if existing:
+            # Skip columns whose _v2 column already exists
+            if (table_name, column_name) not in plans:
                 detail["status"] = "already_migrated"
                 logger.info(f"Column {new_column} already exists, skipping")
                 result["details"].append(detail)
                 continue
+            metadata, problems = plans[table_name, column_name]
 
             if dry_run:
                 # Count rows that would be migrated
@@ -1069,49 +1304,16 @@ def migrate_external(
                 """
                 count = connection.query(count_sql).fetchone()[0]
                 detail["rows"] = count
+                detail["problems"] = problems
                 detail["status"] = "dry_run"
                 logger.info(f"Would migrate {database}.{table_name}.{column_name}: " f"{count} rows, store={store_name}")
+                for problem in problems:
+                    logger.warning(f"Cannot migrate {problem}")
             else:
                 try:
-                    # Add new JSON column
-                    sql = (
-                        f"ALTER TABLE `{database}`.`{table_name}` "
-                        f"ADD COLUMN `{new_column}` JSON "
-                        f"COMMENT '{new_comment}'"
+                    count = _add_converted_column(
+                        connection, database, table_name, column_name, new_column, new_comment, metadata
                     )
-                    connection.query(sql)
-
-                    # Copy and convert data from old column
-                    # Query the external table for metadata
-                    external_table = f"~external_{store_name}"
-
-                    # Get store config for URL building
-                    from .settings import config
-
-                    store_config = config.get("stores", {}).get(store_name, {})
-                    protocol = store_config.get("protocol", "file")
-                    location = store_config.get("location", "")
-
-                    # Update rows with JSON metadata
-                    update_sql = f"""
-                        UPDATE `{database}`.`{table_name}` t
-                        JOIN `{database}`.`{external_table}` e
-                        ON t.`{column_name}` = e.hash
-                        SET t.`{new_column}` = JSON_OBJECT(
-                            'url', CONCAT('{protocol}://', '{location}/', e.filepath),
-                            'size', e.size,
-                            'hash', HEX(e.hash)
-                        )
-                        WHERE t.`{column_name}` IS NOT NULL
-                    """
-                    connection.query(update_sql)
-
-                    # Count migrated rows
-                    count_sql = f"""
-                        SELECT COUNT(*) FROM `{database}`.`{table_name}`
-                        WHERE `{new_column}` IS NOT NULL
-                    """
-                    count = connection.query(count_sql).fetchone()[0]
                     detail["rows"] = count
                     detail["status"] = "migrated"
                     result["columns_migrated"] += 1
@@ -1334,7 +1536,7 @@ def verify_external_integrity(schema: Schema, store_name: str = None) -> dict:
         # Query external table for all entries
         try:
             entries_query = f"""
-                SELECT HEX(hash), filepath, size
+                SELECT hash, filepath, size, attachment_name
                 FROM `{schema.database}`.`{table_name}`
             """
             entries = connection.query(entries_query).fetchall()
@@ -1342,14 +1544,17 @@ def verify_external_integrity(schema: Schema, store_name: str = None) -> dict:
             logger.warning(f"Could not read {table_name}: {e}")
             continue
 
-        for hash_hex, filepath, size in entries:
+        subfolding = _legacy_subfolding(current_store, config)
+        for digest, filepath, size, attachment_name in entries:
             result["total_references"] += 1
 
-            # Build full path
+            # Filepaths (and blobs migrated from 0.11) record their path; blobs and
+            # attachments are stored at a path derived from their hash.
+            relative_path = filepath or _legacy_path(schema.database, bytes(digest), subfolding, attachment_name)
             if location:
-                full_path = os.path.join(location, filepath)
+                full_path = os.path.join(location, relative_path)
             else:
-                full_path = filepath
+                full_path = relative_path
 
             if os.path.exists(full_path):
                 result["valid"] += 1
@@ -1357,8 +1562,8 @@ def verify_external_integrity(schema: Schema, store_name: str = None) -> dict:
                 result["missing"].append(
                     {
                         "store": current_store,
-                        "hash": hash_hex,
-                        "filepath": filepath,
+                        "hash": bytes(digest).hex().upper(),
+                        "filepath": relative_path,
                         "full_path": full_path,
                         "expected_size": size,
                     }
@@ -1510,9 +1715,12 @@ def migrate_filepath(
 
     Same multi-step approach as migrate_external:
 
-    1. **Initial run**: Adds new `<column>_v2` columns with JSON type
+    1. **Initial run** (dry_run=False): Adds new `<column>_v2` columns with JSON type
     2. **Verification**: Verify files accessible via DataJoint 2.0
-    3. **Finalize**: Rename columns and drop old
+    3. **Finalize** (dry_run=False, finalize=True): Rename columns (old → `_v1`)
+
+    As with migrate_external, every referenced file is looked up first, and the
+    migration raises and changes nothing if one is missing.
 
     Parameters
     ----------
@@ -1539,7 +1747,7 @@ def migrate_filepath(
     >>> result = migrate_filepath(schema, dry_run=False)
     >>>
     >>> # Finalize after verification
-    >>> result = migrate_filepath(schema, finalize=True)
+    >>> result = migrate_filepath(schema, dry_run=False, finalize=True)
     """
     columns = _find_filepath_columns(schema)
     connection = schema.connection
@@ -1556,6 +1764,8 @@ def migrate_filepath(
         logger.info(f"No filepath columns found in {database}")
         return result
 
+    plans = {} if finalize else _plan_columns(connection, database, columns, dry_run, kind="filepath")
+
     for col in columns:
         table_name = col["table_name"]
         column_name = col["column_name"]
@@ -1570,9 +1780,9 @@ def migrate_filepath(
             "rows": 0,
         }
 
-        # Build new comment
+        # Build new comment: the 2.x codec marker, then the rest of the comment
         new_comment = FILEPATH_PATTERN.sub("", old_comment).strip()
-        new_comment = f":filepath@{store_name}: {new_comment}".strip()
+        new_comment = f":<filepath@{store_name}>:{new_comment}"
 
         new_column = f"{column_name}_v2"
 
@@ -1611,19 +1821,12 @@ def migrate_filepath(
         else:
             detail["action"] = "migrate"
 
-            # Check if _v2 column already exists
-            existing = connection.query(
-                """
-                SELECT COLUMN_NAME FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s
-                """,
-                args=(database, table_name, new_column),
-            ).fetchone()
-
-            if existing:
+            # Skip columns whose _v2 column already exists
+            if (table_name, column_name) not in plans:
                 detail["status"] = "already_migrated"
                 result["details"].append(detail)
                 continue
+            metadata, problems = plans[table_name, column_name]
 
             if dry_run:
                 count_sql = f"""
@@ -1632,40 +1835,16 @@ def migrate_filepath(
                 """
                 count = connection.query(count_sql).fetchone()[0]
                 detail["rows"] = count
+                detail["problems"] = problems
                 detail["status"] = "dry_run"
                 logger.info(f"Would migrate {database}.{table_name}.{column_name}: " f"{count} rows")
+                for problem in problems:
+                    logger.warning(f"Cannot migrate {problem}")
             else:
                 try:
-                    # Get store config
-                    from .settings import config
-
-                    store_config = config.get("stores", {}).get(store_name, {})
-                    protocol = store_config.get("protocol", "file")
-                    location = store_config.get("location", "")
-
-                    # Add new JSON column
-                    sql = (
-                        f"ALTER TABLE `{database}`.`{table_name}` "
-                        f"ADD COLUMN `{new_column}` JSON "
-                        f"COMMENT '{new_comment}'"
+                    count = _add_converted_column(
+                        connection, database, table_name, column_name, new_column, new_comment, metadata
                     )
-                    connection.query(sql)
-
-                    # Convert filepath to JSON with URL
-                    update_sql = f"""
-                        UPDATE `{database}`.`{table_name}`
-                        SET `{new_column}` = JSON_OBJECT(
-                            'url', CONCAT('{protocol}://', '{location}/', `{column_name}`)
-                        )
-                        WHERE `{column_name}` IS NOT NULL
-                    """
-                    connection.query(update_sql)
-
-                    count_sql = f"""
-                        SELECT COUNT(*) FROM `{database}`.`{table_name}`
-                        WHERE `{new_column}` IS NOT NULL
-                    """
-                    count = connection.query(count_sql).fetchone()[0]
                     detail["rows"] = count
                     detail["status"] = "migrated"
                     result["columns_migrated"] += 1
@@ -2125,7 +2304,7 @@ def verify_schema_v20(
     columns_query = """
         SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, COLUMN_COMMENT
         FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = %s AND COLUMN_TYPE LIKE '%blob'
+        WHERE TABLE_SCHEMA = %s AND COLUMN_TYPE LIKE '%%blob'
     """
     blob_columns = connection.query(columns_query, args=(schema,)).fetchall()
 
@@ -2153,8 +2332,8 @@ def migrate_external_pointers_v2(
     """
     Migrate external storage pointers from 0.14.6 to 2.0 format.
 
-    Converts BINARY(16) UUID references to JSON metadata format.
-    Optionally copies blob files to new storage location.
+    Converts the 16-byte 0.14 references in one column to JSON metadata,
+    in place. File copying (``copy_files``) is not implemented yet.
 
     This is useful when copying production data to _v2 schemas and you need
     to access external storage attributes but don't want to move the files yet.
@@ -2182,7 +2361,8 @@ def migrate_external_pointers_v2(
     dict
         - rows_migrated: int - number of pointers migrated
         - files_copied: int - number of files copied (if copy_files=True)
-        - errors: list - any errors encountered
+        - errors: list - always empty; a reference that cannot be converted
+          raises before any row is updated
 
     Examples
     --------
@@ -2200,24 +2380,22 @@ def migrate_external_pointers_v2(
     Notes
     -----
     This function:
-    1. Reads BINARY(16) UUID from table column
-    2. Looks up file in ~external_{source_store} table
-    3. Creates JSON metadata with file path
-    4. Optionally copies file to new store location
-    5. Updates column with JSON metadata
+    1. Reads the BINARY(16) references in the column
+    2. Looks each one up in the ~external_{source_store} table
+    3. Finds its file where 0.14 stored it, through ``dest_store``
+    4. Updates the column with JSON metadata
 
-    The JSON format is:
-    {
-      "path": "schema/table/key_hash/file.ext",
-      "size": 12345,
-      "hash": null,
-      "ext": ".dat",
-      "is_dir": false,
-      "timestamp": "2025-01-14T10:30:00+00:00"
-    }
+    It writes the same metadata as ``migrate_external``:
+    ``{hash, path, schema, store, size}`` for blobs and attachments (attachments
+    also record ``attachment_name``) and ``{path, store, size, is_dir, timestamp}``
+    for filepaths.
+
+    The column must already be able to hold the JSON metadata. A column still in
+    the 0.14 layout (BINARY(16)) is refused; ``migrate_external`` and
+    ``migrate_filepath`` convert such columns in place. Every reference is looked
+    up before any row is updated: if one has no tracking row or its file is
+    missing, the function raises and changes nothing.
     """
-    import json
-    from datetime import datetime, timezone
     from . import conn as get_conn
 
     if connection is None:
@@ -2248,107 +2426,44 @@ def migrate_external_pointers_v2(
         "errors": [],
     }
 
-    # Query rows with external attributes
-    query = f"""
-        SELECT * FROM `{schema}`.`{table}`
-        WHERE `{attribute}` IS NOT NULL
-    """
-
-    rows = connection.query(query).fetchall()
-
-    # Get column info to identify UUID column
-    col_query = """
-        SELECT ORDINAL_POSITION, COLUMN_NAME
+    # Find the column and what its 0.14 type was
+    column = connection.query(
+        """
+        SELECT DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, COLUMN_COMMENT
         FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
-        ORDER BY ORDINAL_POSITION
-    """
-    columns = connection.query(col_query, args=(schema, table)).fetchall()
-    col_names = [col[1] for col in columns]
-
-    # Find attribute column index
-    try:
-        attr_idx = col_names.index(attribute)
-    except ValueError:
+        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s
+        """,
+        args=(schema, table, attribute),
+    ).fetchone()
+    if column is None:
         raise DataJointError(f"Attribute {attribute} not found in {schema}.{table}")
+    data_type, max_length, comment = column
 
-    for row in rows:
-        uuid_bytes = row[attr_idx]
+    patterns = {**EXTERNAL_PATTERNS, "filepath": FILEPATH_PATTERN}
+    kind = next((name for name, pattern in patterns.items() if pattern.search(comment or "")), None)
+    if kind is None:
+        raise DataJointError(
+            f"{schema}.{table}.{attribute} has no 0.14 in-store type (blob@, attach@, or filepath@) in its comment."
+        )
+    if data_type.lower() == "binary" and max_length == 16:
+        raise DataJointError(
+            f"{schema}.{table}.{attribute} is a 0.14 BINARY(16) column and cannot hold JSON metadata. "
+            f"Use migrate_external or migrate_filepath to convert it in place."
+        )
 
-        if uuid_bytes is None:
-            continue
+    metadata, problems = _plan_legacy_references(connection, schema, table, attribute, kind, source_store, dest_store)
+    _refuse_problems(f"{schema}.{table}.{attribute}", problems)
 
-        # Look up file info in external tracking table
-        lookup_query = f"""
-            SELECT hash, size, timestamp, filepath
-            FROM `{schema}`.`{external_table}`
-            WHERE hash = %s
-        """
+    if copy_files:
+        logger.warning("File copying not yet implemented in migrate_external_pointers_v2")
 
-        file_info = connection.query(lookup_query, args=(uuid_bytes,)).fetchone()
-
-        if file_info is None:
-            result["errors"].append(f"External file not found for UUID: {uuid_bytes.hex()}")
-            continue
-
-        hash_hex, size, timestamp, filepath = file_info
-
-        # Build JSON metadata
-        # Extract extension from filepath
-        import os
-
-        ext = os.path.splitext(filepath)[1] if filepath else ""
-
-        metadata = {
-            "path": filepath,
-            "size": size,
-            "hash": hash_hex.hex() if hash_hex else None,
-            "ext": ext,
-            "is_dir": False,
-            "timestamp": timestamp.isoformat() if timestamp else datetime.now(timezone.utc).isoformat(),
-        }
-
-        # Update row with JSON metadata
-        # Build WHERE clause from primary keys
-        pk_columns = []
-        pk_values = []
-
-        # Get primary key info
-        pk_query = """
-            SELECT COLUMN_NAME
-            FROM information_schema.KEY_COLUMN_USAGE
-            WHERE TABLE_SCHEMA = %s
-              AND TABLE_NAME = %s
-              AND CONSTRAINT_NAME = 'PRIMARY'
-            ORDER BY ORDINAL_POSITION
-        """
-        pk_cols = connection.query(pk_query, args=(schema, table)).fetchall()
-
-        for pk_col in pk_cols:
-            pk_name = pk_col[0]
-            pk_idx = col_names.index(pk_name)
-            pk_columns.append(pk_name)
-            pk_values.append(row[pk_idx])
-
-        # Build UPDATE statement
-        where_parts = [f"`{col}` = %s" for col in pk_columns]
-        where_clause = " AND ".join(where_parts)
-
-        update_query = f"""
-            UPDATE `{schema}`.`{table}`
-            SET `{attribute}` = %s
-            WHERE {where_clause}
-        """
-
-        connection.query(update_query, args=(json.dumps(metadata), *pk_values))
-
-        result["rows_migrated"] += 1
-
-        # Copy file if requested
-        if copy_files:
-            # TODO: Implement file copying using fsspec
-            # This requires knowing source and dest store locations
-            logger.warning("File copying not yet implemented in migrate_external_pointers_v2")
+    with connection.transaction:
+        for reference, value in metadata.items():
+            cursor = connection.query(
+                f"UPDATE `{schema}`.`{table}` SET `{attribute}` = %s WHERE `{attribute}` = %s",
+                args=(json.dumps(value), reference),
+            )
+            result["rows_migrated"] += cursor.rowcount
 
     logger.info(f"Migrated {result['rows_migrated']} external pointers for {schema}.{table}.{attribute}")
 
