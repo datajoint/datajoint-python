@@ -10,11 +10,19 @@ from __future__ import annotations
 import ssl
 from typing import Any
 
-import pymysql as client
-from pymysql.constants import CLIENT, CR
-
 from .. import errors
-from .base import DatabaseAdapter
+from .base import DatabaseAdapter, import_driver
+
+# The pymysql driver (the ``datajoint[mysql]`` extra), imported when the first
+# MySQLAdapter is created so that ``import datajoint`` loads no database driver.
+client: Any = None
+
+# PyMySQL subclasses that enforce use_tls, defined by _define_tls_classes()
+# once the driver is imported.
+_CLIENT_SSL: int = 0
+_TLSUnavailableError: Any = None
+_TLSRequiredConnection: Any = None
+_TLSPreferredConnection: Any = None
 
 # Core type mapping: DataJoint core types → MySQL types
 CORE_TYPE_MAP = {
@@ -47,43 +55,54 @@ SQL_TO_CORE_MAP = {
 }
 
 
-class _TLSUnavailableError(client.err.OperationalError):
-    """TLS is required but the server does not offer it."""
+def _define_tls_classes() -> None:
+    """Define the PyMySQL subclasses that enforce use_tls; called after pymysql is imported."""
+    global _CLIENT_SSL, _TLSUnavailableError, _TLSRequiredConnection, _TLSPreferredConnection
+    if _TLSUnavailableError is not None:
+        return
+    import pymysql
+    from pymysql.constants import CLIENT, CR
 
-    def __init__(self):
-        super().__init__(
-            CR.CR_SSL_CONNECTION_ERROR,
-            "TLS is required (use_tls) but the server does not support it",
-        )
+    class TLSUnavailableError(pymysql.err.OperationalError):
+        """TLS is required but the server does not offer it."""
 
+        def __init__(self):
+            super().__init__(
+                CR.CR_SSL_CONNECTION_ERROR,
+                "TLS is required (use_tls) but the server does not support it",
+            )
 
-class _TLSRequiredConnection(client.connections.Connection):
-    """
-    PyMySQL connection that does not authenticate without TLS.
+    class TLSRequiredConnection(pymysql.connections.Connection):
+        """
+        PyMySQL connection that does not authenticate without TLS.
 
-    Depending on its version, PyMySQL continues without TLS or fails with a
-    handshake error when TLS is configured and the server does not offer it.
-    This check runs after the server greeting, before the credentials are sent.
-    """
+        Depending on its version, PyMySQL continues without TLS or fails with a
+        handshake error when TLS is configured and the server does not offer it.
+        This check runs after the server greeting, before the credentials are sent.
+        """
 
-    tls_required = True
+        tls_required = True
 
-    # server_capabilities and _request_authentication are PyMySQL internals
-    # that types-PyMySQL does not declare.
-    def _request_authentication(self):
-        if not self.server_capabilities & CLIENT.SSL:  # type: ignore[attr-defined]
-            if self.tls_required:
-                raise _TLSUnavailableError()
-            # Continue without TLS: do not announce TLS in the handshake response
-            self.ssl = False
-            self.client_flag &= ~CLIENT.SSL
-        super()._request_authentication()  # type: ignore[misc]
+        # server_capabilities and _request_authentication are PyMySQL internals
+        # that types-PyMySQL does not declare.
+        def _request_authentication(self):
+            if not self.server_capabilities & CLIENT.SSL:  # type: ignore[attr-defined]
+                if self.tls_required:
+                    raise TLSUnavailableError()
+                # Continue without TLS: do not announce TLS in the handshake response
+                self.ssl = False
+                self.client_flag &= ~CLIENT.SSL
+            super()._request_authentication()  # type: ignore[misc]
 
+    class TLSPreferredConnection(TLSRequiredConnection):
+        """PyMySQL connection that uses TLS when the server offers it and continues without TLS otherwise."""
 
-class _TLSPreferredConnection(_TLSRequiredConnection):
-    """PyMySQL connection that uses TLS when the server offers it and continues without TLS otherwise."""
+        tls_required = False
 
-    tls_required = False
+    _CLIENT_SSL = CLIENT.SSL
+    _TLSUnavailableError = TLSUnavailableError
+    _TLSRequiredConnection = TLSRequiredConnection
+    _TLSPreferredConnection = TLSPreferredConnection
 
 
 def _unverified_tls_context() -> ssl.SSLContext:
@@ -96,6 +115,19 @@ def _unverified_tls_context() -> ssl.SSLContext:
 
 class MySQLAdapter(DatabaseAdapter):
     """MySQL database adapter implementation."""
+
+    def __init__(self) -> None:
+        """
+        Initialize MySQL adapter.
+
+        Raises
+        ------
+        DataJointError
+            If pymysql is not installed (``pip install "datajoint[mysql]"``).
+        """
+        global client
+        client = import_driver("pymysql", backend="MySQL", extra="mysql")
+        _define_tls_classes()
 
     # =========================================================================
     # Connection Management
@@ -176,7 +208,7 @@ class MySQLAdapter(DatabaseAdapter):
         # Require SSL, configured by the dict or SSLContext
         connection = _TLSRequiredConnection(**conn_params)
         # Checked again in case a PyMySQL version bypasses the hook above
-        if not connection.server_capabilities & CLIENT.SSL:  # type: ignore[attr-defined]  # PyMySQL internal
+        if not connection.server_capabilities & _CLIENT_SSL:  # PyMySQL internal
             connection.close()
             raise _TLSUnavailableError()
         return connection
@@ -241,9 +273,7 @@ class MySQLAdapter(DatabaseAdapter):
         Any
             pymysql cursor object.
         """
-        import pymysql
-
-        cursor_class = pymysql.cursors.DictCursor if as_dict else pymysql.cursors.Cursor
+        cursor_class = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         return connection.cursor(cursor=cursor_class)
 
     # =========================================================================

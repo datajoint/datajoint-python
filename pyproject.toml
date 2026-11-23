@@ -7,9 +7,6 @@ name = "datajoint"
 dynamic = ["version"]
 dependencies = [
   "numpy>=1.22.4",
-  # pymysql 1.0 adds the ssl_disabled connection option; 1.1.1 fixes
-  # CVE-2024-36039.
-  "pymysql>=1.1.1",
   # deepdiff 6.4 adds DeepHash(ignore_iterable_order=...); 6.6 supports numpy 2.
   # CVE-2025-58367 and CVE-2026-33155 (fixed in 8.6.2) affect Delta and
   # pickle_load; datajoint uses only DeepHash.
@@ -108,6 +105,8 @@ test = [
   "ipython",
   "graphviz",
   "testcontainers[mysql,postgres]>=4.0",
+  "pymysql>=1.1.1",
+  "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]
@@ -116,7 +115,11 @@ test = [
 s3 = ["s3fs>=2023.1.0"]
 gcs = ["gcsfs>=2023.1.0"]
 azure = ["adlfs>=2023.1.0"]
+# Database drivers: install the extra for each backend in use.
 postgres = ["psycopg2-binary>=2.9.0"]
+# pymysql 1.0 adds the ssl_disabled connection option; 1.1.1 fixes
+# CVE-2024-36039.
+mysql = ["pymysql>=1.1.1"]
 polars = ["polars>=0.20.0"]
 arrow = ["pyarrow>=14.0.0"]
 viz = ["matplotlib", "ipython"]
@@ -129,6 +132,7 @@ test = [
   "ipython",
   "s3fs>=2023.1.0",
   "testcontainers[mysql,postgres]>=4.0",
+  "pymysql>=1.1.1",
   "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
@@ -140,6 +144,8 @@ dev = [
   # including test
   "pytest",
   "pytest-cov",
+  "pymysql>=1.1.1",
+  "psycopg2-binary>=2.9.0",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]

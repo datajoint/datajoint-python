@@ -156,6 +156,7 @@ class TestMySQLTLSParameters:
             required=mock.Mock(name="TLSRequiredConnection"),
         )
         mocks["required"].return_value.server_capabilities = CLIENT.SSL
+        MySQLAdapter()  # imports the driver and defines the TLS classes replaced below
         monkeypatch.setattr(mysql_adapter.client, "connect", mocks["plain"])
         monkeypatch.setattr(mysql_adapter, "_TLSPreferredConnection", mocks["preferred"])
         monkeypatch.setattr(mysql_adapter, "_TLSRequiredConnection", mocks["required"])
