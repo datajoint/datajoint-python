@@ -4,9 +4,46 @@ File attachment codec with filename preservation.
 
 from __future__ import annotations
 
+import os
+import stat
+from pathlib import Path
 from typing import Any
 
 from ..codecs import Codec
+from ..errors import DataJointError
+from ..utils import is_plain_file_name
+
+
+def _check_file_name(filename: str) -> None:
+    """
+    Raise unless ``filename`` is a plain file name with no directory part.
+
+    ``encode`` stores only the base name of the attached file. A stored name
+    with path separators (``/`` or ``\\``), ``..``, a NUL byte, or (on Windows)
+    a drive or stream marker ``:`` is refused.
+    """
+    if not is_plain_file_name(filename):
+        raise DataJointError(f"<attach> stored file name {filename!r} is not a plain file name.")
+
+
+def _has_contents(path: Path, contents: bytes) -> bool:
+    """
+    Check whether ``path`` is a regular file holding exactly ``contents``.
+
+    Symbolic links, devices, and pipes are never opened, and a file is read only
+    when its size matches.
+    """
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return False
+    if not stat.S_ISREG(st.st_mode) or st.st_size != len(contents):
+        return False
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            return False
+        return f.read(len(contents) + 1) == contents
 
 
 class AttachCodec(Codec):
@@ -19,7 +56,9 @@ class AttachCodec(Codec):
     - ``<attach@store>``: Stored in specific named store
 
     The filename is preserved and the file is extracted to the configured
-    download path on fetch.
+    download path on fetch. Only the base name is kept, and fetch refuses a
+    stored name that is not a plain file name, so extracted files always land
+    directly in the download path.
 
     Example::
 
@@ -70,8 +109,6 @@ class AttachCodec(Codec):
         bytes
             Filename (UTF-8) + null byte + file contents.
         """
-        from pathlib import Path
-
         path = Path(value)
         if not path.exists():
             raise FileNotFoundError(f"Attachment file not found: {path}")
@@ -97,13 +134,17 @@ class AttachCodec(Codec):
         -------
         str
             Path to extracted file.
-        """
-        from pathlib import Path
 
+        Raises
+        ------
+        DataJointError
+            If the stored file name is not a plain file name.
+        """
         # Split on first null byte
         null_pos = stored.index(b"\x00")
         filename = stored[:null_pos].decode("utf-8")
         contents = stored[null_pos + 1 :]
+        _check_file_name(filename)
 
         # Write to download path
         config = self._codec_config(key, context)
@@ -113,28 +154,31 @@ class AttachCodec(Codec):
         download_path = Path(config.get("download_path", "."))
         download_path.mkdir(parents=True, exist_ok=True)
         local_path = download_path / filename
+        if local_path.parent != download_path:
+            raise DataJointError(f"<attach> file name {filename!r} leads outside the download path.")
 
-        # Handle filename collision - if file exists with different content, add suffix
-        if local_path.exists():
-            existing_contents = local_path.read_bytes()
-            if existing_contents != contents:
-                # Find unique filename
-                stem = local_path.stem
-                suffix = local_path.suffix
-                counter = 1
-                while local_path.exists() and local_path.read_bytes() != contents:
-                    local_path = download_path / f"{stem}_{counter}{suffix}"
-                    counter += 1
-
-        # Only write if file doesn't exist or has different content
-        if not local_path.exists():
-            local_path.write_bytes(contents)
-
-        return str(local_path)
+        # Reuse a file with identical content; otherwise add a numeric suffix until
+        # a free name is found. New files are created exclusively, never through an
+        # existing file or link.
+        stem = local_path.stem
+        suffix = local_path.suffix
+        counter = 0
+        while True:
+            if _has_contents(local_path, contents):
+                return str(local_path)
+            if not os.path.lexists(local_path):
+                flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+                try:
+                    fd = os.open(local_path, flags, 0o666)
+                except FileExistsError:
+                    continue  # created concurrently; check it again
+                with os.fdopen(fd, "wb") as f:
+                    f.write(contents)
+                return str(local_path)
+            counter += 1
+            local_path = download_path / f"{stem}_{counter}{suffix}"
 
     def validate(self, value: Any) -> None:
         """Validate that value is a valid file path."""
-        from pathlib import Path
-
         if not isinstance(value, (str, Path)):
             raise TypeError(f"<attach> expects a file path, got {type(value).__name__}")

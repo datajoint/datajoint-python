@@ -119,6 +119,8 @@ class TestMySQLAdapter:
         # Should handle escaping
         result = adapter.quote_string("It's a test")
         assert "It" in result
+        # Quotes are doubled, not backslash-escaped
+        assert adapter.quote_string("It's") == "'It''s'"
 
     def test_core_type_to_sql_simple(self, adapter):
         """Test core type mapping for simple types."""
