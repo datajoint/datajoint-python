@@ -1005,7 +1005,10 @@ class DatabaseAdapter(ABC):
         Returns
         -------
         str
-            SQL query to get index definitions.
+            SQL query that returns one row per column of each secondary index
+            (the primary key left out), with the columns ``index_name``,
+            ``column_name`` (NULL for an expression), ``non_unique`` (0 or 1)
+            and ``seq_in_index`` (1-based). ``Heading`` reads these names.
         """
         ...
 

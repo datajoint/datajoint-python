@@ -4,6 +4,8 @@ Unit tests for database adapters.
 Tests adapter functionality without requiring actual database connections.
 """
 
+import re
+
 import pytest
 
 from datajoint.adapters import DatabaseAdapter, MySQLAdapter, PostgreSQLAdapter, get_adapter
@@ -376,6 +378,14 @@ class TestPostgreSQLAdapter:
         assert """'"myschema"."enum_abc"'::regtype""" in sql
         assert "NOT attisdropped" in sql
 
+    def test_get_indexes_sql_leaves_out_primary_key(self, adapter):
+        """Secondary indexes only, one row per key column, expressions kept as NULL columns."""
+        sql = adapter.get_indexes_sql("myschema", "mytable")
+        assert "FROM pg_index " in sql
+        assert "NOT i.indisprimary" in sql
+        assert "LEFT JOIN pg_attribute" in sql
+        assert "k.ord <= i.indnkeyatts" in sql
+
     def test_drop_enum_type_sql(self, adapter):
         """Test PostgreSQL enum type dropping."""
         sql = adapter.drop_enum_type_sql("myschema", "mytable", "status")
@@ -449,6 +459,17 @@ class TestAdapterInterface:
         assert isinstance(adapter.default_port, int)
         assert hasattr(adapter, "parameter_placeholder")
         assert isinstance(adapter.parameter_placeholder, str)
+
+    @pytest.mark.parametrize("backend", ["mysql", "postgresql"])
+    def test_indexes_sql_names_heading_columns(self, backend):
+        """The index query returns the columns Heading reads (#1699)."""
+        if backend == "postgresql":
+            pytest.importorskip("psycopg2")
+        sql = get_adapter(backend).get_indexes_sql("myschema", "mytable")
+        for column in ("index_name", "column_name", "non_unique", "seq_in_index"):
+            assert re.search(rf"\bAS\s+{column}\b", sql, re.I), f"query does not return {column}"
+        assert "'myschema'" in sql
+        assert "'mytable'" in sql
 
 
 class TestDDLMethods:

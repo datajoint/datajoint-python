@@ -1023,11 +1023,34 @@ class PostgreSQLAdapter(DatabaseAdapter):
         }
 
     def get_indexes_sql(self, schema_name: str, table_name: str) -> str:
-        """Query to get index definitions."""
+        """
+        Query to get secondary indexes, one row per key column.
+
+        Returns the same columns as the MySQL query: ``index_name``,
+        ``column_name``, ``non_unique`` and ``seq_in_index``, ordered by index
+        name and column position. The primary-key index is left out.
+
+        An expression in an index has no column in ``pg_attribute`` (its
+        ``indkey`` entry is 0), so the left join gives it a NULL
+        ``column_name``. Heading skips such entries, as it does for MySQL's
+        functional key parts. Columns added with ``INCLUDE`` are not key
+        columns and are left out.
+        """
         return (
-            f"SELECT indexname, indexdef FROM pg_indexes "
-            f"WHERE schemaname = {self.quote_string(schema_name)} "
-            f"AND tablename = {self.quote_string(table_name)}"
+            f"SELECT ic.relname AS index_name, a.attname AS column_name, "
+            f"CASE WHEN i.indisunique THEN 0 ELSE 1 END AS non_unique, "
+            f"k.ord AS seq_in_index "
+            f"FROM pg_index i "
+            f"JOIN pg_class ic ON ic.oid = i.indexrelid "
+            f"JOIN pg_class tc ON tc.oid = i.indrelid "
+            f"JOIN pg_namespace ns ON ns.oid = tc.relnamespace "
+            f"CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) "
+            f"LEFT JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum "
+            f"WHERE ns.nspname = {self.quote_string(schema_name)} "
+            f"AND tc.relname = {self.quote_string(table_name)} "
+            f"AND NOT i.indisprimary "
+            f"AND k.ord <= i.indnkeyatts "
+            f"ORDER BY ic.relname, k.ord"
         )
 
     def parse_column_info(self, row: dict[str, Any]) -> dict[str, Any]:
