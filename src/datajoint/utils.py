@@ -1,11 +1,24 @@
 """General-purpose utilities"""
 
+import os
 import re
 import shutil
 import warnings
 from pathlib import Path
 
 from .errors import DataJointError
+
+
+def is_plain_file_name(name: str) -> bool:
+    """
+    Check that ``name`` is a plain file name with no directory part.
+
+    Rejects empty names, ``.`` and ``..``, the separators ``/`` and ``\\`` (on
+    every platform), NUL bytes, and on Windows any ``:`` (drives and alternate
+    data streams). A name that passes always names an entry directly inside
+    the directory it is joined to.
+    """
+    return not (name in ("", ".", "..") or "/" in name or "\\" in name or "\x00" in name or (os.name == "nt" and ":" in name))
 
 
 def user_choice(prompt, choices=("yes", "no"), default=None):

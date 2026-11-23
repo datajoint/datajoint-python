@@ -353,7 +353,7 @@ def test_long_table_name(schema_any):
             -> (master)
             """
 
-    with pytest.raises(dj.DataJointError):
+    with pytest.raises(dj.DataJointError, match="exceeds the max length"):
         schema_any(WhyWouldAnyoneCreateATableNameThisLong)
 
 
