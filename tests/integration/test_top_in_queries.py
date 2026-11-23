@@ -362,6 +362,17 @@ def test_union_restricted_by_top(tables):
     assert rows(with_attributes, "parent_id", "label", "info") == {(3, "a", "z")}
 
 
+def test_union_restricted_by_top_on_secondary_attribute(tables):
+    """Counting, existence, and key-only uses keep the attribute that dj.Top orders by."""
+    Parent, _, ParentInfo = tables
+    limited = (Parent.proj() + ParentInfo) & dj.Top(1, order_by="info DESC")
+    assert len(limited) == 1
+    assert bool(limited)
+    assert rows(limited.proj(), "parent_id") == {(3,)}
+    assert rows(Parent.proj() & limited, "parent_id") == {(3,)}
+    assert rows(limited.proj() + (Parent.proj() & "parent_id = 1"), "parent_id") == {(1,), (3,)}
+
+
 def test_union_of_limited_operands(tables):
     Parent, _, ParentInfo = tables
     last_info = ParentInfo & dj.Top(1, order_by="parent_id DESC")
