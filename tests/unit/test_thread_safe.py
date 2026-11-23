@@ -173,19 +173,26 @@ class TestInstanceBackend:
             )
             assert inst.config.database.backend == "postgresql"
 
-    def test_instance_backend_default_from_config(self, monkeypatch):
-        """Instance without backend uses config default."""
+    def test_instance_backend_default_from_config(self, monkeypatch, tmp_path):
+        """Instance without backend uses the config default, postgresql on port 5432."""
         monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        monkeypatch.delenv("DJ_BACKEND", raising=False)
+        monkeypatch.delenv("DJ_PORT", raising=False)
+        # Keep a datajoint.json in a parent directory from supplying the backend
+        (tmp_path / ".git").mkdir()
+        monkeypatch.chdir(tmp_path)
         from datajoint.instance import Instance
         from unittest.mock import patch
 
-        with patch("datajoint.instance.Connection"):
+        with patch("datajoint.instance.Connection") as MockConn:
             inst = Instance(
                 host="localhost",
-                user="root",
+                user="postgres",
                 password="secret",
             )
-            assert inst.config.database.backend == "mysql"
+            assert inst.config.database.backend == "postgresql"
+            args, kwargs = MockConn.call_args
+            assert args[3] == 5432  # port is the 4th positional arg
 
     def test_instance_backend_affects_port_default(self, monkeypatch):
         """Instance(backend='postgresql') uses port 5432 by default."""
@@ -203,6 +210,81 @@ class TestInstanceBackend:
             # Connection should be called with port 5432 (PostgreSQL default)
             args, kwargs = MockConn.call_args
             assert args[3] == 5432  # port is the 4th positional arg
+
+    def test_instance_mysql_backend_uses_port_3306(self, monkeypatch):
+        """Instance(backend='mysql') uses port 3306 by default."""
+        monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        monkeypatch.delenv("DJ_PORT", raising=False)
+        from datajoint.instance import Instance
+        from unittest.mock import patch
+
+        with patch("datajoint.instance.Connection") as MockConn:
+            inst = Instance(
+                host="localhost",
+                user="root",
+                password="secret",
+                backend="mysql",
+            )
+            assert inst.config.database.backend == "mysql"
+            args, kwargs = MockConn.call_args
+            assert args[3] == 3306
+
+
+class TestInstancePortFromBackend:
+    """An Instance with no port connects on the default port of the backend it ends up with."""
+
+    @pytest.fixture(autouse=True)
+    def _isolate_config(self, monkeypatch):
+        """Keep the shell environment and any datajoint.json from supplying a backend or port."""
+        monkeypatch.setenv("DJ_THREAD_SAFE", "false")
+        monkeypatch.setenv("DJ_IGNORE_CONFIG_FILE", "true")
+        for var in ("DJ_BACKEND", "DJ_PORT"):
+            monkeypatch.delenv(var, raising=False)
+
+    @staticmethod
+    def _connect(**kwargs):
+        """Create an Instance with the connection mocked; return it and the port it connects on."""
+        from unittest.mock import patch
+
+        from datajoint.instance import Instance
+
+        with patch("datajoint.instance.Connection") as MockConn:
+            inst = Instance(host="localhost", user="user", password="secret", **kwargs)
+        args, _ = MockConn.call_args
+        return inst, args[3]  # port is the 4th positional arg
+
+    def test_default_backend_uses_port_5432(self):
+        """With no backend set anywhere, the backend is postgresql on port 5432."""
+        inst, port = self._connect()
+        assert inst.config.database.backend == "postgresql"
+        assert port == 5432
+
+    @pytest.mark.parametrize(
+        ("backend", "port"),
+        [("mysql", 3306), ("postgresql", 5432)],
+    )
+    def test_database_backend_override_sets_port(self, monkeypatch, backend, port):
+        """Instance(database__backend=...) derives the port, whatever DJ_BACKEND selected."""
+        monkeypatch.setenv("DJ_BACKEND", "postgresql" if backend == "mysql" else "mysql")
+        inst, connected_port = self._connect(database__backend=backend)
+        assert inst.config.database.backend == backend
+        assert inst.config.database.port == port
+        assert connected_port == port
+
+    def test_dj_backend_env_uses_port_3306(self, monkeypatch):
+        """DJ_BACKEND=mysql with no DJ_PORT connects on port 3306."""
+        monkeypatch.setenv("DJ_BACKEND", "mysql")
+        inst, port = self._connect()
+        assert inst.config.database.backend == "mysql"
+        assert port == 3306
+
+    @pytest.mark.parametrize("override", ["backend", "database__backend"])
+    def test_backend_override_keeps_configured_port(self, monkeypatch, override):
+        """A port set by DJ_PORT is kept when the Instance selects the backend."""
+        monkeypatch.setenv("DJ_PORT", "3307")
+        inst, port = self._connect(**{override: "mysql"})
+        assert inst.config.database.backend == "mysql"
+        assert port == 3307
 
 
 class TestCrossConnectionValidation:

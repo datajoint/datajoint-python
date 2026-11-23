@@ -29,6 +29,78 @@ query_log_max_length = 300
 
 cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
 
+# Added to a failed connection whose backend came from the default rather than from the
+# configuration, since a MySQL server reached with the default backend fails this way.
+DEFAULT_BACKEND_HINT = (
+    "The default backend is postgresql since DataJoint 2.4; "
+    "set database.backend='mysql' (DJ_BACKEND=mysql) for a MySQL server."
+)
+
+MYSQL_DEFAULT_PORT = 3306
+
+
+def _check_mysql_port_without_backend(host: str, port, backend_is_default: bool, uses_global_config: bool = True) -> None:
+    """
+    Refuse MySQL's default port when the backend was left at its default.
+
+    The backend is never inferred from the port. Port 3306 with no backend set
+    is most likely a MySQL server reached with the PostgreSQL default, so the
+    connection stops before any network access and says how to set the backend.
+    A backend set explicitly, including ``"postgresql"``, allows any port.
+
+    Parameters
+    ----------
+    host : str
+        Hostname, for the message.
+    port : int or str
+        The resolved port. A value that is not an integer is left to the adapter.
+    backend_is_default : bool
+        True when neither the ``backend`` argument nor the config set the backend.
+    uses_global_config : bool, optional
+        True when the connection reads the global ``dj.config`` (``dj.conn``,
+        ``dj.Connection``). False for a ``dj.Instance``, whose own config
+        ``dj.config`` does not reach, so the message names the ways an
+        Instance takes the backend instead.
+
+    Raises
+    ------
+    DataJointError
+        If ``backend_is_default`` and the port is 3306.
+    """
+    if not backend_is_default:
+        return
+    try:
+        is_mysql_port = int(port) == MYSQL_DEFAULT_PORT
+    except (TypeError, ValueError):
+        return
+    if not is_mysql_port:
+        return
+    if uses_global_config:
+        how_to_set = (
+            "For a MySQL server, set the backend to 'mysql' in one of these ways:\n"
+            "  - environment: DJ_BACKEND=mysql\n"
+            '  - datajoint.json: {"database": {"backend": "mysql"}}\n'
+            "  - in Python: dj.config['database.backend'] = 'mysql'\n"
+            "  - keyword: dj.Connection(..., backend='mysql')\n"
+        )
+    else:
+        how_to_set = (
+            "This connection belongs to a dj.Instance, which reads its settings only from the "
+            "environment, datajoint.json, and its keyword arguments; dj.config does not reach it.\n"
+            "For a MySQL server, set the backend to 'mysql' in one of these ways:\n"
+            "  - keyword: dj.Instance(..., backend='mysql') or dj.Instance(..., database__backend='mysql')\n"
+            "  - environment: DJ_BACKEND=mysql\n"
+            '  - datajoint.json: {"database": {"backend": "mysql"}}\n'
+        )
+    raise errors.DataJointError(
+        f"Connecting to {host}:{port} with the database backend not set. "
+        f"Port {MYSQL_DEFAULT_PORT} is MySQL's default port, but the backend defaults to PostgreSQL "
+        "since DataJoint 2.4, and DataJoint does not infer the backend from the port.\n"
+        f"{how_to_set}"
+        f"PostgreSQL's default port is 5432. To reach a PostgreSQL server on port {MYSQL_DEFAULT_PORT}, "
+        "set the backend to 'postgresql' explicitly."
+    )
+
 
 def translate_query_error(client_error: Exception, query: str, adapter) -> Exception:
     """
@@ -70,7 +142,7 @@ def conn(
     Parameters
     ----------
     host : str, optional
-        Database hostname.
+        Database hostname, may include the port as ``hostname:port``.
     user : str, optional
         Database username. Required if not set in config.
     password : str, optional
@@ -93,6 +165,9 @@ def conn(
     ------
     DataJointError
         If user or password is not provided and not set in config.
+    DataJointError
+        If the port is 3306, MySQL's default port, and the backend is not set.
+        See :class:`Connection`.
     """
     if not hasattr(conn, "connection") or reset:
         host = host if host is not None else config["database.host"]
@@ -165,13 +240,29 @@ class Connection:
     password : str
         Database password.
     port : int, optional
-        Port number. Overridden if specified in host.
+        Port number. Overridden if specified in host. Default from
+        ``database.port`` in config: 5432 for PostgreSQL, 3306 for MySQL. Port
+        3306 requires the backend to be set (see Raises).
     use_tls : bool or dict, optional
         TLS encryption option: True (required), False (no TLS),
         None (default; ``database.use_tls`` from config, and TLS if the
         server supports it when that is unset), or dict for manual
         configuration (TLS required; ``ca``, ``cert``, ``key``; with ``ca``,
         the server certificate is verified).
+    backend : str, optional
+        Database backend: ``"postgresql"`` or ``"mysql"``. Default from
+        ``database.backend`` in config, which is ``"postgresql"`` unless set.
+
+    Raises
+    ------
+    DataJointError
+        If the port is 3306, MySQL's default port, while the backend is the
+        default rather than one set by the ``backend`` argument or in config.
+        The backend is never inferred from the port; set it to ``"mysql"`` for
+        a MySQL server. Raised before any connection attempt.
+    DataJointError
+        If the connection fails while the backend is the default. The message
+        adds how to select the MySQL backend.
 
     Attributes
     ----------
@@ -212,20 +303,29 @@ class Connection:
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
 
-        # Select adapter: explicit backend > config backend
+        # Select adapter: explicit backend > config backend. When neither names one,
+        # the backend is the default and a failure to connect says how to change it.
+        backend_is_default = backend is None and "backend" not in self._config.database.model_fields_set
         if backend is None:
             backend = self._config["database.backend"]
-        self.adapter = get_adapter(backend)
+        # Only the global config is reached by dj.config; any other config here is a dj.Instance's.
+        _check_mysql_port_without_backend(host, port, backend_is_default, uses_global_config=self._config is config)
+        try:
+            self.adapter = get_adapter(backend)
 
-        if database_name and self.adapter.backend == "mysql":
-            warnings.warn(
-                "database.name is set but the MySQL backend does not support database selection. "
-                "This setting only applies to PostgreSQL connections.",
-                UserWarning,
-                stacklevel=2,
-            )
+            if database_name and self.adapter.backend == "mysql":
+                warnings.warn(
+                    "database.name is set but the MySQL backend does not support database selection. "
+                    "This setting only applies to PostgreSQL connections.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
-        self.connect()
+            self.connect()
+        except Exception as error:
+            if backend_is_default:
+                raise errors.DataJointError(f"{str(error).rstrip()}\n{DEFAULT_BACKEND_HINT}") from error
+            raise
         if self.is_connected:
             db = self.conn_info.get("database_name")
             db_str = f"/{db}" if db else ""

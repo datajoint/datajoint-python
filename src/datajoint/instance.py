@@ -54,14 +54,23 @@ class Instance:
     password : str
         Database password.
     port : int, optional
-        Database port. Defaults to 3306 for MySQL, 5432 for PostgreSQL.
+        Database port. Defaults to 5432 for PostgreSQL, 3306 for MySQL. Port
+        3306 requires the backend to be set, by ``backend`` or in config: the
+        backend is never inferred from the port.
     use_tls : bool or dict, optional
         TLS configuration. Default from ``database.use_tls`` in this
         instance's config.
     backend : str, optional
-        Database backend: ``"mysql"`` or ``"postgresql"``. Default from config.
+        Database backend: ``"postgresql"`` or ``"mysql"``. Default from config,
+        which is ``"postgresql"`` unless set.
     **kwargs : Any
         Additional config overrides applied to this instance's config.
+
+    Raises
+    ------
+    DataJointError
+        If the port is 3306, MySQL's default port, and the backend is not set
+        (by ``backend``, ``DJ_BACKEND``, ``datajoint.json``, or ``kwargs``).
 
     Attributes
     ----------
@@ -90,12 +99,10 @@ class Instance:
         # Create fresh config with defaults loaded from env/file
         self.config = _create_config()
 
-        # Apply backend override before other kwargs (port default depends on it)
+        # Apply backend override before other kwargs. A port that was not set follows
+        # the backend, and a port set in config (DJ_PORT, datajoint.json) is kept.
         if backend is not None:
             self.config.database.backend = backend
-            # Re-derive port default since _create_config resolved it before backend was set
-            if port is None and "database__port" not in kwargs:
-                self.config.database.port = 5432 if backend == "postgresql" else 3306
 
         # Apply any config overrides from kwargs
         for key, value in kwargs.items():
@@ -113,14 +120,14 @@ class Instance:
         if port is None:
             port = self.config.database.port
 
-        # Create connection with this instance's config and backend
+        # Create connection with this instance's config. The backend comes from that
+        # config, which records whether it was set or left at the default.
         self.connection = Connection(
             host,
             user,
             password,
             port,
             use_tls,
-            backend=self.config.database.backend,
             config_override=self.config,
         )
 

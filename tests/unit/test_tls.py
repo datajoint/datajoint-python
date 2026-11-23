@@ -461,8 +461,9 @@ class TestConnectionUseTLS:
 
     def test_connection_error_is_not_retried(self, dj, adapter):
         adapter.connect.side_effect = pymysql.err.OperationalError(1045, "Access denied")
+        # An explicit backend keeps the adapter's error as raised (no default-backend hint).
         with pytest.raises(pymysql.err.OperationalError):
-            dj.Connection("localhost", "alice", "secret", 5432, None)
+            dj.Connection("localhost", "alice", "secret", 5432, None, backend="postgresql")
         assert adapter.connect.call_count == 1
 
     @pytest.mark.parametrize(
