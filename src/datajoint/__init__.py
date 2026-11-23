@@ -134,7 +134,11 @@ def conn(
     reset : bool, optional
         If True, reset existing connection. Default False.
     use_tls : bool or dict, optional
-        TLS encryption option.
+        TLS encryption option: True (required), False (no TLS), None (from
+        config; TLS if the server supports it by default), or dict (TLS
+        required; ``ca``, ``cert``, ``key``; with ``ca``, the server
+        certificate is verified). If the singleton connection exists, it is
+        reconnected with these unless it already satisfies them.
 
     Returns
     -------
@@ -156,10 +160,12 @@ def conn(
     _check_thread_safe()
 
     # If reset requested, always recreate
-    # If credentials provided and no singleton exists, create one
-    # If credentials provided and singleton exists, return existing singleton
+    # If credentials or use_tls provided and no singleton exists, create one
+    # If credentials provided and singleton exists, return existing singleton,
+    # reconnected with use_tls unless it already satisfies use_tls
     if reset or (
-        instance_module._singleton_connection is None and (host is not None or user is not None or password is not None)
+        instance_module._singleton_connection is None
+        and (host is not None or user is not None or password is not None or use_tls is not None)
     ):
         # Use provided values or fall back to config
         host = host if host is not None else _global_config.database.host
@@ -181,6 +187,8 @@ def conn(
             )
 
         instance_module._singleton_connection = Connection(host, user, password, port, use_tls, config_override=_global_config)
+    elif instance_module._singleton_connection is not None:
+        instance_module._singleton_connection._ensure_tls(use_tls)
 
     return _get_singleton_connection()
 

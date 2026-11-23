@@ -58,7 +58,8 @@ class Instance:
         3306 requires the backend to be set, by ``backend`` or in config: the
         backend is never inferred from the port.
     use_tls : bool or dict, optional
-        TLS configuration.
+        TLS configuration. Default from ``database.use_tls`` in this
+        instance's config.
     backend : str, optional
         Database backend: ``"postgresql"`` or ``"mysql"``. Default from config,
         which is ``"postgresql"`` unless set.

@@ -151,7 +151,10 @@ def conn(
         If True, reset existing connection. Default False.
     use_tls : bool or dict, optional
         TLS encryption option: True (required), False (no TLS),
-        None (preferred, default), or dict for manual configuration.
+        None (preferred, default), or dict for manual configuration
+        (TLS required; ``ca``, ``cert``, ``key``; with ``ca``, the server
+        certificate is verified). The existing connection is reconnected with
+        these unless it already satisfies them.
 
     Returns
     -------
@@ -180,6 +183,8 @@ def conn(
             )
         use_tls = use_tls if use_tls is not None else config["database.use_tls"]
         conn.connection = Connection(host, user, password, None, use_tls)
+    else:
+        conn.connection._ensure_tls(use_tls)
     return conn.connection
 
 
@@ -239,7 +244,11 @@ class Connection:
         ``database.port`` in config: 5432 for PostgreSQL, 3306 for MySQL. Port
         3306 requires the backend to be set (see Raises).
     use_tls : bool or dict, optional
-        TLS encryption option.
+        TLS encryption option: True (required), False (no TLS),
+        None (default; ``database.use_tls`` from config, and TLS if the
+        server supports it when that is unset), or dict for manual
+        configuration (TLS required; ``ca``, ``cert``, ``key``; with ``ca``,
+        the server certificate is verified).
     backend : str, optional
         Database backend: ``"postgresql"`` or ``"mysql"``. Default from
         ``database.backend`` in config, which is ``"postgresql"`` unless set.
@@ -287,17 +296,9 @@ class Connection:
         if database_name is None:
             database_name = self._config.get("database.name")
         self.conn_info = dict(host=host, port=port, user=user, passwd=password, database_name=database_name)
-        if use_tls is not False:
-            # use_tls can be: None (auto-detect), True (enable), False (disable), or dict (custom config)
-            if isinstance(use_tls, dict):
-                self.conn_info["ssl"] = use_tls
-            elif use_tls is None:
-                # Auto-detect: try SSL, fallback to non-SSL if server doesn't support it
-                self.conn_info["ssl"] = True
-            else:
-                # use_tls=True: enable SSL with default settings
-                self.conn_info["ssl"] = True
-        self.conn_info["ssl_input"] = use_tls
+        if use_tls is None:
+            use_tls = self._config["database.use_tls"]
+        self._set_use_tls(use_tls)
         self._conn = None
         self._query_cache = None
         self._is_closed = True  # Mark as closed until connect() succeeds
@@ -355,7 +356,36 @@ class Connection:
         db_str = f"/{db}" if db else ""
         return f"DataJoint connection ({connected}) {user}@{host}:{port}{db_str}"
 
-    def _build_connect_kwargs(self, use_tls=None):
+    def _set_use_tls(self, use_tls: bool | dict | None) -> None:
+        """Record the use_tls option in conn_info."""
+        # use_tls can be: None (TLS if the server supports it), True (required), False (disabled),
+        # or dict (required, custom config)
+        self.conn_info.pop("ssl", None)
+        if use_tls is not False:
+            self.conn_info["ssl"] = use_tls if isinstance(use_tls, dict) else True
+        self.conn_info["ssl_input"] = use_tls
+
+    def _ensure_tls(self, use_tls: bool | dict | None) -> None:
+        """
+        Reconnect with ``use_tls`` unless the existing connection already satisfies it.
+
+        ``use_tls=True`` is met by a connection made with True or a dict;
+        a dict is met only by a connection made with the same dict.
+        None and False request nothing beyond the existing connection.
+        """
+        current = self.conn_info.get("ssl_input")
+        if use_tls is None or use_tls is False or current == use_tls:
+            return
+        if use_tls is True and isinstance(current, dict):
+            return
+        if self.in_transaction:
+            raise errors.DataJointError("Cannot change use_tls of a connection during a transaction.")
+        logger.info("Reconnecting with use_tls=%r (connection was made with use_tls=%r).", use_tls, current)
+        self.close()
+        self._set_use_tls(use_tls)
+        self.connect()
+
+    def _build_connect_kwargs(self):
         """Build kwargs dict for adapter.connect()."""
         kwargs = dict(
             host=self.conn_info["host"],
@@ -363,7 +393,7 @@ class Connection:
             user=self.conn_info["user"],
             password=self.conn_info["passwd"],
             charset=self._config["connection.charset"],
-            use_tls=use_tls if use_tls is not None else self.conn_info.get("ssl"),
+            use_tls=self.conn_info["ssl_input"],
         )
         if self.conn_info.get("database_name"):
             kwargs["dbname"] = self.conn_info["database_name"]
@@ -373,19 +403,9 @@ class Connection:
         """Establish or re-establish connection to the database server."""
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", ".*deprecated.*")
-            try:
-                self._conn = self.adapter.connect(**self._build_connect_kwargs())
-            except Exception as ssl_error:
-                # If SSL fails, retry without SSL (if it was auto-detected)
-                if self.conn_info.get("ssl_input") is None:
-                    logger.warning(
-                        "SSL connection failed (%s). Falling back to non-SSL connection. "
-                        "To require SSL, set use_tls=True explicitly.",
-                        ssl_error,
-                    )
-                    self._conn = self.adapter.connect(**self._build_connect_kwargs(use_tls=False))
-                else:
-                    raise
+            # With use_tls=None, the adapter uses TLS if the server supports it and
+            # continues without TLS otherwise; it does not retry after other errors.
+            self._conn = self.adapter.connect(**self._build_connect_kwargs())
         self._is_closed = False  # Mark as connected after successful connection
 
     def set_query_cache(self, query_cache: str | None = None) -> None:
