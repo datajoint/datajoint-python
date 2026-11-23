@@ -17,9 +17,11 @@ import pytest
 import datajoint as dj
 from datajoint.errors import DataJointError
 from datajoint.hash_registry import compute_hash, get_hash
+from datajoint import migrate as dj_migrate
 from datajoint.migrate import (
     _legacy_hash,
     _legacy_path,
+    copy_table_data,
     migrate_external,
     migrate_external_pointers_v2,
     migrate_filepath,
@@ -192,6 +194,11 @@ def test_migrated_columns_return_their_values(schema014):
 
     # The 0.14 references are kept beside the migrated columns.
     assert {"signal_v1", "report_v1", "raw_file_v1"} <= _columns(schema014)
+    # A required 0.14 column stays required; optional ones stay optional.
+    attributes = _recording(schema014).heading.attributes
+    assert not attributes["signal"].nullable
+    assert attributes["report"].nullable and attributes["raw_file"].nullable
+    assert attributes["signal"].comment == "raw signal"
     assert verify_schema_v20(schema014.database, connection=schema014.connection)["compatible"]
 
 
@@ -233,49 +240,305 @@ def test_missing_file_stops_migration_unchanged(schema014, legacy_store):
     assert _columns(schema014) == before  # the blob column was not converted either
 
 
-def test_pointers_v2_refuses_binary16_column(schema014):
-    before = _columns(schema014)
-    with pytest.raises(DataJointError, match="BINARY\\(16\\)"):
-        migrate_external_pointers_v2(
-            schema=schema014.database,
-            table="recording",
-            attribute="signal",
-            source_store="legacy",
-            dest_store="legacy",
-            connection=schema014.connection,
-        )
-    assert _columns(schema014) == before
-
-
-def test_pointers_v2_writes_2x_metadata(schema014):
-    db, connection = schema014.database, schema014.connection
-    # Widen the column so that it can hold the JSON metadata.
+def _drop_foreign_key(schema, column):
+    db, connection = schema.database, schema.connection
     constraint = connection.query(
         "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE "
-        "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'recording' AND COLUMN_NAME = 'signal' "
+        "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'recording' AND COLUMN_NAME = %s "
         "AND REFERENCED_TABLE_NAME IS NOT NULL",
-        args=(db,),
+        args=(db, column),
     ).fetchone()[0]
     connection.query(f"ALTER TABLE `{db}`.`recording` DROP FOREIGN KEY `{constraint}`")
+
+
+def _pointers_v2(schema, attribute, dest_store="legacy"):
+    return migrate_external_pointers_v2(
+        schema=schema.database,
+        table="recording",
+        attribute=attribute,
+        source_store="legacy",
+        dest_store=dest_store,
+        connection=schema.connection,
+    )
+
+
+@pytest.fixture
+def raw_store(legacy_store):
+    """A 2.x store named `raw` at the 0.14 location."""
+    dj.config.stores["raw"] = {"protocol": "file", "location": str(legacy_store)}
+    yield "raw"
+
+
+def test_pointers_v2_converts_binary16_column(schema014, raw_store):
+    """Option A on a table in the 0.14 layout: the column reads in 2.x, through the new store name."""
+    assert _pointers_v2(schema014, "signal", dest_store=raw_store)["rows_migrated"] == 2
+    assert _pointers_v2(schema014, "report", dest_store=raw_store)["rows_migrated"] == 1
+
+    recording = _recording(schema014)
+    np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+    np.testing.assert_array_equal((recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
+    assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
+    attributes = recording.heading.attributes
+    assert not attributes["signal"].nullable and attributes["report"].nullable
+    assert attributes["signal"].comment == "raw signal"
+    assert {"signal_v1", "report_v1"} <= _columns(schema014)
+
+    db = schema014.database
+    stored = schema014.connection.query(f"SELECT `signal` FROM `{db}`.`recording` WHERE recording_id = 1").fetchone()[0]
+    assert json.loads(stored)["store"] == raw_store
+
+
+def test_pointers_v2_converts_widened_column(schema014):
+    """A column widened by hand that keeps its 0.14 comment is converted to a column 2.x reads."""
+    db, connection = schema014.database, schema014.connection
+    _drop_foreign_key(schema014, "signal")
     connection.query(
         f"ALTER TABLE `{db}`.`recording` MODIFY `signal` varbinary(1024) NOT NULL COMMENT ':blob@legacy:raw signal'"
     )
 
-    result = migrate_external_pointers_v2(
-        schema=db,
-        table="recording",
-        attribute="signal",
-        source_store="legacy",
-        dest_store="legacy",
-        connection=connection,
-    )
-    assert result["rows_migrated"] == 2
+    assert _pointers_v2(schema014, "signal")["rows_migrated"] == 2
+    recording = _recording(schema014)
+    for recording_id, expected in ((1, SIGNAL), (2, COUNTS)):
+        np.testing.assert_array_equal((recording & {"recording_id": recording_id}).fetch1("signal"), expected)
     rows = connection.query(f"SELECT recording_id, `signal` FROM `{db}`.`recording` ORDER BY recording_id").fetchall()
     for (_, stored), blob in zip(rows, (SIGNAL_BLOB, COUNTS_BLOB)):
         metadata = json.loads(stored)
         assert metadata["store"] == "legacy"
         assert metadata["hash"] == compute_hash(blob)
         assert get_hash(metadata) == blob
+
+
+def test_pointers_v2_refuses_2x_declared_column(schema014, raw_store):
+    """A column declared by 2.x holds no 0.14 references; the error points to copy_table_data."""
+    v2 = _schema_v2(schema014)
+    try:
+        with pytest.raises(DataJointError, match="copy_table_data"):
+            migrate_external_pointers_v2(
+                schema=v2.database,
+                table="recording",
+                attribute="signal",
+                source_store="legacy",
+                dest_store=raw_store,
+                connection=v2.connection,
+            )
+    finally:
+        v2.drop(prompt=False)
+
+
+def test_pointers_v2_missing_file_changes_nothing(schema014, legacy_store):
+    (legacy_store / _legacy_path(schema014.database, _md5(SIGNAL_BLOB), (2, 2))).unlink()
+    before = _columns(schema014)
+    with pytest.raises(DataJointError, match="Nothing was changed"):
+        _pointers_v2(schema014, "signal")
+    assert _columns(schema014) == before
+
+
+def _schema_v2(schema014, store="raw"):
+    """The 2.x declaration of `recording`, as Option A's Phase I code declares it."""
+    v2 = dj.Schema(f"{schema014.database}_v2", connection=schema014.connection)
+
+    @v2
+    class Recording(dj.Manual):
+        definition = f"""
+        recording_id : int32
+        ---
+        signal : <blob@{store}>        # raw signal
+        report = null : <attach@{store}>      # report file
+        raw_file = null : <filepath@{store}>  # acquired file
+        """
+
+    return v2
+
+
+def test_copy_table_data_converts_014_columns(schema014, raw_store):
+    """Option A end to end: copy a 0.14 table into its 2.x declaration and read it back."""
+    v2 = _schema_v2(schema014)
+    try:
+        result = copy_table_data(schema014.database, v2.database, "recording", connection=schema014.connection)
+        assert result["rows_copied"] == 2
+
+        recording = dj.FreeTable(v2.connection, f"`{v2.database}`.`recording`")
+        np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+        np.testing.assert_array_equal((recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
+        report = Path((recording & {"recording_id": 1}).fetch1("report"))
+        assert report.name == REPORT_NAME and report.read_bytes() == REPORT
+        assert (recording & {"recording_id": 2}).fetch1("report") is None
+        assert (recording & {"recording_id": 1}).fetch1("raw_file").read() == RAW
+    finally:
+        v2.drop(prompt=False)
+
+
+def test_copy_table_data_with_where_and_limit(schema014, raw_store, legacy_store):
+    """Only the rows copied are looked up; a missing file elsewhere does not block the copy."""
+    (legacy_store / _legacy_path(schema014.database, _md5(SIGNAL_BLOB), (2, 2))).unlink()
+    v2 = _schema_v2(schema014)
+    try:
+        result = copy_table_data(
+            schema014.database,
+            v2.database,
+            "recording",
+            where_clause="recording_id = 2",
+            limit=1,
+            connection=schema014.connection,
+        )
+        assert result["rows_copied"] == 1
+        recording = dj.FreeTable(v2.connection, f"`{v2.database}`.`recording`")
+        np.testing.assert_array_equal((recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
+    finally:
+        v2.drop(prompt=False)
+
+
+def test_copy_table_data_missing_file_copies_nothing(schema014, raw_store, legacy_store):
+    (legacy_store / _legacy_path(schema014.database, _md5(SIGNAL_BLOB), (2, 2))).unlink()
+    v2 = _schema_v2(schema014)
+    try:
+        with pytest.raises(DataJointError, match="Nothing was copied"):
+            copy_table_data(schema014.database, v2.database, "recording", connection=schema014.connection)
+        recording = dj.FreeTable(v2.connection, f"`{v2.database}`.`recording`")
+        assert len(recording) == 0
+    finally:
+        v2.drop(prompt=False)
+
+
+def test_copy_table_data_refuses_other_codec(schema014, raw_store):
+    """A 0.14 blob@ column copied into a column that is not <blob@store> is refused."""
+    v2 = dj.Schema(f"{schema014.database}_v2", connection=schema014.connection)
+
+    @v2
+    class Recording(dj.Manual):
+        definition = """
+        recording_id : int32
+        ---
+        signal : <blob>
+        report = null : <attach@raw>
+        raw_file = null : <filepath@raw>
+        """
+
+    try:
+        with pytest.raises(DataJointError, match="not declared as <blob@store>"):
+            copy_table_data(schema014.database, v2.database, "recording", connection=schema014.connection)
+        assert len(Recording()) == 0
+    finally:
+        v2.drop(prompt=False)
+
+
+def test_comments_with_quotes_and_percent(schema014):
+    """0.14 comments with an apostrophe, a percent sign, or a backslash are kept through migration."""
+    db, connection = schema014.database, schema014.connection
+    comment = "subject's report, 100% done \\ v2"
+    connection.query(
+        f"ALTER TABLE `{db}`.`recording` MODIFY `report` binary(16) DEFAULT NULL COMMENT %s",
+        args=(":attach@legacy:" + comment,),
+    )
+    _migrate(schema014)
+    recording = _recording(schema014)
+    assert recording.heading.attributes["report"].comment == comment
+    assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
+
+
+def test_failure_drops_the_columns_this_run_added(schema014, monkeypatch):
+    """If a later column fails, the _v2 columns already added are dropped again."""
+    added = dj_migrate._add_converted_column
+    calls = []
+
+    def fail_second(*args, **kwargs):
+        calls.append(args[3])
+        if len(calls) == 2:
+            raise DataJointError("simulated failure")
+        return added(*args, **kwargs)
+
+    monkeypatch.setattr(dj_migrate, "_add_converted_column", fail_second)
+    before = _columns(schema014)
+    with pytest.raises(DataJointError, match="simulated failure"):
+        migrate_external(schema014, dry_run=False)
+    assert len(calls) == 2
+    assert _columns(schema014) == before
+
+
+# Values that DataJoint 2.x releases before this fix wrote: no path, no store, a hex hash
+def _old_value(digest, size):
+    return json.dumps({"url": None, "hash": digest.hex().upper(), "size": size})
+
+
+def _write_old_v2_columns(schema):
+    db, connection = schema.database, schema.connection
+    for column, comment in (("signal", ":blob@legacy: raw signal"), ("report", ":attach@legacy: report file")):
+        connection.query(f"ALTER TABLE `{db}`.`recording` ADD COLUMN `{column}_v2` JSON COMMENT '{comment}'")
+        connection.query(
+            f"UPDATE `{db}`.`recording` t JOIN `{db}`.`~external_legacy` e ON t.`{column}` = e.hash "
+            f"SET t.`{column}_v2` = JSON_OBJECT('url', NULL, 'hash', HEX(e.hash), 'size', e.size)"
+        )
+
+
+def test_rerun_rewrites_v2_columns_from_earlier_release(schema014):
+    """_v2 columns written by an earlier release are rewritten, not skipped."""
+    _write_old_v2_columns(schema014)
+
+    preview = migrate_external(schema014, dry_run=True)
+    assert {detail["action"] for detail in preview["details"]} == {"rewrite"}
+    with pytest.raises(DataJointError, match="cannot be finalized"):
+        migrate_external(schema014, dry_run=False, finalize=True)
+
+    assert migrate_external(schema014, dry_run=False)["rows_migrated"] == 3
+    recording = _recording(schema014) & {"recording_id": 1}
+    np.testing.assert_array_equal(recording.fetch1("signal_v2"), SIGNAL)
+    assert Path(recording.fetch1("report_v2")).read_bytes() == REPORT
+
+    # Now readable, so a further rerun skips them.
+    statuses = {detail["status"] for detail in migrate_external(schema014, dry_run=False)["details"]}
+    assert statuses == {"already_migrated"}
+    assert migrate_external(schema014, dry_run=False, finalize=True)["columns_migrated"] == 2
+    np.testing.assert_array_equal((_recording(schema014) & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+
+
+def test_rerun_repairs_columns_finalized_by_earlier_release(schema014):
+    """Columns that an earlier release finalized are rewritten from the references kept in _v1."""
+    db, connection = schema014.database, schema014.connection
+    _write_old_v2_columns(schema014)
+    # What finalize did in an earlier release
+    for column, comment in (("signal", ":blob@legacy: raw signal"), ("report", ":attach@legacy: report file")):
+        connection.query(
+            f"ALTER TABLE `{db}`.`recording` CHANGE COLUMN `{column}` `{column}_v1` binary(16) COMMENT 'legacy 0.x'"
+        )
+        connection.query(f"ALTER TABLE `{db}`.`recording` CHANGE COLUMN `{column}_v2` `{column}` JSON COMMENT '{comment}'")
+
+    result = migrate_external(schema014, dry_run=False)
+    assert {detail["action"] for detail in result["details"]} == {"repair"}
+    assert result["rows_migrated"] == 3
+    recording = _recording(schema014)
+    np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+    np.testing.assert_array_equal((recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
+    assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
+    assert recording.heading.attributes["signal"].comment == "raw signal"
+
+
+def test_finalize_refuses_without_v2_columns(schema014):
+    before = _columns(schema014)
+    preview = migrate_filepath(schema014, dry_run=True, finalize=True)
+    assert "does not exist" in preview["details"][0]["problems"][0]
+    with pytest.raises(DataJointError, match="Nothing was changed"):
+        migrate_filepath(schema014, dry_run=False, finalize=True)
+    assert _columns(schema014) == before
+
+
+def test_filepath_without_contents_hash(schema014):
+    """0.14.7+ leaves contents_hash NULL for large files; the file still migrates and reads."""
+    db = schema014.database
+    schema014.connection.query(
+        f"UPDATE `{db}`.`~external_legacy` SET contents_hash = NULL WHERE hash = %s",
+        args=(_md5(RAW_PATH.encode()),),
+    )
+    preview = migrate_filepath(schema014, dry_run=True)
+    assert preview["details"][0]["problems"] == []
+    _migrate(schema014)
+    assert (_recording(schema014) & {"recording_id": 1}).fetch1("raw_file").read() == RAW
+
+
+def test_dry_run_needs_the_store(schema014):
+    """A dry run looks files up, so the store must be configured."""
+    del dj.config.stores["legacy"]
+    with pytest.raises(DataJointError, match="legacy"):
+        migrate_external(schema014, dry_run=True)
 
 
 def test_migrated_attachment_reads(connection_by_backend, backend, prefix, legacy_store):

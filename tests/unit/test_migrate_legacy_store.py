@@ -2,7 +2,7 @@
 
 DataJoint 0.14 kept blobs and attachments at paths derived from a 16-byte MD5
 digest. Its layout, taken from ``datajoint/external.py`` and ``datajoint/hash.py``
-at the 0.14.6 tag:
+at the 0.14.6 tag and unchanged through 0.14.10:
 
 - a blob at ``{database}/{subfolders}/{hex digest}``, the digest of its bytes;
 - an attachment at ``{database}/{subfolders}/{hex digest}.{name}``, the digest of
@@ -20,7 +20,16 @@ import pytest
 
 from datajoint.errors import DataJointError
 from datajoint.hash_registry import compute_hash, get_hash
-from datajoint.migrate import _legacy_hash, _legacy_path, _legacy_subfolding, verify_schema_v20
+from datajoint.adapters.mysql import MySQLAdapter
+from datajoint.migrate import (
+    _comment_literal,
+    _legacy_hash,
+    _legacy_kind,
+    _legacy_path,
+    _legacy_subfolding,
+    _new_comment,
+    verify_schema_v20,
+)
 from datajoint.settings import Config
 
 # The digest from the issue report: `{location}/{database}/ec/88/<hash hex>`.
@@ -136,3 +145,37 @@ def test_verify_schema_v20_query_formats_with_arguments():
     result = verify_schema_v20("lab_ephys", connection=connection)
     assert result["compatible"]
     assert any("LIKE '%blob'" in q for q in connection.queries)
+
+
+class _MySQLConnection:
+    adapter = MySQLAdapter()
+
+
+@pytest.mark.parametrize(
+    "comment",
+    ["subject's report", "100% done", "path C:\\data\\raw", "it's 50% \\ 'quoted'"],
+)
+def test_comment_literal_survives_formatting(comment):
+    """A comment literal formats with arguments and reads back as the same text."""
+    literal = _comment_literal(_MySQLConnection(), comment)
+    formatted = literal % ()  # what Connection.query does with no arguments
+    assert formatted.startswith("'") and formatted.endswith("'")
+    body = formatted[1:-1]
+    assert body.replace("''", "'").replace("\\\\", "\\") == comment
+
+
+@pytest.mark.parametrize(
+    "comment, kind, store, new",
+    [
+        (":blob@legacy:raw signal", "blob", "legacy", ":<blob@legacy>:raw signal"),
+        (":attach@ext-store:subject's report", "attach", "ext-store", ":<attach@ext-store>:subject's report"),
+        (":filepath@raw:", "filepath", "raw", ":<filepath@raw>:"),
+    ],
+)
+def test_legacy_kind_and_new_comment(comment, kind, store, new):
+    assert _legacy_kind(comment) == (kind, store)
+    assert _new_comment(kind, store, comment) == new
+
+
+def test_2x_comment_is_not_a_legacy_kind():
+    assert _legacy_kind(":<blob@legacy>:raw signal") == (None, None)
