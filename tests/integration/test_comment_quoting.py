@@ -128,7 +128,7 @@ def test_alter_writes_comments_as_declared(schema, backend):
 
 
 def test_mysql_comments_without_backslash_escapes(schema, backend):
-    """With NO_BACKSLASH_ESCAPES, comments are stored as declared, with each backslash doubled."""
+    """With NO_BACKSLASH_ESCAPES, comments are stored as declared except that each backslash is doubled."""
     if backend != "mysql":
         pytest.skip("sql_mode is MySQL-specific")
     connection = schema.connection

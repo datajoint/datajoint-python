@@ -296,9 +296,11 @@ class MySQLAdapter(DatabaseAdapter):
         Comments are written in double quotes, as DataJoint has always written
         them. Only two characters are escaped: a backslash is doubled, and a
         double quote is doubled (``""``) rather than escaped with a backslash, so
-        the literal stays closed even under NO_BACKSLASH_ESCAPES. Single quotes,
-        which the ``:type:`` marker of an enum attribute contains, are left as
-        they are.
+        the comment is stored as written. Under NO_BACKSLASH_ESCAPES, MySQL reads
+        a backslash literally, so a comment with a backslash is stored with each
+        backslash doubled; every other character is still stored as written.
+        Single quotes, which the ``:type:`` marker of an enum attribute contains,
+        are left as they are.
 
         Parameters
         ----------
