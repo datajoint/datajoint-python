@@ -207,12 +207,20 @@ def insert_lineages(connection, database, entries):
 
     adapter = connection.adapter
     lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
+    _upsert_lineages(connection, lineage_table, entries)
 
-    # Build backend-agnostic upsert statement
+
+def _upsert_lineages(connection, lineage_table, entries):
+    """
+    Upsert lineage entries into an existing ~lineage table.
+
+    Unlike insert_lineages, this does not create the table, so it can run inside
+    a transaction (MySQL commits an open transaction before any CREATE TABLE).
+    """
     columns = ["table_name", "attribute_name", "lineage"]
     primary_key = ["table_name", "attribute_name"]
 
-    sql = adapter.upsert_on_duplicate_sql(
+    sql = connection.adapter.upsert_on_duplicate_sql(
         lineage_table,
         columns,
         primary_key,
@@ -265,7 +273,7 @@ def rebuild_schema_lineage(connection, database):
     This function assumes that any upstream schemas (referenced via
     cross-schema foreign keys) have already had their lineage rebuilt.
     If a referenced attribute in another schema has no lineage entry,
-    a DataJointError is raised.
+    a DataJointError is raised and the existing ~lineage entries are kept.
 
     Parameters
     ----------
@@ -277,16 +285,18 @@ def rebuild_schema_lineage(connection, database):
     Raises
     ------
     DataJointError
-        If a referenced attribute in another schema has no lineage entry.
+        If a referenced attribute in another schema has no lineage entry,
+        or if called inside a transaction.
     """
+    # CREATE TABLE IF NOT EXISTS below commits an open transaction on MySQL, as declare does
+    if connection.in_transaction:
+        raise DataJointError("Cannot rebuild lineage inside a transaction.")
+
     # Ensure the lineage table exists
     ensure_lineage_table(connection, database)
 
     adapter = connection.adapter
     lineage_table = f"{adapter.quote_identifier(database)}.{adapter.quote_identifier('~lineage')}"
-
-    # Clear all existing lineage entries for this schema
-    connection.query(f"DELETE FROM {lineage_table}")
 
     # Get all tables in the schema (excluding hidden tables)
     tables_result = connection.query(
@@ -298,35 +308,30 @@ def rebuild_schema_lineage(connection, database):
     ).fetchall()
     all_tables = {row[0] for row in tables_result}
 
-    if not all_tables:
-        return
+    # Read keys through the adapter, as Dependencies.load does: the catalog differs by backend
+    # Note: Both PyMySQL and psycopg use %s placeholders, so escape % as %%
+    schemas_list = adapter.quote_string(database)
+    like_pattern = "'~%%'"
 
     # Get all primary key columns for all tables
-    pk_result = connection.query(
-        """
-        SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE
-        WHERE TABLE_SCHEMA = %s AND CONSTRAINT_NAME = 'PRIMARY'
-        """,
-        args=(database,),
-    ).fetchall()
     # table -> set of PK columns
     pk_columns = {}
-    for table, col in pk_result:
+    for full_name, col in connection.query(adapter.load_primary_keys_sql(schemas_list, like_pattern)):
+        _, table = adapter.split_full_table_name(full_name)
         pk_columns.setdefault(table, set()).add(col)
 
     # Get all FK relationships within and across schemas
-    fk_result = connection.query(
-        """
-        SELECT TABLE_NAME, COLUMN_NAME,
-               REFERENCED_TABLE_SCHEMA, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
-        FROM information_schema.KEY_COLUMN_USAGE
-        WHERE TABLE_SCHEMA = %s AND REFERENCED_TABLE_NAME IS NOT NULL
-        """,
-        args=(database,),
-    ).fetchall()
+    fk_result = connection.query(adapter.load_foreign_keys_sql(schemas_list, like_pattern), as_dict=True)
 
     # Build FK map: (table, column) -> (parent_schema, parent_table, parent_column)
-    fk_map = {(table, col): (ref_schema, ref_table, ref_col) for table, col, ref_schema, ref_table, ref_col in fk_result}
+    fk_map = {}
+    for row in fk_result:
+        key = {k.lower(): v for k, v in row.items()}
+        child_schema, child_table = adapter.split_full_table_name(key["referencing_table"])
+        # The adapter query also returns foreign keys that other schemas hold on this one
+        if child_schema == database:
+            ref_schema, ref_table = adapter.split_full_table_name(key["referenced_table"])
+            fk_map[(child_table, key["column_name"])] = (ref_schema, ref_table, key["referenced_column_name"])
 
     # Lineage cache: (table, column) -> lineage string (for this schema)
     lineage_cache = {}
@@ -368,7 +373,10 @@ def rebuild_schema_lineage(connection, database):
             if not col.startswith("_"):
                 resolve_lineage(table, col)
 
-    # Insert all lineages in one batch
-    if lineage_cache:
-        entries = [(table, col, lineage) for (table, col), lineage in lineage_cache.items()]
-        insert_lineages(connection, database, entries)
+    # Replace the existing entries only now that every lineage has resolved, in one
+    # transaction so a failed insert rolls the DELETE back and keeps the old entries
+    entries = [(table, col, lineage) for (table, col), lineage in lineage_cache.items()]
+    with connection.transaction:
+        connection.query(f"DELETE FROM {lineage_table}")
+        if entries:
+            _upsert_lineages(connection, lineage_table, entries)
