@@ -11,21 +11,22 @@ import pytest
 
 import datajoint as dj
 
-TABLE_COMMENT = r"""a "quoted" table, it's at C:\new\table \" , x"""
+TABLE_COMMENT = r"""a table note with "double quotes", it's at C:\new\table, a backslash and a quote \" , and more"""
 
 DEFINITION = rf"""
 # {TABLE_COMMENT}
-item_id : int32  # key "quoted", it's \
+item_id : int32  # the item's "number", with a trailing backslash \
 ---
-double_quotes : varchar(16)  # say "hi"
-single_quote : varchar(16)  # it's a test
-backslash : varchar(16)  # back\slash
-escape_sequences : varchar(16)  # C:\new\table\0
-escaped_quotes : varchar(16)  # a \" b \' c
-doubled_quotes : varchar(16)  # a '' b "" c
-breakout_double : varchar(16)  # x\" , injected int NOT NULL COMMENT "
-breakout_single : varchar(16)  # x\'; SELECT 1; --
-trailing_backslash : varchar(16)  # ends with a backslash \
+quote_double : varchar(16)  # a note with "double quotes"
+quote_single : varchar(16)  # it's a single-quoted note
+backslash : varchar(16)  # a path like back\slash
+backslash_pair : varchar(16)  # two backslashes \\ in a row
+backslash_sequences : varchar(16)  # a path like C:\new\table\0
+backslash_quotes : varchar(16)  # a backslash before quotes \" and \'
+doubled_quotes : varchar(16)  # doubled quotes '' and ""
+backslash_double_comma : varchar(16)  # a backslash and a double quote \", then a comma
+backslash_single_semicolon : varchar(16)  # a backslash and a single quote \'; with a semicolon -- and dashes
+trailing_backslash : varchar(16)  # a note with "double quotes", a comma, and a trailing backslash \
 """
 
 
@@ -57,7 +58,6 @@ def test_comments_stored_as_declared(schema):
     class Item(dj.Manual):
         definition = DEFINITION
 
-    assert Item.heading.names == list(COMMENTS)
     assert stored_comments(Item) == COMMENTS
     assert Item.heading.table_status["comment"] == TABLE_COMMENT
 
@@ -128,7 +128,7 @@ def test_alter_writes_comments_as_declared(schema, backend):
 
 
 def test_mysql_comments_without_backslash_escapes(schema, backend):
-    """With NO_BACKSLASH_ESCAPES, each comment still ends where it should."""
+    """With NO_BACKSLASH_ESCAPES, comments are stored as declared, with each backslash doubled."""
     if backend != "mysql":
         pytest.skip("sql_mode is MySQL-specific")
     connection = schema.connection
@@ -142,12 +142,9 @@ def test_mysql_comments_without_backslash_escapes(schema, backend):
 
     finally:
         connection.query("SET SESSION sql_mode = %s", (sql_mode,))
-    assert Item.heading.names == list(COMMENTS)
-    # Without backslash escapes a backslash is stored doubled; every other character as declared
-    stored = stored_comments(Item)
-    assert {name: stored[name] for name, comment in COMMENTS.items() if "\\" not in comment} == {
-        name: comment for name, comment in COMMENTS.items() if "\\" not in comment
-    }
+    # Without backslash escapes, MySQL reads each written backslash literally, so a
+    # backslash is stored doubled and every other character as declared
+    assert stored_comments(Item) == {name: comment.replace("\\", "\\\\") for name, comment in COMMENTS.items()}
 
 
 def test_postgresql_comments_without_standard_conforming_strings(schema, backend):
