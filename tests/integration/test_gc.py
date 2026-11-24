@@ -63,6 +63,62 @@ class GcCustomCodecTest(dj.Manual):
     """
 
 
+class GcHashChainCodec(dj.Codec):
+    """A custom codec that stores through ``<hash@>`` (#1700)."""
+
+    name = "gc_hashchain"
+
+    def get_dtype(self, is_store):
+        return "<hash>"
+
+    def encode(self, value, *, key=None, context=None, store_name=None):
+        return value.encode()
+
+    def decode(self, stored, *, key=None, context=None):
+        return stored.decode()
+
+
+class GcBlobChainCodec(dj.Codec):
+    """A custom codec that stores through ``<blob@>`` (#1700)."""
+
+    name = "gc_blobchain"
+
+    def get_dtype(self, is_store):
+        return "<blob>"
+
+    def encode(self, value, *, key=None, context=None, store_name=None):
+        return value
+
+    def decode(self, stored, *, key=None, context=None):
+        return stored
+
+
+class GcNpyChainCodec(dj.Codec):
+    """A custom codec that stores through ``<npy@>``, a schema-addressed codec."""
+
+    name = "gc_npychain"
+
+    def get_dtype(self, is_store):
+        return "<npy>"
+
+    def encode(self, value, *, key=None, context=None, store_name=None):
+        return np.asarray(value)
+
+    def decode(self, stored, *, key=None, context=None):
+        return stored
+
+
+class GcChainNote(dj.Manual):
+    definition = """
+    note_id : int32
+    ---
+    text : <gc_hashchain@>
+    obj : <gc_blobchain@>
+    ref : <blob@>
+    waveform : <gc_npychain@>
+    """
+
+
 def _make_attr(**overrides):
     """Build a real heading.Attribute with defaults, overriding named fields."""
     from datajoint.heading import Attribute, default_attribute_properties
@@ -401,6 +457,68 @@ class TestScanWithLiveData:
         stored_after = set(collector.list_schema_paths(schema_custom.database))
         assert live_path in stored_after, f"collect() deleted the live custom-codec file {live_path} (#1469)"
         assert not (deleted_paths & stored_after), f"deleted row's orphan not reclaimed: {deleted_paths & stored_after}"
+
+
+def _metadata_paths(query, *attrs):
+    """The stored path of each of ``attrs`` in the one row of ``query``, read from
+    the raw metadata (not through the collector under test)."""
+    (row,) = query.proj(*attrs).cursor(as_dict=True)
+    paths = {}
+    for attr in attrs:
+        metadata = row[attr]
+        if isinstance(metadata, str):  # MySQL returns JSON as text, PostgreSQL as a dict
+            metadata = json.loads(metadata)
+        paths[attr] = metadata["path"]
+    return paths
+
+
+class TestCustomCodecChains:
+    """#1700: the objects of custom codecs that store through ``<hash@>``
+    (directly or through ``<blob@>``) or through ``<npy@>`` are referenced, so
+    collect(dry_run=False) keeps them and the rows still fetch. Before the fix,
+    classification went by codec name, the collector never scanned these
+    columns, and it deleted their objects. Runs on both backends."""
+
+    @pytest.fixture
+    def schema_chain(self, connection_by_backend, backend, prefix, mock_stores):
+        dj.config.stores["default"] = "local"
+        schema = dj.Schema(
+            f"{prefix}_test_gc_chain_{backend}",
+            context={"GcChainNote": GcChainNote},
+            connection=connection_by_backend,
+        )
+        schema(GcChainNote)
+        yield schema
+        schema.drop(prompt=False)
+
+    def test_collect_keeps_objects_of_custom_codecs(self, schema_chain):
+        keep = dict(note_id=1, text="hello", obj=np.arange(7), ref=np.arange(5), waveform=np.arange(4, dtype="float32"))
+        gone = dict(note_id=2, text="goodbye", obj=np.arange(9), ref=np.arange(3), waveform=np.arange(6, dtype="float32"))
+        GcChainNote.insert([keep, gone])
+        attrs = ("text", "obj", "ref", "waveform")
+        live = set(_metadata_paths(GcChainNote & "note_id=1", *attrs).values())
+        dead = set(_metadata_paths(GcChainNote & "note_id=2", *attrs).values())
+        assert len(live) == len(dead) == 4 and not (live & dead)
+        (GcChainNote & "note_id=2").delete(prompt=False)
+
+        collector = _gc(schema_chain)
+        db = schema_chain.database
+        stored_before = set(collector.list_hash_paths(db)) | set(collector.list_schema_paths(db))
+        assert live | dead <= stored_before
+
+        stats = collector.collect(dry_run=False)
+
+        orphaned = set(stats["orphaned_hash_paths"]) | set(stats["orphaned_schema_paths"])
+        assert not (live & orphaned), f"live objects reported orphaned: {live & orphaned}"
+        stored_after = set(collector.list_hash_paths(db)) | set(collector.list_schema_paths(db))
+        assert live <= stored_after, f"collect() deleted live objects: {live - stored_after}"
+        assert not (dead & stored_after), f"orphans of the deleted row not reclaimed: {dead & stored_after}"
+
+        row = (GcChainNote & "note_id=1").fetch1()
+        assert row["text"] == "hello"
+        np.testing.assert_array_equal(row["obj"], keep["obj"])
+        np.testing.assert_array_equal(row["ref"], keep["ref"])
+        np.testing.assert_array_equal(np.asarray(row["waveform"]), keep["waveform"])
 
 
 class GcBareNpyTest(dj.Manual):

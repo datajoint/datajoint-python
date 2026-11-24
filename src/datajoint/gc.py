@@ -7,14 +7,16 @@ items become orphaned when all database rows referencing them are deleted.
 DataJoint uses two object storage patterns:
 
 Hash-addressed storage
-    Types: ``<hash@>``, ``<blob@>``, ``<attach@>``
+    Types: ``<hash@>``, ``<blob@>``, ``<attach@>``, and custom codecs that
+    store through them
     Path: ``{hash_prefix}/{schema}/{hash}`` (with optional subfolding;
     ``hash_prefix`` defaults to ``_hash``)
     Deduplication: Per-schema (identical data within a schema shares storage)
     Deletion: Requires garbage collection
 
 Schema-addressed storage
-    Types: ``<object@>``, ``<npy@>``
+    Types: ``<object@>``, ``<npy@>``, custom ``SchemaCodec`` subclasses, and
+    custom codecs that store through them
     Path: ``{schema_prefix}/{schema}/{table}/{pk}/...`` (``schema_prefix``
     defaults to ``_schema``; pre-2.3.1 stores hold root-level ``{schema}/...`` paths)
     Deduplication: None (each entity has unique path)
@@ -140,8 +142,9 @@ class GarbageCollector:
         Full relative store paths of hash-addressed objects referenced by live
         rows across this collector's schemas.
 
-        Reads columns classified by ``Heading.hash_objects`` (``<hash@>``, and
-        external ``<blob@>``/``<attach@>``). Paths are taken verbatim from each
+        Reads columns classified by ``Heading.hash_objects``: ``<hash@>``,
+        external ``<blob@>``/``<attach@>``, and any codec that stores through
+        them, recognized by codec chain. Paths are taken verbatim from each
         row's metadata (independent of the store's current prefixes) and
         filtered to this collector's store.
         """
@@ -152,8 +155,8 @@ class GarbageCollector:
         Full relative store paths of schema-addressed objects referenced by live
         rows across this collector's schemas.
 
-        Reads columns classified by ``Heading.schema_objects`` — any
-        ``SchemaCodec`` (``<object@>``, ``<npy@>``, custom subclasses,
+        Reads columns classified by ``Heading.schema_objects`` — a codec chain
+        with any ``SchemaCodec`` (``<object@>``, ``<npy@>``, custom subclasses,
         recognized by type per #1469). For a directory-valued object the
         recorded path is the directory prefix, not its individual files.
         """
