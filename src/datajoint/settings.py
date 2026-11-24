@@ -391,7 +391,7 @@ class DatabaseSettings(BaseSettings):
     database_prefix: str = Field(
         default="",
         validation_alias="DJ_DATABASE_PREFIX",
-        description="Deprecated. Use database.name instead.",
+        description="Deprecated; will be removed in a future release. Not applied to schema names. Use database.name instead.",
     )
     create_tables: bool = Field(
         default=True,
