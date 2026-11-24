@@ -154,6 +154,14 @@ class Job(Table):
                 f"Cannot create jobs table for {self._target.full_table_name}: no FK-derived primary key attributes found."
             )
 
+        # Each attribute must stay on its own line of the definition.
+        for name, dtype in pk_attrs:
+            if any(c in text for text in (name, dtype) for c in "\n\r"):
+                raise DataJointError(
+                    f"Cannot create jobs table for {self._target.full_table_name}: "
+                    f"attribute {name!r} has a line break in its name or type {dtype!r}."
+                )
+
         pk_lines = "\n    ".join(f"{name} : {dtype}" for name, dtype in pk_attrs)
 
         return f"""

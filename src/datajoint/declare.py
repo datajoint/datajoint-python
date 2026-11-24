@@ -886,12 +886,17 @@ def _make_attribute_alter(
     # The rename marker opens the comment as declared. A core type or codec puts
     # its `:type:` marker in front of it, and PostgreSQL keeps comments out of the
     # column SQL, so the marker is read from the declared comment, not the SQL.
-    original_regexp = re.compile(r"^(?::[^:]*:)?{\s*(?P<name>\w+)\s*}")
+    # The `:type:` marker is split off as the heading reads it back, so a colon
+    # inside a quoted enum value does not end the type.
+    from .heading import split_type_comment
+
+    original_regexp = re.compile(r"^{\s*(?P<name>\w+)\s*}")
     comments = comments or {}
     new_names = {}
     for d in new:
         name = name_regexp.match(d).group("name")
-        original = original_regexp.match(comments.get(name, ""))
+        _, comment = split_type_comment(comments.get(name))
+        original = original_regexp.match(comment)
         new_names[name] = original and original.group("name")
     old_names = [name_regexp.search(d).group("name") for d in old]
 
