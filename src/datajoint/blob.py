@@ -143,8 +143,9 @@ class Blob:
         Current serialization protocol (``b"mYm\\0"`` or ``b"dj0\\0"``).
     """
 
-    def __init__(self, squeeze: bool = False) -> None:
+    def __init__(self, squeeze: bool = False, max_decompressed_size: int | None = None) -> None:
         self._squeeze = squeeze
+        self._max_decompressed_size = max_decompressed_size
         self._blob = None
         self._pos = 0
         self.protocol = None
@@ -186,8 +187,14 @@ class Blob:
             pass  # assume uncompressed but could be unrecognized compression
         else:
             self._pos += len(prefix)
-            blob_size = self.read_value()
-            self._blob = compression[prefix](self._blob[self._pos :], int(blob_size))
+            blob_size = int(self.read_value())
+            limit = self._max_decompressed_size
+            if limit is not None and blob_size > limit:
+                raise DataJointError(
+                    f"Compressed blob declares {blob_size} bytes uncompressed, more than "
+                    f"blob.max_decompressed_size ({limit}); it is not decompressed."
+                )
+            self._blob = compression[prefix](self._blob[self._pos :], blob_size)
             self._pos = 0
         blob_format = self.read_zero_terminated_string()
         if blob_format in ("mYm", "dj0"):
@@ -633,7 +640,7 @@ def pack(obj, compress: bool = True) -> bytes:
     return Blob().pack(obj, compress=compress)
 
 
-def unpack(blob: bytes, squeeze: bool = False):
+def unpack(blob: bytes, squeeze: bool = False, max_decompressed_size: int | None = None):
     """
     Deserialize a binary blob to a Python object.
 
@@ -643,6 +650,9 @@ def unpack(blob: bytes, squeeze: bool = False):
         Binary data from ``pack()`` or MATLAB mYm serialization.
     squeeze : bool, optional
         If True, remove singleton dimensions from arrays. Default False.
+    max_decompressed_size : int, optional
+        Refuse a compressed blob whose recorded uncompressed size exceeds this
+        many bytes, before decompressing it. None (default): no limit.
 
     Returns
     -------
@@ -657,4 +667,4 @@ def unpack(blob: bytes, squeeze: bool = False):
     [1, 2, 3]
     """
     if blob is not None:
-        return Blob(squeeze=squeeze).unpack(blob)
+        return Blob(squeeze=squeeze, max_decompressed_size=max_decompressed_size).unpack(blob)

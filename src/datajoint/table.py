@@ -16,7 +16,7 @@ import pandas
 
 from . import provenance
 from .condition import make_condition
-from .declare import alter, declare
+from .declare import alter, declare, parse_foreign_key_reference
 from .dependencies import extract_master
 from .errors import (
     AccessError,
@@ -337,7 +337,7 @@ class Table(QueryExpression):
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
-        old_definition = self.describe(context=context)
+        old_definition = self._describe(context, strict=True)
         sql, _external_stores, pre_ddl, column_comments = alter(
             self.definition,
             old_definition,
@@ -1363,11 +1363,35 @@ class Table(QueryExpression):
         -------
         str
             The definition string for the table in DataJoint DDL format.
+
+        Warns
+        -----
+        UserWarning
+            If a projected foreign key attribute read from the database is not a
+            name a definition can hold, such as a column named ``a-b`` by SQL. The
+            name is written as is, and ``alter()`` refuses the table.
         """
         if context is None:
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
+        definition = self._describe(context)
+        if printout:
+            logger.info("\n" + definition)
+        return definition
+
+    def _describe(self, context, strict=False):
+        """
+        Write the definition for :meth:`describe` and :meth:`alter`.
+
+        A projected foreign key is written as ``Parent.proj(new="old")``: the old
+        names are quoted and the new names are not, since keyword names cannot be.
+        A new name that the foreign key parser does not read back as itself (a
+        column named ``a-b`` or ``x=1`` by SQL, for example) is written as is,
+        since no form of the reference holds it. ``alter()`` passes ``strict`` and
+        raises for such a name rather than parse a different definition;
+        ``describe()`` warns.
+        """
         if self.full_table_name not in self.connection.dependencies:
             self.connection.dependencies.load()
         parents = self.parents(foreign_key_info=True)
@@ -1376,6 +1400,7 @@ class Table(QueryExpression):
         definition = "# " + table_comment + "\n" if table_comment else ""
         attributes_thus_far = set()
         attributes_declared = set()
+        unreadable = []  # projected names written as is, which the parser does not read back
         indexes = self.heading.indexes.copy() if self.heading.indexes else {}
         for attr in self.heading.attributes.values():
             if in_key and not attr.in_key:
@@ -1413,7 +1438,13 @@ class Table(QueryExpression):
                                 class_name=_one_line(lookup_class_name(parent_name, context) or parent_name),
                             )
                         else:
-                            # projected foreign key
+                            # projected foreign key; the new names are written as is (the
+                            # referenced names are quoted); note those not read back as themselves
+                            unreadable.extend(
+                                new_name
+                                for new_name, ref in fk_props["attr_map"].items()
+                                if ref != new_name and not _is_projection_name(new_name)
+                            )
                             definition += "->{options} {class_name}.proj({proj_list})\n".format(
                                 options=options_str,
                                 class_name=_one_line(lookup_class_name(parent_name, context) or parent_name),
@@ -1440,8 +1471,20 @@ class Table(QueryExpression):
             definition += "{unique}INDEX ({attrs})\n".format(
                 unique="UNIQUE " if v["unique"] else "", attrs=", ".join(_one_line(a) for a in k)
             )
-        if printout:
-            logger.info("\n" + definition)
+        if unreadable:
+            names = ", ".join(repr(name) for name in unreadable)
+            if len(unreadable) == 1:
+                problem = f"the foreign key attribute {names} read from the database is not a name a definition can hold"
+            else:
+                problem = f"the foreign key attributes {names} read from the database are not names a definition can hold"
+            if strict:
+                raise DataJointError(f"Cannot alter {self.full_table_name}: {problem}.")
+            warnings.warn(
+                f"The definition of {self.full_table_name} cannot be read back: {problem}. "
+                "describe() writes such a name as is, and alter() refuses this table.",
+                UserWarning,
+                stacklevel=3,
+            )
         return definition
 
     # --- private helper functions ----
@@ -1679,6 +1722,22 @@ def _one_line(text):
 def _quoted(text):
     """Return ``text`` as a double-quoted string literal on one line."""
     return '"{}"'.format(_one_line(text).replace("\\", "\\\\").replace('"', '\\"'))
+
+
+def _is_projection_name(name):
+    """
+    Whether ``name``, written unquoted as a ``.proj()`` keyword argument, is parsed back as itself.
+
+    ``describe()`` writes a projected foreign key as ``Parent.proj(new="old")`` and
+    ``alter()`` reads it back with :func:`~datajoint.declare.parse_foreign_key_reference`.
+    Any name that parser reads back unchanged is accepted, Python keywords such as
+    ``class`` included.
+    """
+    try:
+        steps = parse_foreign_key_reference(f'Parent.proj({name}="")')
+    except (ValueError, SyntaxError):
+        return False
+    return steps == [("name", "Parent"), ("proj", [], {name: ""})]
 
 
 def lookup_class_name(name, context, depth=3):
