@@ -23,7 +23,7 @@ def index_ddl():
 
 def test_json_path_index_keeps_the_expression(index_ddl):
     assert index_ddl[0].startswith('CREATE INDEX "idx_indexed_jsonb_extract_path_text_')
-    assert index_ddl[0].endswith(""" ON "s"."indexed" (((jsonb_extract_path_text("data", 'size'))::integer))""")
+    assert index_ddl[0].endswith(""" ON "s"."indexed" (((jsonb_extract_path_text("data", 'size'))::bigint))""")
 
 
 def test_index_mixing_columns_and_json_paths(index_ddl):

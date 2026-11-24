@@ -10,7 +10,129 @@ from __future__ import annotations
 import hashlib
 import re
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, NamedTuple
+
+from ..errors import DataJointError
+
+# Parts of a JSON path type annotation (``attr.path:type``). The annotation has
+# already passed ``condition._JSON_TYPE_PATTERN``; this only splits it.
+_JSON_TYPE_PARTS = re.compile(
+    r"\s*(?P<name>(?:un)?signed(?:\s+int(?:eger)?)?|double(?:\s+precision)?|char(?:acter)?(?:\s+varying)?|[a-z]+\d?)"
+    r"(?:\s*\((?P<args>\s*\d+\s*(?:,\s*\d+\s*)?)\))?"
+    r"(?:\s+(?P<zone>with|without)\s+time\s+zone)?"
+    r"(?:\s+(?:character\s+set|charset)\s+(?P<charset>\w+))?"
+    r"(?:\s+collate\s+(?P<collate>\w+))?\s*",
+    re.IGNORECASE,
+)
+
+# Type names accepted in a JSON path annotation, grouped by the kind of value they name.
+# Each adapter maps every name onto its own types, or rejects it with a DataJointError.
+JSON_INTEGER_TYPES = frozenset(
+    "signed, signed int, signed integer, unsigned, unsigned int, unsigned integer, "
+    "int, int2, int4, int8, integer, tinyint, smallint, mediumint, bigint, year".split(", ")
+)
+JSON_FLOAT_TYPES = frozenset("real, float, float4, float8, double, double precision".split(", "))
+JSON_DECIMAL_TYPES = frozenset(("decimal", "numeric", "dec"))
+JSON_BOOLEAN_TYPES = frozenset(("bool", "boolean"))
+JSON_STRING_TYPES = frozenset("char, character, nchar, varchar, char varying, character varying, text".split(", "))
+JSON_BINARY_TYPES = frozenset(("binary", "varbinary", "bytea"))
+JSON_JSON_TYPES = frozenset(("json", "jsonb"))
+JSON_TIME_TYPES = frozenset(("date", "time", "timetz", "datetime", "timestamp", "timestamptz", "interval"))
+JSON_OTHER_TYPES = frozenset(("bit", "uuid"))
+_JSON_TYPE_NAMES = (
+    JSON_INTEGER_TYPES
+    | JSON_FLOAT_TYPES
+    | JSON_DECIMAL_TYPES
+    | JSON_BOOLEAN_TYPES
+    | JSON_STRING_TYPES
+    | JSON_BINARY_TYPES
+    | JSON_JSON_TYPES
+    | JSON_TIME_TYPES
+    | JSON_OTHER_TYPES
+)
+
+# How many arguments a type takes: precision and scale for a decimal; a length, a float
+# precision, or fractional seconds; or an integer display width, which is dropped.
+# Every other type takes none.
+_JSON_TYPE_MAX_ARGS = {
+    **dict.fromkeys(JSON_DECIMAL_TYPES, 2),
+    **dict.fromkeys(
+        JSON_INTEGER_TYPES
+        | JSON_STRING_TYPES
+        | {"float", "binary", "varbinary", "bit", "time", "timetz", "datetime", "timestamp", "timestamptz", "interval"},
+        1,
+    ),
+}
+
+# Annotations that work on every backend, for error messages
+JSON_PORTABLE_TYPES = (
+    "signed, unsigned, int, integer, smallint, bigint, decimal(p,s), numeric(p,s), real, float, float(p), "
+    "double, bool, boolean, char(n), varchar(n), text, date, time, datetime, timestamp, json"
+)
+
+
+class JsonType(NamedTuple):
+    """A JSON path type annotation split into its parts (see ``parse_json_type``)."""
+
+    name: str  # lower case with single spaces, e.g. 'int', 'double precision'
+    args: str  # '' or the argument list as written, e.g. '(10, 2)'
+    zone: str | None  # 'with' or 'without' (time zone), or None
+    charset: str | None
+    collate: str | None
+
+    @property
+    def single_precision(self) -> bool:
+        """
+        Whether a floating-point type is single precision.
+
+        As in PostgreSQL, ``real``, ``float4`` and ``float(p)`` with ``p`` up to 24 are
+        single precision; ``float``, ``float8``, ``double``, ``double precision`` and
+        ``float(p)`` with ``p`` from 25 to 53 are double precision.
+        """
+        return self.name in ("real", "float4") or (self.name == "float" and bool(self.args) and int(self.args[1:-1]) <= 24)
+
+
+def parse_json_type(annotation: str) -> JsonType:
+    """
+    Split a JSON path type annotation into its parts.
+
+    Parameters
+    ----------
+    annotation : str
+        Type annotation from an ``attr.path:type`` key, e.g. ``'decimal(10, 2)'``.
+
+    Returns
+    -------
+    JsonType
+        Name, arguments, time zone qualifier, character set, and collation.
+
+    Raises
+    ------
+    DataJointError
+        If the annotation is not a known type name, gives a type more arguments than
+        it takes (e.g. ``float(10,2)``), gives ``float`` a precision outside 1 to 53,
+        or combines a qualifier with a type that does not take it (e.g. ``int with
+        time zone``).
+    """
+    match = _JSON_TYPE_PARTS.fullmatch(annotation)
+    name = " ".join(match["name"].lower().split()) if match else None
+    if match is None or name not in _JSON_TYPE_NAMES:
+        raise DataJointError(f"Unsupported JSON path type `{annotation}`. Portable types: {JSON_PORTABLE_TYPES}.")
+    max_args = _JSON_TYPE_MAX_ARGS.get(name, 0)
+    if match["args"] and match["args"].count(",") + 1 > max_args:
+        raise DataJointError(
+            f"JSON path type `{annotation}`: {name} takes "
+            + ("no arguments." if max_args == 0 else "one argument. Only decimal and numeric take precision and scale.")
+        )
+    if name == "float" and match["args"] and not 1 <= int(match["args"]) <= 53:
+        # MySQL would take float(0) and PostgreSQL would not; neither takes more than 53
+        raise DataJointError(f"JSON path type `{annotation}`: float takes a precision from 1 to 53.")
+    if match["zone"] and name not in ("time", "datetime", "timestamp"):
+        raise DataJointError(f"JSON path type `{annotation}`: only time and timestamp types take a time zone qualifier.")
+    if (match["charset"] or match["collate"]) and name not in JSON_STRING_TYPES:
+        raise DataJointError(f"JSON path type `{annotation}`: only string types take a character set or collation.")
+    args = f"({match['args']})" if match["args"] else ""
+    return JsonType(name, args, match["zone"] and match["zone"].lower(), match["charset"], match["collate"])
 
 
 class DatabaseAdapter(ABC):
@@ -1171,17 +1293,60 @@ class DatabaseAdapter(ABC):
         path : str
             JSON path (e.g., 'field' or 'nested.field').
         return_type : str, optional
-            Return type specification (MySQL-specific).
+            Type to cast the extracted value to: a MySQL ``JSON_VALUE ... RETURNING``
+            spelling (``signed``, ``unsigned``, ``decimal(p,s)``, ``char(n)``,
+            ``double``, ``datetime``, ...) or a PostgreSQL spelling (``int``,
+            ``integer``, ``bigint``, ``numeric(p,s)``, ``varchar(n)``, ``text``,
+            ``boolean``, ``timestamp``, ...). Each backend maps the name onto its
+            own type (see ``parse_json_type`` for the accepted names).
 
         Returns
         -------
         str
             Database-specific JSON extraction SQL expression.
 
+        Raises
+        ------
+        DataJointError
+            If the backend has no equivalent of the type (e.g. ``uuid`` on MySQL).
+
         Examples
         --------
         MySQL: json_value(`column`, _utf8mb4'$.path' returning type)
         PostgreSQL: jsonb_extract_path_text("column", 'path_part1', 'path_part2')
+        """
+        ...
+
+    @abstractmethod
+    def json_path_equals(self, column: str, path: str, value: str) -> str:
+        """
+        Generate a condition comparing the JSON value at a path with a JSON literal.
+
+        The comparison is between JSON values, not text: numbers compare
+        numerically (``64`` equals ``64.0``), booleans match only JSON booleans,
+        and a value of another JSON type (e.g. a string) is simply unequal.
+        PostgreSQL compares numbers exactly. MySQL holds a JSON integer outside
+        the range -2**63 to 2**64 - 1, and any number with a fraction or an
+        exponent, as a 64-bit float, and compares the rounded values.
+
+        Parameters
+        ----------
+        column : str
+            Column name containing JSON data.
+        path : str
+            JSON path (e.g., 'field' or 'nested.field').
+        value : str
+            JSON literal (e.g., '64', '2.5', 'true').
+
+        Returns
+        -------
+        str
+            Database-specific SQL condition.
+
+        Examples
+        --------
+        MySQL: json_extract(`column`, _utf8mb4'$.path') = cast('64' as json)
+        PostgreSQL: jsonb_extract_path("column", 'path') = '64'::jsonb
         """
         ...
 
