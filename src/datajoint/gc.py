@@ -68,6 +68,7 @@ datajoint.builtin_codecs : Codec implementations for object storage types.
 from __future__ import annotations
 
 import logging
+import posixpath
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -98,6 +99,17 @@ def _kept_in_root_level_layout(path: str) -> bool:
     file stored without subfolding, or a blob that 0.14 had migrated from 0.11.
     """
     return path.count("/") == 1 or bool(_LEGACY_014_NAME.match(path.rsplit("/", 1)[-1]))
+
+
+def _normalized(paths: set[str]) -> set[str]:
+    """
+    Return reference paths in the form the store listing uses.
+
+    A ``<filepath@>`` value is stored as written, so it may hold ``./``, ``//``
+    or backslashes (``./{schema}/sub/a.txt``) and still read. The store listing
+    returns clean relative paths (``{schema}/sub/a.txt``).
+    """
+    return {posixpath.normpath(p.replace("\\", "/")).lstrip("/") for p in paths}
 
 
 def _is_covered(path: str, referenced: set[str]) -> bool:
@@ -142,7 +154,11 @@ class GarbageCollector:
         The schemas to collect. At least one is required. Every managed path
         embeds its schema, so collection is per-schema and confined to these
         schemas: objects of any other schema sharing the store are never listed
-        and never at risk — pass any subset safely.
+        and never at risk — pass any subset safely. The root-level layout
+        (``schema_prefix=""``) is the exception: there a file in a subfolder of
+        ``{schema}/`` that only other schemas reference is listed as an orphan,
+        so pass every schema that references files in the store (see the
+        module docstring).
     store : str, optional
         Store name (None = the default store), keyword-only.
     config : Config, optional
@@ -205,9 +221,12 @@ class GarbageCollector:
         Store paths that ``<filepath@>`` columns of live rows across this
         collector's schemas point to, filtered to this collector's store.
 
-        GC never deletes ``<filepath@>`` files. It reads these references only
-        in the root-level layout (``schema_prefix=""``), where such a file may
-        lie inside a schema section.
+        GC reads these references only in the root-level layout
+        (``schema_prefix=""``), where a ``<filepath@>`` file may lie inside a
+        schema section. There GC does not delete a ``<filepath@>`` file it reads
+        a reference to; a file that only schemas outside this collector
+        reference is listed as an orphan (see the module docstring). Outside
+        that layout, ``<filepath@>`` files lie outside the scanned sections.
         """
         return self._references("filepath_objects", verbose)
 
@@ -453,8 +472,9 @@ class GarbageCollector:
             # The schema section is {schema}/, where DataJoint 0.14 stored its
             # files and where <filepath@> files may lie. Hash and filepath
             # references count too, and files named as 0.14 named them, or
-            # directly under {schema}/, are never orphans.
-            covering = schema_paths_referenced | hash_paths_referenced | filepath_paths_referenced
+            # directly under {schema}/, are never orphans. A <filepath@> value
+            # is stored as written, so references are normalized before matching.
+            covering = _normalized(schema_paths_referenced | hash_paths_referenced | filepath_paths_referenced)
             orphaned_schema_paths = sorted(
                 p for p in schema_paths_stored if not _is_covered(p, covering) and not _kept_in_root_level_layout(p)
             )

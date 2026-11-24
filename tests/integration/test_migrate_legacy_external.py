@@ -824,6 +824,38 @@ def test_gc_root_level_layout_copy_on_both_backends(connection_by_backend, backe
         original.drop(prompt=False)
 
 
+def test_gc_root_level_layout_normalizes_filepath_references(connection_by_backend, backend, prefix, legacy_store):
+    """<filepath@> values stored with ./ or // still count as references to the files they read."""
+    dj.config.stores["legacy"]["schema_prefix"] = ""
+    schema = dj.Schema(f"{prefix}_gc_filepath_{backend}", connection=connection_by_backend)
+    db = schema.database
+
+    @schema
+    class Note(dj.Manual):
+        definition = """
+        note_id : int32
+        ---
+        note : <filepath@legacy>
+        """
+
+    try:
+        files = {f"{db}/sub/a.txt": b"a", f"{db}/sub/b.txt": b"b"}
+        for path, data in files.items():
+            (legacy_store / path).parent.mkdir(parents=True, exist_ok=True)
+            (legacy_store / path).write_bytes(data)
+        Note.insert([{"note_id": 1, "note": f"./{db}/sub/a.txt"}, {"note_id": 2, "note": f"{db}//sub/b.txt"}])
+
+        collector = GarbageCollector(schema, store="legacy")
+        assert collector.collect()["orphaned_schema_paths"] == []
+        stats = collector.collect(dry_run=False)
+        assert stats["deleted"] == 0
+        assert _014_files(legacy_store, db) == set(files)
+        assert (Note & {"note_id": 1}).fetch1("note").read() == b"a"
+        assert (Note & {"note_id": 2}).fetch1("note").read() == b"b"
+    finally:
+        schema.drop(prompt=False)
+
+
 def test_dry_run_needs_the_store(schema014):
     """A dry run looks files up, so the store must be configured."""
     del dj.config.stores["legacy"]
