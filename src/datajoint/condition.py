@@ -348,7 +348,7 @@ def make_condition(
     - ``numpy.void``: Like dict, from record array
     - ``pandas.DataFrame``: Converted to records, then OR-ed
     """
-    from .expression import Aggregation, QueryExpression, U
+    from .expression import Aggregation, QueryExpression, U, Union
 
     # Get adapter for backend-agnostic SQL generation
     adapter = query_expression.connection.adapter
@@ -490,7 +490,7 @@ def make_condition(
         columns.update(common_attributes)
         # A dj.Top limit stays inside a subquery: it applies to the expression's rows before
         # they are projected to the common attributes, and MySQL rejects LIMIT inside IN (...).
-        if isinstance(condition, Aggregation) or condition._top is not None:
+        if isinstance(condition, (Aggregation, Union)) or condition._top is not None:
             condition = condition.make_subquery()
         return (
             # without common attributes, any non-empty set matches everything
