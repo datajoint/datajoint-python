@@ -24,7 +24,7 @@ import re
 
 import networkx as nx
 
-from .condition import AndList
+from .condition import AndList, quoted_identifiers, strip_literals
 from .dependencies import extract_master, topo_sort
 from .errors import DataJointError
 from .table import Table, lookup_class_name
@@ -155,12 +155,12 @@ def _adaptive_style_block() -> str:
     return "<style>\n@media (prefers-color-scheme: dark) {\n" + body + "\n}\n</style>"
 
 
-def _has_subquery(condition):
+def _has_subquery(condition, backend="mysql"):
     """Whether a compiled restriction condition contains a subquery."""
     if not isinstance(condition, str):
         return False
-    text = re.sub(r"(\\\")|(\\\')", "", condition)  # escaped quotes
-    text = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", "", text)  # quoted text and identifiers
+    text = strip_literals(condition, backend)  # string literals, read with the backend's rules
+    text, _ = quoted_identifiers(text, backend)
     return re.search(r"\bselect\b", text, re.IGNORECASE) is not None
 
 
@@ -183,7 +183,9 @@ def _seed_restriction(table_expr):
     and sends them back as one condition, so a very large seed makes a large
     query; restrict by the keys in batches if that becomes a problem.
     """
-    if table_expr._top is not None or any(_has_subquery(c) for c in table_expr.restriction):
+    if table_expr._top is not None or any(
+        _has_subquery(c, table_expr.connection.adapter.backend) for c in table_expr.restriction
+    ):
         return AndList([table_expr.keys()]), set(table_expr.primary_key)
     # The seed's conditions are compiled SQL, with each % already escaped as %%
     # for the driver. The traversal applies them again through restrict(), which

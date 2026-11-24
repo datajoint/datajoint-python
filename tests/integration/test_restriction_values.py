@@ -155,6 +155,39 @@ def test_postgresql_list_values_without_standard_conforming_strings(item, backen
         connection.query(f"SET standard_conforming_strings = {setting}")
 
 
+QUOTED_STRING_VALUES = ["a\\'b", "x\\", "\\", "it's", 'he said "no"', 'a\\"b', "$$ c $$"]
+
+
+@pytest.mark.parametrize("value", QUOTED_STRING_VALUES)
+def test_string_restriction_with_quoted_literal(item, backend, value):
+    """A string restriction built with quote_string runs and matches the value (#1697)."""
+    item.insert1(dict(item_id=5, name=value))
+    adapter = item.connection.adapter
+    literal = adapter.quote_string(value)
+    name = adapter.quote_identifier("name")
+    assert ids(item & f"{name} = {literal}") == [5]
+    assert ids(item & f"{name} = {literal} AND item_id > 1") == [5]
+    assert ids(item - f"{name} = {literal}") == [1, 2, 3, 4]
+    assert ids(item & f"{name} <> {literal} AND item_id < 3") == [1, 2]
+    flags = item.proj(same=f"{name} = {literal}").to_arrays("same", order_by="item_id")
+    assert [bool(f) for f in flags] == [False] * 4 + [True]
+
+
+def test_string_restriction_with_backend_literals(item, backend):
+    """Literals in the backend's other quoting forms are skipped when reading column names."""
+    item.insert1(dict(item_id=5, name="x\\"))
+    if backend == "mysql":
+        assert ids(item & "`name` = 'x\\\\' AND item_id > 1") == [5]
+        assert ids(item & 'name = "say \\"hi\\"" AND item_id > 1') == [4]
+        assert ids(item & 'name = "say ""hi""" AND item_id > 1') == [4]
+        assert ids(item & "name = 'o\\'brien' AND item_id > 1") == [2]
+    else:
+        assert ids(item & "name = 'x\\' AND item_id > 1") == [5]
+        assert ids(item & "name = E'x\\\\' AND item_id > 1") == [5]
+        assert ids(item & "name = E'o\\'brien' AND item_id > 1") == [2]
+        assert ids(item & "name = $$o'brien$$ AND item_id > 1") == [2]
+
+
 NUMERIC_JSON_TYPES = {
     "mysql": ["unsigned", "signed", "decimal(4, 1)", "double", "float"],
     "postgresql": ["integer", "int", "bigint", "numeric(10,2)", "double precision", "real", "unsigned", "double"],
