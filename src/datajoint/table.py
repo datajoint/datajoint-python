@@ -1205,6 +1205,11 @@ class Table(QueryExpression):
             if transaction:
                 conn.cancel_transaction()
             raise
+        except BaseException:
+            # KeyboardInterrupt (Ctrl-C) or SystemExit while deleting
+            if transaction:
+                _cancel_interrupted_transaction(conn)
+            raise
 
         # Post-check part_integrity="enforce": roll back if a part table
         # had rows deleted without its master also having rows deleted.
@@ -1229,9 +1234,26 @@ class Table(QueryExpression):
         elif not transaction:
             logger.info("Delete completed")
         else:
-            if not prompt or user_choice("Commit deletes?", default="no") == "yes":
+            try:
+                confirmed = not prompt or user_choice("Commit deletes?", default="no") == "yes"
+            except BaseException:
+                # Ctrl-C (KeyboardInterrupt) or end of input (EOFError) at the prompt:
+                # roll back, so the connection is not left inside the transaction
+                _cancel_interrupted_transaction(conn)
+                raise
+            if confirmed:
                 if transaction:
-                    conn.commit_transaction()
+                    try:
+                        conn.commit_transaction()
+                    except BaseException as error:
+                        # Ctrl-C or an error during COMMIT: the server may or may not
+                        # have committed, and the connection may be out of step with it
+                        logger.warning(
+                            f"Committing the deletes failed or was interrupted ({error!r}); "
+                            "the server may or may not have committed them. Closing the connection."
+                        )
+                        _discard_transaction(conn)
+                        raise
                 if prompt:
                     logger.info("Delete committed.")
             else:
@@ -1669,6 +1691,39 @@ class Table(QueryExpression):
             row_to_insert["placeholders"] = list(row_to_insert["placeholders"][i] for i in order)
             row_to_insert["values"] = list(row_to_insert["values"][i] for i in order)
         return row_to_insert
+
+
+def _cancel_interrupted_transaction(conn):
+    """
+    Roll back the transaction that ``delete()`` opened, after an interruption.
+
+    If the rollback fails, as it can when Ctrl-C stopped a query partway, or is
+    itself interrupted, the connection is closed instead: the server then
+    discards the transaction. Either way the connection is left outside any
+    transaction, and the original interruption is what the caller sees.
+    """
+    try:
+        conn.cancel_transaction()
+    except BaseException as error:
+        logger.warning(f"Could not roll back the delete transaction ({error!r}); closing the connection.")
+        _discard_transaction(conn)
+
+
+def _discard_transaction(conn):
+    """
+    Close ``conn`` so that the server ends its open transaction, and mark the
+    connection as outside any transaction.
+
+    Without the reset, the next query would reconnect and then fail with
+    "Connection was lost during a transaction".
+    """
+    try:
+        conn.close()
+    except Exception as error:
+        # Already closed or broken: the server ends the transaction either way
+        logger.debug(f"Closing the connection failed ({error!r}).")
+    finally:
+        conn._in_transaction = False
 
 
 def _one_line(text):
