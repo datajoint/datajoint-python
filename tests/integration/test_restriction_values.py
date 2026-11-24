@@ -177,8 +177,6 @@ def test_json_types_in_restriction_and_projection(item, backend):
 
 
 def test_json_type_in_index_declaration(connection_by_backend, backend, prefix):
-    if backend == "postgresql":
-        pytest.skip("Indexes on JSON paths are not created on PostgreSQL (index name is derived from the expression)")
     schema = dj.Schema(f"{prefix}_restriction_values_index_{backend}", connection=connection_by_backend)
     numeric, text = NUMERIC_JSON_TYPES[backend][0], TEXT_JSON_TYPES[backend][0]
     try:
