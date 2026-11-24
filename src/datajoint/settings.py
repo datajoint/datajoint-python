@@ -109,8 +109,13 @@ _CONFIG_HINT = " To use it, pass its path to dj.config.load() or set " + CONFIG_
 
 
 def _is_foreign(uid: int) -> bool:
-    """True if ``uid`` is neither the current user nor root."""
-    return uid not in (os.getuid(), 0)
+    """True if ``uid`` is neither the effective user nor root."""
+    return uid not in (os.geteuid(), 0)
+
+
+def _note_foreign_file_used(path: Path, uid: int) -> None:
+    """Say at info level that a file found by searching, owned by another user, is used."""
+    logger.info(f"Using {path}, owned by another user (uid {uid}).")
 
 
 def _open_location(directory: Path) -> Path | None:
@@ -148,9 +153,13 @@ def _reject_foreign(path: Path, uid: int, directories: Iterable[Path], hint: str
     for directory in dict.fromkeys(directories):
         location = _open_location(directory)
         if location is not None:
-            logger.warning(
+            # Both a log record and a warning: a logging setup that hides warnings
+            # would otherwise leave no trace of why the settings were not applied.
+            message = (
                 f"Ignoring {path}: it is owned by another user (uid {uid}) and {location} is writable by all users.{hint}"
             )
+            logger.warning(message)
+            warnings.warn(message, UserWarning, stacklevel=2)
             return True
     return False
 
@@ -167,8 +176,9 @@ def _read_found_file(path: Path, hint: str = "") -> str | None:
     descriptor, and the contents are read from that descriptor. A world-writable
     file that is read produces a warning.
 
-    Platforms without POSIX ownership (``os.getuid`` absent, e.g. Windows) read
-    every file.
+    Platforms without POSIX ownership (``os.geteuid`` absent, e.g. Windows) read
+    every file. Ownership is compared with the effective user ID. Using a file
+    owned by another user is logged at info level.
 
     Parameters
     ----------
@@ -183,7 +193,7 @@ def _read_found_file(path: Path, hint: str = "") -> str | None:
         File contents, or None if the file is missing, not a regular file, or
         ignored.
     """
-    if not hasattr(os, "getuid"):
+    if not hasattr(os, "geteuid"):
         try:
             return path.read_text()
         except OSError:
@@ -211,8 +221,10 @@ def _read_found_file(path: Path, hint: str = "") -> str | None:
         st = os.fstat(f.fileno())
         if not stat.S_ISREG(st.st_mode):
             return None
-        if _is_foreign(st.st_uid) and _reject_foreign(path, st.st_uid, [found_in, resolved.parent], hint):
-            return None
+        if _is_foreign(st.st_uid):
+            if _reject_foreign(path, st.st_uid, [found_in, resolved.parent], hint):
+                return None
+            _note_foreign_file_used(path, st.st_uid)
         if st.st_mode & stat.S_IWOTH:
             logger.warning(f"{path} is writable by all users; restrict its permissions (e.g. chmod o-w).")
         return f.read()
@@ -227,7 +239,7 @@ def _use_found_dir(path: Path, hint: str = "") -> bool:
     world-writable directory with the sticky bit (such as a Kubernetes secret
     volume) produces no warning; one without it does.
     """
-    if not hasattr(os, "getuid"):
+    if not hasattr(os, "geteuid"):
         return path.is_dir()
     found_in = path.absolute().parent
     try:
@@ -243,6 +255,7 @@ def _use_found_dir(path: Path, hint: str = "") -> bool:
     if _is_foreign(st.st_uid):
         if _reject_foreign(path, st.st_uid, [found_in, Path(os.path.realpath(path)).parent], hint):
             return False
+        _note_foreign_file_used(path, st.st_uid)
     if st.st_mode & stat.S_IWOTH and not st.st_mode & stat.S_ISVTX:
         logger.warning(f"{path} is writable by all users; restrict its permissions (e.g. chmod o-w).")
     return True
@@ -633,6 +646,12 @@ class Config(BaseSettings):
     _config_path: Path | None = None
     _secrets_dir: Path | None = None
 
+    @field_validator("loglevel", mode="before")
+    @classmethod
+    def upper_case_loglevel(cls, v: Any) -> Any:
+        """Accept a log level in any case, as ``DJ_LOG_LEVEL=error``."""
+        return v.upper() if isinstance(v, str) else v
+
     @field_validator("loglevel", mode="after")
     @classmethod
     def set_logger_level(cls, v: str) -> str:
@@ -937,11 +956,17 @@ class Config(BaseSettings):
         with open(filepath) as f:
             text = f.read()
 
-        self._load_text(text, filepath)
+        self._load_text(text, filepath, log_level=logging.INFO)
 
-    def _load_text(self, text: str, filepath: Path) -> None:
-        """Apply the JSON settings in ``text``, read from ``filepath``."""
-        logger.info(f"Loading configuration from {filepath.absolute()}")
+    def _load_text(self, text: str, filepath: Path, log_level: int = logging.DEBUG) -> None:
+        """
+        Apply the JSON settings in ``text``, read from ``filepath``.
+
+        The file's path is logged at ``log_level``: ``INFO`` for an explicit
+        ``load()``, ``DEBUG`` for the file found at import, so that
+        ``import datajoint`` prints nothing at the default level.
+        """
+        logger.log(log_level, f"Loading configuration from {filepath.absolute()}")
         self._update_from_flat_dict(json.loads(text))
         self._config_path = filepath
 
