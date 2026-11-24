@@ -712,6 +712,118 @@ def test_gc_root_level_layout_keeps_migrated_files(schema014, legacy_store):
     assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
 
 
+def test_gc_root_level_layout_keeps_files_a_copy_references(schema014, copy014, legacy_store):
+    """Files under the original's name that only the migrated copy references stay when the original is collected."""
+    db, connection = schema014.database, schema014.connection
+    assert migrate_external(copy014, dry_run=False, legacy_database=db)["rows_migrated"] == 3
+    assert migrate_external(copy014, dry_run=False, finalize=True)["columns_migrated"] == 2
+    # The original no longer has 0.14 tables, so GC lists its section
+    connection.query(f"DROP TABLE `{db}`.`recording`")
+    connection.query(f"DROP TABLE `{db}`.`~external_legacy`")
+    stray = f"{db}/recording/rid=9/data_x1y2z3w4.npy"
+    (legacy_store / stray).parent.mkdir(parents=True)
+    (legacy_store / stray).write_bytes(b"x")
+    files = _014_files(legacy_store, db)
+    dj.config.stores["legacy"]["schema_prefix"] = ""
+
+    collector = GarbageCollector(schema014, store="legacy")
+    assert collector.collect()["orphaned_schema_paths"] == [stray]
+    collector.collect(dry_run=False)
+    assert _014_files(legacy_store, db) == files - {stray}
+    recording = _recording(copy014)
+    np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+    np.testing.assert_array_equal((recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
+    assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
+
+
+def test_gc_root_level_layout_copy_on_both_backends(connection_by_backend, backend, prefix, legacy_store):
+    """
+    A copy's migrated values point under the original's name. Collecting the
+    original alone keeps the 0.14-named and top-level files and the original's
+    own <filepath@> files; a file in a subfolder that only the copy references
+    is kept when the copy is collected too.
+    """
+    dj.config.stores["legacy"]["schema_prefix"] = ""
+    original = dj.Schema(f"{prefix}_gc_original_{backend}", connection=connection_by_backend)
+    copy = dj.Schema(f"{prefix}_gc_copy_{backend}", connection=connection_by_backend)
+    db = original.database
+
+    @original
+    class Note(dj.Manual):
+        definition = """
+        note_id : int32
+        ---
+        note : <filepath@legacy>
+        """
+
+    @copy
+    class Recording(dj.Manual):
+        definition = """
+        recording_id : int32
+        ---
+        signal = null : <blob@legacy>
+        report = null : <attach@legacy>
+        raw_file = null : <filepath@legacy>
+        """
+
+    def put(path, data):
+        (legacy_store / path).parent.mkdir(parents=True, exist_ok=True)
+        (legacy_store / path).write_bytes(data)
+
+    try:
+        signal = _md5(SIGNAL_BLOB)
+        signal_path = _legacy_path(db, signal, (2, 2))
+        report = _md5((REPORT_NAME + "\0").encode() + REPORT)
+        report_path = _legacy_path(db, report, (2, 2), REPORT_NAME)
+        counts_path = f"{db}/0123456789abcdefABCDEF0123456789abcdefABCDE"  # a blob 0.14 migrated from 0.11
+        note_path, raw_path = f"{db}/notes/readme.txt", f"{db}/acquisition/raw.dat"
+        stray = f"{db}/recording/rid=9/data_x1y2z3w4.npy"
+        for path, data in (
+            (signal_path, SIGNAL_BLOB),
+            (report_path, REPORT),
+            (counts_path, COUNTS_BLOB),
+            (note_path, b"notes"),
+            (raw_path, RAW),
+            (stray, b"x"),
+        ):
+            put(path, data)
+
+        Note.insert1({"note_id": 1, "note": note_path})
+        Recording.insert([{"recording_id": 1, "raw_file": raw_path}, {"recording_id": 2, "raw_file": None}])
+        quote = connection_by_backend.adapter.quote_identifier
+
+        def set_metadata(recording_id, column, metadata):
+            connection_by_backend.query(
+                f"UPDATE {Recording.full_table_name} SET {quote(column)} = %s WHERE {quote('recording_id')} = %s",
+                args=(json.dumps({"schema": db, "store": "legacy", **metadata}), recording_id),
+            )
+
+        set_metadata(1, "signal", {"hash": _legacy_hash(signal), "path": signal_path, "size": len(SIGNAL_BLOB)})
+        set_metadata(
+            1,
+            "report",
+            {"hash": _legacy_hash(report), "path": report_path, "size": len(REPORT), "attachment_name": REPORT_NAME},
+        )
+        set_metadata(2, "signal", {"hash": _legacy_hash(_md5(COUNTS_BLOB)), "path": counts_path, "size": len(COUNTS_BLOB)})
+        files = _014_files(legacy_store, db)
+
+        # The original alone: the file in a subfolder that only the copy references is listed
+        assert GarbageCollector(original, store="legacy").collect()["orphaned_schema_paths"] == [raw_path, stray]
+
+        collector = GarbageCollector(original, copy, store="legacy")
+        assert collector.collect()["orphaned_schema_paths"] == [stray]
+        collector.collect(dry_run=False)
+        assert _014_files(legacy_store, db) == files - {stray}
+        np.testing.assert_array_equal((Recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+        np.testing.assert_array_equal((Recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
+        assert Path((Recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
+        assert (Recording & {"recording_id": 1}).fetch1("raw_file").read() == RAW
+        assert (Note & {"note_id": 1}).fetch1("note").read() == b"notes"
+    finally:
+        copy.drop(prompt=False)
+        original.drop(prompt=False)
+
+
 def test_dry_run_needs_the_store(schema014):
     """A dry run looks files up, so the store must be configured."""
     del dj.config.stores["legacy"]

@@ -34,14 +34,31 @@ Both sections embed the schema name in every path, so garbage collection is
 **per-schema**: each schema is scanned against its own subtree only. Orphan
 detection is therefore confined to the collector's schemas — any subset of the
 schemas sharing a store may be collected safely, and GC never touches another
-schema's objects or user-managed content elsewhere in the store.
+schema's objects or user-managed content elsewhere in the store. The root-level
+layout, below, is the exception.
 
-Files migrated from DataJoint 0.14 stay where 0.14 stored them,
-``{database}/...``, which is inside the schema section when a store uses the
-root-level layout (``schema_prefix=""``). GC never deletes them there: a file
-that a migrated row references counts as referenced, a file named as 0.14 named
-its blobs and attachments is never an orphan, and the section of a schema that
-still has 0.14 ``~external_*`` tracking tables is not listed at all.
+Root-level layout (``schema_prefix=""``). Files migrated from DataJoint 0.14
+stay where 0.14 stored them, ``{database}/...``, which is then inside the schema
+section, and ``<filepath@>`` files may lie there too. In this layout only, GC
+keeps these files:
+
+- a file that a hash reference (such as a migrated ``<blob@>`` or ``<attach@>``
+  value) or a ``<filepath@>`` reference points to counts as referenced;
+- a file named as 0.14 named blobs and attachments (32 hex digits, optionally
+  followed by ``.`` and a name) is never an orphan;
+- a file directly under ``{schema}/``, with no subfolder, is never an orphan.
+  2.x schema-addressed paths are ``{schema}/{table}/...``, so such a file is a
+  0.14 file stored without subfolding or a blob that 0.14 had migrated from 0.11;
+- the section of a schema that still has 0.14 ``~external_*`` tracking tables is
+  not listed at all, and the schema is reported under ``skipped_schemas``.
+
+GC reads references only from the schemas it collects, in the store it
+collects. A file in a subfolder of ``{schema}/`` that is not named as 0.14
+named its files, and that only rows of other schemas reference (for example a
+``<filepath@>`` file referenced from another schema), is still listed as an
+orphan. Pass every schema whose rows reference files in the store, such as a
+copy migrated with ``legacy_database``, to the same collector, and preview
+with ``dry_run=True`` before deleting.
 
 See Also
 --------
@@ -69,6 +86,18 @@ _BASE32_HASH = re.compile(r"^[a-z2-7]{26}$")
 # and an attachment by that digest, a dot, and the attachment's name, under
 # ``{database}/``. These files can sit inside the root-level schema section.
 _LEGACY_014_NAME = re.compile(r"^[0-9a-f]{32}(\..+)?$")
+
+
+def _kept_in_root_level_layout(path: str) -> bool:
+    """
+    Return True for a root-level schema-section file that GC never treats as an orphan.
+
+    That is a file named as 0.14 named its blobs and attachments, or a file
+    directly under ``{schema}/`` (``{schema}/{name}``). 2.x schema-addressed
+    paths are ``{schema}/{table}/...``, so a file with no subfolder is a 0.14
+    file stored without subfolding, or a blob that 0.14 had migrated from 0.11.
+    """
+    return path.count("/") == 1 or bool(_LEGACY_014_NAME.match(path.rsplit("/", 1)[-1]))
 
 
 def _is_covered(path: str, referenced: set[str]) -> bool:
@@ -171,6 +200,24 @@ class GarbageCollector:
         """
         return self._references("schema_objects", verbose)
 
+    def filepath_references(self, verbose: bool = False) -> set[str]:
+        """
+        Store paths that ``<filepath@>`` columns of live rows across this
+        collector's schemas point to, filtered to this collector's store.
+
+        GC never deletes ``<filepath@>`` files. It reads these references only
+        in the root-level layout (``schema_prefix=""``), where such a file may
+        lie inside a schema section.
+        """
+        return self._references("filepath_objects", verbose)
+
+    @staticmethod
+    def _attribute_names(heading, heading_attr: str) -> list[str]:
+        if heading_attr == "filepath_objects":
+            return [k for k, v in heading.attributes.items() if getattr(v.codec, "name", "") == "filepath"]
+        # Classification lives on the heading — one source of truth.
+        return getattr(heading, heading_attr)
+
     def _references(self, heading_attr: str, verbose: bool) -> set[str]:
         referenced: set[str] = set()
         for schema in self.schemas:
@@ -179,8 +226,7 @@ class GarbageCollector:
             for table_name in schema.list_tables():
                 try:
                     table = schema.get_table(table_name)
-                    # Classification lives on the heading — one source of truth.
-                    for attr_name in getattr(table.heading, heading_attr):
+                    for attr_name in self._attribute_names(table.heading, heading_attr):
                         attr = table.heading.attributes[attr_name]
                         if verbose:
                             logger.info(f"  Scanning {table_name}.{attr_name}")
@@ -261,7 +307,9 @@ class GarbageCollector:
         datajoint/datajoint-python#1487). Such a store should set
         ``schema_prefix=""`` so writes and this walk use the root-level layout
         consistently; otherwise those objects remain readable but outside the
-        scanned section.
+        scanned section. In that layout the section ``{schema}/`` can also hold
+        files migrated from DataJoint 0.14 and ``<filepath@>`` files;
+        :meth:`collect` keeps the ones the module docstring lists.
 
         Returns a dict mapping each object file's relative path to size.
         """
@@ -366,20 +414,27 @@ class GarbageCollector:
           dry_run) / errors / dry_run
         - skipped_schemas: schemas whose root-level section was not listed
           because they still have DataJoint 0.14 tracking tables
+
+        In the root-level layout (``schema_prefix=""``), files migrated from
+        DataJoint 0.14 and ``<filepath@>`` files can lie in a schema section;
+        the module docstring lists the files GC keeps there and the case it
+        does not cover. Preview with ``dry_run=True`` before deleting.
         """
         self._scan_errors = []  # reset per-call; populated by list_*_paths below
-        # References can be gathered across all schemas at once: because paths
-        # embed the schema, a file under schema X is only ever covered by an X
-        # reference, so combined coverage equals per-schema coverage.
+        # References are gathered across all schemas at once, so a file that any
+        # collected schema references is kept. 2.x paths embed their schema, so
+        # for them combined coverage equals per-schema coverage.
         hash_paths_referenced = self.hash_references(verbose=verbose)
         schema_paths_referenced = self.schema_references(verbose=verbose)
+        root_level = not self._schema_prefix
+        filepath_paths_referenced = self.filepath_references(verbose=verbose) if root_level else set()
 
         hash_paths_stored: dict[str, int] = {}
         schema_paths_stored: dict[str, int] = {}
         skipped_schemas: list[str] = []
         for schema in self.schemas:
             hash_paths_stored.update(self.list_hash_paths(schema.database))
-            if not self._schema_prefix and self._has_legacy_tracking_tables(schema):
+            if root_level and self._has_legacy_tracking_tables(schema):
                 # Root-level layout: {schema}/ is also where DataJoint 0.14 kept
                 # this schema's files. Their references are in 0.14 tables that
                 # GC does not read, so the section is not listed at all.
@@ -393,15 +448,18 @@ class GarbageCollector:
 
         orphaned_hash_paths = sorted(set(hash_paths_stored.keys()) - hash_paths_referenced)
         # Coverage, not exact set difference: a referenced path may be a
-        # directory-valued object (many files + a manifest sidecar). Hash
-        # references count too: metadata migrated from DataJoint 0.14 points to
-        # files where 0.14 stored them, which in the root-level layout lie
-        # inside the schema section. Files named as 0.14 named them are never
-        # orphans here, whether or not a row references them.
-        covering = schema_paths_referenced | hash_paths_referenced
-        orphaned_schema_paths = sorted(
-            p for p in schema_paths_stored if not _is_covered(p, covering) and not _LEGACY_014_NAME.match(p.rsplit("/", 1)[-1])
-        )
+        # directory-valued object (many files + a manifest sidecar).
+        if root_level:
+            # The schema section is {schema}/, where DataJoint 0.14 stored its
+            # files and where <filepath@> files may lie. Hash and filepath
+            # references count too, and files named as 0.14 named them, or
+            # directly under {schema}/, are never orphans.
+            covering = schema_paths_referenced | hash_paths_referenced | filepath_paths_referenced
+            orphaned_schema_paths = sorted(
+                p for p in schema_paths_stored if not _is_covered(p, covering) and not _kept_in_root_level_layout(p)
+            )
+        else:
+            orphaned_schema_paths = sorted(p for p in schema_paths_stored if not _is_covered(p, schema_paths_referenced))
 
         hash_paths_deleted = 0
         schema_paths_deleted = 0
