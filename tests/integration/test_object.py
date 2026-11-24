@@ -749,6 +749,38 @@ class TestStagedInsert:
 
         table.delete()
 
+    def test_staged_insert_part_table_matches_insert1(self, schema_obj, mock_object_storage):
+        """Ensure real part tables use the same paths and stores as insert1."""
+
+        @schema_obj
+        class StagedSession(dj.Manual):
+            definition = """
+            session_id: int
+            """
+
+            class Item(dj.Part):
+                definition = """
+                -> master
+                item_id: int
+                ---
+                data_file: <object@>
+                """
+
+        StagedSession.insert1({"session_id": 1})
+        StagedSession.Item.insert1({"session_id": 1, "item_id": 1, "data_file": b"regular contents"})
+        with StagedSession.Item.staged_insert1 as staged:
+            staged.rec.update(session_id=1, item_id=2)
+            with staged.open("data_file", ".dat") as destination:
+                destination.write(b"staged contents")
+
+        regular = (StagedSession.Item & {"item_id": 1}).fetch1("data_file")
+        staged_obj = (StagedSession.Item & {"item_id": 2}).fetch1("data_file")
+
+        assert staged_obj.path.split("/")[:3] == regular.path.split("/")[:3]
+        assert staged_obj.path.split("/")[2] == StagedSession.Item.table_name == "staged_session__item"
+        assert staged_obj.store == regular.store == "local"
+        assert staged_obj.read() == b"staged contents"
+
     def test_staged_insert_exception_cleanup(self, schema_obj, mock_object_storage):
         """Test that staged insert cleans up on exception."""
         table = ObjectFile()
@@ -848,7 +880,7 @@ class TestStagedInsert:
             key={"file_id": 801},
             context={
                 "schema": table.database,
-                "table": table.class_name,
+                "table": table.table_name,
                 "field": "data_file",
                 "config": table.connection._config,
             },
@@ -891,7 +923,7 @@ class TestStagedInsert:
             key={"folder_id": 803},
             context={
                 "schema": table_folder.database,
-                "table": table_folder.class_name,
+                "table": table_folder.table_name,
                 "field": "data_folder",
                 "config": table_folder.connection._config,
             },

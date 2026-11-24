@@ -106,6 +106,7 @@ class StagedInsert:
 
         config = self._table.connection._config
         try:
+            store_name = config.resolve_store_name(store_name)
             spec = config.get_store_spec(store_name)
         except DataJointError:
             raise DataJointError("Storage is not configured. Set stores.default and stores.<name> settings in datajoint.json.")
@@ -114,7 +115,7 @@ class StagedInsert:
 
         relative_path, token = build_object_path(
             schema=self._table.database,
-            table=self._table.class_name,
+            table=self._table.table_name,
             field=field,
             primary_key=primary_key,
             ext=ext if ext else None,
