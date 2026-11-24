@@ -18,10 +18,12 @@ import datajoint as dj
 from datajoint.errors import DataJointError
 from datajoint.hash_registry import compute_hash, get_hash
 from datajoint import migrate as dj_migrate
+from datajoint.gc import GarbageCollector
 from datajoint.migrate import (
     _legacy_hash,
     _legacy_path,
     copy_table_data,
+    create_parallel_schema,
     migrate_external,
     migrate_external_pointers_v2,
     migrate_filepath,
@@ -502,6 +504,8 @@ def test_rerun_repairs_columns_finalized_by_earlier_release(schema014):
         )
         connection.query(f"ALTER TABLE `{db}`.`recording` CHANGE COLUMN `{column}_v2` `{column}` JSON COMMENT '{comment}'")
 
+    preview = migrate_external(schema014, dry_run=True)
+    assert all(detail["nullable"] for detail in preview["details"])
     result = migrate_external(schema014, dry_run=False)
     assert {detail["action"] for detail in result["details"]} == {"repair"}
     assert result["rows_migrated"] == 3
@@ -510,6 +514,16 @@ def test_rerun_repairs_columns_finalized_by_earlier_release(schema014):
     np.testing.assert_array_equal((recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
     assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
     assert recording.heading.attributes["signal"].comment == "raw signal"
+
+    # The earlier finalize dropped NOT NULL, and repair cannot know it was there.
+    assert recording.heading.attributes["signal"].nullable
+    # The guide's statement restores it.
+    connection.query(
+        f"ALTER TABLE `{db}`.`recording` MODIFY COLUMN `signal` JSON NOT NULL COMMENT ':<blob@legacy>:raw signal'"
+    )
+    recording = _recording(schema014)
+    assert not recording.heading.attributes["signal"].nullable
+    np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
 
 
 def test_finalize_refuses_without_v2_columns(schema014):
@@ -532,6 +546,170 @@ def test_filepath_without_contents_hash(schema014):
     assert preview["details"][0]["problems"] == []
     _migrate(schema014)
     assert (_recording(schema014) & {"recording_id": 1}).fetch1("raw_file").read() == RAW
+
+
+def test_null_subfolding_means_the_014_default(schema014):
+    """The 2.x configuration template writes "subfolding": null; 0.14's default (2, 2) applies."""
+    dj.config.stores["legacy"]["subfolding"] = None
+    _migrate(schema014)
+    np.testing.assert_array_equal((_recording(schema014) & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+
+
+@pytest.fixture
+def copy014(schema014):
+    """A copy of the 0.14 schema made with create_parallel_schema; its files stay under the original name."""
+    db, connection = schema014.database, schema014.connection
+    copy_db = f"{db}_copy"
+    connection.query(f"DROP DATABASE IF EXISTS `{copy_db}`")
+    result = create_parallel_schema(db, copy_db, copy_data=True, connection=connection)
+    assert set(result["tables"]) == {"recording", "~external_legacy"}
+    yield dj.Schema(copy_db, connection=connection)
+    connection.query(f"DROP DATABASE IF EXISTS `{copy_db}`")
+
+
+def test_parallel_schema_copies_014_schema(schema014, copy014):
+    """The tracking table sorts last; the copy's foreign keys point to the copy's own tracking table."""
+    connection = copy014.connection
+    referenced = connection.query(
+        "SELECT DISTINCT REFERENCED_TABLE_SCHEMA, REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE "
+        "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'recording' AND REFERENCED_TABLE_NAME IS NOT NULL",
+        args=(copy014.database,),
+    ).fetchall()
+    assert referenced == ((copy014.database, "~external_legacy"),)
+    assert len(_recording(copy014)) == 2
+    assert connection.query("SELECT @@SESSION.foreign_key_checks").fetchone()[0] == 1
+
+
+def test_parallel_schema_keeps_percent_in_comments(schema014, connection_test):
+    db = schema014.database
+    connection_test.query(
+        f"ALTER TABLE `{db}`.`recording` MODIFY `report` binary(16) DEFAULT NULL COMMENT %s",
+        args=(":attach@legacy:report, 100% done",),
+    )
+    try:
+        create_parallel_schema(db, f"{db}_copy", connection=connection_test)
+        comment = connection_test.query(
+            "SELECT COLUMN_COMMENT FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'recording' AND COLUMN_NAME = 'report'",
+            args=(f"{db}_copy",),
+        ).fetchone()[0]
+        assert comment == ":attach@legacy:report, 100% done"
+    finally:
+        connection_test.query(f"DROP DATABASE IF EXISTS `{db}_copy`")
+
+
+def test_copy_needs_the_original_database_name(schema014, copy014):
+    """On a copy, blob and attachment files are found under the original name, given as legacy_database."""
+    with pytest.raises(DataJointError, match="legacy_database"):
+        migrate_external(copy014, dry_run=False)
+
+    assert verify_external_integrity(copy014, legacy_database=schema014.database)["missing"] == []
+    preview = migrate_external(copy014, dry_run=True, legacy_database=schema014.database)
+    assert all(detail["problems"] == [] for detail in preview["details"])
+    assert migrate_external(copy014, dry_run=False, legacy_database=schema014.database)["rows_migrated"] == 3
+    assert migrate_filepath(copy014, dry_run=False)["rows_migrated"] == 1
+    assert migrate_external(copy014, dry_run=False, finalize=True)["columns_migrated"] == 2
+    assert migrate_filepath(copy014, dry_run=False, finalize=True)["columns_migrated"] == 1
+
+    recording = _recording(copy014)
+    np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+    np.testing.assert_array_equal((recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
+    assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
+    assert (recording & {"recording_id": 1}).fetch1("raw_file").read() == RAW
+    stored = copy014.connection.query(
+        f"SELECT `signal` FROM `{copy014.database}`.`recording` WHERE recording_id = 1"
+    ).fetchone()[0]
+    assert json.loads(stored)["path"].startswith(f"{schema014.database}/")
+
+
+def test_pointers_v2_on_a_copy(schema014, copy014, raw_store):
+    for attribute in ("signal", "report"):
+        with pytest.raises(DataJointError, match="legacy_database"):
+            _pointers_v2(copy014, attribute, dest_store=raw_store)
+        migrate_external_pointers_v2(
+            schema=copy014.database,
+            table="recording",
+            attribute=attribute,
+            source_store="legacy",
+            dest_store=raw_store,
+            connection=copy014.connection,
+            legacy_database=schema014.database,
+        )
+    recording = _recording(copy014)
+    np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+    assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
+
+
+def test_copy_table_data_from_a_copy(schema014, copy014, raw_store):
+    """copy_table_data uses the source's name unless legacy_database names the original."""
+    v2 = _schema_v2(copy014)
+    try:
+        with pytest.raises(DataJointError, match="legacy_database"):
+            copy_table_data(copy014.database, v2.database, "recording", connection=copy014.connection)
+        result = copy_table_data(
+            copy014.database,
+            v2.database,
+            "recording",
+            connection=copy014.connection,
+            legacy_database=schema014.database,
+        )
+        assert result["rows_copied"] == 2
+        recording = dj.FreeTable(v2.connection, f"`{v2.database}`.`recording`")
+        np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+        assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
+    finally:
+        v2.drop(prompt=False)
+
+
+def _014_files(legacy_store, db):
+    return {str(path.relative_to(legacy_store)) for path in (legacy_store / db).rglob("*") if path.is_file()}
+
+
+def test_gc_root_level_layout_skips_schema_with_tracking_tables(schema014, legacy_store):
+    """With schema_prefix="", {database}/ holds the 0.14 files; GC does not list it while 0.14 tables remain."""
+    _migrate(schema014)
+    db = schema014.database
+    files = _014_files(legacy_store, db)
+    dj.config.stores["legacy"]["schema_prefix"] = ""
+
+    collector = GarbageCollector(schema014, store="legacy")
+    stats = collector.collect(dry_run=False)
+    assert stats["skipped_schemas"] == [db]
+    assert stats["orphaned_schema_paths"] == [] and stats["deleted"] == 0
+    assert _014_files(legacy_store, db) == files
+    np.testing.assert_array_equal((_recording(schema014) & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+
+
+def test_gc_root_level_layout_keeps_migrated_files(schema014, legacy_store):
+    """Without the tracking tables, migrated files count as referenced and 0.14 names are never orphans."""
+    _migrate(schema014)
+    db, connection = schema014.database, schema014.connection
+    constraints = connection.query(
+        "SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE "
+        "WHERE TABLE_SCHEMA = %s AND REFERENCED_TABLE_NAME = '~external_legacy'",
+        args=(db,),
+    ).fetchall()
+    for table_name, constraint in constraints:
+        connection.query(f"ALTER TABLE `{db}`.`{table_name}` DROP FOREIGN KEY `{constraint}`")
+    connection.query(f"DROP TABLE `{db}`.`~external_legacy`")
+
+    # A 0.14 blob that no row references, and a file in the root-level layout that nothing references
+    unreferenced = _legacy_path(db, _md5(b"unreferenced"), (2, 2))
+    stray = f"{db}/recording/rid=9/data_x1y2z3w4.npy"
+    for path in (unreferenced, stray):
+        (legacy_store / path).parent.mkdir(parents=True, exist_ok=True)
+        (legacy_store / path).write_bytes(b"x")
+    files = _014_files(legacy_store, db)
+    dj.config.stores["legacy"]["schema_prefix"] = ""
+
+    collector = GarbageCollector(schema014, store="legacy")
+    assert collector.collect()["orphaned_schema_paths"] == [stray]
+    collector.collect(dry_run=False)
+    assert _014_files(legacy_store, db) == files - {stray}
+    recording = _recording(schema014)
+    np.testing.assert_array_equal((recording & {"recording_id": 1}).fetch1("signal"), SIGNAL)
+    np.testing.assert_array_equal((recording & {"recording_id": 2}).fetch1("signal"), COUNTS)
+    assert Path((recording & {"recording_id": 1}).fetch1("report")).read_bytes() == REPORT
 
 
 def test_dry_run_needs_the_store(schema014):

@@ -36,6 +36,13 @@ detection is therefore confined to the collector's schemas — any subset of the
 schemas sharing a store may be collected safely, and GC never touches another
 schema's objects or user-managed content elsewhere in the store.
 
+Files migrated from DataJoint 0.14 stay where 0.14 stored them,
+``{database}/...``, which is inside the schema section when a store uses the
+root-level layout (``schema_prefix=""``). GC never deletes them there: a file
+that a migrated row references counts as referenced, a file named as 0.14 named
+its blobs and attachments is never an orphan, and the section of a schema that
+still has 0.14 ``~external_*`` tracking tables is not listed at all.
+
 See Also
 --------
 datajoint.builtin_codecs : Codec implementations for object storage types.
@@ -57,6 +64,11 @@ logger = logging.getLogger(__name__.split(".")[0])
 
 # Base32 content-hash filename: 26 lowercase alphanumeric chars.
 _BASE32_HASH = re.compile(r"^[a-z2-7]{26}$")
+
+# DataJoint 0.14 named an in-store blob by the hex MD5 digest of its contents,
+# and an attachment by that digest, a dot, and the attachment's name, under
+# ``{database}/``. These files can sit inside the root-level schema section.
+_LEGACY_014_NAME = re.compile(r"^[0-9a-f]{32}(\..+)?$")
 
 
 def _is_covered(path: str, referenced: set[str]) -> bool:
@@ -277,6 +289,18 @@ class GarbageCollector:
             self._scan_errors.append(f"list_schema_paths({schema_name}): {e}")
         return stored
 
+    @staticmethod
+    def _has_legacy_tracking_tables(schema: "Schema") -> bool:
+        """Return True if the schema has DataJoint 0.14 ``~external_<store>`` tracking tables."""
+        if schema.connection.adapter.backend != "mysql":
+            return False  # DataJoint 0.14 ran on MySQL only
+        return bool(
+            schema.connection.query(
+                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME LIKE %s",
+                args=(schema.database, "~external\\_%"),
+            ).fetchone()[0]
+        )
+
     # ------------------------------------------------------------------ #
     # Deletion
     # ------------------------------------------------------------------ #
@@ -340,6 +364,8 @@ class GarbageCollector:
         - orphaned_schema_paths: orphaned schema files as full relative store paths
         - hash_paths_deleted / schema_paths_deleted / deleted / bytes_freed (0 when
           dry_run) / errors / dry_run
+        - skipped_schemas: schemas whose root-level section was not listed
+          because they still have DataJoint 0.14 tracking tables
         """
         self._scan_errors = []  # reset per-call; populated by list_*_paths below
         # References can be gathered across all schemas at once: because paths
@@ -350,14 +376,32 @@ class GarbageCollector:
 
         hash_paths_stored: dict[str, int] = {}
         schema_paths_stored: dict[str, int] = {}
+        skipped_schemas: list[str] = []
         for schema in self.schemas:
             hash_paths_stored.update(self.list_hash_paths(schema.database))
+            if not self._schema_prefix and self._has_legacy_tracking_tables(schema):
+                # Root-level layout: {schema}/ is also where DataJoint 0.14 kept
+                # this schema's files. Their references are in 0.14 tables that
+                # GC does not read, so the section is not listed at all.
+                logger.warning(
+                    f"Not listing {schema.database}/ in store {self.store or 'default'}: the schema has "
+                    f"DataJoint 0.14 tracking tables (~external_*), and its 0.14 files share this folder."
+                )
+                skipped_schemas.append(schema.database)
+                continue
             schema_paths_stored.update(self.list_schema_paths(schema.database))
 
         orphaned_hash_paths = sorted(set(hash_paths_stored.keys()) - hash_paths_referenced)
         # Coverage, not exact set difference: a referenced path may be a
-        # directory-valued object (many files + a manifest sidecar).
-        orphaned_schema_paths = sorted(p for p in schema_paths_stored if not _is_covered(p, schema_paths_referenced))
+        # directory-valued object (many files + a manifest sidecar). Hash
+        # references count too: metadata migrated from DataJoint 0.14 points to
+        # files where 0.14 stored them, which in the root-level layout lie
+        # inside the schema section. Files named as 0.14 named them are never
+        # orphans here, whether or not a row references them.
+        covering = schema_paths_referenced | hash_paths_referenced
+        orphaned_schema_paths = sorted(
+            p for p in schema_paths_stored if not _is_covered(p, covering) and not _LEGACY_014_NAME.match(p.rsplit("/", 1)[-1])
+        )
 
         hash_paths_deleted = 0
         schema_paths_deleted = 0
@@ -415,5 +459,6 @@ class GarbageCollector:
             "bytes_freed": bytes_freed,
             "errors": errors,
             "scan_errors": list(self._scan_errors),
+            "skipped_schemas": skipped_schemas,
             "dry_run": dry_run,
         }

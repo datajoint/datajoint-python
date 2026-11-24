@@ -944,6 +944,8 @@ def _find_columns_finalized_earlier(schema: Schema, kinds: tuple[str, ...]) -> l
 #   serialized bytes in `contents_hash`.
 #
 # Subfolders come from the store's `subfolding` setting, (2, 2) unless set.
+# The path starts with the name of the database 0.14 wrote the file from. For a
+# copy of a 0.14 schema, that is the original database, not the copy.
 # This layout is the same from 0.14.0 through 0.14.10.
 LEGACY_SUBFOLDING = (2, 2)
 
@@ -953,15 +955,18 @@ def _legacy_subfolding(store_name: str, config=None) -> tuple[int, ...]:
     Return the subfolding 0.14 used for a store.
 
     This is the store's own ``subfolding`` setting, or 0.14's default of (2, 2)
-    when it has none. The raw setting is read because 2.x defaults to no
-    subfolding. ``config`` defaults to the global settings.
+    when it has none. A setting of ``null`` (``None``), which the 2.x
+    configuration template writes, counts as none. An explicit list wins,
+    including ``[]`` for a 0.14 store that turned subfolding off. The raw
+    setting is read because 2.x defaults to no subfolding. ``config``
+    defaults to the global settings.
     """
     if config is None:
         from .settings import config
 
     spec = config.stores.get(store_name)
-    if isinstance(spec, Mapping) and "subfolding" in spec:
-        return tuple(spec["subfolding"] or ())
+    if isinstance(spec, Mapping) and spec.get("subfolding") is not None:
+        return tuple(spec["subfolding"])
     return LEGACY_SUBFOLDING
 
 
@@ -999,6 +1004,7 @@ def _plan_legacy_references(
     store_name: str,
     dest_store: str | None = None,
     where_clause: str | None = None,
+    legacy_database: str | None = None,
 ) -> tuple[dict[bytes, dict], list[str]]:
     """
     Build the 2.x metadata for each 0.14 reference in one column.
@@ -1018,6 +1024,9 @@ def _plan_legacy_references(
         looked up through this store, so it must point at the 0.14 location.
     where_clause : str, optional
         Only plan the rows of the table that match this SQL condition.
+    legacy_database : str, optional
+        The database that 0.14 put blob and attachment files under. Defaults to
+        ``database``. For a copy of a 0.14 schema, this is the original.
 
     Returns
     -------
@@ -1029,6 +1038,7 @@ def _plan_legacy_references(
     from .hash_registry import get_store_backend
 
     dest_store = dest_store or store_name
+    legacy_database = legacy_database or database
     config = getattr(connection, "_config", None)  # the config reads resolve stores with
     backend = get_store_backend(dest_store, config=config)
     subfolding = _legacy_subfolding(dest_store, config)
@@ -1059,12 +1069,12 @@ def _plan_legacy_references(
             # contents_hash may be NULL (0.14.7+ skips it for large files); it is not needed
             path, digest = filepath, None
         elif kind == "attach":
-            path = None if attachment_name is None else _legacy_path(database, reference, subfolding, attachment_name)
+            path = None if attachment_name is None else _legacy_path(legacy_database, reference, subfolding, attachment_name)
             digest = reference
         elif filepath:  # a blob migrated from 0.11
             path, digest = filepath, contents_hash
         else:
-            path, digest = _legacy_path(database, reference, subfolding), reference
+            path, digest = _legacy_path(legacy_database, reference, subfolding), reference
         if path is None or (kind != "filepath" and digest is None):
             problems.append(f"{label}: the tracking row in ~external_{store_name} is incomplete")
             continue
@@ -1090,7 +1100,7 @@ def _plan_legacy_references(
             metadata[reference] = {
                 "hash": _legacy_hash(bytes(digest)),
                 "path": path,
-                "schema": database,
+                "schema": legacy_database,
                 "store": dest_store,
                 "size": size,
             }
@@ -1099,12 +1109,19 @@ def _plan_legacy_references(
     return metadata, problems
 
 
+_COPY_HINT = (
+    "If this schema is a copy of a 0.14 schema, pass legacy_database='<original database name>': "
+    "0.14 put blob and attachment files under the name of the database it wrote them from."
+)
+
+
 def _refuse_problems(where: str, problems: list[str], what: str = "reference(s) cannot be converted") -> None:
     """Raise if any problem was found. Called before anything is changed."""
     if problems:
         listed = "\n  ".join(problems[:10])
         more = f"\n  ... and {len(problems) - 10} more" if len(problems) > 10 else ""
-        raise DataJointError(f"Cannot migrate {where}: {len(problems)} {what}. Nothing was changed.\n  {listed}{more}")
+        hint = f"\n{_COPY_HINT}" if any(": no file at " in problem for problem in problems) else ""
+        raise DataJointError(f"Cannot migrate {where}: {len(problems)} {what}. Nothing was changed.\n  {listed}{more}{hint}")
 
 
 def _unreadable_rows(connection, database: str, table_name: str, reference_column: str, column: str, kind: str) -> int:
@@ -1225,6 +1242,13 @@ def _repair_column(connection, database: str, col: dict, comment: str, metadata:
     connection.query(
         f"ALTER TABLE {table} MODIFY COLUMN `{column_name}` JSON {null} COMMENT {_comment_literal(connection, comment)}"
     )
+    if col["nullable"]:
+        # The earlier release's finalize made every column nullable; the 0.14 setting is lost.
+        logger.warning(
+            f"{database}.{table_name}.{column_name} stays nullable. If it was required in 0.14, "
+            f"restore NOT NULL by hand, for example: ALTER TABLE {table} MODIFY COLUMN `{column_name}` "
+            f"JSON NOT NULL COMMENT <the column's comment>"
+        )
     return connection.query(f"SELECT COUNT(*) FROM {table} WHERE `{column_name}` IS NOT NULL").fetchone()[0]
 
 
@@ -1247,7 +1271,9 @@ def _finalize_problems(connection, database: str, col: dict) -> list[str]:
     return problems
 
 
-def _migrate_legacy_columns(schema: Schema, kinds: tuple[str, ...], dry_run: bool, finalize: bool) -> dict:
+def _migrate_legacy_columns(
+    schema: Schema, kinds: tuple[str, ...], dry_run: bool, finalize: bool, legacy_database: str | None = None
+) -> dict:
     """Run ``migrate_external`` (blob, attach) or ``migrate_filepath`` (filepath)."""
     connection = schema.connection
     database = schema.database
@@ -1326,7 +1352,9 @@ def _migrate_legacy_columns(schema: Schema, kinds: tuple[str, ...], dry_run: boo
                 continue
             mode = "rewrite"  # written by an earlier release, with values 2.x cannot read
         detail = new_detail(col, "rewrite" if mode == "rewrite" else "migrate")
-        metadata, problems = _plan_legacy_references(connection, database, table_name, column_name, kind, col["store_name"])
+        metadata, problems = _plan_legacy_references(
+            connection, database, table_name, column_name, kind, col["store_name"], legacy_database=legacy_database
+        )
         jobs.append((mode, col, column_name, detail, metadata, problems))
     for col in repairs:
         detail = new_detail(col, "repair")
@@ -1337,6 +1365,7 @@ def _migrate_legacy_columns(schema: Schema, kinds: tuple[str, ...], dry_run: boo
             f"{col['column_name']}_v1",
             col["external_type"],
             col["store_name"],
+            legacy_database=legacy_database,
         )
         jobs.append(("repair", col, f"{col['column_name']}_v1", detail, metadata, problems))
 
@@ -1348,6 +1377,8 @@ def _migrate_legacy_columns(schema: Schema, kinds: tuple[str, ...], dry_run: boo
             detail["rows"] = count
             detail["problems"] = problems
             detail["status"] = "dry_run"
+            if mode == "repair" and col["nullable"]:
+                detail["nullable"] = True  # an earlier release's finalize dropped NOT NULL; repair keeps it so
             verb = {"add": "migrate", "rewrite": "rewrite", "repair": "repair"}[mode]
             logger.info(f"Would {verb} {detail['table']}.{col['column_name']}: {count} rows, store={col['store_name']}")
             for problem in problems:
@@ -1404,6 +1435,7 @@ def migrate_external(
     schema: Schema,
     dry_run: bool = True,
     finalize: bool = False,
+    legacy_database: str | None = None,
 ) -> dict:
     """
     Migrate external storage columns from 0.x to 2.0 format.
@@ -1430,6 +1462,11 @@ def migrate_external(
     finalize : bool, optional
         If True, rename the original columns to `_v1` and the migrated columns
         to the original names. Only run after verifying the migration. Default False.
+    legacy_database : str, optional
+        The name of the database 0.14 wrote the files from. 0.14 put blob and
+        attachment files under it: ``{database}/{subfolders}/{hex digest}``.
+        Defaults to the schema's own name. Set it when migrating a copy of a
+        0.14 schema, for example one made with ``create_parallel_schema``.
 
     Returns
     -------
@@ -1476,13 +1513,16 @@ def migrate_external(
     A rerun skips `_v2` columns that already hold readable metadata. It
     rewrites `_v2` columns written by an earlier 2.x release, whose values 2.x
     cannot read. It also repairs columns that an earlier release finalized:
-    the values are rewritten from the references kept in `<name>_v1`.
+    the values are rewritten from the references kept in `<name>_v1`. That
+    release's finalize made every column nullable and did not keep the 0.14
+    setting, so a repaired column stays nullable; restore NOT NULL by hand
+    where the column was required.
 
     Finalizing checks first that every `_v2` column exists and holds readable
     metadata, and changes nothing otherwise. The migrated column keeps the
     original column's nullability.
     """
-    return _migrate_legacy_columns(schema, ("blob", "attach"), dry_run, finalize)
+    return _migrate_legacy_columns(schema, ("blob", "attach"), dry_run, finalize, legacy_database)
 
 
 # =============================================================================
@@ -1610,7 +1650,7 @@ def check_store_configuration(schema: Schema) -> dict:
     return result
 
 
-def verify_external_integrity(schema: Schema, store_name: str = None) -> dict:
+def verify_external_integrity(schema: Schema, store_name: str = None, legacy_database: str | None = None) -> dict:
     """
     Check that all external references point to existing files.
 
@@ -1623,6 +1663,10 @@ def verify_external_integrity(schema: Schema, store_name: str = None) -> dict:
         The DataJoint schema to check.
     store_name : str, optional
         Specific store to check. If None, checks all stores.
+    legacy_database : str, optional
+        The name of the database 0.14 wrote the files from, under which it put
+        blob and attachment files. Defaults to the schema's own name. Set it
+        for a copy of a 0.14 schema.
 
     Returns
     -------
@@ -1704,7 +1748,9 @@ def verify_external_integrity(schema: Schema, store_name: str = None) -> dict:
 
             # Filepaths (and blobs migrated from 0.11) record their path; blobs and
             # attachments are stored at a path derived from their hash.
-            relative_path = filepath or _legacy_path(schema.database, bytes(digest), subfolding, attachment_name)
+            relative_path = filepath or _legacy_path(
+                legacy_database or schema.database, bytes(digest), subfolding, attachment_name
+            )
             if location:
                 full_path = os.path.join(location, relative_path)
             else:
@@ -1951,6 +1997,15 @@ def create_parallel_schema(
     >>> result = create_parallel_schema('my_pipeline', 'my_pipeline_v20')
     >>> print(f"Created {result['tables_created']} tables")
 
+    Notes
+    -----
+    The copy is made with foreign key checks off for the session, because
+    tables are created in name order. With ``copy_data=True``, a 0.14 schema's
+    in-store columns are copied as they are, with its ``~external_*`` tables:
+    the copy is still in the 0.14 layout. Its files stay under the source's
+    name, so pass ``legacy_database=source`` to ``migrate_external`` or
+    ``migrate_external_pointers_v2`` when migrating the copy.
+
     See Also
     --------
     copy_table_data : Copy data between schemas
@@ -1980,24 +2035,34 @@ def create_parallel_schema(
         "tables": [],
     }
 
-    for table in tables:
-        # Get CREATE TABLE statement from source
-        create_stmt = connection.query(f"SHOW CREATE TABLE `{source}`.`{table}`").fetchone()[1]
+    # Tables are created in name order, so a table can come before the tables
+    # its foreign keys reference, such as the 0.14 `~external_*` tables, which
+    # sort last. Foreign key checks are off for this session while the tables
+    # are created and filled; the source rows already satisfy the constraints.
+    checks = connection.query("SELECT @@SESSION.foreign_key_checks").fetchone()[0]
+    connection.query("SET SESSION foreign_key_checks = 0")
+    try:
+        for table in tables:
+            # Get CREATE TABLE statement from source
+            create_stmt = connection.query(f"SHOW CREATE TABLE `{source}`.`{table}`").fetchone()[1]
 
-        # Replace schema name in CREATE statement
-        create_stmt = create_stmt.replace(f"CREATE TABLE `{table}`", f"CREATE TABLE `{dest}`.`{table}`")
+            # Replace schema name in CREATE statement. References to tables in
+            # the same database are unqualified, so they resolve in `dest`.
+            create_stmt = create_stmt.replace(f"CREATE TABLE `{table}`", f"CREATE TABLE `{dest}`.`{table}`")
 
-        # Create table in destination
-        connection.query(create_stmt)
+            # Create table in destination (`%` doubled: queries are formatted with their arguments)
+            connection.query(create_stmt.replace("%", "%%"))
 
-        result["tables_created"] += 1
-        result["tables"].append(table)
+            result["tables_created"] += 1
+            result["tables"].append(table)
 
-        # Copy data if requested
-        if copy_data:
-            connection.query(f"INSERT INTO `{dest}`.`{table}` SELECT * FROM `{source}`.`{table}`")
+            # Copy data if requested
+            if copy_data:
+                connection.query(f"INSERT INTO `{dest}`.`{table}` SELECT * FROM `{source}`.`{table}`")
 
-        logger.info(f"Created {dest}.{table}")
+            logger.info(f"Created {dest}.{table}")
+    finally:
+        connection.query(f"SET SESSION foreign_key_checks = {int(checks)}")
 
     logger.info(f"Created {result['tables_created']} tables in {dest}")
 
@@ -2005,7 +2070,12 @@ def create_parallel_schema(
 
 
 def _plan_copy_conversions(
-    connection, source_schema: str, dest_schema: str, table: str, where_clause: str | None
+    connection,
+    source_schema: str,
+    dest_schema: str,
+    table: str,
+    where_clause: str | None,
+    legacy_database: str | None = None,
 ) -> dict[str, dict[bytes, dict]]:
     """
     Plan the conversion of the 0.14 in-store columns that ``copy_table_data`` copies.
@@ -2046,16 +2116,25 @@ def _plan_copy_conversions(
             )
         dest_store = match.group(1) or config.resolve_store_name(None, use_filepath_default=kind == "filepath")
         metadata, column_problems = _plan_legacy_references(
-            connection, source_schema, table, column_name, kind, store_name, dest_store, where_clause=where_clause
+            connection,
+            source_schema,
+            table,
+            column_name,
+            kind,
+            store_name,
+            dest_store,
+            where_clause=where_clause,
+            legacy_database=legacy_database,
         )
         conversions[column_name] = metadata
         problems += column_problems
     if problems:
         listed = "\n  ".join(problems[:10])
         more = f"\n  ... and {len(problems) - 10} more" if len(problems) > 10 else ""
+        hint = f"\n{_COPY_HINT}" if any(": no file at " in problem for problem in problems) else ""
         raise DataJointError(
             f"Cannot copy {source_schema}.{table}: {len(problems)} reference(s) cannot be converted. "
-            f"Nothing was copied.\n  {listed}{more}"
+            f"Nothing was copied.\n  {listed}{more}{hint}"
         )
     return conversions
 
@@ -2131,6 +2210,7 @@ def copy_table_data(
     limit: int | None = None,
     where_clause: str | None = None,
     connection=None,
+    legacy_database: str | None = None,
 ) -> dict:
     """
     Copy data from production table to test table.
@@ -2149,6 +2229,10 @@ def copy_table_data(
         SQL WHERE clause for filtering (without 'WHERE' keyword)
     connection : Connection, optional
         Database connection. If None, uses default connection.
+    legacy_database : str, optional
+        The name of the database 0.14 wrote the source's files from. Defaults
+        to ``source_schema``. Set it when the source is itself a copy of a 0.14
+        schema.
 
     Returns
     -------
@@ -2179,7 +2263,9 @@ def copy_table_data(
     where they are. Every referenced file is looked up before anything is
     copied; if one has no row in the source's ``~external_<store>`` table or is
     missing, the copy raises and copies nothing. The rows are then copied in a
-    single statement.
+    single statement. 0.14 put blob and attachment files under the name of the
+    database it wrote them from, which is ``source_schema`` unless
+    ``legacy_database`` is given.
     """
     import time
     from . import conn as get_conn
@@ -2189,7 +2275,7 @@ def copy_table_data(
 
     start_time = time.time()
 
-    conversions = _plan_copy_conversions(connection, source_schema, dest_schema, table, where_clause)
+    conversions = _plan_copy_conversions(connection, source_schema, dest_schema, table, where_clause, legacy_database)
     if conversions:
         _copy_with_conversions(connection, source_schema, dest_schema, table, conversions, where_clause, limit)
     else:
@@ -2508,13 +2594,15 @@ def migrate_external_pointers_v2(
     dest_store: str,
     copy_files: bool = False,
     connection=None,
+    legacy_database: str | None = None,
 ) -> dict:
     """
     Convert one 0.14 in-store column to 2.0 format, in place.
 
     Use it on a table still in the 0.14 layout, for example in a copy made with
     ``create_parallel_schema(..., copy_data=True)``, to convert one column and
-    name a different 2.0 store. File copying (``copy_files``) is not
+    name a different 2.0 store. On a copy, pass the original schema's name as
+    ``legacy_database``. File copying (``copy_files``) is not
     implemented yet: the metadata points to the existing files.
 
     To copy a 0.14 table into a table declared by DataJoint 2.0, use
@@ -2537,6 +2625,10 @@ def migrate_external_pointers_v2(
         If False (default), JSON points to existing files.
     connection : Connection, optional
         Database connection. If None, uses default connection.
+    legacy_database : str, optional
+        The name of the database 0.14 wrote the files from. 0.14 put blob and
+        attachment files under it. Defaults to ``schema``. Set it on a copy of
+        a 0.14 schema.
 
     Returns
     -------
@@ -2548,14 +2640,14 @@ def migrate_external_pointers_v2(
 
     Examples
     --------
-    >>> # Migrate pointers without moving files
+    >>> # Migrate pointers without moving files, in a copy of 'my_pipeline'
     >>> result = migrate_external_pointers_v2(
     ...     schema='my_pipeline_v2',
     ...     table='recording',
     ...     attribute='signal',
     ...     source_store='external-raw',
     ...     dest_store='raw',
-    ...     copy_files=False
+    ...     legacy_database='my_pipeline',
     ... )
     >>> print(f"Migrated {result['rows_migrated']} pointers")
 
@@ -2623,7 +2715,9 @@ def migrate_external_pointers_v2(
         if _column_exists(connection, schema, table, attribute + suffix):
             raise DataJointError(f"Cannot migrate {label}: {attribute}{suffix} already exists. Nothing was changed.")
 
-    metadata, problems = _plan_legacy_references(connection, schema, table, attribute, kind, source_store, dest_store)
+    metadata, problems = _plan_legacy_references(
+        connection, schema, table, attribute, kind, source_store, dest_store, legacy_database=legacy_database
+    )
     _refuse_problems(label, problems)
 
     if copy_files:

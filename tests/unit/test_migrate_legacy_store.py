@@ -73,8 +73,14 @@ class TestLegacySubfolding:
         config = Config()
         config.stores["legacy"] = {"protocol": "file", "location": "/data", "subfolding": [3]}
         assert _legacy_subfolding("legacy", config) == (3,)
-        config.stores["legacy"] = {"protocol": "file", "location": "/data", "subfolding": None}
+        config.stores["legacy"] = {"protocol": "file", "location": "/data", "subfolding": []}
         assert _legacy_subfolding("legacy", config) == ()
+
+    def test_null_setting_is_unset(self):
+        # The 2.x configuration template writes "subfolding": null.
+        config = Config()
+        config.stores["legacy"] = {"protocol": "file", "location": "/data", "subfolding": None}
+        assert _legacy_subfolding("legacy", config) == (2, 2)
 
 
 class TestMigratedAttachmentRead:
