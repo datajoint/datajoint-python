@@ -19,11 +19,14 @@ To run only unit tests (no Docker required):
 import logging
 import os
 from os import remove
+from pathlib import Path
 from typing import Dict, List
 
 import certifi
 import pytest
 import urllib3
+from hypothesis import settings
+from hypothesis.database import DirectoryBasedExampleDatabase
 
 import datajoint as dj
 from datajoint.errors import DataJointError
@@ -33,6 +36,26 @@ from . import schema_uuid as schema_uuid_module
 from . import schema_type_aliases as schema_type_aliases_module
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Hypothesis Profiles
+# =============================================================================
+# Select a profile with HYPOTHESIS_PROFILE=dev|ci|thorough. Without it, the
+# profile is "ci" when the CI environment variable is set (GitHub Actions sets
+# it) and "dev" otherwise. The example counts are for the model-level
+# properties (tests/unit/test_expand_spec.py); property tests that run against
+# a database set their own, smaller max_examples.
+#   dev       fast local runs
+#   ci        500 examples, the same examples on every run
+#   thorough  2000 random examples; failing examples are saved under
+#             .hypothesis/ (gitignored) and replayed first on the next run.
+#             Run it before each Diagram.expand merge and before a release tag.
+_HYPOTHESIS_DB = DirectoryBasedExampleDatabase(str(Path(__file__).resolve().parent.parent / ".hypothesis" / "examples"))
+settings.register_profile("dev", max_examples=50, deadline=None, database=_HYPOTHESIS_DB)
+settings.register_profile("ci", max_examples=500, derandomize=True, deadline=None, database=None, print_blob=True)
+settings.register_profile("thorough", max_examples=2000, deadline=None, database=_HYPOTHESIS_DB)
+settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE") or ("ci" if os.environ.get("CI") else "dev"))
 
 
 # =============================================================================

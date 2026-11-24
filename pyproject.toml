@@ -102,6 +102,7 @@ datajoint = "datajoint.cli:cli"
 test = [
   "pytest",
   "pytest-cov",
+  "hypothesis",
   "requests",
   "faker",
   "matplotlib",
@@ -123,6 +124,7 @@ viz = ["matplotlib", "ipython"]
 test = [
   "pytest",
   "pytest-cov",
+  "hypothesis",
   "requests",
   "faker",
   "matplotlib",
@@ -140,6 +142,7 @@ dev = [
   # including test
   "pytest",
   "pytest-cov",
+  "hypothesis",
   "polars>=0.20.0",
   "pyarrow>=14.0.0",
 ]
