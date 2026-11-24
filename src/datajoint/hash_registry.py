@@ -265,7 +265,8 @@ def get_hash(metadata: dict[str, Any], config: Config | None = None) -> bytes:
     Parameters
     ----------
     metadata : dict
-        Metadata dict with keys: path, hash, store (optional).
+        Metadata dict with keys: path, hash, store (optional), and
+        attachment_name (only on attachments migrated from DataJoint 0.14).
     config : Config, optional
         Config instance. If None, falls back to global settings.config.
 
@@ -280,6 +281,13 @@ def get_hash(metadata: dict[str, Any], config: Config | None = None) -> bytes:
         If content is not found at the stored path.
     DataJointError
         If hash verification fails (data corruption).
+
+    Notes
+    -----
+    DataJoint 0.14 stored an attachment's contents alone in its file, and hashed
+    the attachment name, a NUL byte, and the contents. Those are the bytes that
+    ``<attach>`` stores, so for a migrated attachment the name is put back in
+    front of the contents before the hash is checked.
     """
     path = metadata["path"]
     expected_hash = metadata["hash"]
@@ -287,6 +295,9 @@ def get_hash(metadata: dict[str, Any], config: Config | None = None) -> bytes:
 
     backend = get_store_backend(store_name, config=config)
     data = backend.get_buffer(path)
+    attachment_name = metadata.get("attachment_name")
+    if attachment_name is not None:
+        data = attachment_name.encode("utf-8") + b"\x00" + data
 
     # Verify hash for integrity
     actual_hash = compute_hash(data)
