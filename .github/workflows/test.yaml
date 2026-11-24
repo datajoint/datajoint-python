@@ -39,10 +39,9 @@ jobs:
         # >=3.10,<3.16) and the previous newest release; version-pinned pixi
         # environments live in pyproject.toml under [tool.pixi.environments].
         environment: [test-py310, test-py314, test-py315]
-        # MySQL: exercise both LTS lines we support / that AWS RDS runs. 8.0 uses
-        # the datajoint image (SSL configured); 8.4 uses the official image (TLS
-        # tests already skip outside external containers). See #1497.
-        mysql-image: ["datajoint/mysql:8.0", "mysql:8.4"]
+        # MySQL: exercise both LTS lines we support / that AWS RDS runs, on the
+        # official images (TLS certificates generated on first start). See #1497.
+        mysql-image: ["mysql:8.0", "mysql:8.4"]
     name: test (${{ matrix.environment }}, mysql=${{ matrix.mysql-image }})
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
