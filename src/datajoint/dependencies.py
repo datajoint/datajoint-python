@@ -16,6 +16,14 @@ import networkx as nx
 from .errors import DataJointError
 
 
+# A part table's full name: `schema`.`master__part` (MySQL) or "schema"."master__part"
+# (PostgreSQL). The schema name may hold any character except the quote that encloses it,
+# such as a hyphen. (Schema names with a dot are not supported: full table names are split
+# into schema and table at the dot.) Table names are generated from class names and hold
+# only word characters, with an optional tier prefix (#, _, __).
+_PART_TABLE = re.compile(r'(?P<master>(?P<q>[`"])(?:(?!(?P=q)).)+(?P=q)\.(?P=q)#?\w+)__\w+(?P=q)')
+
+
 def extract_master(part_table: str) -> str | None:
     r"""
     Extract master table name from a part table name.
@@ -30,10 +38,7 @@ def extract_master(part_table: str) -> str | None:
     str or None
         Master table name if part_table is a part table, None otherwise.
     """
-    # Match both MySQL backticks and PostgreSQL double quotes
-    # MySQL: `schema`.`master__part`
-    # PostgreSQL: "schema"."master__part"
-    match = re.match(r'(?P<master>(?P<q>[`"])[\w]+(?P=q)\.(?P=q)#?[\w]+)__[\w]+(?P=q)', part_table)
+    match = _PART_TABLE.match(part_table)
     if match:
         q = match["q"]
         return match["master"] + q
