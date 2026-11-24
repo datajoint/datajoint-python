@@ -171,8 +171,9 @@ def test_expression_index_is_skipped(schema_indexes):
 
 
 class Ordered(dj.Manual):
-    # Declared index order differs from index-name order, and the order of
-    # index names differs between backends.
+    # The order of index names differs between backends: MySQL lists INDEX (a, c)
+    # first and PostgreSQL lists INDEX (a_b) first. On PostgreSQL, index-name
+    # order also differs from declared order.
     definition = """
     ordered_id : int32
     ---
@@ -184,12 +185,33 @@ class Ordered(dj.Manual):
     """
 
 
-def test_alter_ignores_index_order(schema_indexes, monkeypatch):
+class Unsorted(dj.Manual):
+    # Declared index order differs from index-name order on both backends:
+    # index(z) is declared first, and its name sorts after that of index(a).
+    definition = """
+    unsorted_id : int32
+    ---
+    a : int32
+    z : int32
+    index(z)
+    index(a)
+    """
+
+
+@pytest.mark.parametrize(
+    "table, expected",
+    [
+        (Ordered, ["INDEX (a, c)", "INDEX (a_b)"]),
+        (Unsorted, ["INDEX (a)", "INDEX (z)"]),
+    ],
+    ids=["ordered", "unsorted"],
+)
+def test_alter_ignores_index_order(schema_indexes, monkeypatch, table, expected):
     """alter() with an unchanged definition does not depend on index order."""
-    schema_indexes(Ordered)
-    connection = Ordered.connection
-    described = [line for line in Ordered().describe().splitlines() if "INDEX" in line]
-    assert sorted(" ".join(line.split()) for line in described) == ["INDEX (a, c)", "INDEX (a_b)"]
+    schema_indexes(table)
+    connection = table.connection
+    described = [line for line in table().describe().splitlines() if "INDEX" in line]
+    assert sorted(" ".join(line.split()) for line in described) == expected
     statements = []
     query = connection.query
 
@@ -198,6 +220,6 @@ def test_alter_ignores_index_order(schema_indexes, monkeypatch):
         return query(sql, *args, **kwargs)
 
     monkeypatch.setattr(connection, "query", recording_query)
-    Ordered.alter(prompt=False)
+    table.alter(prompt=False)
     monkeypatch.undo()
     assert not [s for s in statements if s.lstrip().upper().startswith(("ALTER", "COMMENT", "CREATE", "DROP"))]
