@@ -345,6 +345,38 @@ class PostgreSQLAdapter(DatabaseAdapter):
         escaped = value.replace("'", "''")
         return f"'{escaped}'"
 
+    def quote_comment(self, comment: str) -> str:
+        """
+        Quote a table or column comment as a PostgreSQL string literal.
+
+        A comment without a backslash is quoted with ``quote_string``. A comment
+        with a backslash is written as an ``E'...'`` literal with each backslash
+        doubled. That form reads the same whether or not
+        ``standard_conforming_strings`` is on, so the stored comment is the
+        declared text under either setting.
+
+        Parameters
+        ----------
+        comment : str
+            Comment text as declared.
+
+        Returns
+        -------
+        str
+            Quoted and escaped string literal.
+
+        Examples
+        --------
+        >>> adapter.quote_comment("it's")
+        "'it''s'"
+        >>> adapter.quote_comment("a\\\\b")
+        "E'a\\\\\\\\b'"
+        """
+        if "\\" not in comment:
+            return self.quote_string(comment)
+        escaped = comment.replace("\\", "\\\\").replace("'", "''")
+        return f"E'{escaped}'"
+
     def get_master_table_name(self, part_table: str) -> str | None:
         """Extract master table name from part table (PostgreSQL double-quote format)."""
         import re
@@ -665,7 +697,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
             COMMENT ON statement.
         """
         comment_type = object_type.upper()
-        return f"COMMENT ON {comment_type} {object_name} IS {self.quote_string(comment)}"
+        return f"COMMENT ON {comment_type} {object_name} IS {self.quote_comment(comment)}"
 
     # =========================================================================
     # DML Generation
@@ -1355,9 +1387,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         >>> adapter.table_comment_ddl('"schema"."table"', 'test comment')
         'COMMENT ON TABLE "schema"."table" IS \\'test comment\\''
         """
-        # Escape single quotes by doubling them
-        escaped_comment = comment.replace("'", "''")
-        return f"COMMENT ON TABLE {full_table_name} IS '{escaped_comment}'"
+        return f"COMMENT ON TABLE {full_table_name} IS {self.quote_comment(comment)}"
 
     def column_comment_ddl(self, full_table_name: str, column_name: str, comment: str) -> str | None:
         """
@@ -1369,9 +1399,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         'COMMENT ON COLUMN "schema"."table"."column" IS \\'test comment\\''
         """
         quoted_col = self.quote_identifier(column_name)
-        # Escape single quotes by doubling them (PostgreSQL string literal syntax)
-        escaped_comment = comment.replace("'", "''")
-        return f"COMMENT ON COLUMN {full_table_name}.{quoted_col} IS '{escaped_comment}'"
+        return f"COMMENT ON COLUMN {full_table_name}.{quoted_col} IS {self.quote_comment(comment)}"
 
     def enum_type_ddl(self, type_name: str, values: list[str]) -> str | None:
         """

@@ -151,15 +151,21 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         Generate SQL clause for this attribute in CREATE TABLE.
 
         Used for declaring foreign keys in referencing tables.
-        Default values are not included.
+        Default values are not included. The clause uses MySQL syntax, and the
+        comment is quoted with ``MySQLAdapter.quote_comment``.
 
         Returns
         -------
         str
             SQL attribute declaration.
         """
-        return '`{name}` {type} NOT NULL COMMENT "{comment}"'.format(
-            name=self.name, type=self.sql_type, comment=self.sql_comment
+        from .adapters import get_adapter
+
+        adapter = get_adapter("mysql")
+        return "{name} {type} NOT NULL COMMENT {comment}".format(
+            name=adapter.quote_identifier(self.name),
+            type=self.sql_type,
+            comment=adapter.quote_comment(self.sql_comment),
         )
 
     @property

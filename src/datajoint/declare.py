@@ -1052,7 +1052,7 @@ def alter(
         # For MySQL: COMMENT="new comment"
         # For PostgreSQL: would need COMMENT ON TABLE, but that's not an ALTER TABLE clause
         # Keep MySQL syntax for now (ALTER TABLE ... COMMENT="...")
-        sql.append(f'COMMENT="{table_comment}"')
+        sql.append(f"COMMENT={adapter.quote_comment(table_comment)}")
     return sql, [e for e in external_stores if e not in external_stores_], pre_ddl, column_comments
 
 
@@ -1262,8 +1262,6 @@ def compile_attribute(
                 match["default"] = f"NOT NULL DEFAULT '{default_val}'"
         else:
             match["default"] = "NOT NULL"
-
-    match["comment"] = match["comment"].replace('"', '\\"')  # escape double quotes in comment
 
     if match["comment"].startswith(":"):
         raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
