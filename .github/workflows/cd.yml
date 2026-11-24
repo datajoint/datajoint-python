@@ -1,0 +1,192 @@
+name: CD
+
+# Pull requests and pushes to master build the package. A release is an
+# annotated tag vX.Y.Z on master whose message is the release notes: pushing it
+# checks the tag, runs the lint and test workflows, publishes the package built
+# at the tag to PyPI (hatch-vcs takes the version from the tag), and creates the
+# GitHub release with the tag's message as its notes. See RELEASE_MEMO.md.
+#
+# PyPI trusted publishing is bound to this file's name and to the pypi
+# environment, so neither can be renamed without updating the publisher on PyPI.
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - master
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+concurrency:
+  # A fixed name, not github.workflow: workflows this one calls see the
+  # caller's name there, and a called run that took the caller's group would
+  # deadlock.
+  group: CD-${{ github.ref }}
+  # A newer push replaces a build in progress; a release is never cancelled.
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: 3
+
+jobs:
+  dist:
+    name: Distribution build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Full history and tags, so hatch-vcs derives the version.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Builds the sdist and wheel once, checks them (twine check, wheel
+      # contents), and uploads them as the "Packages" artifact that the publish
+      # and release jobs use. v3 pins the full version deliberately.
+      - uses: hynek/build-and-inspect-python-package@67230f7b8410ae0052b39c1efc89d89fff43ff10 # v3.0.2
+
+  check:
+    name: Check the release tag
+    # Only a pushed tag releases; a manual run on a tag ref builds without publishing.
+    if: github.ref_type == 'tag' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the tag
+        id: check
+        # Also fails if the tag no longer points at the commit this run builds.
+        run: .github/scripts/check_release_tag.sh "$GITHUB_REF_NAME" master
+
+  lint:
+    needs: [check]
+    if: needs.check.outputs.publish == 'true'
+    uses: ./.github/workflows/lint.yaml
+
+  test:
+    needs: [check]
+    if: needs.check.outputs.publish == 'true'
+    uses: ./.github/workflows/test.yaml
+
+  publish:
+    name: Publish to PyPI
+    needs: [dist, check, lint, test]
+    if: github.ref_type == 'tag' && needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    # The pypi environment requires a maintainer's approval before this job runs.
+    environment: pypi
+    permissions:
+      contents: read
+      # Trusted publishing to PyPI and the build provenance attestation.
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: Packages
+          path: dist
+
+      - name: Check the built version
+        run: |
+          version="${TAG#v}"
+          for file in dist/*; do
+            case "$(basename "$file")" in
+              "datajoint-$version-"*.whl | "datajoint-$version.tar.gz") ;;
+              *) echo "::error::$file does not carry version $version"; exit 1 ;;
+            esac
+          done
+
+      - name: Attest the build provenance of the sdist and wheel
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: "dist/*"
+
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+
+  release:
+    name: Create the GitHub release
+    needs: [publish]
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to create the GitHub release.
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the tag object
+        # actions/checkout can store an annotated tag as a lightweight ref.
+        run: |
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+          commit="$(git rev-parse "refs/tags/$TAG^{commit}")"
+          if [[ "$commit" != "$GITHUB_SHA" ]]; then
+            echo "::error::$TAG now points to $commit, not to $GITHUB_SHA, which this run published."
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: Packages
+          path: dist
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The tag message is the notes; a signed tag's signature block is left out.
+          git for-each-ref "refs/tags/$TAG" --format='%(contents)' \
+            | sed '/^-----BEGIN PGP SIGNATURE-----$/,$d' > "$RUNNER_TEMP/notes.md"
+          title="DataJoint Library ${TAG#v}"
+          # Mark the release Latest only if it is the highest version, so a later
+          # patch on an older line does not displace a newer release.
+          highest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
+          latest=false
+          [[ "$TAG" == "$highest" ]] && latest=true
+          # Update a release that already exists (a re-run, or one created on
+          # GitHub), so that re-running this job is safe.
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --verify-tag --draft=false --title "$title" \
+              --latest="$latest" --notes-file "$RUNNER_TEMP/notes.md"
+            gh release upload "$TAG" --clobber dist/*
+          else
+            gh release create "$TAG" --verify-tag --title "$title" \
+              --latest="$latest" --notes-file "$RUNNER_TEMP/notes.md" dist/*
+          fi
+
+  notify:
+    name: Post the release to Slack
+    needs: [release]
+    runs-on: ubuntu-latest
+    # The release is done by now; a failed notification does not fail the run.
+    continue-on-error: true
+    steps:
+      - uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "*New Release Published!* :tada: \n*Repository:* ${{ github.repository }}\n*Version:* ${{ github.ref_name }}\n*URL:* ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*New Release Published!* :tada:\n*Repository:* ${{ github.repository }}\n*Version:* ${{ github.ref_name }}\n*URL:* <${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}|View Release>"
+                  }
+                }
+              ]
+            }

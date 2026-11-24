@@ -12,6 +12,8 @@ on:
       - "**" # every branch
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
+  # The CD workflow (cd.yml) runs this as the gate of a release.
+  workflow_call:
 jobs:
   lint:
     runs-on: ubuntu-latest
