@@ -59,6 +59,8 @@ services:
       args:
         PY_VER: ${PY_VER:-3.10}
         HOST_UID: ${HOST_UID:-1000}
+        # Package version installed in the image; the build has no .git to read it from
+        DJ_BUILD_VERSION: ${DJ_BUILD_VERSION:-0.0.0+docker}
     depends_on:
       db:
         condition: service_healthy
