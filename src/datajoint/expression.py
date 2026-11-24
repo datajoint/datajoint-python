@@ -1180,10 +1180,23 @@ class QueryExpression:
             Number of elements in the result set.
         """
         result = self.make_subquery() if self._top else copy.copy(self)
+        adapter = result.connection.adapter
+        if not result.primary_key:
+            if not result._distinct:
+                # No primary key, e.g. a table created outside DataJoint: its rows need not
+                # be unique, so count every row rather than distinct keys. A projection onto
+                # no attributes (``table.proj()``) returns one empty row per row as well.
+                query = f"SELECT count(*) FROM {result.from_clause()}{result.where_clause()}"
+                return result.connection.query(query).fetchone()[0]
+            if not result.heading.names:
+                # Deduplicated, with no attributes at all (``dj.U() & table``): at most one row
+                return int(bool(result))
+            # Deduplicated, with attributes (``(dj.U() & table).proj(one="1")``): count its rows
+            alias = adapter.quote_identifier(f"${next(self._subquery_alias_count):x}")
+            return result.connection.query(f"SELECT count(*) FROM ({result.make_sql()}) {alias}").fetchone()[0]
         has_left_join = any(is_left for is_left, _ in result._joins)
 
         # Build COUNT query - PostgreSQL requires different syntax for multi-column DISTINCT
-        adapter = result.connection.adapter
         if has_left_join or len(result.primary_key) > 1:
             # Use subquery with DISTINCT for multi-column primary keys (backend-agnostic)
             fields = result.heading.as_sql(result.primary_key, include_aliases=False, adapter=adapter)
@@ -1381,41 +1394,38 @@ class Aggregation(QueryExpression):
     def make_sql(self, fields=None):
         adapter = self.connection.adapter
         fields = self.heading.as_sql(fields or self.heading.names, adapter=adapter)
-        assert self._grouping_attributes or not self.restriction
         distinct = set(self.heading.names) == set(self.primary_key)
+        # Without grouping attributes (``dj.U().aggr(...)``), the whole input is one group.
+        group_by = (
+            " GROUP BY {}".format(", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes))
+            if self._grouping_attributes
+            else ""
+        )
+        conditions = ")AND(".join(str(s) for s in self.restriction)
 
         # PostgreSQL doesn't allow column aliases in HAVING clause (SQL standard).
         # For PostgreSQL with restrictions, wrap aggregation in subquery and use WHERE.
-        use_subquery_for_having = adapter.backend == "postgresql" and self.restriction and self._grouping_attributes
-
-        if use_subquery_for_having:
+        if adapter.backend == "postgresql" and self.restriction:
             # Generate inner query without HAVING
             inner_sql = "SELECT {distinct}{fields} FROM {from_}{where}{group_by}".format(
                 distinct="DISTINCT " if distinct else "",
                 fields=fields,
                 from_=self.from_clause(),
                 where=self.where_clause(),
-                group_by=" GROUP BY {}".format(", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes)),
+                group_by=group_by,
             )
             # Wrap in subquery with WHERE for the HAVING conditions
             subquery_alias = adapter.quote_identifier(f"_aggr{next(self._subquery_alias_count)}")
-            outer_where = " WHERE (%s)" % ")AND(".join(self.restriction)
-            return f"SELECT * FROM ({inner_sql}) AS {subquery_alias}{outer_where}{self.sorting_clauses()}"
+            return f"SELECT * FROM ({inner_sql}) AS {subquery_alias} WHERE ({conditions}){self.sorting_clauses()}"
         else:
-            # MySQL path: use HAVING directly
-            return "SELECT {distinct}{fields} FROM {from_}{where}{group_by}{sorting}".format(
+            # MySQL path: use HAVING directly, which MySQL also accepts without GROUP BY
+            return "SELECT {distinct}{fields} FROM {from_}{where}{group_by}{having}{sorting}".format(
                 distinct="DISTINCT " if distinct else "",
                 fields=fields,
                 from_=self.from_clause(),
                 where=self.where_clause(),
-                group_by=(
-                    ""
-                    if not self.primary_key
-                    else (
-                        " GROUP BY {}".format(", ".join(adapter.quote_identifier(col) for col in self._grouping_attributes))
-                        + ("" if not self.restriction else " HAVING (%s)" % ")AND(".join(self.restriction))
-                    )
-                ),
+                group_by=group_by,
+                having=f" HAVING ({conditions})" if self.restriction else "",
                 sorting=self.sorting_clauses(),
             )
 
