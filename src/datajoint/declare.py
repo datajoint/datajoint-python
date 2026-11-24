@@ -1044,7 +1044,9 @@ def alter(
         raise NotImplementedError("table.alter cannot alter the primary key (yet).")
     if foreign_key_sql != foreign_key_sql_:
         raise NotImplementedError("table.alter cannot alter foreign keys (yet).")
-    if index_sql != index_sql_:
+    # describe() lists indexes in index-name order, and index names differ
+    # between backends, so compare the indexes without regard to order.
+    if sorted(index_sql) != sorted(index_sql_):
         raise NotImplementedError("table.alter cannot alter indexes (yet)")
     if attribute_sql != attribute_sql_:
         sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key, adapter, column_comments))
