@@ -31,12 +31,10 @@ def test_ssl_auto_detect(db_creds_test, connection_test):
 def test_insecure_connection(db_creds_test, connection_test):
     """When use_tls=False, DataJoint must not configure client-side TLS.
 
-    Note: this pins what DataJoint controls, not the negotiated cipher. A
-    MySQL 8 server with TLS configured may still negotiate TLS during
-    connection setup (e.g. to protect the auth handshake) even when the client
-    requests no SSL, so ``Ssl_cipher`` is not guaranteed to be empty and must
-    not be asserted on — doing so made this test depend on the resolved client
-    stack rather than on DataJoint behavior.
+    This test checks the connection settings DataJoint passes to the driver.
+    test_insecure_connection_full_sha2_login checks that the session itself
+    has no TLS (``Ssl_cipher`` is empty): use_tls=False sets ``ssl_disabled``,
+    so PyMySQL does not negotiate TLS even when the server offers it.
     """
     conn = dj.conn(use_tls=False, reset=True, **db_creds_test)
     # DataJoint sent no client-side SSL configuration.
@@ -57,3 +55,27 @@ def test_reject_insecure(db_creds_test, connection_test):
             use_tls=False,
             reset=True,
         ).query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
+
+
+def test_insecure_connection_full_sha2_login(connection_root, db_creds_test):
+    """use_tls=False logs in with caching_sha2_password when the server has no cached login.
+
+    A new account has no cached login, so the server asks for the full
+    exchange. Without TLS, PyMySQL encrypts the password with the server's RSA
+    key, which needs the cryptography package and PyMySQL 1.2.4 or later
+    (1.2.1 to 1.2.3 fail this login). See
+    https://github.com/datajoint/datajoint-python/issues/1750.
+    """
+    user = "djsha2"
+    connection_root.query(f"DROP USER IF EXISTS '{user}'@'%%'")
+    connection_root.query(f"CREATE USER '{user}'@'%%' IDENTIFIED WITH caching_sha2_password BY '{user}'")
+    try:
+        conn = dj.Connection(db_creds_test["host"], user, user, use_tls=False, backend="mysql")
+        try:
+            # No TLS, so the login took the RSA path this test is about
+            assert conn.query("SHOW SESSION STATUS LIKE 'Ssl_cipher'").fetchone()[1] == ""
+            assert conn.query("SELECT 1").fetchone()[0] == 1
+        finally:
+            conn.close()
+    finally:
+        connection_root.query(f"DROP USER IF EXISTS '{user}'@'%%'")
