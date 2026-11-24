@@ -368,15 +368,17 @@ def make_condition(
         if not is_json_path:
             k = adapter.quote_identifier(k)
         if is_json_path and isinstance(v, dict):
-            return f"{k}={literal(json.dumps(v))}"
+            # Keep non-ASCII characters as they are: the server renders the stored
+            # JSON with the characters themselves, not as \u escapes.
+            return f"{k}={literal(json.dumps(v, ensure_ascii=False))}"
         if v is None:
             return f"{k} IS NULL"
         if query_expression.heading[key_match["attr"]].uuid:
             if not isinstance(v, uuid.UUID):
                 try:
                     v = uuid.UUID(v)
-                except (AttributeError, ValueError):
-                    raise DataJointError("Badly formed UUID {v} in restriction by `{k}`".format(k=k, v=v))
+                except (AttributeError, TypeError, ValueError):
+                    raise DataJointError(f"Badly formed UUID {v!r} in restriction by `{key}`.")
             return f"{k}=X'{v.bytes.hex()}'"
         if isinstance(
             v,
