@@ -674,9 +674,9 @@ def test_gc_root_level_layout_skips_schema_with_tracking_tables(schema014, legac
 
     collector = GarbageCollector(schema014, store="legacy")
     stats = collector.collect(dry_run=False)
-    assert stats["skipped_schemas"] == [db]
-    assert stats["orphaned_schema_paths"] == [] and stats["deleted"] == 0
     assert _014_files(legacy_store, db) == files
+    assert stats["orphaned_schema_paths"] == [] and stats["deleted"] == 0
+    assert stats["skipped_schemas"] == [db]
     np.testing.assert_array_equal((_recording(schema014) & {"recording_id": 1}).fetch1("signal"), SIGNAL)
 
 
