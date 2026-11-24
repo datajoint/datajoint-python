@@ -423,7 +423,7 @@ class Job(Table):
         # 3. Remove jobs whose keys have vanished. Judge against the unrestricted key_source:
         # jobs outside the restrictions (e.g. reserved by other workers) are not stale.
         # Disable semantic_check for Job table operations (job table PK has different lineage than target)
-        vanished = self.restrict(Not(self._target.key_source.proj()), semantic_check=False)
+        vanished = self.restrict(Not(self._materialized_key_source()), semantic_check=False)
 
         # 3a. Success and error records describe rows that no longer exist once their key
         # has left both key_source and the target, regardless of age.
@@ -453,6 +453,28 @@ class Job(Table):
                 result["orphaned"] += 1
 
         return result
+
+    def _materialized_key_source(self):
+        """
+        Return the target's key_source keys as a derived table that is computed once.
+
+        ``SELECT DISTINCT`` in a derived table keeps MySQL from merging it into the
+        query around it, so key_source is evaluated with the plan it gets on its own.
+        Nested directly in ``NOT IN``, a key_source restricted by part tables, such as
+        ``A * B & A.Item & B.Item``, had its part restrictions flattened into that
+        subquery: MySQL then built the join of the part tables, whose size is the
+        product of their rows, before reducing it to the few keys in key_source.
+        PostgreSQL evaluates the subquery once in either form.
+
+        Returns
+        -------
+        QueryExpression
+            ``SELECT pk FROM (SELECT DISTINCT pk FROM (key_source))``, for any kind
+            of key_source expression.
+        """
+        distinct_keys = self._target.key_source.proj().make_subquery()
+        distinct_keys._distinct = True
+        return distinct_keys.make_subquery()
 
     def reserve(self, key: dict) -> bool:
         """
