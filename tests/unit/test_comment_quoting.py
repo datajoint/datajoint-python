@@ -5,7 +5,9 @@ Comments are written as string literals that hold exactly the declared text.
 the literal written for a comment ends where the statement ends and reads back as
 the comment. MySQL's NO_BACKSLASH_ESCAPES and PostgreSQL's
 standard_conforming_strings change how a backslash is read, so both settings are
-checked.
+checked. On MySQL with NO_BACKSLASH_ESCAPES, each backslash is stored doubled
+(see ``MySQLAdapter.quote_comment``), so there a comment with a backslash is only
+checked to end where the statement ends.
 """
 
 import pytest

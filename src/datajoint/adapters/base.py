@@ -212,7 +212,9 @@ class DatabaseAdapter(ABC):
         Quote a table or column comment as a string literal for this backend.
 
         The comment is stored exactly as given: quotes and backslashes in it are
-        part of the comment and cannot end the literal.
+        part of the comment and cannot end the literal. One exception: on MySQL
+        with NO_BACKSLASH_ESCAPES set, each backslash is stored doubled (see
+        ``MySQLAdapter.quote_comment``).
 
         Parameters
         ----------

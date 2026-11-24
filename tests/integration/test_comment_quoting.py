@@ -4,7 +4,8 @@ Comments with quotes and backslashes are stored as declared, on both backends.
 Each backend writes a comment as a string literal of its own syntax. A double
 quote, a single quote or a backslash in the comment is part of the comment: it is
 stored and read back as written, ``describe()`` writes it back unchanged, and it
-never ends the literal early.
+never ends the literal early. One exception: on MySQL with NO_BACKSLASH_ESCAPES
+set, each backslash is stored doubled (see ``MySQLAdapter.quote_comment``).
 """
 
 import pytest
