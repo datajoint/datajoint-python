@@ -1247,6 +1247,14 @@ def compile_attribute(
             default_val = match["default"]
             base_val = default_val.split("(")[0].upper()
 
+            # Key values must be supplied or generated on insertion, not copied
+            # from a constant default that would give multiple rows the same key.
+            if in_key and base_val != "CURRENT_TIMESTAMP":
+                raise DataJointError(
+                    f"Primary key attribute {match['name']!r} cannot have a constant default. "
+                    "Remove the default from its declaration."
+                )
+
             if base_val in CONSTANT_LITERALS:
                 # SQL constants like NULL, CURRENT_TIMESTAMP - use as-is
                 match["default"] = f"NOT NULL DEFAULT {default_val}"
