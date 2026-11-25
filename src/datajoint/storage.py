@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import posixpath
 import re
 import secrets
 import urllib.parse
@@ -503,12 +502,21 @@ class StorageBackend:
             location = self.spec.get("location", "")
             full = (Path(location) / path).as_posix() if location else path
             # A location of "" or "." adds no prefix, and fsspec reads a leading "file:" or
-            # "local:" as a protocol and expands "~", so compare where fsspec resolves both.
-            # fsspec before 2024 leaves "." segments in place, so normalize both sides
+            # "local:" as a protocol and expands "~", so compare where fsspec resolves both
             if self.confine_paths:
-                root = posixpath.normpath(LocalFileSystem._strip_protocol(Path(location or ".").as_posix())).rstrip("/")
-                resolved = posixpath.normpath(LocalFileSystem._strip_protocol(full))
-                if resolved != root and not resolved.startswith(root + "/"):
+                # Reject URI schemes and home shortcuts before normalizing.
+                # fsspec may interpret them differently from the local OS.
+                if path.lower().startswith(("file:", "local:")) or path.startswith("~"):
+                    raise self._confinement_error(path)
+                # Normalize older fsspec's relative paths, and compare with the
+                # OS-native path module (also when Path is mocked in tests).
+                root = os.path.normcase(os.path.abspath(Path(location or ".").as_posix()))
+                resolved = os.path.normcase(os.path.abspath(LocalFileSystem._strip_protocol(full)))
+                try:
+                    confined = os.path.commonpath((root, resolved)) == root
+                except ValueError:
+                    confined = False  # Different Windows drives.
+                if not confined:
                     raise self._confinement_error(path)
             return full
         else:

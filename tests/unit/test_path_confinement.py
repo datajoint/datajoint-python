@@ -10,6 +10,7 @@ store location. ``allow_filepath_outside_store`` lifts the store check for
 No test reads a device or opens a pipe: a regression must fail, not hang.
 """
 
+import errno
 import importlib
 import os
 import sys
@@ -118,27 +119,36 @@ class TestStorePathConfinement:
     @posix_only
     @pytest.mark.parametrize("location", [".", ""])
     def test_file_store_in_working_directory_rejects_protocol_and_home_paths(self, layout, monkeypatch, location):
-        from fsspec.implementations.local import LocalFileSystem
-
         root, store, _ = layout
         monkeypatch.chdir(store)
         monkeypatch.setenv("HOME", str(root))
         backend = StorageBackend({"protocol": "file", "location": location})
         outside = str(root / "outside.txt")
-        cwd = os.path.realpath(os.getcwd())
         for path in ("file://" + outside, "file:" + outside, "local://" + outside, "local:" + outside, "~/outside.txt"):
-            try:
-                full = backend._full_path(path)
-            except DataJointError as error:
-                assert "outside the store location" in str(error)
-                continue
-            # fsspec before 2024 does not read some of these prefixes as a protocol. A path it
-            # accepts then names a file inside the working directory, and I/O stays there
-            assert os.path.realpath(LocalFileSystem._strip_protocol(full)).startswith(cwd + "/")
-            backend.put_buffer(b"written", path)
-            assert backend.get_buffer(path) == b"written"
-        assert (root / "outside.txt").read_text() == "outside"
+            with pytest.raises(DataJointError, match="outside the store location"):
+                backend._full_path(path)
+        with pytest.raises(DataJointError):
+            backend.get_buffer("file://" + outside)
         assert backend.get_buffer("data/inside.txt") == b"inside"
+
+    @posix_only
+    @pytest.mark.parametrize("location", [".", ""])
+    def test_file_store_with_relative_fsspec_path(self, layout, monkeypatch, location):
+        """Older fsspec can leave relative paths unexpanded."""
+        from fsspec.implementations.local import LocalFileSystem
+
+        _, store, _ = layout
+        monkeypatch.chdir(store)
+        original = LocalFileSystem._strip_protocol
+
+        def old_strip_protocol(path):
+            if path in (".", "data/inside.txt"):
+                return path
+            return original(path)
+
+        monkeypatch.setattr(LocalFileSystem, "_strip_protocol", staticmethod(old_strip_protocol))
+        backend = StorageBackend({"protocol": "file", "location": location})
+        assert backend._full_path("data/inside.txt") == "data/inside.txt"
 
     def test_io_never_reaches_outside(self, layout):
         root, store, _ = layout
@@ -310,10 +320,15 @@ class TestObjectConfinement:
             with pytest.raises(DataJointError, match="not a plain file name"):
                 ref.download(downloads, subpath=subpath)
         else:
-            # Missing source file: the error comes from the store, after the name was accepted.
-            # Windows reports a source path containing ":" as invalid rather than missing
-            with pytest.raises(OSError):
-                ref.download(downloads, subpath=subpath)
+            # The source is missing. On Windows, a drive marker embedded inside
+            # a path is not a legal file name, so the OS rejects it before lookup.
+            if os.name == "nt" and subpath.startswith("sub/C:"):
+                with pytest.raises(OSError) as exc_info:
+                    ref.download(downloads, subpath=subpath)
+                assert exc_info.value.errno == errno.EINVAL
+            else:
+                with pytest.raises(FileNotFoundError):
+                    ref.download(downloads, subpath=subpath)
         assert not any(downloads.iterdir())
 
     @pytest.fixture
