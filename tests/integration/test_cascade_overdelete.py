@@ -325,3 +325,166 @@ def test_seed_condition_with_a_percent_sign(schema_by_backend):
     (Label & "name LIKE '50%'").delete(prompt=False)
     assert sorted(Label.to_arrays("label_id").tolist()) == [2, 3]
     assert sorted(Use.to_arrays("label_id").tolist()) == [2, 3]
+
+
+def _string_seed_schema(schema):
+    """Parent and Child both have a secondary attribute ``notes``. Child's
+    ``notes`` is unrelated to its parent's."""
+
+    @schema
+    class Parent(dj.Manual):
+        definition = """
+        subject : varchar(16)
+        ---
+        notes : varchar(8)
+        """
+
+    @schema
+    class Child(dj.Manual):
+        definition = """
+        -> Parent
+        trial : int32
+        ---
+        notes : varchar(8)
+        """
+
+    return Parent, Child
+
+
+# A string condition's attribute names are read from its SQL text. Each form
+# names `notes` in a way that reading leaves out; the value is the subject the
+# condition selects by name.
+STRING_FORMS = {"uppercase name": "a", "literal ending in backslash": "a\\"}
+
+
+def _string_condition(table, form):
+    """Select subject ``STRING_FORMS[form]``, and subject ``w`` where ``notes = '1'``."""
+    adapter = table.connection.adapter
+    literal = adapter.quote_string(STRING_FORMS[form])
+    notes = "NOTES" if form == "uppercase name" else adapter.quote_identifier("notes")
+    return f"subject = {literal} OR ({notes} = '1' AND subject = 'w')"
+
+
+def _insert_string_seed_rows(Parent, Child, a):
+    Parent.insert([(a, "1"), ("w", "1"), ("z", "2")])
+    Child.insert([(a, 1, "2"), (a, 2, "1"), ("w", 1, "2"), ("z", 1, "1")])
+
+
+@pytest.mark.parametrize("form", list(STRING_FORMS))
+def test_cascade_string_restriction_projects_through_parent(schema_by_backend, form):
+    """A cascade from a string-restricted seed selects every child of the
+    selected parents, whatever the children's own attributes of the same name."""
+    Parent, Child = _string_seed_schema(schema_by_backend)
+    a = STRING_FORMS[form]
+    _insert_string_seed_rows(Parent, Child, a)
+
+    seed = Parent & _string_condition(Parent, form)
+    assert sorted(seed.to_arrays("subject").tolist()) == sorted([a, "w"])
+    assert not seed._restriction_attributes_exact
+
+    counts = dj.Diagram.cascade(seed).counts()
+    assert counts[Parent.full_table_name] == 2
+    assert counts[Child.full_table_name] == 3
+
+    seed.delete(prompt=False)
+    assert Parent.to_arrays("subject").tolist() == ["z"]
+    assert Child.to_arrays("subject").tolist() == ["z"]
+
+
+def test_cascade_dict_restriction_is_copied_to_child(schema_by_backend):
+    """A dict restriction names its attributes exactly, so the child receives
+    the parent's condition itself rather than a projection of the parent."""
+    Parent, Child = _string_seed_schema(schema_by_backend)
+    _insert_string_seed_rows(Parent, Child, "a")
+
+    seed = Parent & {"subject": "a"}
+    assert seed._restriction_attributes_exact
+
+    diagram = dj.Diagram.cascade(seed)
+    parent_restriction = diagram._cascade_restrictions[Parent.full_table_name]
+    assert diagram._cascade_restrictions[Child.full_table_name] == parent_restriction
+    assert diagram.counts()[Child.full_table_name] == 2
+
+    seed.delete(prompt=False)
+    assert sorted(Parent.to_arrays("subject").tolist()) == ["w", "z"]
+    assert sorted(Child.to_arrays("subject").tolist()) == ["w", "z"]
+
+
+@pytest.mark.parametrize("form", list(STRING_FORMS))
+def test_restrict_string_restriction_projects_through_parent(schema_by_backend, form):
+    """``Diagram.restrict`` selects every child of the selected parents."""
+    Parent, Child = _string_seed_schema(schema_by_backend)
+    _insert_string_seed_rows(Parent, Child, STRING_FORMS[form])
+
+    restricted = dj.Diagram(schema_by_backend).restrict(Parent & _string_condition(Parent, form))
+    counts = restricted.counts()
+    assert counts[Parent.full_table_name] == 2
+    assert counts[Child.full_table_name] == 3
+
+
+@pytest.mark.parametrize("form", list(STRING_FORMS))
+def test_trace_string_restriction_projects_through_child(schema_by_backend, form):
+    """``trace`` from a string-restricted child selects the parents those child
+    rows reference, whatever the parents' own attributes of the same name."""
+    Parent, Child = _string_seed_schema(schema_by_backend)
+    a = STRING_FORMS[form]
+    Parent.insert([(a, "2"), ("w", "1"), ("z", "1")])
+    Child.insert([(a, 1, "1"), ("w", 1, "2"), ("z", 1, "2")])
+
+    seed = Child & _string_condition(Child, form)
+    assert seed.to_arrays("subject").tolist() == [a]
+
+    traced = dj.Diagram.trace(seed)
+    assert traced[Parent.full_table_name].to_arrays("subject").tolist() == [a]
+
+
+def test_part_cascade_string_restriction_lifts_to_master(schema_by_backend):
+    """With part_integrity="cascade", a string-restricted part seed lifts to the
+    masters of the selected part rows and cascades to all of their parts."""
+
+    @schema_by_backend
+    class Master(dj.Manual):
+        definition = """
+        subject : varchar(16)
+        ---
+        notes : varchar(8)
+        """
+
+        class P(dj.Part):
+            definition = """
+            -> master
+            p_id : int32
+            ---
+            notes : varchar(8)
+            """
+
+    form = "uppercase name"
+    a = STRING_FORMS[form]
+    Master.insert([(a, "2"), ("w", "1"), ("z", "1")])
+    Master.P.insert([(a, 1, "1"), (a, 2, "2"), ("w", 1, "2"), ("z", 1, "1")])
+
+    seed = Master.P & _string_condition(Master.P, form)
+    assert seed.to_arrays("subject").tolist() == [a, a]
+
+    counts = dj.Diagram.cascade(seed, part_integrity="cascade").counts()
+    assert counts[Master.full_table_name] == 1
+    assert counts[Master.P.full_table_name] == 2
+
+    seed.delete(prompt=False, part_integrity="cascade")
+    assert sorted(Master.to_arrays("subject").tolist()) == ["w", "z"]
+    assert sorted(Master.P.to_arrays("subject").tolist()) == ["w", "z"]
+
+
+def test_trace_string_seed_selects_referenced_parents(schema_by_backend):
+    """``trace`` from a string-restricted child selects only the parents that
+    the selected child rows reference. A dict seed is copied to the parent
+    as a condition, so it selects every parent row that satisfies it."""
+    Parent, Child = _string_seed_schema(schema_by_backend)
+    Parent.insert([("a", "1"), ("b", "1"), ("c", "1")])
+    Child.insert([("a", 1, "1")])
+
+    string_seed = Child & "subject < 'c'"
+    assert len(dj.Diagram.trace(string_seed)[Parent.full_table_name]) == 1
+
+    dict_seed = Child & [{"subject": "a"}, {"subject": "b"}]
+    assert len(dj.Diagram.trace(dict_seed)[Parent.full_table_name]) == 2

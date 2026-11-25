@@ -7,6 +7,7 @@ from itertools import count
 from .condition import (
     AndList,
     Not,
+    _RestrictionAttributes,
     Top,
     assert_join_compatibility,
     extract_column_names,
@@ -48,6 +49,7 @@ class QueryExpression:
 
     _restriction = None
     _restriction_attributes = None
+    _restriction_attributes_exact = True  # False once a string condition names the attributes
     _joins = []  # list of (is_left: bool, using_attrs: list[str]) for each join
     _original_heading = None  # heading before projections
 
@@ -237,7 +239,7 @@ class QueryExpression:
         QueryExpression
             A new QueryExpression with the restriction applied.
         """
-        attributes = set()
+        attributes = _RestrictionAttributes()
         if isinstance(restriction, Top):
             if self._top is None:
                 # No existing Top — apply new one directly
@@ -274,6 +276,7 @@ class QueryExpression:
             result._restriction = AndList(self.restriction)  # copy to preserve the original
         result.restriction.append(new_condition)
         result.restriction_attributes.update(attributes)
+        result._restriction_attributes_exact = result._restriction_attributes_exact and attributes.exact
         return result
 
     def restrict_in_place(self, restriction):

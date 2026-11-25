@@ -166,7 +166,8 @@ def _has_subquery(condition):
 
 def _seed_restriction(table_expr):
     """
-    Return a traversal seed's restriction and the attributes it names.
+    Return a traversal seed's restriction, the attributes it names, and
+    whether those attributes are known exactly.
 
     Two kinds of seed are replaced by the primary keys they select:
 
@@ -184,12 +185,12 @@ def _seed_restriction(table_expr):
     query; restrict by the keys in batches if that becomes a problem.
     """
     if table_expr._top is not None or any(_has_subquery(c) for c in table_expr.restriction):
-        return AndList([table_expr.keys()]), set(table_expr.primary_key)
+        return AndList([table_expr.keys()]), set(table_expr.primary_key), True
     # The seed's conditions are compiled SQL, with each % already escaped as %%
     # for the driver. The traversal applies them again through restrict(), which
     # escapes again, so the escape is undone here.
     restriction = AndList(c.replace("%%", "%") if isinstance(c, str) else c for c in table_expr.restriction)
-    return restriction, set(table_expr.restriction_attributes)
+    return restriction, set(table_expr.restriction_attributes), table_expr._restriction_attributes_exact
 
 
 class Diagram(nx.MultiDiGraph):  # noqa: C901
@@ -254,6 +255,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             self._cascade_restrictions = {k: copy.copy(v) for k, v in source._cascade_restrictions.items()}
             self._restrict_conditions = {k: copy.copy(v) for k, v in source._restrict_conditions.items()}
             self._restriction_attrs = {k: set(v) for k, v in source._restriction_attrs.items()}
+            self._inexact_attrs = set(source._inexact_attrs)
             super().__init__(source)
             return
 
@@ -281,6 +283,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         self._cascade_restrictions = {}
         self._restrict_conditions = {}
         self._restriction_attrs = {}
+        self._inexact_attrs = set()  # nodes whose restriction may name attributes not in _restriction_attrs
 
         # Enumerate nodes from all the items in the list
         self.nodes_to_show = set()
@@ -505,6 +508,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         result._cascade_restrictions = {}
         result._restrict_conditions = {}
         result._restriction_attrs = {}
+        result._inexact_attrs = set()
 
         # Include seed + all descendants
         descendants = set(nx.descendants(result, node)) | {node}
@@ -512,9 +516,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         result._expanded_nodes = set(descendants)
 
         # Seed restriction
-        restriction, restriction_attrs = _seed_restriction(table_expr)
+        restriction, restriction_attrs, exact = _seed_restriction(table_expr)
         result._cascade_restrictions[node] = [restriction] if restriction else []
         result._restriction_attrs[node] = restriction_attrs
+        if not exact:
+            result._inexact_attrs.add(node)
 
         # Propagate downstream
         result._propagate_restrictions(node, mode="cascade", part_integrity=part_integrity)
@@ -590,6 +596,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         result._cascade_restrictions = {}  # trace uses cascade-shape storage (OR semantics)
         result._restrict_conditions = {}
         result._restriction_attrs = {}
+        result._inexact_attrs = set()
         result._mode = "trace"
 
         # Include seed + all ancestors
@@ -598,9 +605,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         result._expanded_nodes = set(ancestors)
 
         # Seed restriction
-        restriction, restriction_attrs = _seed_restriction(table_expr)
+        restriction, restriction_attrs, exact = _seed_restriction(table_expr)
         result._cascade_restrictions[node] = [restriction] if restriction else []
         result._restriction_attrs[node] = restriction_attrs
+        if not exact:
+            result._inexact_attrs.add(node)
 
         # Propagate upstream
         result._propagate_restrictions_upstream(node)
@@ -799,9 +808,11 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         if node not in result.nodes():
             raise DataJointError(f"Table {node} is not in the diagram.")
         # Seed restriction (AND accumulation)
-        restriction, restriction_attrs = _seed_restriction(table_expr)
+        restriction, restriction_attrs, exact = _seed_restriction(table_expr)
         result._restrict_conditions.setdefault(node, AndList()).extend(restriction)
         result._restriction_attrs.setdefault(node, set()).update(restriction_attrs)
+        if not exact:
+            result._inexact_attrs.add(node)
         # Propagate downstream
         result._propagate_restrictions(node, mode="restrict")
         return result
@@ -937,10 +948,13 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         another foreign key would select child rows by that attribute instead
         of by the parent rows they reference. A secondary foreign key may be
         NULL, and then the child row references no parent row at all.
+        Copying also requires the restriction's attributes to be known exactly:
+        those of a string condition are parsed from its SQL text.
         """
         child_pk = self.nodes[child_node].get("primary_key", set())
+        exact = parent_ft.full_table_name not in self._inexact_attrs
 
-        if not aliased and parent_attrs and parent_attrs <= set(attr_map) <= child_pk:
+        if exact and not aliased and parent_attrs and parent_attrs <= set(attr_map) <= child_pk:
             # Rule 1: copy parent restriction directly
             parent_restr = restrictions.get(
                 parent_ft.full_table_name,
@@ -1001,11 +1015,13 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         ``copy_allowed=False`` disables Rule 1, so the parent is restricted to
         the rows that the restricted child rows actually reference. Copying
         the child's condition would also select parent rows that no child row
-        references.
+        references. Rule 1 also requires the child restriction's attributes to
+        be known exactly, as in the forward rule.
         """
         parent_pk = self.nodes[parent_node].get("primary_key", set())
+        exact = child_ft.full_table_name not in self._inexact_attrs
 
-        if copy_allowed and not aliased and child_attrs and child_attrs <= parent_pk:
+        if copy_allowed and exact and not aliased and child_attrs and child_attrs <= parent_pk:
             # Backward Rule 1: copy child restriction directly
             child_restr = restrictions.get(
                 child_ft.full_table_name,
@@ -1110,6 +1126,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             node: (
                 copy.copy(restrictions[node]) if node in restrictions else None,
                 set(self._restriction_attrs[node]) if node in self._restriction_attrs else None,
+                node in self._inexact_attrs,
             )
             for node in intermediates
         }
@@ -1166,8 +1183,9 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                     # included with zero matches in counts/iter.
                     restrictions[master_name] = [False]
                 self._restriction_attrs.setdefault(master_name, set())
+                self._inexact_attrs.discard(master_name)  # now a literal primary-key condition
 
-        for node, (restriction, attrs) in saved.items():
+        for node, (restriction, attrs, inexact) in saved.items():
             if restriction is None:
                 restrictions.pop(node, None)
             else:
@@ -1176,6 +1194,10 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 self._restriction_attrs.pop(node, None)
             else:
                 self._restriction_attrs[node] = attrs
+            if inexact:
+                self._inexact_attrs.add(node)
+            else:
+                self._inexact_attrs.discard(node)
 
         return any_propagated
 
@@ -1266,6 +1288,7 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
                 if len(result._restricted_table(node)) == 0:
                     result._restrict_conditions.pop(node)
                     result._restriction_attrs.pop(node, None)
+                    result._inexact_attrs.discard(node)
                     result.nodes_to_show.discard(node)
         else:
             # Unrestricted: check physical row counts
