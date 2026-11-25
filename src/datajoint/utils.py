@@ -1,6 +1,8 @@
 """General-purpose utilities"""
 
+import contextlib
 import os
+import random
 import re
 import shutil
 import time
@@ -10,7 +12,8 @@ from pathlib import Path
 
 from .errors import DataJointError
 
-_REPLACE_ATTEMPTS = 10
+_REPLACE_DEADLINE = 2.0  # seconds; the retry runs on Windows only
+_IS_WINDOWS = os.name == "nt"
 
 
 def is_plain_file_name(name: str) -> bool:
@@ -145,33 +148,58 @@ def from_camel_case(s):
     return re.sub(r"(\B[A-Z])|(\b[A-Z])", convert, s)
 
 
-def _replace_through_temp_file(dest, write):
+def _replace(temp_file, dest):
+    """
+    Move ``temp_file`` over ``dest``, retrying on Windows while another program holds ``dest``.
+
+    On Windows ``os.replace`` raises ``PermissionError`` while another process or
+    thread is replacing or reading ``dest``, or while antivirus or search indexing
+    has it open. It is retried until ``_REPLACE_DEADLINE`` seconds have passed, with
+    exponential backoff and a random factor so that colliding writers drift apart.
+    Elsewhere, and once the deadline passes, the ``PermissionError`` is raised.
+    """
+    deadline = time.monotonic() + _REPLACE_DEADLINE
+    pause = 0.01
+    while True:
+        try:
+            os.replace(temp_file, dest)
+            return
+        except PermissionError:
+            if not _IS_WINDOWS or time.monotonic() + pause > deadline:
+                raise
+        time.sleep(pause * random.uniform(0.5, 1.5))
+        pause = min(pause * 2, 0.25)
+
+
+def _replace_through_temp_file(dest, write, skip_if_taken=False):
     """
     Create or replace ``dest`` by filling a temporary file beside it first.
 
     ``write(temp_file)`` fills the temporary file, which is then moved over
     ``dest`` with ``os.replace``. Unlike ``Path.rename``, that replaces an existing
-    file on Windows too. The temporary name is unique, so writers of the same
-    destination do not share a file, and the file is removed if the write fails.
+    file on Windows too. The temporary name is unique and does not depend on the
+    length of ``dest``'s name, so writers of the same destination do not share a
+    file and a long destination name still fits. The temporary file is removed
+    whether the write succeeds or fails; after a hard crash (a killed process or a
+    power loss) it stays behind, as a hidden ``.<16 hex digits>.tmp`` file in the
+    destination folder.
 
-    On Windows ``os.replace`` raises ``PermissionError`` while another process or
-    thread is replacing or reading ``dest`` at that moment, so it is retried a few
-    times with a short pause.
+    With ``skip_if_taken`` a replace that fails because ``dest`` now exists is not an
+    error: another writer stored the file first, and the caller does not overwrite.
     """
-    temp_file = dest.with_name(f".{dest.name}.{uuid.uuid4().hex[:16]}.tmp")
+    temp_file = dest.with_name(f".{uuid.uuid4().hex[:16]}.tmp")
     try:
         write(temp_file)
-        for attempt in range(_REPLACE_ATTEMPTS):
-            try:
-                os.replace(temp_file, dest)
-                break
-            except PermissionError:
-                if os.name != "nt" or attempt == _REPLACE_ATTEMPTS - 1:
-                    raise
-                time.sleep(0.01 * (attempt + 1))
-    except BaseException:
-        temp_file.unlink(missing_ok=True)
-        raise
+        try:
+            _replace(temp_file, dest)
+        except PermissionError:
+            if not (skip_if_taken and dest.is_file()):
+                raise
+    finally:
+        # Gone after a successful replace. After a failure, a failed cleanup must
+        # not hide the error that caused it.
+        with contextlib.suppress(OSError):
+            temp_file.unlink(missing_ok=True)
 
 
 def safe_write(filepath, blob):
@@ -191,7 +219,7 @@ def safe_write(filepath, blob):
     filepath = Path(filepath)
     if not filepath.is_file():
         filepath.parent.mkdir(parents=True, exist_ok=True)
-        _replace_through_temp_file(filepath, lambda temp_file: temp_file.write_bytes(blob))
+        _replace_through_temp_file(filepath, lambda temp_file: temp_file.write_bytes(blob), skip_if_taken=True)
 
 
 def safe_copy(src, dest, overwrite=False):
