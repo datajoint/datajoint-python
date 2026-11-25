@@ -400,8 +400,7 @@ class StorageBackend:
             # with a clear message.
             if bool(self.spec.get("access_key")) != bool(self.spec.get("secret_key")):
                 raise errors.DataJointError(
-                    "Incomplete S3 credentials: set both access_key and secret_key, "
-                    "or neither to use ambient AWS credentials."
+                    "Incomplete S3 credentials: set both access_key and secret_key, or neither to use ambient AWS credentials."
                 )
 
     @property
