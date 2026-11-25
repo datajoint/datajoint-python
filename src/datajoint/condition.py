@@ -220,6 +220,17 @@ class Not:
         self.restriction = restriction
 
 
+class _RestrictionAttributes(set):
+    """
+    Attribute names collected by ``make_condition``.
+
+    ``exact`` is False once a string condition is read: its names come from
+    ``extract_column_names``, which parses the SQL text and can miss some.
+    """
+
+    exact = True
+
+
 def assert_join_compatibility(
     expr1: QueryExpression,
     expr2: QueryExpression,
@@ -428,6 +439,8 @@ def make_condition(
     # restrict by string
     if isinstance(condition, str):
         columns.update(extract_column_names(condition))
+        if isinstance(columns, _RestrictionAttributes):
+            columns.exact = False
         return combine_conditions(negate, conditions=[condition.strip().replace("%", "%%")])  # escape %, see issue #376
 
     # restrict by AndList
