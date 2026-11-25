@@ -1254,9 +1254,7 @@ def compile_attribute(
 
             # Key values must be supplied or generated on insertion, not copied
             # from a constant default that would give multiple rows the same key.
-            if in_key and base_val != "CURRENT_TIMESTAMP" and not (
-                platform_singleton and line == SINGLETON_DEFINITION
-            ):
+            if in_key and base_val != "CURRENT_TIMESTAMP" and not (platform_singleton and line == SINGLETON_DEFINITION):
                 raise DataJointError(
                     f"Primary key attribute {match['name']!r} cannot have a constant default. "
                     "Remove the default from its declaration."

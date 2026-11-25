@@ -56,9 +56,7 @@ def test_secondary_attribute_constant_defaults_are_unchanged(adapter_type, defau
 @pytest.mark.parametrize("adapter_type", [MySQLAdapter, PostgreSQLAdapter], ids=["mysql", "postgresql"])
 def test_framework_generated_singleton_still_uses_its_sentinel_default(adapter_type):
     """The internal zero-key singleton must still compile to a single-row table."""
-    _comment, primary_key, attribute_sql, *_rest = prepare_declare(
-        "---\nlabel : varchar(16)", {}, adapter_type()
-    )
+    _comment, primary_key, attribute_sql, *_rest = prepare_declare("---\nlabel : varchar(16)", {}, adapter_type())
     assert primary_key == ["_singleton"]
     assert any("_singleton" in sql and "DEFAULT " in sql for sql in attribute_sql)
 
