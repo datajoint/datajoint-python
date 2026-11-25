@@ -51,3 +51,26 @@ def test_secondary_attribute_constant_defaults_are_unchanged(adapter_type, defau
     )
     assert name == "label"
     assert "DEFAULT " in sql
+
+
+@pytest.mark.parametrize("adapter_type", [MySQLAdapter, PostgreSQLAdapter], ids=["mysql", "postgresql"])
+def test_framework_generated_singleton_still_uses_its_sentinel_default(adapter_type):
+    """The internal zero-key singleton must still compile to a single-row table."""
+    _comment, primary_key, attribute_sql, *_rest = prepare_declare(
+        "---\nlabel : varchar(16)", {}, adapter_type()
+    )
+    assert primary_key == ["_singleton"]
+    assert any("_singleton" in sql and "DEFAULT " in sql for sql in attribute_sql)
+
+
+@pytest.mark.parametrize("adapter_type", [MySQLAdapter, PostgreSQLAdapter], ids=["mysql", "postgresql"])
+def test_singleton_literal_is_not_exempt_outside_framework_path(adapter_type):
+    """The exception must not silently exempt callers of compile_attribute."""
+    with pytest.raises(DataJointError, match=r"Primary key attribute '_singleton'.*constant default"):
+        compile_attribute(
+            "_singleton = 1 : bool # singleton primary key",
+            in_key=True,
+            foreign_key_sql=[],
+            context={},
+            adapter=adapter_type(),
+        )
