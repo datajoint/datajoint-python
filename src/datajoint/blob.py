@@ -343,7 +343,7 @@ class Blob:
             blob += b"".join(len_u64(it) + it for it in (self.pack_blob(e) for e in array.flatten(order="F")))
             self.set_dj0()  # not supported by original mym
         elif serialize_lookup[array.dtype]["scalar_type"] == "CHAR":
-            blob += array.view(np.uint8).astype(np.uint16).tobytes()  # convert to 16-bit chars for MATLAB
+            blob += array.view(np.uint8).astype(np.uint16).tobytes(order="F")  # MATLAB column-major order
         else:  # numeric arrays
             if array.ndim == 0:  # not supported by original mym
                 self.set_dj0()
