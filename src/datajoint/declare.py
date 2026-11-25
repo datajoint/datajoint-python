@@ -642,8 +642,10 @@ def prepare_declare(
     column_comments = {}  # column_name -> comment (for PostgreSQL COMMENT ON)
     fk_index_candidates = []  # PostgreSQL: FK column-lists that may need a support index (#1512)
 
-    def add_attribute(line: str, in_key: bool) -> None:
-        name, sql, store, comment = compile_attribute(line, in_key, foreign_key_sql, context, adapter)
+    def add_attribute(line: str, in_key: bool, *, platform_singleton: bool = False) -> None:
+        name, sql, store, comment = compile_attribute(
+            line, in_key, foreign_key_sql, context, adapter, platform_singleton=platform_singleton
+        )
         if store:
             external_stores.append(store)
         if in_key and name not in primary_key:
@@ -693,7 +695,8 @@ def prepare_declare(
     # what makes it hold at most one row. Only the parse knows whether it does:
     # `index (...)` contributes no attribute and `-> Parent` may contribute many.
     if not primary_key:
-        add_attribute(SINGLETON_DEFINITION, True)
+        # This sentinel is framework-generated, never a user declaration.
+        add_attribute(SINGLETON_DEFINITION, True, platform_singleton=True)
     for line in _tier_attributes(table_name, config):
         add_attribute(line, False)
 
@@ -1191,7 +1194,7 @@ def substitute_special_type(match: dict, category: str, foreign_key_sql: list[st
 
 
 def compile_attribute(
-    line: str, in_key: bool, foreign_key_sql: list[str], context: dict, adapter
+    line: str, in_key: bool, foreign_key_sql: list[str], context: dict, adapter, *, platform_singleton: bool = False
 ) -> tuple[str, str, str | None, str | None]:
     """
     Convert an attribute definition from DataJoint format to SQL.
@@ -1208,6 +1211,8 @@ def compile_attribute(
         Namespace for codec lookup.
     adapter : DatabaseAdapter
         Database adapter for backend-specific SQL generation.
+    platform_singleton : bool, optional
+        Allow the framework-generated singleton key's fixed default; never set for user attributes.
 
     Returns
     -------
@@ -1246,6 +1251,14 @@ def compile_attribute(
         if match["default"]:
             default_val = match["default"]
             base_val = default_val.split("(")[0].upper()
+
+            # Key values must be supplied or generated on insertion, not copied
+            # from a constant default that would give multiple rows the same key.
+            if in_key and base_val != "CURRENT_TIMESTAMP" and not (platform_singleton and line == SINGLETON_DEFINITION):
+                raise DataJointError(
+                    f"Primary key attribute {match['name']!r} cannot have a constant default. "
+                    "Remove the default from its declaration."
+                )
 
             if base_val in CONSTANT_LITERALS:
                 # SQL constants like NULL, CURRENT_TIMESTAMP - use as-is

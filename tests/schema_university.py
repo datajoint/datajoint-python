@@ -67,7 +67,7 @@ class Section(dj.Manual):
 
 class CurrentTerm(dj.Manual):
     definition = """
-    omega=0 : tinyint
+    omega : tinyint
     ---
     -> Term
     """
