@@ -190,6 +190,77 @@ def test_restricting_the_aggregation_result(tables):
     assert set(counts(query)) == {2, 3}
 
 
+# --- COUNT(*) must count matches, not the padding row of a left join ---
+
+
+def test_count_star_skips_unmatched_group_rows(tables):
+    Parent, Child, _, _ = tables
+    query = Parent.aggr(Child, n="count(*)", last_child="max(child_id)")
+    assert counts(query) == {1: 2, 2: 1, 3: 0}
+    assert "dj_aggr_count_present" not in query.heading.names
+    assert {row["parent_id"]: row["last_child"] for row in query.to_dicts()} == {1: 2, 2: 1, 3: None}
+
+
+def test_count_star_with_one_to_one_group(tables):
+    """The right side's entire key is shared, so a key count cannot detect missing rows."""
+    Parent, _, _, ParentInfo = tables
+    query = Parent.aggr(ParentInfo & "info = 'x'", n="count(*)")
+    assert counts(query) == {1: 1, 2: 0, 3: 0}
+    assert right_operand_in_subquery(query)
+
+
+def test_count_star_respects_restricted_groups(tables):
+    Parent, Child, Tag, _ = tables
+    query = Parent.aggr(
+        (Child * Tag) & "color='red'",
+        n="count(*)",
+        distinct_children="count(distinct child_id)",
+    )
+    rows = {row["parent_id"]: (row["n"], row["distinct_children"]) for row in query.to_dicts()}
+    assert rows == {1: (1, 1), 2: (0, 0), 3: (0, 0)}
+
+
+def test_count_star_respects_top_on_group(tables):
+    Parent, Child, _, _ = tables
+    query = Parent.aggr(Child & dj.Top(1, order_by="color DESC"), n="count(*)")
+    assert counts(query) == {1: 1, 2: 0, 3: 0}
+
+
+def test_count_star_supports_whitespace_case_arithmetic_and_having(tables):
+    Parent, Child, _, _ = tables
+    query = Parent.aggr(
+        Child & "color='red'",
+        n="COUNT ( * )",
+        doubled="2 * count(*)",
+    )
+    assert {row["parent_id"]: (row["n"], row["doubled"]) for row in query.to_dicts()} == {
+        1: (1, 2),
+        2: (0, 0),
+        3: (0, 0),
+    }
+    assert set(counts(query & "n=0")) == {2, 3}
+
+
+def test_count_star_marker_does_not_shadow_group_attributes(tables):
+    Parent, Child, _, _ = tables
+    group = Child.proj(..., dj_aggr_count_present="1")
+    query = Parent.aggr(group, n="count(*)", original="max(dj_aggr_count_present)")
+    assert {row["parent_id"]: (row["n"], row["original"]) for row in query.to_dicts()} == {
+        1: (2, 1),
+        2: (1, 1),
+        3: (0, None),
+    }
+
+
+def test_count_star_inner_join_and_u_aggr_unchanged(tables):
+    Parent, Child, _, _ = tables
+    query = Parent.aggr(Child, n="count(*)", exclude_nonmatching=True)
+    assert counts(query) == {1: 2, 2: 1}
+    assert not right_operand_in_subquery(query)
+    u_query = dj.U("color").aggr(Child & "parent_id = 1", n="count(*)")
+    assert {row["color"]: row["n"] for row in u_query.to_dicts()} == {"red": 1, "blue": 1}
+
+
 # --- inner joins are unchanged: the restriction stays in WHERE, without a subquery ---
 
 
