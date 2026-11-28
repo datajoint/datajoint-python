@@ -5,7 +5,10 @@ Values in dict restrictions are compared as literals: quote characters, backslas
 ``%``, and SQL keywords inside a value are part of the value.
 """
 
+import datetime
+
 import numpy as np
+import pandas as pd
 import pytest
 
 import datajoint as dj
@@ -203,3 +206,122 @@ def test_non_finite_numbers_rejected(item):
     for value in (float("nan"), float("inf"), np.float64("-inf")):
         with pytest.raises(dj.DataJointError):
             item & {"item_id": value}
+
+
+@pytest.fixture
+def shift(connection_by_backend, backend, prefix):
+    schema = dj.Schema(f"{prefix}_restriction_values_time_{backend}", connection=connection_by_backend)
+
+    @schema
+    class Shift(dj.Manual):
+        definition = """
+        start_time : time
+        """
+
+    @schema
+    class Slot(dj.Manual):
+        definition = """
+        -> Shift
+        slot : int32
+        """
+
+    @schema
+    class Duty(dj.Computed):
+        definition = """
+        -> Shift
+        ---
+        matches : int32
+        """
+
+        def make(self, key):
+            self.insert1(dict(key, matches=len(Shift & key)))
+
+    @schema
+    class PreciseShift(dj.Manual):
+        definition = """
+        start_time : time(6)
+        """
+
+    yield Shift(), Slot(), Duty(), PreciseShift()
+    schema.drop(prompt=False)
+
+
+def test_time_key_restricts_its_own_table(shift, backend):
+    """A key fetched from a table with a time attribute restricts that table."""
+    Shift, _, _, PreciseShift = shift
+    Shift.insert([{"start_time": "01:02:03"}, {"start_time": "04:05:06"}, {"start_time": "23:59:59"}])
+    PreciseShift.insert([{"start_time": "01:02:03"}, {"start_time": "01:02:03.500000"}, {"start_time": "23:59:59"}])
+    expected_type = datetime.timedelta if backend == "mysql" else datetime.time
+    for table in (Shift, PreciseShift):
+        keys = table.keys()
+        assert all(isinstance(key["start_time"], expected_type) for key in keys)
+        for key in keys:
+            assert len(table & key) == 1
+            assert (table & key).fetch1("KEY") == key
+            assert len(table - key) == 2
+        assert len(table & keys) == 3
+        assert len(table & table.to_pandas()) == 3
+
+
+def test_delete_by_time_key(shift):
+    Shift, Slot, _, _ = shift
+    Shift.insert([{"start_time": "01:02:03"}, {"start_time": "04:05:06"}])
+    Slot.insert([{"start_time": "01:02:03", "slot": 1}, {"start_time": "04:05:06", "slot": 1}])
+    key = Shift.keys(order_by="start_time", limit=1)[0]
+    (Shift & key).delete(prompt=False)
+    assert len(Shift) == 1 and len(Slot) == 1
+    assert len(Shift & key) == 0 and len(Slot & key) == 0
+
+
+@pytest.mark.parametrize("reserve_jobs", [False, True])
+def test_populate_below_time_key(shift, backend, reserve_jobs):
+    Shift, _, Duty, _ = shift
+    if reserve_jobs and backend == "postgresql":
+        pytest.skip("the jobs table cannot yet be declared below a PostgreSQL time key (#1763)")
+    Shift.insert([{"start_time": "01:02:03"}, {"start_time": "04:05:06"}])
+    Duty.populate(reserve_jobs=reserve_jobs)
+    assert Duty.keys(order_by="start_time") == Shift.keys(order_by="start_time")
+    assert Duty.to_arrays("matches").tolist() == [1, 1]
+
+
+def test_timedelta_values_on_postgresql_time(shift, backend):
+    """On PostgreSQL a time attribute also matches a timedelta within one day."""
+    if backend != "postgresql":
+        pytest.skip("PostgreSQL time attributes are fetched as datetime.time")
+    _, _, _, PreciseShift = shift
+    PreciseShift.insert([{"start_time": datetime.time(1, 2, 3)}, {"start_time": datetime.time(1, 2, 3, 500000)}])
+    assert len(PreciseShift & {"start_time": datetime.timedelta(hours=1, minutes=2, seconds=3)}) == 1
+    assert len(PreciseShift & {"start_time": pd.Timedelta("01:02:03.5")}) == 1
+
+
+MYSQL_TIME_VALUES = [
+    ("-00:00:01", datetime.timedelta(seconds=-1)),
+    ("-01:02:03.250000", -datetime.timedelta(hours=1, minutes=2, seconds=3, microseconds=250000)),
+    ("26:00:00", datetime.timedelta(days=1, hours=2)),
+    ("838:59:59", datetime.timedelta(hours=838, minutes=59, seconds=59)),
+    ("-838:59:59", -datetime.timedelta(hours=838, minutes=59, seconds=59)),
+    ("00:00:00", datetime.timedelta(0)),
+]
+
+
+def test_mysql_negative_and_long_time_keys(shift, backend):
+    """MySQL time values range over -838:59:59 to 838:59:59."""
+    if backend != "mysql":
+        pytest.skip("PostgreSQL time values lie within one day")
+    _, _, _, PreciseShift = shift
+    PreciseShift.insert({"start_time": text} for text, _ in MYSQL_TIME_VALUES)
+    for _, value in MYSQL_TIME_VALUES:
+        key = (PreciseShift & {"start_time": value}).fetch1("KEY")
+        assert key == {"start_time": value}
+        assert len(PreciseShift & {"start_time": pd.Timedelta(value)}) == 1
+        assert len(PreciseShift & {"start_time": np.timedelta64(value)}) == 1
+    assert len(PreciseShift & PreciseShift.to_pandas()) == len(MYSQL_TIME_VALUES)
+    (PreciseShift & {"start_time": datetime.timedelta(days=1, hours=2)}).delete(prompt=False)
+    assert len(PreciseShift) == len(MYSQL_TIME_VALUES) - 1
+
+
+@pytest.mark.parametrize("value", [np.timedelta64(5), np.timedelta64(1, "Y"), np.timedelta64(2, "M")])
+def test_timedelta64_without_fixed_unit_rejected(shift, value):
+    Shift, _, _, _ = shift
+    with pytest.raises(dj.DataJointError, match="no fixed unit"):
+        Shift & {"start_time": value}
