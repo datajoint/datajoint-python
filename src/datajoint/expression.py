@@ -688,6 +688,23 @@ class QueryExpression:
             attributes.discard(Ellipsis)
             attributes.update(self.heading.secondary_attributes)
         keep_all_rows = not exclude_nonmatching
+        # In a left join, COUNT(*) also counts the NULL-padded row when the group
+        # has no match. Count a non-null marker from the group instead.
+        count_star = re.compile(r"\bcount\s*\(\s*\*\s*\)", re.IGNORECASE)
+        if keep_all_rows and any(count_star.search(expr) for expr in named_attributes.values()):
+            if inspect.isclass(group) and issubclass(group, QueryExpression):
+                group = group()
+
+            marker = "dj_aggr_count_present"
+            taken_names = set(self.heading.names) | set(group.heading.names) | set(named_attributes)
+            while marker in taken_names:
+                marker += "_"
+
+            # A projected constant survives only for actual matching group rows.
+            # Use a subquery so USING does not coalesce it with the grouping key.
+            group = group.proj(..., **{marker: "1"})
+            named_attributes = {name: count_star.sub(f"count({marker})", expr) for name, expr in named_attributes.items()}
+
         return Aggregation.create(self, group=group, keep_all_rows=keep_all_rows).proj(*attributes, **named_attributes)
 
     aggregate = aggr  # alias for aggr
