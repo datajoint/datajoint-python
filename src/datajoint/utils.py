@@ -1,12 +1,19 @@
 """General-purpose utilities"""
 
+import contextlib
 import os
+import random
 import re
 import shutil
+import time
+import uuid
 import warnings
 from pathlib import Path
 
 from .errors import DataJointError
+
+_REPLACE_DEADLINE = 2.0  # seconds; the retry runs on Windows only
+_IS_WINDOWS = os.name == "nt"
 
 
 def is_plain_file_name(name: str) -> bool:
@@ -141,11 +148,68 @@ def from_camel_case(s):
     return re.sub(r"(\B[A-Z])|(\b[A-Z])", convert, s)
 
 
+def _replace(temp_file, dest, stop_if_taken=False):
+    """
+    Move ``temp_file`` over ``dest``, retrying on Windows while another program holds ``dest``.
+
+    On Windows ``os.replace`` raises ``PermissionError`` while another process or
+    thread is replacing or reading ``dest``, or while antivirus or search indexing
+    has it open. It is retried until ``_REPLACE_DEADLINE`` seconds have passed, with
+    exponential backoff and a random factor so that colliding writers drift apart.
+    Elsewhere, and once the deadline passes, the ``PermissionError`` is raised.
+
+    With ``stop_if_taken`` the error is also raised at once when ``dest`` exists, so
+    that a caller that does not overwrite does not wait for a file that is already there.
+    """
+    deadline = time.monotonic() + _REPLACE_DEADLINE
+    pause = 0.01
+    while True:
+        try:
+            os.replace(temp_file, dest)
+            return
+        except PermissionError:
+            if not _IS_WINDOWS or time.monotonic() + pause > deadline or (stop_if_taken and dest.is_file()):
+                raise
+        time.sleep(pause * random.uniform(0.5, 1.5))
+        pause = min(pause * 2, 0.25)
+
+
+def _replace_through_temp_file(dest, write, skip_if_taken=False):
+    """
+    Create or replace ``dest`` by filling a temporary file beside it first.
+
+    ``write(temp_file)`` fills the temporary file, which is then moved over
+    ``dest`` with ``os.replace``. Unlike ``Path.rename``, that replaces an existing
+    file on Windows too. The temporary name is unique and does not depend on the
+    length of ``dest``'s name, so writers of the same destination do not share a
+    file and a long destination name still fits. The temporary file is removed
+    whether the write succeeds or fails; after a hard crash (a killed process or a
+    power loss) it stays behind, as a hidden ``.<16 hex digits>.tmp`` file in the
+    destination folder.
+
+    With ``skip_if_taken`` a replace that fails because ``dest`` now exists is not an
+    error: another writer stored the file first, and the caller does not overwrite.
+    """
+    temp_file = dest.with_name(f".{uuid.uuid4().hex[:16]}.tmp")
+    try:
+        write(temp_file)
+        try:
+            _replace(temp_file, dest, stop_if_taken=skip_if_taken)
+        except PermissionError:
+            if not (skip_if_taken and dest.is_file()):
+                raise
+    finally:
+        # Gone after a successful replace. After a failure, a failed cleanup must
+        # not hide the error that caused it.
+        with contextlib.suppress(OSError):
+            temp_file.unlink(missing_ok=True)
+
+
 def safe_write(filepath, blob):
     """
     Write data to a file using a two-step process.
 
-    Writes to a temporary file first, then renames to the final path.
+    Writes to a temporary file first, then moves it to the final path.
     This ensures atomic writes and prevents partial file corruption.
 
     Parameters
@@ -158,16 +222,14 @@ def safe_write(filepath, blob):
     filepath = Path(filepath)
     if not filepath.is_file():
         filepath.parent.mkdir(parents=True, exist_ok=True)
-        temp_file = filepath.with_suffix(filepath.suffix + ".saving")
-        temp_file.write_bytes(blob)
-        temp_file.rename(filepath)
+        _replace_through_temp_file(filepath, lambda temp_file: temp_file.write_bytes(blob), skip_if_taken=True)
 
 
 def safe_copy(src, dest, overwrite=False):
     """
     Copy the contents of src file into dest file as a two-step process.
 
-    Copies to a temporary file first, then renames to the final path.
+    Copies to a temporary file first, then moves it to the final path.
     Skips if dest exists already (unless overwrite is True).
 
     Parameters
@@ -182,6 +244,4 @@ def safe_copy(src, dest, overwrite=False):
     src, dest = Path(src), Path(dest)
     if not (dest.exists() and src.samefile(dest)) and (overwrite or not dest.is_file()):
         dest.parent.mkdir(parents=True, exist_ok=True)
-        temp_file = dest.with_suffix(dest.suffix + ".copying")
-        shutil.copyfile(str(src), str(temp_file))
-        temp_file.rename(dest)
+        _replace_through_temp_file(dest, lambda temp_file: shutil.copyfile(str(src), str(temp_file)))
