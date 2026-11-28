@@ -703,10 +703,7 @@ class QueryExpression:
             # A projected constant survives only for actual matching group rows.
             # Use a subquery so USING does not coalesce it with the grouping key.
             group = group.proj(..., **{marker: "1"})
-            named_attributes = {
-                name: count_star.sub(f"count({marker})", expr)
-                for name, expr in named_attributes.items()
-            }
+            named_attributes = {name: count_star.sub(f"count({marker})", expr) for name, expr in named_attributes.items()}
 
         return Aggregation.create(self, group=group, keep_all_rows=keep_all_rows).proj(*attributes, **named_attributes)
 
