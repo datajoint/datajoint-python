@@ -254,12 +254,15 @@ class TestReplaceRetry:
         assert all(b >= a for a, b in zip(clock.slept, clock.slept[1:]))  # the pause grows
         assert _leftovers(tmp_path) == []
 
-    def test_safe_write_accepts_a_file_another_writer_stored_first(self, tmp_path, monkeypatch, clock):
+    @pytest.mark.parametrize("is_windows", [False, True])
+    def test_safe_write_accepts_a_file_another_writer_stored_first(self, tmp_path, monkeypatch, clock, is_windows):
         utils = _utils()
-        monkeypatch.setattr(utils, "_IS_WINDOWS", False)
+        monkeypatch.setattr(utils, "_IS_WINDOWS", is_windows)
         dest = tmp_path / "blob.bin"
+        calls = []
 
         def replace(src, dst):
+            calls.append(src)
             Path(dst).write_bytes(b"same content")  # the other writer finished first
             raise PermissionError(13, "Access is denied")
 
@@ -268,6 +271,8 @@ class TestReplaceRetry:
         utils.safe_write(dest, b"same content")
 
         assert dest.read_bytes() == b"same content"
+        assert len(calls) == 1  # no retry once the file is there
+        assert clock.slept == []
         assert _leftovers(tmp_path) == []
 
 

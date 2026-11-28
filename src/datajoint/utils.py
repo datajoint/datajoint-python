@@ -148,7 +148,7 @@ def from_camel_case(s):
     return re.sub(r"(\B[A-Z])|(\b[A-Z])", convert, s)
 
 
-def _replace(temp_file, dest):
+def _replace(temp_file, dest, stop_if_taken=False):
     """
     Move ``temp_file`` over ``dest``, retrying on Windows while another program holds ``dest``.
 
@@ -157,6 +157,9 @@ def _replace(temp_file, dest):
     has it open. It is retried until ``_REPLACE_DEADLINE`` seconds have passed, with
     exponential backoff and a random factor so that colliding writers drift apart.
     Elsewhere, and once the deadline passes, the ``PermissionError`` is raised.
+
+    With ``stop_if_taken`` the error is also raised at once when ``dest`` exists, so
+    that a caller that does not overwrite does not wait for a file that is already there.
     """
     deadline = time.monotonic() + _REPLACE_DEADLINE
     pause = 0.01
@@ -165,7 +168,7 @@ def _replace(temp_file, dest):
             os.replace(temp_file, dest)
             return
         except PermissionError:
-            if not _IS_WINDOWS or time.monotonic() + pause > deadline:
+            if not _IS_WINDOWS or time.monotonic() + pause > deadline or (stop_if_taken and dest.is_file()):
                 raise
         time.sleep(pause * random.uniform(0.5, 1.5))
         pause = min(pause * 2, 0.25)
@@ -191,7 +194,7 @@ def _replace_through_temp_file(dest, write, skip_if_taken=False):
     try:
         write(temp_file)
         try:
-            _replace(temp_file, dest)
+            _replace(temp_file, dest, stop_if_taken=skip_if_taken)
         except PermissionError:
             if not (skip_if_taken and dest.is_file()):
                 raise
