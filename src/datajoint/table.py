@@ -1181,12 +1181,9 @@ class Table(QueryExpression):
 
         # Execute deletes in reverse topological order (leaves first)
         root_count = 0
-        deleted_tables = set()
         try:
             for ft in reversed(diagram):
                 count = ft.delete_quick(get_count=True)
-                if count > 0:
-                    deleted_tables.add(ft.full_table_name)
                 logger.info("Deleting {count} rows from {table}".format(count=count, table=ft.full_table_name))
                 if ft.full_table_name == self.full_table_name:
                     root_count = count
@@ -1205,20 +1202,6 @@ class Table(QueryExpression):
             if transaction:
                 conn.cancel_transaction()
             raise
-
-        # Post-check part_integrity="enforce": roll back if a part table
-        # had rows deleted without its master also having rows deleted.
-        if part_integrity == "enforce" and deleted_tables:
-            for table_name in deleted_tables:
-                master = extract_master(table_name)
-                if master and master not in deleted_tables:
-                    if transaction:
-                        conn.cancel_transaction()
-                    raise DataJointError(
-                        f"Attempt to delete part table {table_name} before "
-                        f"its master {master}. Delete from the master first, "
-                        f"or use part_integrity='ignore' or 'cascade'."
-                    )
 
         # Confirm and commit
         if root_count == 0:

@@ -81,7 +81,12 @@ def test_delete_lookup_restricted(schema_simp_pop):
     rel = L() & "cond_in_l"
     original_count = len(L())
     deleted_count = len(rel)
-    rel.delete()
+    # E.G references L in a secondary attribute, so the cascade reaches E.G
+    # rows whose E rows it does not remove: enforce refuses the delete.
+    with pytest.raises(dj.DataJointError, match="before its master"):
+        rel.delete()
+    assert len(L()) == original_count
+    rel.delete(part_integrity="cascade")
     assert len(L()) == original_count - deleted_count
 
 

@@ -1,8 +1,8 @@
 """
 Integration tests for cascade part-integrity paths flagged as untested by the
-post-2.3 audit: the Table.delete() enforce post-check (data-driven, with
-rollback), the empty-materialization sentinel, and the U3 upward-rule arm
-(non-primary master FK).
+post-2.3 audit: the part_integrity="enforce" check (row-level, before any
+row is deleted), the empty-materialization sentinel, and the U3 upward-rule
+arm (non-primary master FK).
 """
 
 import pytest
@@ -40,10 +40,9 @@ def schema_by_backend(connection_by_backend, db_creds_by_backend, request):
             pass
 
 
-def test_enforce_postcheck_raises_and_rolls_back(schema_by_backend):
-    """The data-driven post-check in Table.delete (part rows deleted without
-    their master reaching the cascade) must raise AND roll the transaction
-    back — previously only the direct Part.delete pre-guard had coverage."""
+def test_enforce_refuses_part_without_master(schema_by_backend):
+    """A cascade that reaches part rows without their master reaching the
+    cascade is refused under enforce, and nothing is deleted."""
 
     @schema_by_backend
     class Ext(dj.Manual):
@@ -67,13 +66,13 @@ def test_enforce_postcheck_raises_and_rolls_back(schema_by_backend):
     Master.insert([(1,)])
     Master.P.insert([(1, 1)])
 
-    # Cascade from Ext reaches the Part but not the Master -> enforce post-check.
+    # Cascade from Ext reaches the Part but not the Master -> enforce refuses.
     with pytest.raises(DataJointError, match="before its master"):
         (Ext & {"ext_id": 1}).delete(prompt=False)  # part_integrity="enforce" default
 
-    # Rollback: nothing was deleted.
-    assert len(Ext()) == 1, "rollback must restore the seed row"
-    assert len(Master.P()) == 1, "rollback must restore the part row"
+    # Nothing was deleted.
+    assert len(Ext()) == 1, "the seed row must survive"
+    assert len(Master.P()) == 1, "the part row must survive"
     assert len(Master()) == 1
 
 
@@ -155,3 +154,159 @@ def test_upward_u3_nonprimary_master_fk(schema_by_backend):
         f"only master 1 (via the secondary-FK part row) must be restricted; got {counts} — "
         "a bare proj() on the U3 arm would have restricted both masters."
     )
+
+
+def _declare_probe_groups(schema):
+    """Groups whose lead and members both reference Probe.
+
+    Deleting a probe removes the groups it leads (with all their members) and
+    the members that reference it, which may belong to groups that are kept.
+    """
+
+    @schema
+    class Probe(dj.Manual):
+        definition = """
+        probe : int32
+        """
+
+    @schema
+    class Group(dj.Manual):
+        definition = """
+        group_id : int32
+        ---
+        -> Probe.proj(lead="probe")
+        """
+
+        class Member(dj.Part):
+            definition = """
+            -> master
+            -> Probe
+            """
+
+    Probe.insert([{"probe": 1}, {"probe": 2}, {"probe": 3}])
+    Group.insert([{"group_id": 7, "lead": 2}, {"group_id": 8, "lead": 1}, {"group_id": 9, "lead": 3}])
+    Group.Member.insert(
+        [
+            {"group_id": 7, "probe": 1},
+            {"group_id": 7, "probe": 2},
+            {"group_id": 8, "probe": 2},
+            {"group_id": 9, "probe": 2},
+            {"group_id": 9, "probe": 3},
+        ]
+    )
+    return Probe, Group
+
+
+def test_enforce_refuses_split_master(schema_by_backend):
+    """A cascade that removes some rows of the master table must still be
+    refused when it removes a part row whose own master row is kept: deleting
+    probe 1 removes group 8 but would leave group 7 without its member (7, 1)."""
+    Probe, Group = _declare_probe_groups(schema_by_backend)
+
+    with pytest.raises(DataJointError, match="before its master"):
+        (Probe & {"probe": 1}).delete(prompt=False)
+
+    assert len(Probe()) == 3
+    assert len(Group()) == 3
+    assert len(Group.Member()) == 5
+
+
+def test_enforce_preview_refuses_split_master(schema_by_backend):
+    """The cascade preview refuses the same delete as Table.delete."""
+    Probe, Group = _declare_probe_groups(schema_by_backend)
+
+    with pytest.raises(DataJointError, match="before its master"):
+        dj.Diagram.cascade(Probe & {"probe": 1})
+    with pytest.raises(DataJointError, match="before its master"):
+        dj.Diagram.cascade(Probe & {"probe": 1}, part_integrity="enforce")
+
+    counts = dj.Diagram.cascade(Probe & {"probe": 1}, part_integrity="ignore").counts()
+    assert counts[Group.full_table_name] == 1
+    assert counts[Group.Member.full_table_name] == 2
+
+
+def test_enforce_allows_master_with_all_parts(schema_by_backend):
+    """A cascade whose part rows all belong to master rows it also removes
+    is allowed: deleting probe 3 removes group 9 with both of its members."""
+    Probe, Group = _declare_probe_groups(schema_by_backend)
+
+    (Probe & {"probe": 3}).delete(prompt=False)
+
+    assert len(Probe()) == 2
+    assert set(Group.to_arrays("group_id")) == {7, 8}
+    assert len(Group.Member()) == 3
+    assert len(Group.Member & {"group_id": 9}) == 0
+
+
+def test_enforce_refuses_part_seed(schema_by_backend):
+    """Deleting part rows directly is refused before any row is deleted,
+    through the Part class and through a FreeTable of the part table."""
+    Probe, Group = _declare_probe_groups(schema_by_backend)
+
+    with pytest.raises(DataJointError):
+        (Group.Member & {"group_id": 7, "probe": 1}).delete(prompt=False)
+
+    part = dj.FreeTable(schema_by_backend.connection, Group.Member.full_table_name)
+    with pytest.raises(DataJointError, match="before its master"):
+        (part & {"group_id": 7, "probe": 1}).delete(prompt=False)
+    with pytest.raises(DataJointError, match="before its master"):
+        dj.Diagram.cascade(part & {"group_id": 7, "probe": 1})
+
+    assert len(Group.Member()) == 5
+    assert len(Group()) == 3
+
+
+def test_ignore_deletes_split_parts(schema_by_backend):
+    """part_integrity='ignore' deletes the part rows without their master."""
+    Probe, Group = _declare_probe_groups(schema_by_backend)
+
+    (Probe & {"probe": 1}).delete(prompt=False, part_integrity="ignore")
+
+    assert set(Probe.to_arrays("probe")) == {2, 3}
+    assert set(Group.to_arrays("group_id")) == {7, 9}
+    assert len(Group.Member & {"group_id": 7}) == 1
+    assert len(Group.Member & {"group_id": 7, "probe": 1}) == 0
+
+
+def test_cascade_deletes_split_master(schema_by_backend):
+    """part_integrity='cascade' removes the master rows of the reached parts,
+    with their other parts."""
+    Probe, Group = _declare_probe_groups(schema_by_backend)
+
+    (Probe & {"probe": 1}).delete(prompt=False, part_integrity="cascade")
+
+    assert set(Probe.to_arrays("probe")) == {2, 3}
+    assert set(Group.to_arrays("group_id")) == {9}
+    assert len(Group.Member()) == 2
+
+
+def test_enforce_checks_part_reached_through_renamed_master_reference(schema_by_backend):
+    """A part that references its master a second time under a renamed
+    attribute is checked even when every edge into it comes from the master:
+    deleting group 2 reaches link (1, 2) of group 1, which is kept."""
+
+    @schema_by_backend
+    class Group(dj.Manual):
+        definition = """
+        group_id : int32
+        """
+
+        class Link(dj.Part):
+            definition = """
+            -> master
+            -> Group.proj(target="group_id")
+            """
+
+    Group.insert([{"group_id": 1}, {"group_id": 2}])
+    Group.Link.insert([{"group_id": 1, "target": 2}, {"group_id": 2, "target": 2}])
+
+    with pytest.raises(DataJointError, match="before its master"):
+        (Group & {"group_id": 2}).delete(prompt=False)
+    assert len(Group()) == 2
+    assert len(Group.Link()) == 2
+
+    # Without a link from a kept group, the master rows go with their parts.
+    (Group.Link & {"group_id": 1}).delete(prompt=False, part_integrity="ignore")
+    (Group & {"group_id": 2}).delete(prompt=False)
+    assert set(Group.to_arrays("group_id")) == {1}
+    assert len(Group.Link()) == 0
