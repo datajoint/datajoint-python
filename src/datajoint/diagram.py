@@ -482,6 +482,12 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
             New Diagram with cascade restrictions applied, trimmed to
             the seed table and its affected descendants.
 
+        Raises
+        ------
+        DataJointError
+            With ``part_integrity="enforce"``, if the cascade reaches a part
+            row whose master row it does not also reach.
+
         Examples
         --------
         >>> # Preview cascade impact across all downstream schemas
@@ -536,7 +542,57 @@ class Diagram(nx.MultiDiGraph):  # noqa: C901
         result.remove_nodes_from(set(result.nodes()) - keep)
         result.nodes_to_show &= keep
         result._expanded_nodes &= keep
+
+        if part_integrity == "enforce":
+            result._enforce_part_integrity(node)
         return result
+
+    def _enforce_part_integrity(self, seed):
+        """
+        Refuse a cascade that reaches a part row without its master row.
+
+        For each part table in the cascade, the reached part rows whose master
+        row is not also reached are ``part - master.proj()``, or all reached
+        part rows when the master is not in the cascade. Any such row means the
+        delete would keep a master row but remove some of its parts.
+
+        A part other than the seed that is reached only through its own
+        ``-> master`` reference holds only rows of reached master rows, so it
+        is not queried.
+
+        Parameters
+        ----------
+        seed : str
+            Full table name of the cascade's seed table.
+
+        Raises
+        ------
+        DataJointError
+            If any reached part row's master row is not reached.
+        """
+        masters = {}
+        for node in topo_sort(self):
+            master = extract_master(node)
+            if not master or node not in self.nodes_to_show:
+                continue
+            if node != seed and all(
+                parent == master and not props.get("aliased", False) for parent, _, props in self.in_edges(node, data=True)
+            ):
+                continue
+            orphans = self._restricted_table(node)
+            if master in self.nodes_to_show:
+                if master not in masters:
+                    masters[master] = self._restricted_table(master).proj()
+                orphans = orphans - masters[master]
+            if orphans:
+                from .table import FreeTable
+
+                count = len(FreeTable(self._connection, master).proj() & orphans)
+                raise DataJointError(
+                    f"Attempt to delete part table {node} before its master {master}: "
+                    f"{count} master row(s) would be kept while losing part rows. "
+                    f"Delete from the master first, or use part_integrity='ignore' or 'cascade'."
+                )
 
     @classmethod
     def trace(cls, table_expr):
