@@ -369,6 +369,11 @@ def make_condition(
             k = adapter.quote_identifier(k)
         if is_json_path and isinstance(v, dict):
             return f"{k}={literal(json.dumps(v))}"
+        if isinstance(v, numpy.timedelta64):
+            # from a DataFrame's timedelta column; NaT becomes None
+            if numpy.datetime_data(v.dtype)[0] in ("generic", "Y", "M"):
+                raise DataJointError(f"Cannot restrict by `{key}` with the timedelta64 value {v}, which has no fixed unit.")
+            v = v.astype("timedelta64[us]").item()
         if v is None:
             return f"{k} IS NULL"
         if query_expression.heading[key_match["attr"]].uuid:
@@ -394,6 +399,15 @@ def make_condition(
                 # standard_conforming_strings is on.
                 escaped = text.replace("\\", "\\\\").replace("'", "''").replace("%", "%%")
                 return f"{k}=E'{escaped}'"
+            return f"{k}={literal(text)}"
+        if isinstance(v, datetime.timedelta):
+            # MySQL fetches a time attribute as a timedelta. str(v) is not a TIME literal
+            # ("1 day, 2:00:00"), so write [-]HH:MM:SS[.ffffff] with hours past 24.
+            sign = "-" if v < datetime.timedelta(0) else ""
+            seconds, microseconds = divmod(abs(v) // datetime.timedelta(microseconds=1), 1_000_000)
+            minutes, seconds = divmod(seconds, 60)
+            hours, minutes = divmod(minutes, 60)
+            text = f"{sign}{hours:02d}:{minutes:02d}:{seconds:02d}" + (f".{microseconds:06d}" if microseconds else "")
             return f"{k}={literal(text)}"
         if isinstance(v, str):
             if adapter.backend == "postgresql":
