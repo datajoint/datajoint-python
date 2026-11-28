@@ -690,7 +690,7 @@ class QueryExpression:
         keep_all_rows = not exclude_nonmatching
         # In a left join, COUNT(*) also counts the NULL-padded row when the group
         # has no match. Count a non-null marker from the group instead.
-        count_star = re.compile(r"\\bcount\\s*\\(\\s*\\*\\s*\\)", re.IGNORECASE)
+        count_star = re.compile(r"\bcount\s*\(\s*\*\s*\)", re.IGNORECASE)
         if keep_all_rows and any(count_star.search(expr) for expr in named_attributes.values()):
             if inspect.isclass(group) and issubclass(group, QueryExpression):
                 group = group()
